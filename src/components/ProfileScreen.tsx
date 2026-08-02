@@ -44,6 +44,7 @@ import { SuperLegendModal } from './SuperLegendModal';
 import { SettingsModal } from './SettingsModal';
 import { CustomerServiceModal } from './CustomerServiceModal';
 import { UserProfileModal } from './UserProfileModal';
+import { VipCenterModal } from './VipCenterModal';
 import { HomeScreen } from './HomeScreen';
 import { ExploreScreen } from './ExploreScreen';
 import { GamesScreen } from './GamesScreen';
@@ -139,6 +140,7 @@ export const ProfileScreen: React.FC = () => {
   const [isFamilyModalOpen, setIsFamilyModalOpen] = useState(false);
   const [isBadgesCenterModalOpen, setIsBadgesCenterModalOpen] = useState(false);
   const [isAppearanceModalOpen, setIsAppearanceModalOpen] = useState(false);
+  const [isVipCenterModalOpen, setIsVipCenterModalOpen] = useState(false);
   const [activeServiceModal, setActiveServiceModal] = useState<ServiceType | null>(null);
 
   // Copy ID functionality
@@ -161,7 +163,7 @@ export const ProfileScreen: React.FC = () => {
   return (
     <div
       dir="rtl"
-      className="min-h-screen bg-[#F3F6F9] text-slate-800 font-sans pb-24 select-none relative"
+      className="min-h-screen bg-[#F3F6F9] text-slate-800 font-sans pb-24 select-none relative overflow-x-hidden w-full max-w-full touch-pan-y"
     >
       {/* Toast Notification for ID Copy */}
       <AnimatePresence>
@@ -247,11 +249,11 @@ export const ProfileScreen: React.FC = () => {
             <div className="flex items-center gap-2 flex-wrap">
               {/* VIP8 Badge */}
               <span
-                onClick={() => setSelectedBadge(profile.badges[0])}
+                onClick={() => setIsVipCenterModalOpen(true)}
                 className="bg-gradient-to-r from-amber-600 via-amber-800 to-slate-900 text-amber-300 px-2 py-0.5 rounded-full text-[10px] font-black border border-amber-400/60 shadow-xs cursor-pointer flex items-center gap-0.5"
               >
                 <Crown className="w-3 h-3 text-amber-400 fill-amber-400" />
-                <span>VIP8</span>
+                <span>{profile.vipLevel || 'VIP8'}</span>
               </span>
 
               {/* Super Legend SL1 Badge */}
@@ -552,7 +554,7 @@ export const ProfileScreen: React.FC = () => {
           
           {/* مركز VIP */}
           <div 
-            onClick={() => setActiveServiceModal('vip')}
+            onClick={() => setIsVipCenterModalOpen(true)}
             className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
           >
             <div className="flex items-center gap-3">
@@ -852,6 +854,20 @@ export const ProfileScreen: React.FC = () => {
         isOpen={isAppearanceModalOpen}
         onClose={() => setIsAppearanceModalOpen(false)}
         avatarUrl={profile.avatarUrl}
+      />
+
+      <VipCenterModal
+        isOpen={isVipCenterModalOpen}
+        onClose={() => setIsVipCenterModalOpen(false)}
+        profile={profile}
+        onUpgrade={(newVipLevel) => {
+          const updated = { ...profile, vipLevel: newVipLevel, vipTier: newVipLevel };
+          setProfile(updated);
+          localStorage.setItem('user_profile_data', JSON.stringify({
+            ...updated,
+            avatar: updated.avatarUrl
+          }));
+        }}
       />
 
       <ServicesModal

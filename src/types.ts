@@ -28,6 +28,7 @@ export interface UserProfileData {
   isOnline: boolean;
   level: number;
   vipTier: string;
+  vipLevel?: string;
   badges: BadgeInfo[];
   stats: {
     visitors: number;

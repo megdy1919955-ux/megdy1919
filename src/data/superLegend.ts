@@ -11,6 +11,128 @@ export interface SuperLegendLevel {
   perks: Perk[];
 }
 
+export interface VipTier {
+  level: number;
+  title: string;
+  requiredCoins: number;
+  discount: string;
+  privileges: string[];
+}
+
+export const VIP_TIERS: VipTier[] = [
+  {
+    level: 1,
+    title: "VIP 1 - كبار الشخصيات",
+    requiredCoins: 1000,
+    discount: "5%",
+    privileges: [
+      "ميزة التمييز في شات الغرفة",
+      "إطار صور شخصي كبار الشخصيات VIP 1",
+      "خصم 5% على الهدايا الفاخرة"
+    ]
+  },
+  {
+    level: 2,
+    title: "VIP 2 - كبار الشخصيات",
+    requiredCoins: 5000,
+    discount: "8%",
+    privileges: [
+      "تأثير دخول مميز للغرف الصوتية",
+      "إطار ميكروفون ذهبي VIP 2",
+      "خصم 8% على جميع الهدايا"
+    ]
+  },
+  {
+    level: 3,
+    title: "VIP 3 - كبار الشخصيات",
+    requiredCoins: 12000,
+    discount: "10%",
+    privileges: [
+      "شارة حصرية في الملف الشخصي",
+      "زيادة حد الأصدقاء والمتابعين",
+      "خصم 10% على الهدايا الفاخرة"
+    ]
+  },
+  {
+    level: 4,
+    title: "VIP 4 - كبار الشخصيات",
+    requiredCoins: 25000,
+    discount: "12%",
+    privileges: [
+      "مركبة حصرية كبار الشخصيات",
+      "إخفاء حالة الاتصال لراحة أكبر",
+      "خصم 12% على الهدايا والخدمات"
+    ]
+  },
+  {
+    level: 5,
+    title: "VIP 5 - كبار الشخصيات",
+    requiredCoins: 50000,
+    discount: "15%",
+    privileges: [
+      "شارة VIP 5 متلألئة",
+      "دخول الغرف بتأثير صوتي وبصري خاص",
+      "خصم 15% على متجر الشارات والمظهر"
+    ]
+  },
+  {
+    level: 6,
+    title: "VIP 6 - كبار الشخصيات",
+    requiredCoins: 100000,
+    discount: "18%",
+    privileges: [
+      "حماية ضد الحظر والطرد في الغرف العامة",
+      "بنر مميز أعلى شاشة الغرفة الصوتية",
+      "خصم 18% على كافة الخدمات والهدايا"
+    ]
+  },
+  {
+    level: 7,
+    title: "VIP 7 - كبار الشخصيات",
+    requiredCoins: 200000,
+    discount: "20%",
+    privileges: [
+      "خدمة عملاء فرسان كبار الشخصيات VIP 7",
+      "هدايا شهرية مجانية حصرية",
+      "خصم 20% على جميع الهدايا"
+    ]
+  },
+  {
+    level: 8,
+    title: "VIP 8 - كبار الشخصيات",
+    requiredCoins: 500000,
+    discount: "25%",
+    privileges: [
+      "أولوية العرض في القائمة العلوية بكافة الغرف",
+      "إطار متحرك نادراً وأيقونة VIP 8 ملكية",
+      "خصم 25% على الهدايا والخدمات الفاخرة",
+      "ملازم خادم خاص واستجابة فورية للطلبات"
+    ]
+  },
+  {
+    level: 9,
+    title: "VIP 9 - كبار الشخصيات الملكية",
+    requiredCoins: 1000000,
+    discount: "30%",
+    privileges: [
+      "دخول أسطوري بأسطول مركبات ملكية",
+      "تصميم اسم بلون ذهبي ماسي متألق",
+      "خصم 30% شامل لكافة ميزات التطبيق"
+    ]
+  },
+  {
+    level: 10,
+    title: "VIP 10 - الإمبراطور الأسطوري",
+    requiredCoins: 2500000,
+    discount: "35%",
+    privileges: [
+      "أعلى مستوى VIP في منصة سوبر ليجند",
+      "قوة وإدارة كاملة وحصانة مطلقة",
+      "خصم 35% واسترجاع عمولات تلقائي"
+    ]
+  }
+];
+
 export const SUPER_LEGEND_LEVELS: SuperLegendLevel[] = [
   {
     level: 1,
