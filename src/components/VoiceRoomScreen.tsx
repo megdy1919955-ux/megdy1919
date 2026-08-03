@@ -26,8 +26,14 @@ import {
   ShieldCheck,
   Star,
   Scroll,
-  Trophy
+  Trophy,
+  BarChart2,
+  Flame
 } from 'lucide-react';
+import { FamilyModal } from './FamilyModal';
+import { SuperLegendModal } from './SuperLegendModal';
+import { RoomInfoModal } from './RoomInfoModal';
+import { ProfessionalGiftPanel, GiftItem } from './ProfessionalGiftPanel';
 
 interface VoiceRoomScreenProps {
   roomTitle?: string;
@@ -164,11 +170,19 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     target: string;
   } | null>(null);
 
-  // Drawers
+  // Drawers & Modals
   const [showGiftDrawer, setShowGiftDrawer] = useState(false);
   const [showGamesDrawer, setShowGamesDrawer] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
+  const [showFamilyModal, setShowFamilyModal] = useState(false);
+  const [showSuperLegendModal, setShowSuperLegendModal] = useState(false);
+  const [showRoomSupportModal, setShowRoomSupportModal] = useState(false);
+  const [showRoomInfoModal, setShowRoomInfoModal] = useState(false);
+
+  // Tabbed Statistics Panel State
+  const [statsMainTab, setStatsMainTab] = useState<'diamonds' | 'club' | 'charm'>('diamonds');
+  const [statsTimeFilter, setStatsTimeFilter] = useState<'24h' | 'all' | 'weekly'>('24h');
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
@@ -257,7 +271,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       }
     ]);
 
-    setShowGiftDrawer(false);
+    // Keep gift panel persistent (do not auto-close on gift send)
 
     setTimeout(() => {
       setActiveGiftBanner(null);
@@ -290,8 +304,12 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       <div className="relative z-20 pt-3 px-3 pb-2 space-y-2">
         {/* Row 1 Header Icons & Room Title Pill */}
         <div className="flex items-center justify-between gap-2">
-          {/* Right Section (in RTL: 1st in DOM): Room Title & Host Avatar Capsule */}
-          <div className="bg-[#1A2132]/90 border border-white/10 rounded-full py-1 pr-1.5 pl-4 flex items-center gap-2 max-w-[62%] shadow-md">
+          {/* Right Section (in RTL: 1st in DOM): Room Title & Host Avatar Capsule (Clickable for Room Admin & Info Panel) */}
+          <div
+            onClick={() => setShowRoomInfoModal(true)}
+            className="bg-[#1A2132]/90 border border-white/10 rounded-full py-1 pr-1.5 pl-4 flex items-center gap-2 max-w-[62%] shadow-md cursor-pointer hover:border-amber-400/50 hover:bg-[#20293f] transition-all active:scale-95"
+            title="انقر لعرض معلومات الغرفة ولوحة المسؤولين"
+          >
             {/* Host Avatar on Right Edge */}
             <div className="w-8 h-8 rounded-full border border-cyan-400 overflow-hidden shrink-0">
               <img
@@ -302,11 +320,12 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             </div>
 
             <div className="flex flex-col min-w-0">
-              <span className="text-xs font-black text-white truncate leading-tight">
-                {roomTitle}
+              <span className="text-xs font-black text-white truncate leading-tight flex items-center gap-1">
+                <span>{roomTitle}</span>
               </span>
-              <span className="text-[10px] font-mono text-slate-400 truncate">
-                ID: {roomId}
+              <span className="text-[10px] font-mono text-slate-400 truncate flex items-center gap-1">
+                <span>ID: {roomId}</span>
+                <span className="text-[9px] text-amber-300 font-bold bg-amber-500/10 px-1 rounded">مسؤول</span>
               </span>
             </div>
           </div>
@@ -338,53 +357,63 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           </div>
         </div>
 
-        {/* Row 2 Sub-Header Quick Badges */}
-        <div className="flex items-center justify-between gap-1.5 pt-1">
-          {/* Right: Orange Weekly Badge */}
-          <div className="bg-gradient-to-r from-amber-600 to-orange-500 text-amber-100 px-3 py-1 rounded-full border border-amber-300/40 flex items-center gap-1 text-[11px] font-black shadow-xs">
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-200 fill-amber-200/20" />
-            <span>أسبوعي III</span>
-          </div>
-
-          {/* Center: Gold Star Badge */}
-          <div className="bg-[#151D2C] border border-white/10 px-3 py-1 rounded-full flex items-center gap-1 text-[11px] font-black text-amber-300 shadow-xs">
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            <span>أسط</span>
-          </div>
-
-          {/* Gift Log Badge */}
+        {/* Row 2 Sub-Header Quick Badges (Positioned slightly higher, reversed order, and logic mapped) */}
+        <div className="flex flex-row-reverse items-center justify-between gap-1 -mt-1 pt-0 pb-0.5">
+          {/* 1. Right: Family / الأسرة Badge -> Opens FamilyModal */}
           <button
-            onClick={() => setShowGiftDrawer(true)}
-            className="bg-[#151D2C] border border-white/10 px-3 py-1 rounded-full flex items-center gap-1 text-[11px] font-black text-pink-300 shadow-xs hover:border-pink-500/50 cursor-pointer"
+            onClick={() => setShowFamilyModal(true)}
+            className="bg-gradient-to-r from-purple-600 to-indigo-600 text-purple-100 px-1.5 py-0.5 rounded-full border border-purple-300/40 flex items-center gap-0.5 text-[8px] font-black shadow-2xs hover:border-purple-300 transition-colors cursor-pointer"
+            title="عائلة المستخدم والقبيلة"
           >
-            <Gift className="w-3.5 h-3.5 text-pink-400" />
-            <span>سجل</span>
+            <Users className="w-2.5 h-2.5 text-purple-200" />
+            <span>العائلة</span>
           </button>
 
-          {/* Left: Diamond Balance Badge */}
-          <div
-            onClick={onOpenRecharge}
-            className="bg-[#151D2C] border border-cyan-500/30 px-3 py-1 rounded-full flex items-center gap-1 text-[11px] font-mono font-black text-cyan-300 shadow-xs cursor-pointer hover:border-cyan-400"
+          {/* 2. Star / الأساطير Badge -> Opens SuperLegendModal (Top Supporters) */}
+          <button
+            onClick={() => setShowSuperLegendModal(true)}
+            className="bg-[#151D2C] border border-amber-500/40 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 text-[8px] font-black text-amber-300 shadow-2xs hover:border-amber-400 transition-colors cursor-pointer"
+            title="قائمة كبار الداعمين والأساطير"
           >
-            <span className="text-cyan-400">💎</span>
+            <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+            <span>الأساطير</span>
+          </button>
+
+          {/* 3. Gift Log Badge -> Opens Gift Drawer */}
+          <button
+            onClick={() => setShowGiftDrawer(true)}
+            className="bg-[#151D2C] border border-white/10 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 text-[8px] font-black text-pink-300 shadow-2xs hover:border-pink-500/50 transition-colors cursor-pointer"
+            title="سجل الهدايا المرسلة"
+          >
+            <Gift className="w-2.5 h-2.5 text-pink-400" />
+            <span>السجل</span>
+          </button>
+
+          {/* 4. Left: Diamond / Total Room Support -> Opens Room Support Stats Modal */}
+          <button
+            onClick={() => setShowRoomSupportModal(true)}
+            className="bg-[#151D2C] border border-cyan-500/40 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 text-[8px] font-mono font-black text-cyan-300 shadow-2xs cursor-pointer hover:border-cyan-400 transition-colors"
+            title="إحصائيات الدعم الكلي في هذه الغرفة"
+          >
+            <span className="text-[9px]">💎</span>
             <span>{userCoins}</span>
-          </div>
+          </button>
         </div>
       </div>
 
-      {/* 2. MIC ARRANGEMENT SECTION */}
-      <div className="relative z-20 px-3 py-2 space-y-4">
+      {/* 2. MIC ARRANGEMENT SECTION (Compacted for optimal screen balance) */}
+      <div className="relative z-20 px-2 py-1 space-y-2">
         {/* SEAT #1: HOST MIC (CENTER TOP PROMINENT) */}
-        <div className="flex flex-col items-center justify-center pt-1">
+        <div className="flex flex-col items-center justify-center pt-0.5">
           <div className="relative cursor-pointer group">
             {/* Glowing Ring Effect */}
-            <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 blur-sm opacity-80 animate-pulse" />
+            <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 blur-xs opacity-80 animate-pulse" />
 
             {/* Avatar Circle Container */}
-            <div className="relative w-20 h-20 rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 via-emerald-400 to-amber-300 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+            <div className="relative w-14 h-14 rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 via-emerald-400 to-amber-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
               {/* Crown sitting on top */}
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10">
-                <Crown className="w-7 h-7 text-amber-300 fill-amber-400 drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]" />
+              <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10">
+                <Crown className="w-5 h-5 text-amber-300 fill-amber-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
               </div>
 
               <img
@@ -394,52 +423,52 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
               />
 
               {/* Green Active Mic Badge at Bottom Right */}
-              <div className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-emerald-500 border-2 border-[#0B0E17] flex items-center justify-center text-slate-950 shadow-md">
-                <Mic className="w-3.5 h-3.5 stroke-[3]" />
+              <div className="absolute bottom-0 right-0 w-4.5 h-4.5 rounded-full bg-emerald-500 border border-[#0B0E17] flex items-center justify-center text-slate-950 shadow-xs">
+                <Mic className="w-2.5 h-2.5 stroke-[3]" />
               </div>
             </div>
           </div>
 
           {/* Brown Gold Name Badge Pill */}
-          <div className="mt-2 bg-gradient-to-r from-amber-950 via-amber-900 to-amber-950 border border-amber-500/40 px-3 py-0.5 rounded-full text-center shadow-md">
-            <span className="text-xs font-black text-amber-200">
+          <div className="mt-1 bg-gradient-to-r from-amber-950 via-amber-900 to-amber-950 border border-amber-500/40 px-2.5 py-0.2 rounded-full text-center shadow-xs">
+            <span className="text-[10px] font-black text-amber-200">
               {hostSeat.isEmpty ? hostSeat.id : hostSeat.userName}
             </span>
           </div>
         </div>
 
         {/* ROW 1: GUEST MICS (SEATS 2 TO 6 - HORIZONTAL 5 MICS) */}
-        <div className="grid grid-cols-5 gap-1.5 px-1 pt-1">
+        <div className="grid grid-cols-5 gap-1 px-1">
           {row1Seats.map((seat) => (
             <div
               key={seat.id}
               onClick={() => handleSeatClick(seat.id, true)}
-              className="flex flex-col items-center space-y-1 cursor-pointer group"
+              className="flex flex-col items-center space-y-0.5 cursor-pointer group"
             >
               <div className="relative">
                 {seat.isEmpty ? (
                   /* Dashed Gold Circle Empty Seat */
-                  <div className="w-11 h-11 rounded-full border-2 border-dashed border-amber-500/50 bg-[#121824]/60 flex items-center justify-center transition-transform group-hover:scale-105">
-                    <Plus className="w-5 h-5 text-amber-400 stroke-[2.5]" />
+                  <div className="w-8.5 h-8.5 rounded-full border-2 border-dashed border-amber-500/50 bg-[#121824]/60 flex items-center justify-center transition-transform group-hover:scale-105">
+                    <Plus className="w-3.5 h-3.5 text-amber-400 stroke-[2.5]" />
                   </div>
                 ) : (
                   /* Occupied Mic Seat */
-                  <div className="w-11 h-11 rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 to-emerald-400 relative transition-transform group-hover:scale-105 shadow-md">
+                  <div className="w-8.5 h-8.5 rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 to-emerald-400 relative transition-transform group-hover:scale-105 shadow-xs">
                     <img
                       src={seat.avatar}
                       alt={seat.userName}
                       className="w-full h-full object-cover rounded-full"
                     />
-                    {/* Mic Icon Badge (Green = active, Red = muted) */}
+                    {/* Mic Icon Badge */}
                     <div
-                      className={`absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 rounded-full flex items-center justify-center border border-[#0B0E17] shadow-sm ${
+                      className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center border border-[#0B0E17] shadow-2xs ${
                         seat.isMuted ? 'bg-red-500 text-white' : 'bg-emerald-500 text-slate-950'
                       }`}
                     >
                       {seat.isMuted ? (
-                        <MicOff className="w-2.5 h-2.5 stroke-[2.5]" />
+                        <MicOff className="w-2 h-2 stroke-[2.5]" />
                       ) : (
-                        <Mic className="w-2.5 h-2.5 stroke-[3]" />
+                        <Mic className="w-2 h-2 stroke-[3]" />
                       )}
                     </div>
                   </div>
@@ -447,7 +476,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
               </div>
 
               {/* Label */}
-              <span className="text-[10px] font-bold text-slate-200 truncate max-w-[55px] text-center leading-tight">
+              <span className="text-[9px] font-bold text-slate-200 truncate max-w-[48px] text-center leading-tight">
                 {seat.isEmpty ? seat.id : seat.userName}
               </span>
             </div>
@@ -455,20 +484,20 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         </div>
 
         {/* ROW 2: SMALLER EMPTY MICS (SEATS 7 TO 12 - HORIZONTAL 6 MICS) */}
-        <div className="grid grid-cols-6 gap-1 px-1 pt-1">
+        <div className="grid grid-cols-6 gap-1 px-1">
           {row2Seats.map((seat) => (
             <div
               key={seat.id}
               onClick={() => handleSeatClick(seat.id, false)}
-              className="flex flex-col items-center space-y-1 cursor-pointer group"
+              className="flex flex-col items-center space-y-0.5 cursor-pointer group"
             >
               <div className="relative">
                 {seat.isEmpty ? (
-                  <div className="w-9 h-9 rounded-full border border-dashed border-amber-500/40 bg-[#121824]/50 flex items-center justify-center transition-transform group-hover:scale-105">
-                    <Plus className="w-4 h-4 text-amber-400/80 stroke-[2]" />
+                  <div className="w-7 h-7 rounded-full border border-dashed border-amber-500/40 bg-[#121824]/50 flex items-center justify-center transition-transform group-hover:scale-105">
+                    <Plus className="w-3 h-3 text-amber-400/80 stroke-[2]" />
                   </div>
                 ) : (
-                  <div className="w-9 h-9 rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 to-indigo-500 relative shadow-xs">
+                  <div className="w-7 h-7 rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 to-indigo-500 relative shadow-2xs">
                     <img
                       src={seat.avatar}
                       alt={seat.userName}
@@ -478,7 +507,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                 )}
               </div>
 
-              <span className="text-[9px] font-bold text-slate-300 truncate max-w-[45px] text-center leading-tight">
+              <span className="text-[8px] font-bold text-slate-300 truncate max-w-[40px] text-center leading-tight">
                 {seat.isEmpty ? seat.id : seat.userName}
               </span>
             </div>
@@ -701,69 +730,17 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         )}
       </AnimatePresence>
 
-      {/* GIFTS DRAWER POPUP */}
-      <AnimatePresence>
-        {showGiftDrawer && (
-          <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-end justify-center">
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25 }}
-              className="w-full max-w-md bg-[#121827] border-t-2 border-amber-400/60 rounded-t-3xl p-4 space-y-4 text-white"
-            >
-              <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                <div className="flex items-center gap-2">
-                  <Gift className="w-5 h-5 text-amber-400" />
-                  <h2 className="text-base font-black text-amber-300">متجر الهدايا الفاخرة</h2>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div
-                    onClick={onOpenRecharge}
-                    className="flex items-center gap-1.5 bg-amber-500/20 border border-amber-400/40 px-3 py-1 rounded-full text-xs font-mono font-black text-amber-300 cursor-pointer"
-                  >
-                    <span>💎 {userCoins}</span>
-                    <span className="text-[10px] text-emerald-400 font-sans">+ شحن</span>
-                  </div>
-
-                  <button
-                    onClick={() => setShowGiftDrawer(false)}
-                    className="p-1.5 rounded-full bg-white/10 text-white"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { name: 'صقر أسطوري', icon: '🦅', price: '50K' },
-                  { name: 'سيارة رياضية', icon: '🏎️', price: '20K' },
-                  { name: 'القصر الملكي', icon: '🏰', price: '100K' },
-                  { name: 'التاج الذهبي', icon: '👑', price: '5K' },
-                  { name: 'خاتم الماس', icon: '💍', price: '1K' },
-                  { name: 'وردة حمراء', icon: '🌹', price: '10' }
-                ].map((item) => (
-                  <div
-                    key={item.name}
-                    onClick={() => handleSendGift(item.name, item.icon)}
-                    className="bg-[#1A2234] border border-white/10 rounded-2xl p-3 flex flex-col items-center text-center space-y-1 hover:border-amber-400 cursor-pointer group transition-all hover:scale-105"
-                  >
-                    <div className="text-4xl group-hover:scale-120 transition-transform duration-200">
-                      {item.icon}
-                    </div>
-                    <span className="text-xs font-black text-slate-200">{item.name}</span>
-                    <span className="text-[10px] font-mono font-bold text-amber-300">
-                      💎 {item.price}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* PROFESSIONAL GIFTS PANEL */}
+      <ProfessionalGiftPanel
+        isOpen={showGiftDrawer}
+        onClose={() => setShowGiftDrawer(false)}
+        userCoins={userCoins}
+        onOpenRecharge={onOpenRecharge}
+        onSendGift={(gift, quantity, targetName) => {
+          handleSendGift(`${gift.name} (x${quantity}) [إلى: ${targetName}]`, gift.icon);
+        }}
+        seats={[...row1Seats, ...row2Seats]}
+      />
 
       {/* MINI-GAMES DRAWER */}
       <AnimatePresence>
@@ -849,6 +826,387 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           </div>
         )}
       </AnimatePresence>
+
+      {/* TABBED STATISTICS PANEL (Diamond Badge / Support Stats Click) */}
+      <AnimatePresence>
+        {showRoomSupportModal && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-end justify-center p-0 sm:p-4">
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="w-full max-w-md bg-[#121827] border-t-2 border-cyan-500/60 rounded-t-3xl sm:rounded-3xl p-4 space-y-3.5 text-white shadow-2xl max-h-[85vh] flex flex-col justify-between"
+            >
+              {/* Header & Main Tabs Row */}
+              <div className="space-y-3 shrink-0">
+                <div className="flex items-center justify-between pb-1 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-amber-400" />
+                    <h2 className="text-base font-black text-amber-300">إحصائيات ولوحة متصدري الغرفة</h2>
+                  </div>
+                  <button
+                    onClick={() => setShowRoomSupportModal(false)}
+                    className="p-1.5 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* 3 Main Tabs: المساهمات (Diamonds), النادي (Club), الجاذبية (Charm) */}
+                <div className="grid grid-cols-3 gap-1 bg-[#1A2234] p-1 rounded-2xl border border-white/10 text-center">
+                  <button
+                    onClick={() => {
+                      setStatsMainTab('diamonds');
+                      setStatsTimeFilter('24h');
+                    }}
+                    className={`py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      statsMainTab === 'diamonds'
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 shadow-md scale-[1.02]'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    💎 المساهمات
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setStatsMainTab('club');
+                      setStatsTimeFilter('24h');
+                    }}
+                    className={`py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      statsMainTab === 'club'
+                        ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md scale-[1.02]'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    🛡️ النادي
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setStatsMainTab('charm');
+                      setStatsTimeFilter('24h');
+                    }}
+                    className={`py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      statsMainTab === 'charm'
+                        ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-md scale-[1.02]'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    ✨ الجاذبية
+                  </button>
+                </div>
+
+                {/* Sub-time filters row */}
+                <div className="flex items-center justify-center gap-2 pt-0.5">
+                  {statsMainTab === 'club' ? (
+                    <>
+                      <button
+                        onClick={() => setStatsTimeFilter('24h')}
+                        className={`px-3 py-1 rounded-full text-[11px] font-black transition-all cursor-pointer ${
+                          statsTimeFilter === '24h'
+                            ? 'bg-purple-600 text-white ring-1 ring-purple-300'
+                            : 'bg-white/5 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        24 ساعة
+                      </button>
+                      <button
+                        onClick={() => setStatsTimeFilter('weekly')}
+                        className={`px-3 py-1 rounded-full text-[11px] font-black transition-all cursor-pointer ${
+                          statsTimeFilter === 'weekly'
+                            ? 'bg-purple-600 text-white ring-1 ring-purple-300'
+                            : 'bg-white/5 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        أسبوعي
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setStatsTimeFilter('24h')}
+                        className={`px-3 py-1 rounded-full text-[11px] font-black transition-all cursor-pointer ${
+                          statsTimeFilter === '24h'
+                            ? statsMainTab === 'diamonds' ? 'bg-cyan-500 text-slate-950 font-black' : 'bg-pink-600 text-white'
+                            : 'bg-white/5 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        24 ساعة
+                      </button>
+                      <button
+                        onClick={() => setStatsTimeFilter('all')}
+                        className={`px-3 py-1 rounded-full text-[11px] font-black transition-all cursor-pointer ${
+                          statsTimeFilter === 'all'
+                            ? statsMainTab === 'diamonds' ? 'bg-cyan-500 text-slate-950 font-black' : 'bg-pink-600 text-white'
+                            : 'bg-white/5 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        الإجمالي
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Leaderboard List Content */}
+              <div className="overflow-y-auto no-scrollbar space-y-2 pr-0.5 my-1 flex-1 min-h-[220px]">
+                {/* 1. DIAMONDS LEADERBOARD LIST */}
+                {statsMainTab === 'diamonds' && (
+                  (statsTimeFilter === '24h' ? [
+                    { rank: 1, name: 'الأمير أسامة (الرئيس)', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '88', vip: 'VIP8', nLevel: 'N.15', val: '18,500,000 💎' },
+                    { rank: 2, name: 'سارة الكابيتانو', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=100', level: '75', vip: 'VIP6', nLevel: 'N.12', val: '12,200,000 💎' },
+                    { rank: 3, name: 'صقر الشام', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100', level: '64', vip: 'VIP5', nLevel: 'N.10', val: '9,300,000 💎' },
+                    { rank: 4, name: 'الملك الكويتي', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100', level: '52', vip: 'VIP4', nLevel: 'N.8', val: '5,100,000 💎' },
+                    { rank: 5, name: 'الدكتورة هناء', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100', level: '48', vip: 'VIP3', nLevel: 'N.6', val: '3,400,000 💎' }
+                  ] : [
+                    { rank: 1, name: 'السلطان قابوس', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100', level: '99', vip: 'VIP9', nLevel: 'N.20', val: '120,500,000 💎' },
+                    { rank: 2, name: 'الأمير أسامة (الرئيس)', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '88', vip: 'VIP8', nLevel: 'N.15', val: '95,000,000 💎' },
+                    { rank: 3, name: 'شيخ الشباب', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100', level: '82', vip: 'VIP7', nLevel: 'N.14', val: '68,200,000 💎' },
+                    { rank: 4, name: 'لورد بغداد', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100', level: '71', vip: 'VIP6', nLevel: 'N.11', val: '42,000,000 💎' }
+                  ]).map((item) => (
+                    <div
+                      key={item.rank}
+                      className="p-2 bg-[#1A2234] border border-white/10 rounded-2xl flex items-center justify-between text-xs hover:border-cyan-500/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 overflow-hidden max-w-[70%]">
+                        {/* Rank Badge (#1 Gold, #2 Silver, #3 Bronze) */}
+                        <div
+                          className={`w-7 h-7 shrink-0 rounded-xl flex items-center justify-center font-black text-xs shadow-md border ${
+                            item.rank === 1
+                              ? 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 border-amber-200 ring-2 ring-amber-400/50'
+                              : item.rank === 2
+                              ? 'bg-gradient-to-tr from-slate-300 to-slate-100 text-slate-950 border-slate-200 ring-1 ring-slate-300'
+                              : item.rank === 3
+                              ? 'bg-gradient-to-tr from-amber-700 to-amber-500 text-white border-amber-600'
+                              : 'bg-white/10 text-slate-300 border-white/5'
+                          }`}
+                        >
+                          {item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : item.rank}
+                        </div>
+
+                        {/* Avatar */}
+                        <img
+                          src={item.avatar}
+                          alt={item.name}
+                          className="w-8 h-8 rounded-full object-cover border border-cyan-400/50 shrink-0"
+                        />
+
+                        {/* Single Line User Metadata: Name, Level, VIP, N-Level */}
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="font-black text-slate-100 truncate text-[11px]">{item.name}</span>
+                          <span className="bg-purple-600/90 text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0">
+                            Lv.{item.level}
+                          </span>
+                          <span className="bg-amber-500/90 text-slate-950 text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0">
+                            {item.vip}
+                          </span>
+                          <span className="bg-emerald-600/90 text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0">
+                            {item.nLevel}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Value */}
+                      <span className="font-mono font-black text-cyan-300 text-xs dir-ltr shrink-0 pr-1">
+                        {item.val}
+                      </span>
+                    </div>
+                  ))
+                )}
+
+                {/* 2. CLUB RANKING LIST */}
+                {statsMainTab === 'club' && (
+                  (statsTimeFilter === '24h' ? [
+                    { rank: 1, name: 'نادي الفرسان الذهب', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '80', vip: 'VIP8', nLevel: 'N.16', val: '240,000 نقطة' },
+                    { rank: 2, name: 'نادي الملوك والعظماء', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100', level: '72', vip: 'VIP7', nLevel: 'N.14', val: '180,000 نقطة' },
+                    { rank: 3, name: 'نادي النجوم الأسطوري', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=100', level: '65', vip: 'VIP5', nLevel: 'N.11', val: '135,000 نقطة' }
+                  ] : [
+                    { rank: 1, name: 'نادي الصقور العالمية', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100', level: '90', vip: 'VIP9', nLevel: 'N.18', val: '1,250,000 نقطة' },
+                    { rank: 2, name: 'نادي الفرسان الذهب', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '80', vip: 'VIP8', nLevel: 'N.16', val: '980,000 نقطة' },
+                    { rank: 3, name: 'نادي عشاق الطرب', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100', level: '68', vip: 'VIP6', nLevel: 'N.12', val: '740,000 نقطة' }
+                  ]).map((item) => (
+                    <div
+                      key={item.rank}
+                      className="p-2 bg-[#1A2234] border border-white/10 rounded-2xl flex items-center justify-between text-xs hover:border-purple-500/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 overflow-hidden max-w-[70%]">
+                        <div
+                          className={`w-7 h-7 shrink-0 rounded-xl flex items-center justify-center font-black text-xs shadow-md border ${
+                            item.rank === 1
+                              ? 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 border-amber-200'
+                              : item.rank === 2
+                              ? 'bg-gradient-to-tr from-slate-300 to-slate-100 text-slate-950 border-slate-200'
+                              : 'bg-gradient-to-tr from-amber-700 to-amber-500 text-white border-amber-600'
+                          }`}
+                        >
+                          {item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : '🥉'}
+                        </div>
+
+                        <img
+                          src={item.avatar}
+                          alt={item.name}
+                          className="w-8 h-8 rounded-full object-cover border border-purple-400/50 shrink-0"
+                        />
+
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="font-black text-slate-100 truncate text-[11px]">{item.name}</span>
+                          <span className="bg-purple-600/90 text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0">
+                            Lv.{item.level}
+                          </span>
+                          <span className="bg-amber-500/90 text-slate-950 text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0">
+                            {item.vip}
+                          </span>
+                          <span className="bg-emerald-600/90 text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0">
+                            {item.nLevel}
+                          </span>
+                        </div>
+                      </div>
+
+                      <span className="font-mono font-black text-purple-300 text-xs dir-ltr shrink-0 pr-1">
+                        {item.val}
+                      </span>
+                    </div>
+                  ))
+                )}
+
+                {/* 3. CHARM RANKING LIST */}
+                {statsMainTab === 'charm' && (
+                  (statsTimeFilter === '24h' ? [
+                    { rank: 1, name: 'وردة الأمل', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=100', level: '70', vip: 'VIP7', nLevel: 'N.13', val: '2,850,000 ✨' },
+                    { rank: 2, name: 'ليلى الملكة', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '66', vip: 'VIP6', nLevel: 'N.11', val: '1,920,000 ✨' },
+                    { rank: 3, name: 'نغم السعادة', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100', level: '59', vip: 'VIP5', nLevel: 'N.9', val: '1,410,000 ✨' },
+                    { rank: 4, name: 'شمس الأصيل', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100', level: '45', vip: 'VIP3', nLevel: 'N.6', val: '890,000 ✨' }
+                  ] : [
+                    { rank: 1, name: 'أميرة القلوب', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=100', level: '92', vip: 'VIP9', nLevel: 'N.19', val: '28,500,000 ✨' },
+                    { rank: 2, name: 'وردة الأمل', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '70', vip: 'VIP7', nLevel: 'N.13', val: '19,200,000 ✨' },
+                    { rank: 3, name: 'ملكة الشرق', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100', level: '68', vip: 'VIP6', nLevel: 'N.12', val: '14,800,000 ✨' }
+                  ]).map((item) => (
+                    <div
+                      key={item.rank}
+                      className="p-2 bg-[#1A2234] border border-white/10 rounded-2xl flex items-center justify-between text-xs hover:border-pink-500/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 overflow-hidden max-w-[70%]">
+                        <div
+                          className={`w-7 h-7 shrink-0 rounded-xl flex items-center justify-center font-black text-xs shadow-md border ${
+                            item.rank === 1
+                              ? 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 border-amber-200'
+                              : item.rank === 2
+                              ? 'bg-gradient-to-tr from-slate-300 to-slate-100 text-slate-950 border-slate-200'
+                              : item.rank === 3
+                              ? 'bg-gradient-to-tr from-amber-700 to-amber-500 text-white border-amber-600'
+                              : 'bg-white/10 text-slate-300 border-white/5'
+                          }`}
+                        >
+                          {item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : item.rank}
+                        </div>
+
+                        <img
+                          src={item.avatar}
+                          alt={item.name}
+                          className="w-8 h-8 rounded-full object-cover border border-pink-400/50 shrink-0"
+                        />
+
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="font-black text-slate-100 truncate text-[11px]">{item.name}</span>
+                          <span className="bg-purple-600/90 text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0">
+                            Lv.{item.level}
+                          </span>
+                          <span className="bg-amber-500/90 text-slate-950 text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0">
+                            {item.vip}
+                          </span>
+                          <span className="bg-emerald-600/90 text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0">
+                            {item.nLevel}
+                          </span>
+                        </div>
+                      </div>
+
+                      <span className="font-mono font-black text-pink-300 text-xs dir-ltr shrink-0 pr-1">
+                        {item.val}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Bottom Action / Footer Bar */}
+              <div className="pt-2 border-t border-white/10 shrink-0 space-y-2">
+                {statsMainTab === 'diamonds' && (
+                  <>
+                    <div className="flex items-center justify-between text-xs bg-slate-900/80 px-3 py-1.5 rounded-xl border border-cyan-500/20">
+                      <span className="font-bold text-slate-300 text-[11px]">إجمالي الألماس والدعم بالروم:</span>
+                      <span className="font-mono font-black text-cyan-300 dir-ltr text-xs">
+                        {statsTimeFilter === '24h' ? '40,000,000 💎' : '325,700,000 💎'}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setShowRoomSupportModal(false);
+                        onOpenRecharge?.();
+                      }}
+                      className="w-full py-2.5 bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 text-slate-950 font-black text-xs rounded-xl shadow-md hover:brightness-110 cursor-pointer transition-all"
+                    >
+                      شحن ماسات وإرسال هدايا الآن 💎
+                    </button>
+                  </>
+                )}
+
+                {statsMainTab === 'club' && (
+                  <button
+                    onClick={() => {
+                      setShowRoomSupportModal(false);
+                      setShowFamilyModal(true);
+                    }}
+                    className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black text-xs rounded-xl shadow-md hover:brightness-110 cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Users className="w-4 h-4" />
+                    <span>انضم الآن إلى النادي العائلي 🛡️</span>
+                  </button>
+                )}
+
+                {statsMainTab === 'charm' && (
+                  <button
+                    onClick={() => {
+                      setShowRoomSupportModal(false);
+                      setShowGiftDrawer(true);
+                    }}
+                    className="w-full py-2.5 bg-gradient-to-r from-pink-500 via-rose-600 to-purple-600 text-white font-black text-xs rounded-xl shadow-md hover:brightness-110 cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Gift className="w-4 h-4" />
+                    <span>إرسال هدايا وزيادة نقاط الجاذبية ✨</span>
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* FAMILY MODAL */}
+      <FamilyModal
+        isOpen={showFamilyModal}
+        onClose={() => setShowFamilyModal(false)}
+      />
+
+      {/* SUPER LEGEND MODAL */}
+      <SuperLegendModal
+        isOpen={showSuperLegendModal}
+        onClose={() => setShowSuperLegendModal(false)}
+        onOpenRecharge={onOpenRecharge}
+      />
+
+      {/* ROOM INFO & ADMIN PANEL MODAL */}
+      <RoomInfoModal
+        isOpen={showRoomInfoModal}
+        onClose={() => setShowRoomInfoModal(false)}
+        roomTitle={roomTitle}
+        roomId={roomId}
+        hostAvatar={hostSeat.avatar}
+        hostName={hostSeat.userName}
+        onOpenSettings={() => setShowSettingsDrawer(true)}
+      />
     </div>
   );
 };

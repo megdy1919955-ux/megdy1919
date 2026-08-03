@@ -159,21 +159,21 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
           </div>
         </div>
 
-        {/* Badges & Ranks Row */}
-        <div className="px-4 py-2 bg-slate-900/60 border-b border-slate-800 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
-          <span className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black text-[10px] px-2.5 py-0.5 rounded-full shadow-xs">
+        {/* Badges & Ranks Row (Reversed layout order: Left-to-Right & Compact scaled down) */}
+        <div className="px-3 py-1 bg-slate-900/60 border-b border-slate-800 flex flex-row-reverse items-center gap-1 overflow-x-auto no-scrollbar shrink-0">
+          <span className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black text-[8px] px-1.5 py-0.5 rounded-full shadow-2xs">
             {user.superLegendLevel}
           </span>
-          <span className="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-[10px] px-2.5 py-0.5 rounded-full shadow-xs">
+          <span className="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-[8px] px-1.5 py-0.5 rounded-full shadow-2xs">
             {user.vipLevel}
           </span>
-          <span className="bg-purple-600/80 text-white font-bold text-[10px] px-2 py-0.5 rounded-full">
+          <span className="bg-purple-600/80 text-white font-bold text-[8px] px-1.5 py-0.5 rounded-full">
             Lv.53
           </span>
-          <span className="bg-pink-600/90 text-white font-bold text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+          <span className="bg-pink-600/90 text-white font-bold text-[8px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow-2xs">
             <span>113</span> <span>❤️</span>
           </span>
-          <span className="bg-blue-600/80 text-white font-bold text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+          <span className="bg-blue-600/80 text-white font-bold text-[8px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow-2xs">
             <span>25</span> <span>♂</span>
           </span>
         </div>

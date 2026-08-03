@@ -552,100 +552,10 @@ export const ProfileScreen: React.FC = () => {
         {/* قائمة الخيارات والخدمات */}
         <div className="bg-white border border-slate-200 rounded-3xl p-2 space-y-1 shadow-xs" dir="rtl">
           
-          {/* مركز VIP */}
-          <div 
-            onClick={() => setIsVipCenterModalOpen(true)}
-            className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-500 shadow-xs">
-                👑
-              </div>
-              <span className="text-xs font-bold text-slate-800">مركز VIP</span>
-            </div>
-            <ChevronLeft className="w-4 h-4 text-slate-400" />
-          </div>
-
-          {/* الفعاليات */}
-          <div 
-            onClick={() => setActiveServiceModal('events')}
-            className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-sky-50 border border-sky-200/60 flex items-center justify-center text-sky-500 shadow-xs">
-                📢
-              </div>
-              <span className="text-xs font-bold text-slate-800">الفعاليات</span>
-            </div>
-            <ChevronLeft className="w-4 h-4 text-slate-400" />
-          </div>
-
-          {/* جينيس */}
-          <div 
-            onClick={() => setActiveServiceModal('genius')}
-            className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-pink-50 border border-pink-200/60 flex items-center justify-center text-pink-500 shadow-xs">
-                📊
-              </div>
-              <span className="text-xs font-bold text-slate-800">جينيس</span>
-            </div>
-            <ChevronLeft className="w-4 h-4 text-slate-400" />
-          </div>
-
-          {/* نقاط ودية */}
-          <div 
-            onClick={() => setActiveServiceModal('friendly_points')}
-            className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-500 shadow-xs">
-                👍
-              </div>
-              <span className="text-xs font-bold text-slate-800">نقاط ودية</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-amber-600 font-bold">2922</span>
-              <ChevronLeft className="w-4 h-4 text-slate-400" />
-            </div>
-          </div>
-
-          {/* مركز الدعوات */}
-          <div 
-            onClick={() => setActiveServiceModal('invitations')}
-            className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-purple-50 border border-purple-200/60 flex items-center justify-center text-purple-500 shadow-xs">
-                🚀
-              </div>
-              <span className="text-xs font-bold text-slate-800">مركز الدعوات</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-lg border border-purple-200 font-bold">ادع واربح</span>
-              <ChevronLeft className="w-4 h-4 text-slate-400" />
-            </div>
-          </div>
-
-          {/* بطاقة دعوتي */}
-          <div 
-            onClick={() => setActiveServiceModal('invite_card')}
-            className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-emerald-500 shadow-xs">
-                🎟️
-              </div>
-              <span className="text-xs font-bold text-slate-800">بطاقة دعوتي</span>
-            </div>
-            <ChevronLeft className="w-4 h-4 text-slate-400" />
-          </div>
-
-          {/* زر "وكالتي" المميز فوق مركز المذيعين مباشرة (بخلفية كحلي فاخرة وتصميم بارز) */}
+          {/* 1. زر "وكالتي" المميز في قمة القائمة (أول عنصر) */}
           <div 
             onClick={() => setActiveServiceModal('agency')}
-            className="my-2 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 border border-blue-500/40 rounded-2xl p-3.5 flex items-center justify-between shadow-md cursor-pointer hover:border-blue-500 transition-all"
+            className="my-1 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 border border-blue-500/40 rounded-2xl p-3.5 flex items-center justify-between shadow-md cursor-pointer hover:border-blue-500 transition-all"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-600 border border-blue-400 flex items-center justify-center text-white shadow-md">
@@ -664,21 +574,110 @@ export const ProfileScreen: React.FC = () => {
             </span>
           </div>
 
-          {/* مركز المذيعين */}
+          {/* 2. مركز VIP */}
           <div 
-            onClick={() => setActiveServiceModal('broadcasters')}
+            onClick={() => setIsVipCenterModalOpen(true)}
             className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200/60 flex items-center justify-center text-rose-500 shadow-xs">
-                🎤
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-500 shadow-xs">
+                👑
               </div>
-              <span className="text-xs font-bold text-slate-800">مركز المذيعين</span>
+              <span className="text-xs font-bold text-slate-800">مركز VIP</span>
             </div>
             <ChevronLeft className="w-4 h-4 text-slate-400" />
           </div>
 
-          {/* مركز تجاري */}
+          {/* 3. جينيس */}
+          <div 
+            onClick={() => setActiveServiceModal('genius')}
+            className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-pink-50 border border-pink-200/60 flex items-center justify-center text-pink-500 shadow-xs">
+                📊
+              </div>
+              <span className="text-xs font-bold text-slate-800">جينيس</span>
+            </div>
+            <ChevronLeft className="w-4 h-4 text-slate-400" />
+          </div>
+
+          {/* 4. نقاط ودية */}
+          <div 
+            onClick={() => setActiveServiceModal('friendly_points')}
+            className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-500 shadow-xs">
+                👍
+              </div>
+              <span className="text-xs font-bold text-slate-800">نقاط ودية</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-amber-600 font-bold">2922</span>
+              <ChevronLeft className="w-4 h-4 text-slate-400" />
+            </div>
+          </div>
+
+          {/* 5. مركز الدعوات */}
+          <div 
+            onClick={() => setActiveServiceModal('invitations')}
+            className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-purple-50 border border-purple-200/60 flex items-center justify-center text-purple-500 shadow-xs">
+                🚀
+              </div>
+              <span className="text-xs font-bold text-slate-800">مركز الدعوات</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-lg border border-purple-200 font-bold">ادع واربح</span>
+              <ChevronLeft className="w-4 h-4 text-slate-400" />
+            </div>
+          </div>
+
+          {/* 6. بطاقة دعوتي */}
+          <div 
+            onClick={() => setActiveServiceModal('invite_card')}
+            className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-emerald-500 shadow-xs">
+                🎟️
+              </div>
+              <span className="text-xs font-bold text-slate-800">بطاقة دعوتي</span>
+            </div>
+            <ChevronLeft className="w-4 h-4 text-slate-400" />
+          </div>
+
+          {/* 7. مركز المذيعين (محتوى داخل إطار مستطيل مميز وجذاب للغاية) */}
+          <div 
+            onClick={() => setActiveServiceModal('broadcasters')}
+            className="relative my-2 p-[2px] rounded-2xl bg-gradient-to-r from-rose-500 via-purple-500 to-indigo-500 shadow-md cursor-pointer group transition-all"
+          >
+            <div className="bg-gradient-to-r from-rose-50/90 via-purple-50/80 to-indigo-50/90 rounded-[14px] p-3 flex items-center justify-between border border-rose-200/80 group-hover:bg-white transition-all">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 via-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md text-lg">
+                  🎤
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-slate-900 tracking-wide">مركز المذيعين</span>
+                    <span className="text-[9px] bg-rose-600 text-white font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
+                      مُميّز ✨
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-bold">إحصائيات البث، الأرباح، والعقود</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs font-black text-rose-600 bg-white/90 border border-rose-200 px-2.5 py-1 rounded-xl shadow-2xs group-hover:bg-rose-600 group-hover:text-white transition-all">
+                <span>دخول</span>
+                <ChevronLeft className="w-4 h-4" />
+              </div>
+            </div>
+          </div>
+
+          {/* 8. مركز تجاري */}
           <div 
             onClick={() => setActiveServiceModal('mall')}
             className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
