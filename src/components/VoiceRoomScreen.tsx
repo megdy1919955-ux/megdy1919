@@ -28,7 +28,11 @@ import {
   Scroll,
   Trophy,
   BarChart2,
-  Flame
+  Flame,
+  Radio,
+  SlidersHorizontal,
+  Check,
+  Minus
 } from 'lucide-react';
 import { FamilyModal } from './FamilyModal';
 import { SuperLegendModal } from './SuperLegendModal';
@@ -58,6 +62,7 @@ interface ChatMessage {
   userName: string;
   text: string;
   userColor?: string;
+  isGift?: boolean;
 }
 
 interface FloatingEffect {
@@ -73,20 +78,22 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   onClose,
   onOpenRecharge
 }) => {
-  // Mic Seats setup matching screenshot:
-  // Seat 1: Host Top Center ("1. أميرة الشرق")
-  // Seat 2 to 6: First Row ("2. سارة الك...", "3. خالد...", "4. ريما...", "5. خالي", "6. خالي")
-  // Seat 7 to 12: Second Row ("7. خالي", "8. خالي", "9. خالي", "10. خالي", "11. خالي", "12. خالي")
-  const [hostSeat, setHostSeat] = useState<MicSeat>({
-    id: 1,
-    userName: 'أميرة الشرق',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300',
-    isHost: true,
-    isMuted: false,
-    isSpeaking: true
-  });
+  // Dynamic Mic Management System State (Supports 2, 5, 8, 9, 12, 15, 20 seats)
+  const [activeMicCount, setActiveMicCount] = useState<number>(12); // Default 12 active mics
+  const [showMicControlModal, setShowMicControlModal] = useState<boolean>(false);
+  const [requireMicRequest, setRequireMicRequest] = useState<boolean>(false);
 
-  const [row1Seats, setRow1Seats] = useState<MicSeat[]>([
+  // Unified Flexible Mic Seats State (Seats 1 to 20 - Equal Permissions & Free Positioning)
+  const [allMicSeats, setAllMicSeats] = useState<MicSeat[]>([
+    {
+      id: 1,
+      userName: 'أميرة الشرق',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300',
+      isHost: true,
+      isMuted: false,
+      isSpeaking: true,
+      isEmpty: false
+    },
     {
       id: 2,
       userName: 'سارة الك...',
@@ -111,26 +118,15 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       isSpeaking: false,
       isEmpty: false
     },
-    {
-      id: 5,
+    ...Array.from({ length: 16 }, (_, i) => ({
+      id: i + 5,
       userName: '',
       isEmpty: true
-    },
-    {
-      id: 6,
-      userName: '',
-      isEmpty: true
-    }
+    }))
   ]);
 
-  const [row2Seats, setRow2Seats] = useState<MicSeat[]>([
-    { id: 7, userName: '', isEmpty: true },
-    { id: 8, userName: '', isEmpty: true },
-    { id: 9, userName: '', isEmpty: true },
-    { id: 10, userName: '', isEmpty: true },
-    { id: 11, userName: '', isEmpty: true },
-    { id: 12, userName: '', isEmpty: true }
-  ]);
+  // Host Seat derived dynamically for info panels and headers
+  const hostSeat = allMicSeats.find((s) => s.isHost && !s.isEmpty) || allMicSeats[0];
 
   // User Mic & Balance
   const [isMyMicMuted, setIsMyMicMuted] = useState(false);
@@ -190,49 +186,66 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  // Toggle seat occupation
-  const handleSeatClick = (seatId: number, isRow1: boolean) => {
-    if (isRow1) {
-      setRow1Seats((prev) =>
-        prev.map((seat) => {
-          if (seat.id === seatId) {
-            if (seat.isEmpty) {
-              return {
-                ...seat,
-                isEmpty: false,
-                userName: 'أنا (انضمام)',
-                avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-                isMuted: isMyMicMuted,
-                isSpeaking: true
-              };
-            } else if (seat.userName === 'أنا (انضمام)') {
-              return { ...seat, isEmpty: true, userName: '' };
-            }
-          }
-          return seat;
-        })
-      );
-    } else {
-      setRow2Seats((prev) =>
-        prev.map((seat) => {
-          if (seat.id === seatId) {
-            if (seat.isEmpty) {
-              return {
-                ...seat,
-                isEmpty: false,
-                userName: 'أنا (انضمام)',
-                avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-                isMuted: isMyMicMuted,
-                isSpeaking: true
-              };
-            } else if (seat.userName === 'أنا (انضمام)') {
-              return { ...seat, isEmpty: true, userName: '' };
-            }
-          }
-          return seat;
-        })
-      );
+  // Active Mic Seats sliced dynamically according to activeMicCount
+  const activeSeats = allMicSeats.slice(0, activeMicCount);
+
+  // Dynamic Row Partitioning Logic for Presets (2, 5, 8, 9, 12, 15, 20)
+  const getPresetRowLayout = (count: number): number[] => {
+    switch (count) {
+      case 2:
+        return [2];
+      case 5:
+        return [1, 4];
+      case 8:
+        return [4, 4];
+      case 9:
+        return [1, 4, 4];
+      case 12:
+        return [2, 5, 5];
+      case 15:
+        return [5, 5, 5];
+      case 20:
+        return [5, 5, 5, 5];
+      default:
+        if (count <= 4) return [count];
+        if (count <= 8) return [Math.ceil(count / 2), Math.floor(count / 2)];
+        if (count <= 15) return [Math.ceil(count / 3), Math.ceil((count - Math.ceil(count / 3)) / 2), Math.floor((count - Math.ceil(count / 3)) / 2)];
+        return [5, 5, 5, 5];
     }
+  };
+
+  const rowCounts = getPresetRowLayout(activeMicCount);
+  const seatRows: MicSeat[][] = [];
+  let currentSeatIdx = 0;
+  for (const rc of rowCounts) {
+    const row = activeSeats.slice(currentSeatIdx, currentSeatIdx + rc);
+    if (row.length > 0) {
+      seatRows.push(row);
+    }
+    currentSeatIdx += rc;
+  }
+
+  // Universal Toggle Seat Occupation (Free Positioning Logic - Anyone can click any seat)
+  const handleSeatClick = (seatId: number) => {
+    setAllMicSeats((prev) =>
+      prev.map((seat) => {
+        if (seat.id === seatId) {
+          if (seat.isEmpty) {
+            return {
+              ...seat,
+              isEmpty: false,
+              userName: 'أنا (انضمام)',
+              avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+              isMuted: isMyMicMuted,
+              isSpeaking: true
+            };
+          } else if (seat.userName === 'أنا (انضمام)') {
+            return { ...seat, isEmpty: true, userName: '' };
+          }
+        }
+        return seat;
+      })
+    );
   };
 
   // Send message
@@ -261,17 +274,23 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       target: hostSeat.userName
     });
 
+    const giftMsgId = Date.now().toString() + Math.random().toString(36).substring(2, 6);
+
     setChatMessages((prev) => [
       ...prev,
       {
-        id: Date.now().toString(),
+        id: giftMsgId,
         userName: 'أنا (الزائر)',
         text: `أرسل ${giftName} ${giftIcon} إلى ${hostSeat.userName}`,
-        userColor: 'text-pink-400'
+        userColor: 'text-pink-400',
+        isGift: true
       }
     ]);
 
-    // Keep gift panel persistent (do not auto-close on gift send)
+    // Auto-dismiss gift message from chat feed after 10 seconds
+    setTimeout(() => {
+      setChatMessages((prev) => prev.filter((msg) => msg.id !== giftMsgId));
+    }, 10000);
 
     setTimeout(() => {
       setActiveGiftBanner(null);
@@ -293,7 +312,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-[#0B0E17] text-white font-sans flex flex-col justify-between overflow-hidden select-none"
+      className="fixed inset-0 h-screen w-screen max-h-screen max-w-full z-50 bg-[#0B0E17] text-white font-sans flex flex-col justify-between overflow-hidden select-none"
       dir="rtl"
     >
       {/* GLOW ATMOSPHERE BACKGROUND */}
@@ -389,7 +408,17 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             <span>السجل</span>
           </button>
 
-          {/* 4. Left: Diamond / Total Room Support -> Opens Room Support Stats Modal */}
+          {/* 4. Mic Control Badge -> Opens Mic Control Modal */}
+          <button
+            onClick={() => setShowMicControlModal(true)}
+            className="bg-[#151D2C] border border-emerald-500/40 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 text-[8px] font-black text-emerald-300 shadow-2xs hover:border-emerald-400 transition-colors cursor-pointer"
+            title="إدارة وتخصيص عدد المايكات"
+          >
+            <Radio className="w-2.5 h-2.5 text-emerald-400 animate-pulse" />
+            <span>{activeMicCount} مايك</span>
+          </button>
+
+          {/* 5. Left: Diamond / Total Room Support -> Opens Room Support Stats Modal */}
           <button
             onClick={() => setShowRoomSupportModal(true)}
             className="bg-[#151D2C] border border-cyan-500/40 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 text-[8px] font-mono font-black text-cyan-300 shadow-2xs cursor-pointer hover:border-cyan-400 transition-colors"
@@ -401,118 +430,109 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         </div>
       </div>
 
-      {/* 2. MIC ARRANGEMENT SECTION (Compacted for optimal screen balance) */}
-      <div className="relative z-20 px-2 py-1 space-y-2">
-        {/* SEAT #1: HOST MIC (CENTER TOP PROMINENT) */}
-        <div className="flex flex-col items-center justify-center pt-0.5">
-          <div className="relative cursor-pointer group">
-            {/* Glowing Ring Effect */}
-            <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 blur-xs opacity-80 animate-pulse" />
+      {/* 2. DYNAMIC MIC ARRANGEMENT SECTION (COMPACT VERTICAL COMPRESSION & LOCKED BOTTOM ROW) */}
+      <div className="relative z-20 px-3 sm:px-6 pt-1 pb-1 space-y-1.5 sm:space-y-2 w-full max-w-2xl mx-auto flex flex-col justify-end min-h-[190px]">
+        {seatRows.map((rowSeats, rowIndex) => {
+          const colCount = rowSeats.length;
+          const gridColsClass =
+            colCount === 1 ? 'grid-cols-1 max-w-[120px] mx-auto' :
+            colCount === 2 ? 'grid-cols-2 w-full max-w-xs sm:max-w-sm mx-auto justify-items-center' :
+            colCount === 3 ? 'grid-cols-3 w-full max-w-sm sm:max-w-md mx-auto justify-items-center' :
+            colCount === 4 ? 'grid-cols-4 w-full max-w-md sm:max-w-xl mx-auto justify-items-center' :
+            colCount === 5 ? 'grid-cols-5 w-full justify-items-center' :
+            colCount === 6 ? 'grid-cols-6 w-full justify-items-center' : 'grid-cols-7 w-full justify-items-center';
 
-            {/* Avatar Circle Container */}
-            <div className="relative w-14 h-14 rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 via-emerald-400 to-amber-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-              {/* Crown sitting on top */}
-              <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10">
-                <Crown className="w-5 h-5 text-amber-300 fill-amber-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
-              </div>
+          // Magnified, clear avatar circle sizes with vertically compact footprint
+          const circleSizeClass =
+            colCount <= 2 && rowIndex === 0
+              ? 'w-15 h-15 sm:w-18 sm:h-18'
+              : colCount <= 3
+              ? 'w-13.5 h-13.5 sm:w-16 sm:h-16'
+              : colCount <= 4
+              ? 'w-12.5 h-12.5 sm:w-15 sm:h-15'
+              : 'w-11.5 h-11.5 sm:w-13 sm:h-13';
 
-              <img
-                src={hostSeat.avatar}
-                alt={hostSeat.userName}
-                className="w-full h-full object-cover rounded-full"
-              />
+          const iconSizeClass = colCount <= 2 ? 'w-5.5 h-5.5' : colCount <= 4 ? 'w-4.5 h-4.5' : 'w-4 h-4';
 
-              {/* Green Active Mic Badge at Bottom Right */}
-              <div className="absolute bottom-0 right-0 w-4.5 h-4.5 rounded-full bg-emerald-500 border border-[#0B0E17] flex items-center justify-center text-slate-950 shadow-xs">
-                <Mic className="w-2.5 h-2.5 stroke-[3]" />
-              </div>
-            </div>
-          </div>
-
-          {/* Brown Gold Name Badge Pill */}
-          <div className="mt-1 bg-gradient-to-r from-amber-950 via-amber-900 to-amber-950 border border-amber-500/40 px-2.5 py-0.2 rounded-full text-center shadow-xs">
-            <span className="text-[10px] font-black text-amber-200">
-              {hostSeat.isEmpty ? hostSeat.id : hostSeat.userName}
-            </span>
-          </div>
-        </div>
-
-        {/* ROW 1: GUEST MICS (SEATS 2 TO 6 - HORIZONTAL 5 MICS) */}
-        <div className="grid grid-cols-5 gap-1 px-1">
-          {row1Seats.map((seat) => (
-            <div
-              key={seat.id}
-              onClick={() => handleSeatClick(seat.id, true)}
-              className="flex flex-col items-center space-y-0.5 cursor-pointer group"
-            >
-              <div className="relative">
-                {seat.isEmpty ? (
-                  /* Dashed Gold Circle Empty Seat */
-                  <div className="w-8.5 h-8.5 rounded-full border-2 border-dashed border-amber-500/50 bg-[#121824]/60 flex items-center justify-center transition-transform group-hover:scale-105">
-                    <Plus className="w-3.5 h-3.5 text-amber-400 stroke-[2.5]" />
-                  </div>
-                ) : (
-                  /* Occupied Mic Seat */
-                  <div className="w-8.5 h-8.5 rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 to-emerald-400 relative transition-transform group-hover:scale-105 shadow-xs">
-                    <img
-                      src={seat.avatar}
-                      alt={seat.userName}
-                      className="w-full h-full object-cover rounded-full"
-                    />
-                    {/* Mic Icon Badge */}
-                    <div
-                      className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center border border-[#0B0E17] shadow-2xs ${
-                        seat.isMuted ? 'bg-red-500 text-white' : 'bg-emerald-500 text-slate-950'
-                      }`}
-                    >
-                      {seat.isMuted ? (
-                        <MicOff className="w-2 h-2 stroke-[2.5]" />
+          return (
+            <div key={rowIndex} className={`grid ${gridColsClass} justify-center items-center`}>
+              {rowSeats.map((seat) => {
+                const isSeatHost = seat.isHost || (seat.id === 1 && !seat.isEmpty && seat.userName === 'أميرة الشرق');
+                return (
+                  <div
+                    key={seat.id}
+                    onClick={() => handleSeatClick(seat.id)}
+                    className="flex flex-col items-center space-y-0.5 cursor-pointer group my-0"
+                  >
+                    <div className="relative">
+                      {seat.isEmpty ? (
+                        <div
+                          className={`${circleSizeClass} rounded-full border border-dashed border-amber-400/50 bg-[#121824]/60 backdrop-blur-xs flex items-center justify-center text-amber-300/90 shadow-2xs transition-all group-hover:scale-105 group-hover:border-amber-300/80 group-hover:bg-[#182132]/80`}
+                        >
+                          <Plus className={`${iconSizeClass} text-amber-300/90 stroke-[2.5]`} />
+                        </div>
                       ) : (
-                        <Mic className="w-2 h-2 stroke-[3]" />
+                        <div
+                          className={`${circleSizeClass} rounded-full p-0.5 bg-gradient-to-tr ${
+                            isSeatHost
+                              ? 'from-amber-400/90 via-emerald-400/90 to-cyan-400/90 shadow-sm'
+                              : 'from-cyan-400/90 to-emerald-400/90 shadow-xs'
+                          } relative transition-transform group-hover:scale-105`}
+                        >
+                          {isSeatHost && (
+                            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10">
+                              <Crown className="w-5.5 h-5.5 text-amber-300 fill-amber-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+                            </div>
+                          )}
+
+                          <img
+                            src={seat.avatar}
+                            alt={seat.userName}
+                            className="w-full h-full object-cover rounded-full"
+                          />
+
+                          <div
+                            className={`absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 rounded-full flex items-center justify-center border border-[#0B0E17] shadow-xs ${
+                              seat.isMuted ? 'bg-red-500 text-white' : 'bg-emerald-500 text-slate-950'
+                            }`}
+                          >
+                            {seat.isMuted ? (
+                              <MicOff className="w-2.5 h-2.5 stroke-[2.5]" />
+                            ) : (
+                              <Mic className="w-2.5 h-2.5 stroke-[3]" />
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </div>
-                )}
-              </div>
 
-              {/* Label */}
-              <span className="text-[9px] font-bold text-slate-200 truncate max-w-[48px] text-center leading-tight">
-                {seat.isEmpty ? seat.id : seat.userName}
-              </span>
+                    {seat.isEmpty ? (
+                      <span className="text-[10.5px] sm:text-[11.5px] font-black text-amber-300/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] font-mono leading-none">
+                        {seat.id}
+                      </span>
+                    ) : (
+                      <div
+                        className={`px-1.5 py-0.2 rounded-full text-center shadow-xs max-w-[68px] truncate ${
+                          isSeatHost
+                            ? 'bg-gradient-to-r from-amber-950 via-amber-900 to-amber-950 border border-amber-500/40'
+                            : 'bg-[#151D2C]/85 border border-white/10'
+                        }`}
+                      >
+                        <span
+                          className={`text-[9.5px] font-bold truncate block leading-tight ${
+                            isSeatHost ? 'text-amber-200 font-extrabold' : 'text-slate-100'
+                          }`}
+                        >
+                          {seat.userName}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-
-        {/* ROW 2: SMALLER EMPTY MICS (SEATS 7 TO 12 - HORIZONTAL 6 MICS) */}
-        <div className="grid grid-cols-6 gap-1 px-1">
-          {row2Seats.map((seat) => (
-            <div
-              key={seat.id}
-              onClick={() => handleSeatClick(seat.id, false)}
-              className="flex flex-col items-center space-y-0.5 cursor-pointer group"
-            >
-              <div className="relative">
-                {seat.isEmpty ? (
-                  <div className="w-7 h-7 rounded-full border border-dashed border-amber-500/40 bg-[#121824]/50 flex items-center justify-center transition-transform group-hover:scale-105">
-                    <Plus className="w-3 h-3 text-amber-400/80 stroke-[2]" />
-                  </div>
-                ) : (
-                  <div className="w-7 h-7 rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 to-indigo-500 relative shadow-2xs">
-                    <img
-                      src={seat.avatar}
-                      alt={seat.userName}
-                      className="w-full h-full object-cover rounded-full"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <span className="text-[8px] font-bold text-slate-300 truncate max-w-[40px] text-center leading-tight">
-                {seat.isEmpty ? seat.id : seat.userName}
-              </span>
-            </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
       {/* FLOATING GIFT BANNER OVERLAY */}
@@ -581,17 +601,39 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             </div>
           </div>
 
-          {/* REGULAR CHAT MESSAGES */}
-          {chatMessages.map((msg) => (
-            <div key={msg.id} className="text-xs">
-              <div className="bg-[#121827]/80 border border-white/5 px-3 py-1.5 rounded-full inline-flex items-center gap-1.5 shadow-sm max-w-[90%]">
-                <span className={`font-black ${msg.userColor || 'text-amber-300'}`}>
-                  {msg.userName}:
-                </span>
-                <span className="text-slate-100 font-bold text-xs">{msg.text}</span>
-              </div>
-            </div>
-          ))}
+          {/* REGULAR CHAT MESSAGES WITH ANIMATED AUTO-DISMISS */}
+          <AnimatePresence initial={false}>
+            {chatMessages.map((msg) => (
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -20, height: 0, marginTop: 0, marginBottom: 0, overflow: 'hidden' }}
+                transition={{ duration: 0.25, ease: 'easeInOut' }}
+                className="text-xs"
+              >
+                <div
+                  className={`border inline-flex items-center gap-1 shadow-xs max-w-[90%] ${
+                    msg.isGift
+                      ? 'bg-gradient-to-r from-pink-950/90 via-purple-950/90 to-pink-950/90 border-pink-500/50 text-pink-200 px-2 py-0.5 rounded-lg text-[10.5px]'
+                      : 'bg-[#121827]/80 border-white/5 px-3 py-1.5 rounded-full text-xs'
+                  }`}
+                >
+                  <span className={`font-black shrink-0 ${msg.isGift ? 'text-pink-300 text-[10px]' : msg.userColor || 'text-amber-300'}`}>
+                    {msg.userName}:
+                  </span>
+                  <span className={`font-bold ${msg.isGift ? 'text-pink-100 text-[10px]' : 'text-slate-100 text-xs'}`}>
+                    {msg.text}
+                  </span>
+                  {msg.isGift && (
+                    <span className="text-[8px] bg-pink-500/20 text-pink-300 font-extrabold px-1 py-0.2 rounded border border-pink-400/30 shrink-0 mr-0.5">
+                      ⏱️ 10ث
+                    </span>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
           <div ref={chatBottomRef} />
         </div>
       </div>
@@ -664,21 +706,36 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       {/* CHAT INPUT MODAL POPUP */}
       <AnimatePresence>
         {showChatInputModal && (
-          <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-end justify-center p-3">
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center p-3 pb-4 bg-transparent cursor-default select-none pointer-events-auto"
+            onClick={() => setShowChatInputModal(false)}
+          >
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
+              exit={{ opacity: 0, y: 15 }}
+              transition={{ duration: 0.15 }}
               dir="rtl"
-              className="w-full max-w-md bg-[#121827] border border-white/20 p-3 rounded-2xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-[#121827]/95 border border-white/20 p-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.8)]"
             >
-              <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (document.activeElement instanceof HTMLElement) {
+                    document.activeElement.blur();
+                  }
+                  handleSendMessage(e);
+                }}
+                className="flex items-center gap-2"
+              >
                 {/* Right side: Close (X) button & Yellow Send button */}
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
                     onClick={() => setShowChatInputModal(false)}
                     className="p-2 text-slate-400 hover:text-white rounded-xl bg-[#1A2132] hover:bg-red-950/40 transition-colors cursor-pointer"
+                    title="إغلاق"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -739,7 +796,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         onSendGift={(gift, quantity, targetName) => {
           handleSendGift(`${gift.name} (x${quantity}) [إلى: ${targetName}]`, gift.icon);
         }}
-        seats={[...row1Seats, ...row2Seats]}
+        seats={activeSeats}
       />
 
       {/* MINI-GAMES DRAWER */}
@@ -804,6 +861,25 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
               </div>
 
               <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    setShowSettingsDrawer(false);
+                    setShowMicControlModal(true);
+                  }}
+                  className="w-full p-3 bg-[#1A2234] border border-emerald-500/30 rounded-2xl flex items-center justify-between text-xs font-bold hover:bg-slate-700/80 cursor-pointer transition-colors shadow-sm"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                      <Radio className="w-4 h-4" />
+                    </div>
+                    <span className="text-slate-100 font-extrabold text-xs">وضع الميكروفون</span>
+                  </div>
+                  <div className="flex items-center gap-1 bg-emerald-950/70 border border-emerald-500/40 px-2.5 py-1 rounded-full">
+                    <span className="text-emerald-300 font-mono font-black text-xs">{activeMicCount}</span>
+                    <span className="text-emerald-400 text-[10px] font-bold">ميكروفون</span>
+                  </div>
+                </button>
+
                 <button className="w-full p-3 bg-[#1A2234] rounded-2xl flex items-center justify-between text-xs font-bold hover:bg-slate-700">
                   <span>قفل المايكات الفارغة</span>
                   <span className="text-emerald-400">مفتوح</span>
@@ -1207,6 +1283,144 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         hostName={hostSeat.userName}
         onOpenSettings={() => setShowSettingsDrawer(true)}
       />
+
+      {/* DYNAMIC MIC CONTROL PANEL MODAL (MATCHING SCREENSHOT 1:1) */}
+      <AnimatePresence>
+        {showMicControlModal && (
+          <div
+            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3"
+            onClick={() => setShowMicControlModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm bg-[#121929] border border-slate-700/60 rounded-3xl overflow-hidden shadow-2xl text-white space-y-3.5 pb-4"
+              dir="rtl"
+            >
+              {/* Modal Blue Header Banner */}
+              <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-3.5 text-center relative shadow-md">
+                <h2 className="text-base font-black text-white tracking-wide">وضع الميكروفون</h2>
+                <button
+                  onClick={() => setShowMicControlModal(false)}
+                  className="absolute top-3 left-3 p-1 rounded-full bg-black/20 hover:bg-black/40 text-white/90 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="px-3.5 space-y-3">
+                {/* Yellow Tips Section (قسم النصائح الأصفر) */}
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-2.5 text-[11px] text-amber-300 font-bold leading-snug space-y-1">
+                  <div className="flex items-center gap-1 text-amber-200">
+                    <span>نصائح:</span>
+                    <span>1. المقعد الممتاز مناسب فقط للوضع mic-9؛</span>
+                  </div>
+                  <div className="text-amber-300/90 pr-11">
+                    2. لا يدعم الوضع mic-9 ألعاب العملات الفضية؛
+                  </div>
+                </div>
+
+                {/* Preset Thumbnails Grid (3 Columns matching screenshot) */}
+                <div className="grid grid-cols-3 gap-2.5 max-h-[380px] overflow-y-auto pr-0.5 custom-scrollbar">
+                  {[2, 5, 8, 9, 12, 15, 20].map((preset) => {
+                    const isSelected = activeMicCount === preset;
+
+                    // Row layout definition for thumbnail circles
+                    const getThumbRows = (cnt: number) => {
+                      switch (cnt) {
+                        case 2: return [2];
+                        case 5: return [1, 4];
+                        case 8: return [4, 4];
+                        case 9: return [1, 4, 4];
+                        case 12: return [2, 5, 5];
+                        case 15: return [5, 5, 5];
+                        case 20: return [5, 5, 5, 5];
+                        default: return [4, 4];
+                      }
+                    };
+
+                    const thumbRows = getThumbRows(preset);
+
+                    return (
+                      <button
+                        key={preset}
+                        onClick={() => setActiveMicCount(preset)}
+                        className="flex flex-col items-center gap-1 group cursor-pointer"
+                      >
+                        {/* Thumbnail Card */}
+                        <div
+                          className={`relative w-full aspect-[4/3] rounded-2xl p-1.5 transition-all flex flex-col items-center justify-center gap-1 overflow-hidden ${
+                            isSelected
+                              ? 'bg-[#182338] border-2 border-emerald-400 shadow-[0_0_18px_rgba(16,185,129,0.35)]'
+                              : 'bg-[#151E2E] border border-white/10 hover:border-emerald-500/40 hover:bg-[#1A263B]'
+                          }`}
+                        >
+                          {/* Dark bokeh ambient background texture */}
+                          <div className="absolute inset-0 bg-gradient-to-b from-blue-900/15 via-purple-900/20 to-slate-950/90 pointer-events-none" />
+
+                          {/* Selected Check Badge in Top-Left */}
+                          {isSelected && (
+                            <div className="absolute top-1 left-1 z-10 w-4.5 h-4.5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center shadow-md">
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            </div>
+                          )}
+
+                          {/* Miniature Circle Slots */}
+                          <div className="relative z-1 w-full flex flex-col items-center justify-center gap-0.5">
+                            {thumbRows.map((colCount, rIdx) => (
+                              <div key={rIdx} className="flex items-center justify-center gap-0.5">
+                                {Array.from({ length: colCount }).map((_, cIdx) => (
+                                  <div
+                                    key={cIdx}
+                                    className="w-3 h-3 rounded-full border border-white/40 bg-white/10 flex items-center justify-center text-white/90"
+                                  >
+                                    <Plus className="w-1.5 h-1.5 stroke-[3]" />
+                                  </div>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Title text under thumbnail */}
+                        <span
+                          className={`text-[11px] font-black leading-tight ${
+                            isSelected ? 'text-emerald-400' : 'text-slate-200'
+                          }`}
+                        >
+                          {preset} ميكروفونات
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Bottom Toggle Switch Option (Matching screenshot) */}
+                <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-300">
+                    يلزمك أن تطلب أن تكون على الميكروفون.
+                  </span>
+                  <button
+                    onClick={() => setRequireMicRequest(!requireMicRequest)}
+                    className={`w-10 h-5.5 rounded-full p-0.5 transition-colors cursor-pointer relative shrink-0 ${
+                      requireMicRequest ? 'bg-emerald-500' : 'bg-slate-700'
+                    }`}
+                  >
+                    <div
+                      className={`w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform ${
+                        requireMicRequest ? 'translate-x-0' : '-translate-x-4.5'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
