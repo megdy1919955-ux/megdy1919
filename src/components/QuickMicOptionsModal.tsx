@@ -94,20 +94,20 @@ export const QuickMicOptionsModal: React.FC<QuickMicOptionsModalProps> = ({
                 <span className="text-[10px] font-bold">ملاحظات</span>
               </button>
 
-              {/* 2. إغلاق الميكروفون (Mute Mic) */}
+              {/* 2. كتم المايك / فتح المايك (Mute / Open Mic) */}
               <button
                 onClick={() => {
                   onToggleMute?.();
                   triggerToast(isMuted ? 'تم فتح المايك 🎙️' : 'تم كتم المايك 🔇');
                 }}
-                className={`p-2.5 rounded-2xl border flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                className={`p-2.5 rounded-2xl border flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all shadow-sm ${
                   isMuted
-                    ? 'bg-rose-500/20 border-rose-500 text-rose-300'
-                    : 'bg-[#1D273D] border-white/10 text-slate-200 hover:bg-[#25324D]'
+                    ? 'bg-rose-600/35 border-rose-500 text-rose-200 hover:bg-rose-600/50 shadow-rose-500/10'
+                    : 'bg-emerald-600/25 border-emerald-500/60 text-emerald-200 hover:bg-emerald-600/40 shadow-emerald-500/10'
                 }`}
               >
-                {isMuted ? <MicOff className="w-5 h-5 text-rose-400" /> : <Mic className="w-5 h-5 text-emerald-400" />}
-                <span className="text-[10px] font-bold">{isMuted ? 'فتح مايك' : 'إغلاق مايك'}</span>
+                {isMuted ? <MicOff className="w-5 h-5 text-rose-400 stroke-[2.2]" /> : <Mic className="w-5 h-5 text-emerald-400 stroke-[2.2]" />}
+                <span className="text-[10px] font-black">{isMuted ? 'فتح المايك' : 'كتم المايك'}</span>
               </button>
 
               {/* 3. الوقوف ومشاهدة (Stand Up & Watch / Leave Seat) */}

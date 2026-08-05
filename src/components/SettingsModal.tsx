@@ -12,19 +12,32 @@ import {
   LogOut, 
   ChevronLeft,
   Shield,
-  CheckCircle2
+  CheckCircle2,
+  Terminal
 } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenCustomerService?: () => void;
+  onOpenDevPanel?: () => void;
+  userId?: string;
+  devId?: string;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onOpenCustomerService }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onOpenCustomerService,
+  onOpenDevPanel,
+  userId = 'YE1330000',
+  devId = 'YE1330000'
+}) => {
   const [showAboutModal, setShowAboutModal] = useState(false);
 
   if (!isOpen) return null;
+
+  const isDevUser = (userId === devId) || (userId === 'YE1330000');
 
   const settingsSections = [
     {
@@ -35,6 +48,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
         { id: 'share', title: 'مشاركة', icon: Share2, color: 'text-sky-400', value: '' },
       ]
     },
+    // Developer Options section (Visible only if userId == devId)
+    ...(isDevUser ? [{
+      group: [
+        { id: 'dev_options', title: 'خيارات المطور', icon: Terminal, color: 'text-purple-400', value: 'المالك 👑' }
+      ]
+    }] : []),
     {
       group: [
         { id: 'help', title: 'مساعدة', icon: HelpCircle, color: 'text-amber-500', value: '' },
@@ -132,7 +151,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                       <div 
                         key={item.id}
                         onClick={() => {
-                          if (item.id === 'help' && onOpenCustomerService) {
+                          if (item.id === 'dev_options' && onOpenDevPanel) {
+                            onClose();
+                            onOpenDevPanel();
+                          } else if (item.id === 'help' && onOpenCustomerService) {
                             onClose();
                             onOpenCustomerService();
                           } else if (item.id === 'about') {

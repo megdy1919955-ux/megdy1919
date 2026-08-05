@@ -27,7 +27,12 @@ import {
   MessageSquareOff,
   Lock,
   Unlock,
-  ShieldAlert
+  ShieldAlert,
+  Music,
+  Users,
+  ToggleLeft,
+  ToggleRight,
+  Sliders
 } from 'lucide-react';
 
 export interface BadgeItem {
@@ -60,6 +65,7 @@ interface AdvancedUserProfileModalProps {
   onClose: () => void;
   user: UserProfileData | null;
   isCurrentAdmin?: boolean;
+  isRoomOwner?: boolean;
   onSendGift?: (user: UserProfileData) => void;
   onMentionUser?: (user: UserProfileData) => void;
   onToggleMuteUser?: (user: UserProfileData) => void;
@@ -73,7 +79,8 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
   isOpen,
   onClose,
   user,
-  isCurrentAdmin = true,
+  isCurrentAdmin = false,
+  isRoomOwner = false,
   onSendGift,
   onMentionUser,
   onToggleMuteUser,
@@ -89,6 +96,12 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
   const [isAdminRank, setIsAdminRank] = useState(user?.isAdmin || false);
   const [showAdminPermissionsModal, setShowAdminPermissionsModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Admin Permissions Switches (شبكة الصلاحيات الفردية)
+  const [micControl, setMicControl] = useState(true);
+  const [musicControl, setMusicControl] = useState(true);
+  const [audienceControl, setAudienceControl] = useState(true);
+  const [seatPriority, setSeatPriority] = useState(false);
 
   if (!isOpen || !user) return null;
 
@@ -120,20 +133,231 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end justify-center sm:items-center p-0 sm:p-3"
+        className="fixed inset-0 z-50 bg-transparent flex items-end justify-center p-0"
         onClick={onClose}
       >
-        <motion.div
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
-          transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-          onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-[310px] bg-white text-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl relative flex flex-col dir-rtl select-none pb-1 mt-10"
-          dir="rtl"
-        >
+        {showAdminPermissionsModal ? (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-full sm:max-w-md bg-white text-slate-900 rounded-t-3xl shadow-[0_-10px_35px_rgba(0,0,0,0.15)] p-3.5 flex flex-col dir-rtl select-none border-t border-amber-300 relative z-50 max-h-[60vh] overflow-y-auto"
+            dir="rtl"
+          >
+            {/* 1. ADMIN PERMISSIONS HEADER WITH USER INFO & BADGES */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent p-2 rounded-xl border border-amber-200/60">
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="w-10 h-10 rounded-full object-cover border-2 border-amber-400 shadow-sm"
+                  />
+                  <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white p-0.5 rounded-full shadow-xs">
+                    <ShieldCheck className="w-3 h-3" />
+                  </div>
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-black text-slate-900">({user.name})</span>
+                    <span className="px-1.5 py-0.2 bg-slate-900 text-amber-400 text-[8px] font-black rounded-full">
+                      VIP6
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[9px] font-bold text-slate-500">
+                    <span className="bg-amber-100 text-amber-800 px-1 rounded">53 🏆</span>
+                    <span className="bg-pink-100 text-pink-700 px-1 rounded">113 👑</span>
+                    <span className="text-slate-400">ID:{user.userId || user.id}</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAdminPermissionsModal(false)}
+                className="text-[10px] text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-full font-black cursor-pointer transition-all border border-slate-200"
+              >
+                رجوع ↩️
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5 mb-2 px-1">
+              <Sliders className="w-3.5 h-3.5 text-amber-600" />
+              <h4 className="text-[11px] font-black text-slate-800">شبكة أذونات وصلاحيات الإداري الفردية</h4>
+            </div>
+
+            {/* 2. PERMISSIONS GRID (شبكة الصلاحيات الأربعة مع التبديل السريع) */}
+            <div className="grid grid-cols-2 gap-1.5 mb-2.5">
+              {/* Mic Control */}
+              <button
+                onClick={() => {
+                  const nextVal = !micControl;
+                  setMicControl(nextVal);
+                  triggerToast(nextVal ? 'تم تفعيل التحكم بالمايكات 🎙️' : 'تم تعطيل التحكم بالمايكات 🔇');
+                }}
+                className={`flex flex-col p-2 rounded-xl border text-right transition-all cursor-pointer ${
+                  micControl
+                    ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950 shadow-2xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 opacity-80'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <Mic className={`w-3.5 h-3.5 ${micControl ? 'text-emerald-600' : 'text-slate-400'}`} />
+                  <span className={`text-[8px] font-black px-1.5 py-0.2 rounded-full ${micControl ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                    {micControl ? 'مُفعّل' : 'معطّل'}
+                  </span>
+                </div>
+                <span className="text-[10px] font-black leading-tight">التحكم بالمايكات</span>
+                <span className="text-[8px] text-slate-500 font-bold mt-0.5">Mic Control</span>
+              </button>
+
+              {/* Music Control */}
+              <button
+                onClick={() => {
+                  const nextVal = !musicControl;
+                  setMusicControl(nextVal);
+                  triggerToast(nextVal ? 'تم تفعيل تشغيل الموسيقى 🎵' : 'تم تعطيل تشغيل الموسيقى 🔇');
+                }}
+                className={`flex flex-col p-2 rounded-xl border text-right transition-all cursor-pointer ${
+                  musicControl
+                    ? 'bg-purple-50/80 border-purple-300 text-purple-950 shadow-2xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 opacity-80'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <Music className={`w-3.5 h-3.5 ${musicControl ? 'text-purple-600' : 'text-slate-400'}`} />
+                  <span className={`text-[8px] font-black px-1.5 py-0.2 rounded-full ${musicControl ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                    {musicControl ? 'مُفعّل' : 'معطّل'}
+                  </span>
+                </div>
+                <span className="text-[10px] font-black leading-tight">تشغيل الموسيقى</span>
+                <span className="text-[8px] text-slate-500 font-bold mt-0.5">Music Control</span>
+              </button>
+
+              {/* Audience Management */}
+              <button
+                onClick={() => {
+                  const nextVal = !audienceControl;
+                  setAudienceControl(nextVal);
+                  triggerToast(nextVal ? 'تم تفعيل إدارة الحضور 👥' : 'تم تعطيل إدارة الحضور ❌');
+                }}
+                className={`flex flex-col p-2 rounded-xl border text-right transition-all cursor-pointer ${
+                  audienceControl
+                    ? 'bg-blue-50/80 border-blue-300 text-blue-950 shadow-2xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 opacity-80'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <Users className={`w-3.5 h-3.5 ${audienceControl ? 'text-blue-600' : 'text-slate-400'}`} />
+                  <span className={`text-[8px] font-black px-1.5 py-0.2 rounded-full ${audienceControl ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                    {audienceControl ? 'مُفعّل' : 'معطّل'}
+                  </span>
+                </div>
+                <span className="text-[10px] font-black leading-tight">إدارة الحضور</span>
+                <span className="text-[8px] text-slate-500 font-bold mt-0.5">Audience Mgmt</span>
+              </button>
+
+              {/* Seat Priority */}
+              <button
+                onClick={() => {
+                  const nextVal = !seatPriority;
+                  setSeatPriority(nextVal);
+                  triggerToast(nextVal ? 'تم تفعيل أولوية المقاعد 🪑' : 'تم تعطيل أولوية المقاعد');
+                }}
+                className={`flex flex-col p-2 rounded-xl border text-right transition-all cursor-pointer ${
+                  seatPriority
+                    ? 'bg-amber-50/80 border-amber-300 text-amber-950 shadow-2xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 opacity-80'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <Armchair className={`w-3.5 h-3.5 ${seatPriority ? 'text-amber-600' : 'text-slate-400'}`} />
+                  <span className={`text-[8px] font-black px-1.5 py-0.2 rounded-full ${seatPriority ? 'bg-amber-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                    {seatPriority ? 'مُفعّل' : 'معطّل'}
+                  </span>
+                </div>
+                <span className="text-[10px] font-black leading-tight">أولوية المقاعد</span>
+                <span className="text-[8px] text-slate-500 font-bold mt-0.5">Seat Priority</span>
+              </button>
+            </div>
+
+            {/* 3. QUICK ROOM ADMIN ACTIONS */}
+            <div className="space-y-1 text-xs border-t border-slate-100 pt-2">
+              <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 px-1 mb-0.5">
+                <span>إجراءات فورية أخرى</span>
+              </div>
+
+              {/* Toggle Room Admin Designation */}
+              <button
+                onClick={() => {
+                  setIsAdminRank(!isAdminRank);
+                  triggerToast(isAdminRank ? 'تم إلغاء رتبة الإداري' : 'تم تحديث الصلاحيات في قاعدة البيانات ⚡');
+                }}
+                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                  isAdminRank
+                    ? 'bg-amber-50 border-amber-300 text-amber-900'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="font-black text-[10px]">منح رتبة مشرف الغرفة</span>
+                </div>
+                <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded-full ${isAdminRank ? 'bg-amber-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                  {isAdminRank ? 'نشط' : 'معطّل'}
+                </span>
+              </button>
+
+              {/* Action: Kick Seat */}
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  onClick={() => {
+                    triggerToast('تم إنزال المستخدم من المقعد 🪑');
+                    onManageSeat?.(user);
+                  }}
+                  className="flex items-center justify-center gap-1 p-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-[10px] font-black transition-all cursor-pointer"
+                >
+                  <UserMinus className="w-3.5 h-3.5 text-slate-600" />
+                  <span>إنزال المقعد</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    triggerToast('تم طرد المستخدم من الغرفة 🚪');
+                    onKickFromRoom?.(user);
+                    onClose();
+                  }}
+                  className="flex items-center justify-center gap-1 p-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-black transition-all cursor-pointer"
+                >
+                  <Ban className="w-3.5 h-3.5 text-rose-600" />
+                  <span>حظر / طرد</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 4. BACK TO USER PROFILE BUTTON */}
+            <div className="pt-2 border-t border-slate-100 mt-2 flex justify-center">
+              <button
+                onClick={() => setShowAdminPermissionsModal(false)}
+                className="w-full py-1.5 bg-gradient-to-r from-slate-900 to-slate-800 text-amber-300 rounded-xl text-xs font-black hover:opacity-95 transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1"
+              >
+                <span>حفظ وتطبيق الصلاحيات</span>
+                <Check className="w-3.5 h-3.5 text-amber-400" />
+              </button>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-full sm:max-w-md bg-white text-slate-900 rounded-t-3xl shadow-[0_-10px_35px_rgba(0,0,0,0.18)] relative flex flex-col dir-rtl select-none pb-3 border-t border-slate-200/90 max-h-[60vh] overflow-visible mt-8"
+            dir="rtl"
+          >
           {/* TOP CONTROLS ROW & OVERLAPPING AVATAR */}
-          <div className="pt-2 px-3 flex items-center justify-between relative z-20 min-h-[36px]">
+          <div className="pt-2 px-3 flex items-center justify-between relative z-20 min-h-[36px] overflow-visible">
             {/* Top Left Action Icons */}
             <div className="flex items-center gap-1.5">
               <button
@@ -156,10 +380,10 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
               </button>
             </div>
 
-            {/* OVERLAPPING AVATAR STRADDLING TOP EDGE (50% OVERLAP OUTSIDE & INSIDE) */}
-            <div className="absolute left-1/2 -translate-x-1/2 -top-8 z-30 flex flex-col items-center">
-              <div className="relative">
-                <div className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-amber-400 via-rose-400 to-cyan-400 shadow-md">
+            {/* OVERLAPPING AVATAR STRADDLING TOP EDGE (50% OVERLAP OUTSIDE & INSIDE - UNCLIPPED) */}
+            <div className="absolute left-1/2 -translate-x-1/2 -top-8 z-30 flex flex-col items-center overflow-visible">
+              <div className="relative overflow-visible">
+                <div className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-amber-400 via-rose-400 to-cyan-400 shadow-md overflow-visible">
                   <img
                     src={user.avatar}
                     alt={user.name}
@@ -167,7 +391,7 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
                   />
                 </div>
                 {user.isHost && (
-                  <div className="absolute -top-1 -right-1 bg-amber-500 text-white p-0.5 rounded-full shadow-xs border border-white">
+                  <div className="absolute -top-1 -right-1 bg-amber-500 text-white p-0.5 rounded-full shadow-xs border border-white z-10">
                     <Crown className="w-3 h-3 fill-white" />
                   </div>
                 )}
@@ -290,14 +514,15 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
               </div>
             </div>
 
-            {/* ADMIN ACTIONS BAR (شريط الإدارة السفلي) */}
-            {isCurrentAdmin && (
+            {/* ADMIN ACTIONS BAR (شريط الإدارة السفلي - يظهر فقط للمالك والأدمن) */}
+            {(isCurrentAdmin || isRoomOwner) && (
               <div className="w-full pt-1.5 border-t border-slate-100 mt-1">
                 <div className="grid grid-cols-5 gap-0.5 text-center">
                   {/* 1. Admin */}
                   <button
                     onClick={() => {
-                      triggerToast('تم فتح صلاحيات الإداري 🛡️');
+                      triggerToast('تم فتح صلاحيات الإداري الفردية 🛡️');
+                      setShowAdminPermissionsModal(true);
                       onOpenAdminControls?.(user);
                     }}
                     className="flex flex-col items-center justify-center p-1 rounded-lg hover:bg-slate-100 transition-colors text-slate-700 cursor-pointer"
@@ -310,14 +535,18 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
                   <button
                     onClick={() => {
                       setIsMuted(!isMuted);
-                      triggerToast(isMuted ? 'تم فتح الميكروفون 🎙️' : 'تم إغلاق الميكروفون 🔇');
+                      triggerToast(isMuted ? 'تم فتح الميكروفون 🎙️' : 'تم كتم الميكروفون 🔇');
                       onToggleMuteUser?.(user);
                     }}
-                    className="flex flex-col items-center justify-center p-1 rounded-lg hover:bg-slate-100 transition-colors text-slate-700 cursor-pointer"
+                    className={`flex flex-col items-center justify-center p-1 rounded-lg transition-colors cursor-pointer ${
+                      isMuted
+                        ? 'bg-rose-500/15 text-rose-600 font-black border border-rose-300'
+                        : 'hover:bg-slate-100 text-slate-700'
+                    }`}
                   >
-                    {isMuted ? <Mic className="w-4 h-4 text-emerald-600" /> : <MicOff className="w-4 h-4 text-slate-600" />}
-                    <span className="text-[9px] font-bold mt-0.5 text-slate-600">
-                      {isMuted ? 'فتح ميك' : 'إغلاق الميك...'}
+                    {isMuted ? <MicOff className="w-4 h-4 text-rose-600" /> : <Mic className="w-4 h-4 text-emerald-600" />}
+                    <span className="text-[9px] font-bold mt-0.5">
+                      {isMuted ? 'فتح المايك' : 'كتم المايك'}
                     </span>
                   </button>
 
@@ -416,6 +645,7 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
             </div>
           )}
         </motion.div>
+        )}
       </div>
     </AnimatePresence>
   );
