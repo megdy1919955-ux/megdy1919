@@ -44,7 +44,7 @@ export const HostProfileModal: React.FC<HostProfileModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
+        className="fixed inset-0 z-50 bg-transparent flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto cursor-default select-none"
         onClick={onClose}
       >
         <motion.div
@@ -53,7 +53,7 @@ export const HostProfileModal: React.FC<HostProfileModalProps> = ({
           exit={{ y: 80, opacity: 0, scale: 0.95 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-sm bg-[#121929] border border-amber-500/30 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden text-white relative flex flex-col dir-rtl"
+          className="w-full max-w-sm bg-[#121929]/95 backdrop-blur-xl border border-amber-500/30 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden text-white relative flex flex-col dir-rtl pointer-events-auto"
           dir="rtl"
         >
           {/* Header Ambient Glow Banner */}

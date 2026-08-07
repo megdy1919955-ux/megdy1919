@@ -63,9 +63,33 @@ interface HomeScreenProps {
   onOpenRecharge?: () => void;
 }
 
+const DEFAULT_INITIAL_ROOM: RoomData = {
+  id: 'room-1',
+  title: 'وكالة شحن سوريا ألمانيا',
+  host: 'وكالة شحن سوريا ألمانيا',
+  listenersCount: 24,
+  countryName: 'سوريا',
+  countryCode: 'SY',
+  flag: '🇸🇾',
+  topTag: 'senior Star Scout',
+  image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400',
+  badge: {
+    type: 'text',
+    content: 'دردشة',
+    bgColor: 'bg-[#00E676]',
+    textColor: 'text-slate-950'
+  },
+  hasPlusAvatar: false,
+  avatars: [
+    'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=100',
+    'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100'
+  ]
+};
+
 export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
   const [selectedRoomModal, setSelectedRoomModal] = useState<RoomData | null>(null);
-  const [activeVoiceRoom, setActiveVoiceRoom] = useState<RoomData | null>(null);
+  const [activeVoiceRoom, setActiveVoiceRoom] = useState<RoomData | null>(DEFAULT_INITIAL_ROOM);
 
   // Smooth Auto-Play Carousel state (3.5s interval with easeInOut animation)
   const [currentBannerIndex, setCurrentBannerIndex] = useState<number>(0);

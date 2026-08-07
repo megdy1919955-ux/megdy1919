@@ -43,6 +43,7 @@ import { RechargeModal } from './RechargeModal';
 import { SuperLegendModal } from './SuperLegendModal';
 import { SettingsModal } from './SettingsModal';
 import { CustomerServiceModal } from './CustomerServiceModal';
+import { DevPanelModal } from './DevPanelModal';
 import { UserProfileModal } from './UserProfileModal';
 import { VipCenterModal } from './VipCenterModal';
 import { HomeScreen } from './HomeScreen';
@@ -126,7 +127,7 @@ export const ProfileScreen: React.FC = () => {
   const [activeStatModal, setActiveStatModal] = useState<StatItem['id'] | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<BadgeInfo | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'home' | 'explore' | 'games' | 'messages' | 'profile'>('profile');
+  const [activeTab, setActiveTab] = useState<'home' | 'explore' | 'games' | 'messages' | 'profile'>('home');
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
   const [coinsBalance, setCoinsBalance] = useState<number>(52500);
   const [diamondsBalance, setDiamondsBalance] = useState<number>(8377);
@@ -135,6 +136,7 @@ export const ProfileScreen: React.FC = () => {
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isCustomerServiceModalOpen, setIsCustomerServiceModalOpen] = useState(false);
+  const [isDevPanelModalOpen, setIsDevPanelModalOpen] = useState(false);
   const [isSuperLegendModalOpen, setIsSuperLegendModalOpen] = useState(false);
   const [isLevelModalOpen, setIsLevelModalOpen] = useState(false);
   const [isFamilyModalOpen, setIsFamilyModalOpen] = useState(false);
@@ -818,6 +820,16 @@ export const ProfileScreen: React.FC = () => {
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         onOpenCustomerService={() => setIsCustomerServiceModalOpen(true)}
+        onOpenDevPanel={() => setIsDevPanelModalOpen(true)}
+        userId={profile.userId}
+        devId="YE1330000"
+      />
+
+      <DevPanelModal
+        isOpen={isDevPanelModalOpen}
+        onClose={() => setIsDevPanelModalOpen(false)}
+        userId={profile.userId}
+        devId="YE1330000"
       />
 
       <CustomerServiceModal

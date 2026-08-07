@@ -15,6 +15,8 @@ interface MicRequestQueueModalProps {
   isOpen: boolean;
   onClose: () => void;
   requests: MicRequestItem[];
+  userRole?: 'owner' | 'host' | 'moderator' | 'guest';
+  isCurrentAdmin?: boolean;
   onApproveRequest: (request: MicRequestItem) => void;
   onRejectRequest: (requestId: string) => void;
   onApproveAll?: () => void;
@@ -25,12 +27,18 @@ export const MicRequestQueueModal: React.FC<MicRequestQueueModalProps> = ({
   isOpen,
   onClose,
   requests,
+  userRole = 'owner',
+  isCurrentAdmin = true,
   onApproveRequest,
   onRejectRequest,
   onApproveAll,
   onClearAll
 }) => {
   if (!isOpen) return null;
+
+  // Strict role check: Only Owner and Moderator/Admin can approve or reject mic queue requests.
+  // Host role is restricted from accepting/rejecting queue requests.
+  const canManageRequests = userRole === 'owner' || userRole === 'moderator' || (isCurrentAdmin && userRole !== 'host');
 
   return (
     <AnimatePresence>
@@ -77,25 +85,34 @@ export const MicRequestQueueModal: React.FC<MicRequestQueueModalProps> = ({
             </button>
           </div>
 
-          {/* Quick Global Action Controls */}
+          {/* Role Status & Quick Global Action Controls */}
           {requests.length > 0 && (
-            <div className="flex items-center justify-between gap-2 bg-[#1A2234] p-2 rounded-2xl border border-white/5 shrink-0">
-              <button
-                onClick={onApproveAll}
-                className="flex-1 py-2 px-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>قبول الجميع ({requests.length})</span>
-              </button>
+            canManageRequests ? (
+              <div className="flex items-center justify-between gap-2 bg-[#1A2234] p-2 rounded-2xl border border-white/5 shrink-0">
+                <button
+                  onClick={onApproveAll}
+                  className="flex-1 py-2 px-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>قبول الجميع ({requests.length})</span>
+                </button>
 
-              <button
-                onClick={onClearAll}
-                className="py-2 px-3 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-              >
-                <UserX className="w-3.5 h-3.5 text-rose-400" />
-                <span>مسح القائمة</span>
-              </button>
-            </div>
+                <button
+                  onClick={onClearAll}
+                  className="py-2 px-3 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <UserX className="w-3.5 h-3.5 text-rose-400" />
+                  <span>مسح القائمة</span>
+                </button>
+              </div>
+            ) : (
+              <div className="bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-2xl shrink-0 flex items-center justify-between text-amber-300 text-[11px] font-bold">
+                <div className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>وضع المضيف (Host): مشاهدة الطلبات المعلقة فقط. القبول والرفض محصور لمالك الروم والمشرفين 🛡️</span>
+                </div>
+              </div>
+            )
           )}
 
           {/* Requests List */}
@@ -135,23 +152,31 @@ export const MicRequestQueueModal: React.FC<MicRequestQueueModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Actions: Approve & Reject */}
+                  {/* Actions: Approve & Reject (Rendered only for Owner and Admin/Moderator) */}
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => onApproveRequest(req)}
-                      className="py-1.5 px-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-slate-950 font-black text-xs rounded-xl flex items-center gap-1 shadow-md transition-all cursor-pointer"
-                    >
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      <span>قبول</span>
-                    </button>
+                    {canManageRequests ? (
+                      <>
+                        <button
+                          onClick={() => onApproveRequest(req)}
+                          className="py-1.5 px-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-slate-950 font-black text-xs rounded-xl flex items-center gap-1 shadow-md transition-all cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>قبول</span>
+                        </button>
 
-                    <button
-                      onClick={() => onRejectRequest(req.id)}
-                      className="p-1.5 bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 border border-white/10 rounded-xl transition-all cursor-pointer"
-                      title="رفض الطلب"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+                        <button
+                          onClick={() => onRejectRequest(req.id)}
+                          className="p-1.5 bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 border border-white/10 rounded-xl transition-all cursor-pointer"
+                          title="رفض الطلب"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      <div className="px-2.5 py-1 bg-slate-800/80 border border-slate-700/60 text-slate-400 font-bold text-[10px] rounded-xl shrink-0 flex items-center gap-1">
+                        <span>بانتظار الموافقة 🔒</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))

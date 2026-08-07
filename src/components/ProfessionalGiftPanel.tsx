@@ -44,7 +44,7 @@ interface ProfessionalGiftPanelProps {
   onClose: () => void;
   userCoins?: number;
   onOpenRecharge?: () => void;
-  onSendGift?: (gift: GiftItem, quantity: number, targetName: string) => void;
+  onSendGift?: (gift: GiftItem, quantity: number, targetName: string, selectedSeatIds?: number[]) => void;
   seats?: SeatUser[];
 }
 
@@ -639,7 +639,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
         : selectedSeatIds.map((id) => `مقعد ${id}`).join(', ');
 
     if (onSendGift) {
-      onSendGift(selectedGift, giftQuantity, targetNames);
+      onSendGift(selectedGift, giftQuantity, targetNames, selectedSeatIds);
     }
 
     // Spawn a stream of golden lightning icons matching giftQuantity (1:1 exact count)

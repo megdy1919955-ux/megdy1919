@@ -223,13 +223,14 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="fixed inset-0 z-50 bg-transparent flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto cursor-default select-none" onClick={onClose}>
         <motion.div
           initial={{ y: '100%', opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
           transition={{ duration: 0.25, ease: 'easeOut' }}
-          className="w-full max-w-md bg-[#111625] border-t-2 sm:border-2 border-amber-500/50 rounded-t-3xl sm:rounded-3xl p-4 text-white shadow-2xl max-h-[90vh] flex flex-col justify-between overflow-hidden dir-rtl"
+          onClick={(e) => e.stopPropagation()}
+          className="w-full max-w-md bg-[#111625]/95 backdrop-blur-xl border-t-2 sm:border-2 border-amber-500/50 rounded-t-3xl sm:rounded-3xl p-4 text-white shadow-2xl max-h-[90vh] flex flex-col justify-between overflow-hidden dir-rtl pointer-events-auto"
         >
           {/* Top Header Card & Role Switcher */}
           <div className="space-y-3 shrink-0">
