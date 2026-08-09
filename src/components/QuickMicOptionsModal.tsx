@@ -8,6 +8,7 @@ interface QuickMicOptionsModalProps {
   seatId?: number;
   userName?: string;
   isMuted?: boolean;
+  isHost?: boolean;
   onToggleMute?: () => void;
   onLeaveSeat?: () => void;
   onOpenNotes?: () => void;
@@ -21,6 +22,7 @@ export const QuickMicOptionsModal: React.FC<QuickMicOptionsModalProps> = ({
   seatId,
   userName = 'أنا',
   isMuted = false,
+  isHost = false,
   onToggleMute,
   onLeaveSeat,
   onOpenDataStats,
@@ -71,24 +73,26 @@ export const QuickMicOptionsModal: React.FC<QuickMicOptionsModalProps> = ({
               </button>
             </div>
 
-            {/* Quick Mic Options Grid (كتم المايك | الوقوف ومشاهدة | بيانات | هدية) */}
+            {/* Quick Mic Options Grid (الوقوف ومشاهدة | بيانات | هدية) */}
             <div className="p-4 space-y-3">
-              <div className="grid grid-cols-4 gap-2.5 w-full">
-                {/* 1. كتم المايك / فتح المايك (Mute / Open Mic) */}
-                <button
-                  onClick={() => {
-                    onToggleMute?.();
-                    triggerToast(isMuted ? 'تم فتح المايك 🎙️' : 'تم كتم المايك 🔇');
-                  }}
-                  className={`p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all shadow-sm ${
-                    isMuted
-                      ? 'bg-rose-600/35 border-rose-500 text-rose-200 hover:bg-rose-600/50 shadow-rose-500/10'
-                      : 'bg-emerald-600/25 border-emerald-500/60 text-emerald-200 hover:bg-emerald-600/40 shadow-emerald-500/10'
-                  }`}
-                >
-                  {isMuted ? <MicOff className="w-5 h-5 text-rose-400 stroke-[2.2]" /> : <Mic className="w-5 h-5 text-emerald-400 stroke-[2.2]" />}
-                  <span className="text-[11px] font-black">{isMuted ? 'فتح المايك' : 'كتم المايك'}</span>
-                </button>
+              <div className={`grid ${!isHost ? 'grid-cols-4' : 'grid-cols-3'} gap-2.5 w-full`}>
+                {/* 1. كتم المايك / فتح المايك (تم إخفاؤه تماماً عن المضيف بناءً على الطلب) */}
+                {!isHost && (
+                  <button
+                    onClick={() => {
+                      onToggleMute?.();
+                      triggerToast(isMuted ? 'تم فتح المايك 🎙️' : 'تم كتم المايك 🔇');
+                    }}
+                    className={`p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all shadow-sm ${
+                      isMuted
+                        ? 'bg-rose-600/35 border-rose-500 text-rose-200 hover:bg-rose-600/50 shadow-rose-500/10'
+                        : 'bg-emerald-600/25 border-emerald-500/60 text-emerald-200 hover:bg-emerald-600/40 shadow-emerald-500/10'
+                    }`}
+                  >
+                    {isMuted ? <MicOff className="w-5 h-5 text-rose-400 stroke-[2.2]" /> : <Mic className="w-5 h-5 text-emerald-400 stroke-[2.2]" />}
+                    <span className="text-[11px] font-black">{isMuted ? 'فتح المايك' : 'كتم المايك'}</span>
+                  </button>
+                )}
 
                 {/* 2. الوقوف ومشاهدة (Stand Up & Watch / Leave Seat) */}
                 <button

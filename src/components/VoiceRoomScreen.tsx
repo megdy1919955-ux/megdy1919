@@ -3198,6 +3198,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         onClose={() => setShowQuickMicOptionsModal(false)}
         seatId={selectedSeatForQuickMic || undefined}
         userName={currentUserRole === 'host' ? 'المضيف (أنا)' : 'أنا'}
+        isHost={currentUserRole === 'host' || selectedSeatForQuickMic === 1 || Boolean(selectedSeatForQuickMic && allMicSeats.find((s) => s.id === selectedSeatForQuickMic)?.isHost)}
         isMuted={isMyMicMuted}
         onToggleMute={() => {
           if (selectedSeatForQuickMic) {
