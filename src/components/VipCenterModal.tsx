@@ -1,127 +1,111 @@
 import React, { useState } from 'react';
-import { X, Crown, ShieldCheck, Zap } from 'lucide-react';
-import { VIP_TIERS } from '../data/superLegend';
-import { UserProfileData } from '../types';
+import { X, Crown, Sparkles, Check, Shield, Flame, Gem } from 'lucide-react';
+import { User } from '../types';
 
 interface VipCenterModalProps {
-  isOpen: boolean;
+  currentUser: User;
   onClose: () => void;
-  profile: UserProfileData;
-  onUpgrade?: (newVipLevel: string) => void;
+  onOpenRecharge: () => void;
 }
 
-export const VipCenterModal: React.FC<VipCenterModalProps> = ({ isOpen, onClose, profile, onUpgrade }) => {
-  const currentVip = profile.vipLevel || profile.vipTier || 'VIP 8';
-  const [selectedVip, setSelectedVip] = useState(currentVip);
+export const VipCenterModal: React.FC<VipCenterModalProps> = ({
+  currentUser,
+  onClose,
+  onOpenRecharge
+}) => {
+  const [selectedLevel, setSelectedLevel] = useState<number>(currentUser.vipLevel || 8);
 
-  if (!isOpen) return null;
+  const vipLevels = [
+    { level: 1, title: 'VIP برونزي', reqCoins: '1,000', badge: '🥉', color: 'from-amber-700 to-amber-900', perks: ['شارة VIP 1 في الشات', 'إطار أساسي للمايك', 'دخول مميز'] },
+    { level: 3, title: 'VIP فضي', reqCoins: '10,000', badge: '🥈', color: 'from-slate-400 to-slate-600', perks: ['إطار فضي متحرك', 'تأثير دخول صوتي', 'رمز VIP مميز'] },
+    { level: 5, title: 'VIP ذهبي', reqCoins: '50,000', badge: '🥇', color: 'from-amber-500 to-yellow-600', perks: ['تأثير دخول ذهبي مشع', 'أولوية اعتلاء المايك', 'إرسال هدايا خاصة'] },
+    { level: 7, title: 'VIP ماسي', reqCoins: '200,000', badge: '💎', color: 'from-cyan-500 to-blue-700', perks: ['دخول ملكي بسيارة فارهة', 'إطار ماسي متوهج', 'حماية من الطرد أو الكتم'] },
+    { level: 8, title: 'VIP أسطوري', reqCoins: '500,000', badge: '👑', color: 'from-purple-600 to-indigo-800', perks: ['شارة سوبر ليجند الذهبية', 'تأثير دخول التنين الأسطوري', 'صندوق حظ مخصص في الغرف', 'غرفة دردشة خاصة VIP'] },
+    { level: 10, title: 'VIP إمبراطوري', reqCoins: '2,000,000', badge: '🌟', color: 'from-rose-600 via-purple-700 to-amber-500', perks: ['إمبراطور المنصة الأول', 'قصر عائم عند الدخول', 'تثبيت الغرفة في مقدمة الاستكشاف', 'رسائل برودكاست عامة'] }
+  ];
 
-  const activeTier = VIP_TIERS.find(t => `VIP ${t.level}` === selectedVip) || VIP_TIERS[7];
+  const currentLevelData = vipLevels.find((v) => v.level === selectedLevel) || vipLevels[4];
 
   return (
-    <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200" dir="rtl">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+      <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-lg p-5 text-white shadow-2xl animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/60">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-              <Crown className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-500/30">
+              👑
             </div>
             <div>
-              <h2 className="text-sm font-black text-white tracking-wide">مركز VIP - كبار الشخصيات</h2>
-              <p className="text-[10px] text-slate-400">استمتع بامتيازات حصرية وتخفيضات الهدايا</p>
+              <h3 className="font-extrabold text-sm text-white">مركز الـ VIP والامتيازات الملكية</h3>
+              <p className="text-[11px] text-purple-300">مستواك الحالي: VIP {currentUser.vipLevel}</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
-            className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-full text-slate-400 hover:text-white transition-all cursor-pointer"
+            className="p-1.5 rounded-full bg-slate-800 text-slate-400 hover:text-white cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-5 overflow-y-auto space-y-5 flex-1">
-          {/* User Current Badge Banner */}
-          <div className="bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 rounded-2xl p-4 text-slate-950 flex items-center justify-between shadow-xl border border-yellow-300">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-slate-950 text-amber-400 flex items-center justify-center text-xl font-black border border-amber-400/50 shadow-inner">
-                👑
+        {/* VIP Level Slider/Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto my-3 pb-1 no-scrollbar">
+          {vipLevels.map((v) => (
+            <button
+              key={v.level}
+              onClick={() => setSelectedLevel(v.level)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1 ${
+                selectedLevel === v.level
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black shadow-md'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>{v.badge}</span>
+              <span>VIP {v.level}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Selected VIP Card */}
+        <div className={`p-4 rounded-3xl bg-gradient-to-br ${currentLevelData.color} border border-white/20 shadow-xl mb-4`}>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{currentLevelData.badge}</span>
+                <h4 className="font-black text-base text-white">{currentLevelData.title}</h4>
               </div>
-              <div>
-                <span className="text-[10px] font-bold bg-slate-950/20 text-slate-950 px-2 py-0.5 rounded-md">مستواك الحالي</span>
-                <h3 className="text-base font-black tracking-wide mt-0.5">{currentVip}</h3>
-                <p className="text-[11px] font-semibold opacity-90">نسبة التخفيض: 25% على الهدايا والخدمات</p>
-              </div>
+              <p className="text-xs text-white/80 mt-0.5">يتطلب شحن ودعم بقيمة {currentLevelData.reqCoins} كوينز</p>
             </div>
-            <span className="text-xs font-black bg-slate-950 text-amber-400 px-3 py-1.5 rounded-xl shadow-md">
-              عضوية فاخرة
+            <span className="bg-black/40 text-amber-300 text-xs font-mono font-bold px-2.5 py-1 rounded-full border border-white/20">
+              VIP {currentLevelData.level}
             </span>
           </div>
 
-          {/* VIP Levels Horizontal Selector */}
-          <div>
-            <label className="text-xs font-bold text-slate-300 block mb-2">اختر مستوى VIP للاطلاع على الامتيازات:</label>
-            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-              {VIP_TIERS.map((tier) => {
-                const isCurrent = `VIP ${tier.level}` === currentVip;
-                const isSelected = `VIP ${tier.level}` === selectedVip;
-                return (
-                  <button
-                    key={tier.level}
-                    onClick={() => setSelectedVip(`VIP ${tier.level}`)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5 cursor-pointer ${
-                      isSelected 
-                        ? 'bg-amber-500 text-slate-950 border-amber-300 font-black shadow-lg scale-105' 
-                        : 'bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700'
-                    }`}
-                  >
-                    <span>👑 VIP {tier.level}</span>
-                    {isCurrent && <span className="text-[9px] bg-slate-950 text-amber-400 px-1.5 py-0.2 rounded font-extrabold">حالي</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Selected VIP Details Card */}
-          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-4 shadow-lg">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <h4 className="text-sm font-black text-amber-300">{activeTier.title}</h4>
-                <p className="text-[10px] text-slate-400">النقاط المطلوبة: {activeTier.requiredCoins.toLocaleString()} عملة</p>
+          <div className="space-y-1.5 pt-2 border-t border-white/20">
+            <p className="text-xs font-bold text-white mb-1">الامتيازات والصلاحيات:</p>
+            {currentLevelData.perks.map((perk, idx) => (
+              <div key={idx} className="flex items-center gap-2 text-xs text-white/90">
+                <Check className="w-3.5 h-3.5 text-amber-300 stroke-[3]" />
+                <span>{perk}</span>
               </div>
-              <span className="text-xs font-bold bg-amber-500/10 text-amber-400 px-3 py-1 rounded-lg border border-amber-500/20">
-                خصم {activeTier.discount}
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              <span className="text-xs font-bold text-slate-300 block">مميزات عضوية {activeTier.title}:</span>
-              <div className="space-y-2">
-                {activeTier.privileges.map((priv, idx) => (
-                  <div key={idx} className="flex items-center gap-2 bg-slate-900/80 border border-slate-800/80 p-2.5 rounded-xl text-xs text-slate-200">
-                    <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span>{priv}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between">
-          <span className="text-xs text-slate-400">تزداد مميزاتك تلقائياً مع كل عملية شحن</span>
+        {/* Action Button */}
+        <div className="pt-2 flex items-center justify-between gap-3">
+          <div className="text-xs text-slate-400">
+            رصيدك: <span className="text-amber-400 font-bold font-mono">{currentUser.coins.toLocaleString()} 🪙</span>
+          </div>
           <button
             onClick={() => {
-              if (onUpgrade) onUpgrade(`VIP ${activeTier.level}`);
               onClose();
+              onOpenRecharge();
             }}
-            className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-all flex items-center gap-1.5 cursor-pointer"
+            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black text-xs px-5 py-2.5 rounded-2xl shadow-lg shadow-amber-500/20 hover:scale-105 transition cursor-pointer"
           >
-            <Zap className="w-3.5 h-3.5" />
-            <span>تفعيل {activeTier.title}</span>
+            <Sparkles className="w-4 h-4" />
+            <span>شحن وترقية الـ VIP</span>
           </button>
         </div>
       </div>

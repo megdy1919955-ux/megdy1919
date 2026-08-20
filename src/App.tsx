@@ -1,71 +1,139 @@
-/**
- * تطبيق سوبر ليجند (Super Legend)
- * Copyright (c) 2026 Super Legend. All Rights Reserved.
- * جميع الحقوق محفوظة بالكامل للمالك والمطور. وتعتبر كافة الأكواد، التصاميم، الهياكل، والعلامة التجارية ملكية خاصة وحصرية له، ولا يجوز نسخها أو استخدامها دون إذن خطي مسبق.
- */
-
 import React, { useState } from 'react';
+import { Navbar } from './components/Navbar';
+import { BottomNavigation, TabType } from './components/BottomNavigation';
+import { HomeScreen } from './components/HomeScreen';
+import { ExploreScreen } from './components/ExploreScreen';
+import { GamesScreen } from './components/GamesScreen';
+import { MessagesScreen } from './components/MessagesScreen';
 import { ProfileScreen } from './components/ProfileScreen';
-import { Smartphone, Monitor, ShieldCheck } from 'lucide-react';
+import { VoiceRoomView } from './components/VoiceRoomView';
+import { RechargeModal } from './components/RechargeModal';
+import { VipCenterModal } from './components/VipCenterModal';
+import { CURRENT_USER, MOCK_ROOMS } from './data/mockData';
+import { User, VoiceRoom } from './types';
 
-export default function App() {
-  const [viewMode, setViewMode] = useState<'mobile' | 'full'>('mobile');
+export const App: React.FC = () => {
+  const [currentUser, setCurrentUser] = useState<User>(CURRENT_USER);
+  const [activeTab, setActiveTab] = useState<TabType>('home');
+  const [activeRoom, setActiveRoom] = useState<VoiceRoom | null>(null);
+
+  // Modals
+  const [showRechargeModal, setShowRechargeModal] = useState(false);
+  const [showVipModal, setShowVipModal] = useState(false);
+
+  const handleSuccessRecharge = (coinsAdded: number) => {
+    setCurrentUser((prev) => ({
+      ...prev,
+      coins: prev.coins + coinsAdded
+    }));
+  };
+
+  const handleCreateRoom = () => {
+    // Create new room owned by current user
+    const newRoom: VoiceRoom = {
+      id: 'room_' + Date.now(),
+      title: `👑 مجلس ${currentUser.name} الرسمي`,
+      description: 'أهلاً بكم في غرفتي الصوتية، حوارات ومسابقات وسهرات طربية ممتعة.',
+      host: currentUser,
+      tag: 'طرب وسوالف',
+      country: currentUser.country,
+      countryFlag: currentUser.countryFlag,
+      bgTheme: 'from-amber-950 via-slate-900 to-purple-950',
+      listenersCount: 1,
+      hotScore: 5000,
+      isPrivate: false,
+      announcement: '📢 مرحباً بجميع الأصدقاء والزوار الكرام في غرفتنا الصوتية!',
+      luckyChest: {
+        active: true,
+        poolCoins: 3000,
+        remainingSeconds: 60,
+        totalContributors: 5
+      },
+      pkBattle: {
+        active: false,
+        blueTeam: { host: currentUser, score: 0, supporters: 0 },
+        redTeam: { host: currentUser, score: 0, supporters: 0 },
+        remainingSeconds: 0
+      }
+    };
+    setActiveRoom(newRoom);
+  };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center">
-      {/* Dev Preview Mode Toggle Header */}
-      <header className="w-full bg-slate-950/80 backdrop-blur-md border-b border-slate-800 px-4 py-2 flex items-center justify-between text-xs sticky top-0 z-40">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="font-extrabold text-slate-200 dir-rtl">منصة سوبر ليجند (Super Legend)</span>
-          <span className="hidden sm:inline-block text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 font-bold">
-            جميع الحقوق محفوظة © 2026
-          </span>
-        </div>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-['Cairo',sans-serif]">
+      {/* Top Navbar */}
+      <Navbar
+        currentUser={currentUser}
+        onOpenRecharge={() => setShowRechargeModal(true)}
+        onOpenVip={() => setShowVipModal(true)}
+      />
 
-        <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
-          <button
-            onClick={() => setViewMode('mobile')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-              viewMode === 'mobile' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Smartphone className="w-3.5 h-3.5" />
-            <span>عرض الهاتف</span>
-          </button>
-          <button
-            onClick={() => setViewMode('full')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-              viewMode === 'full' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Monitor className="w-3.5 h-3.5" />
-            <span>عرض كامل</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Container */}
-      <main className="w-full flex-1 flex justify-center items-start p-0 sm:p-4">
-        {viewMode === 'mobile' ? (
-          <div className="w-full max-w-[440px] my-0 sm:my-4 bg-[#F4F5F9] dark:bg-[#0F0F17] sm:rounded-[36px] sm:shadow-2xl sm:ring-1 sm:ring-slate-800 overflow-hidden min-h-[840px] border-x border-slate-800/40">
-            <ProfileScreen />
-          </div>
-        ) : (
-          <div className="w-full bg-[#F4F5F9] dark:bg-[#0F0F17] min-h-screen">
-            <ProfileScreen />
-          </div>
+      {/* Main Content Area */}
+      <main className="flex-1">
+        {activeTab === 'home' && (
+          <HomeScreen
+            currentUser={currentUser}
+            onSelectRoom={(room) => setActiveRoom(room)}
+            onCreateRoom={handleCreateRoom}
+          />
+        )}
+        {activeTab === 'explore' && (
+          <ExploreScreen
+            currentUser={currentUser}
+            onOpenRecharge={() => setShowRechargeModal(true)}
+          />
+        )}
+        {activeTab === 'games' && (
+          <GamesScreen
+            currentUser={currentUser}
+            onOpenRecharge={() => setShowRechargeModal(true)}
+          />
+        )}
+        {activeTab === 'messages' && <MessagesScreen />}
+        {activeTab === 'profile' && (
+          <ProfileScreen
+            currentUser={currentUser}
+            onOpenRecharge={() => setShowRechargeModal(true)}
+            onOpenVip={() => setShowVipModal(true)}
+          />
         )}
       </main>
 
-      {/* Outer App Footer */}
-      <footer className="w-full py-3 px-4 bg-slate-950 border-t border-slate-800/60 text-center text-[11px] text-slate-400 flex items-center justify-center gap-2">
-        <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-        <span>
-          تطبيق <strong>سوبر ليجند (Super Legend)</strong> © 2026 - جميع حقوق الملكية الفكرية والأكواد والتصاميم محفوظة للمالك والمطور.
-        </span>
-      </footer>
+      {/* Bottom Tab Bar */}
+      <BottomNavigation
+        activeTab={activeTab}
+        onChangeTab={(tab) => setActiveTab(tab)}
+      />
+
+      {/* Voice Room View Modal (When user joins or creates a room) */}
+      {activeRoom && (
+        <VoiceRoomView
+          room={activeRoom}
+          currentUser={currentUser}
+          onClose={() => setActiveRoom(null)}
+          onOpenRecharge={() => setShowRechargeModal(true)}
+        />
+      )}
+
+      {/* Recharge Modal */}
+      {showRechargeModal && (
+        <RechargeModal
+          currentUser={currentUser}
+          onClose={() => setShowRechargeModal(false)}
+          onSuccessRecharge={handleSuccessRecharge}
+        />
+      )}
+
+      {/* VIP Center Modal */}
+      {showVipModal && (
+        <VipCenterModal
+          currentUser={currentUser}
+          onClose={() => setShowVipModal(false)}
+          onOpenRecharge={() => setShowRechargeModal(true)}
+        />
+      )}
     </div>
   );
-}
+};
 
+export default App;

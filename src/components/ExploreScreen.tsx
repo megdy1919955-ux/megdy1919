@@ -1,103 +1,151 @@
-import React from 'react';
-import { motion } from 'motion/react';
-import { Globe, Heart, MessageCircle, Share2, Sparkles, TrendingUp, Award, Flame } from 'lucide-react';
+import React, { useState } from 'react';
+import { Trophy, Crown, Flame, Sparkles, Medal } from 'lucide-react';
+import { LEADERBOARD_DATA, MOCK_USERS } from '../data/mockData';
+import { User } from '../types';
 
-export const ExploreScreen: React.FC = () => {
-  const posts = [
-    {
-      id: '1',
-      author: 'الأميرة ريم',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
-      time: 'منذ 15 دقيقة',
-      location: 'الرياض، المملكة العربية السعودية 🇸🇦',
-      content: 'مساء الورد والياسمين على جميع الأصدقاء في روم الأساطير ✨ يسعد مساكم جميعاً!',
-      likes: 342,
-      comments: 28,
-      tag: '#لحظات_السعودية',
-    },
-    {
-      id: '2',
-      author: 'الشيخ خالد',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150',
-      time: 'منذ ساعة',
-      location: 'دبي، الإمارات العربية المتحدة 🇦🇪',
-      content: 'تحدي المعارك اليوم الساعة 9 مساءً. ننتظر حضوركم ودعمكم المستمر للروم الملكية 🏆',
-      likes: 810,
-      comments: 94,
-      tag: '#معارك_دبي',
-    },
-  ];
+interface ExploreScreenProps {
+  currentUser: User;
+  onOpenRecharge: () => void;
+}
+
+export const ExploreScreen: React.FC<ExploreScreenProps> = ({ currentUser, onOpenRecharge }) => {
+  const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+
+  const ranks = LEADERBOARD_DATA[period];
+
+  const getRankMedal = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return <span className="text-2xl">🥇</span>;
+      case 2:
+        return <span className="text-2xl">🥈</span>;
+      case 3:
+        return <span className="text-2xl">🥉</span>;
+      default:
+        return <span className="font-mono font-bold text-slate-400 text-sm">{rank}</span>;
+    }
+  };
 
   return (
-    <div className="space-y-4 pb-20 pt-2 px-4">
-      {/* World Explorer Header */}
-      <div className="p-4 rounded-3xl bg-gradient-to-r from-sky-600 via-indigo-600 to-blue-700 text-white shadow-md">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
-            <Globe className="w-7 h-7 text-sky-200 animate-spin-slow" />
-          </div>
-          <div>
-            <h2 className="text-lg font-black">عالمي (Explore World)</h2>
-            <p className="text-xs text-sky-100 font-medium">اكتشف أحدث منشورات ولحظات المستخدمين حول العالم</p>
-          </div>
+    <div className="space-y-4 pb-20 max-w-7xl mx-auto px-4 pt-3">
+      {/* Title */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Trophy className="w-5 h-5 text-amber-400" />
+          <h2 className="text-base font-extrabold text-white">لوحة شرف الأساطير 👑</h2>
+        </div>
+        {/* Period toggle */}
+        <div className="bg-slate-900 border border-slate-800 p-1 rounded-2xl flex items-center gap-1">
+          <button
+            onClick={() => setPeriod('daily')}
+            className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+              period === 'daily' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            يومي
+          </button>
+          <button
+            onClick={() => setPeriod('weekly')}
+            className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+              period === 'weekly' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            أسبوعي
+          </button>
+          <button
+            onClick={() => setPeriod('monthly')}
+            className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+              period === 'monthly' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            شهري
+          </button>
         </div>
       </div>
 
-      {/* Country Filter Chips */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-        {[
-          { name: 'الكل 🌐', active: true },
-          { name: 'السعودية 🇸🇦', active: false },
-          { name: 'الإمارات 🇦🇪', active: false },
-          { name: 'مصر 🇪🇬', active: false },
-          { name: 'الكويت 🇰🇼', active: false },
-          { name: 'المغرب 🇲🇦', active: false },
-        ].map((item, idx) => (
-          <button
-            key={idx}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
-              item.active
-                ? 'bg-sky-600 text-white shadow-xs'
-                : 'bg-white text-slate-600 border border-slate-200/60 hover:bg-slate-50'
-            }`}
-          >
-            {item.name}
-          </button>
-        ))}
-      </div>
+      {/* Top 3 Podium Cards */}
+      {ranks.length >= 3 && (
+        <div className="grid grid-cols-3 gap-2 pt-4 items-end max-w-lg mx-auto">
+          {/* #2 Silver */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-3 flex flex-col items-center text-center shadow-lg relative">
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-2xl">🥈</span>
+            <img
+              src={ranks[1].user.avatar}
+              alt={ranks[1].user.name}
+              className="w-14 h-14 rounded-full object-cover border-2 border-slate-400 mt-2 mb-1"
+            />
+            <p className="text-xs font-bold text-white truncate max-w-full">{ranks[1].user.name}</p>
+            <span className="text-[10px] text-amber-400 font-mono font-bold mt-1">
+              {(ranks[1].points / 1000).toLocaleString()}K 🪙
+            </span>
+          </div>
 
-      {/* Posts Stream */}
-      <div className="space-y-3">
-        {posts.map((post) => (
-          <div key={post.id} className="p-4 bg-white rounded-2xl border border-slate-100 shadow-xs space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img src={post.avatar} alt={post.author} className="w-10 h-10 rounded-full object-cover border-2 border-sky-400" />
-                <div>
-                  <h3 className="text-xs font-black text-slate-900">{post.author}</h3>
-                  <div className="text-[10px] text-slate-400 font-medium">{post.location} • {post.time}</div>
-                </div>
+          {/* #1 Gold */}
+          <div className="bg-gradient-to-b from-amber-950/80 to-slate-900 border-2 border-amber-400 rounded-3xl p-4 flex flex-col items-center text-center shadow-2xl relative scale-105">
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-3xl animate-bounce">👑</div>
+            <img
+              src={ranks[0].user.avatar}
+              alt={ranks[0].user.name}
+              className="w-16 h-16 rounded-full object-cover border-2 border-amber-300 mt-2 mb-1 shadow-lg"
+            />
+            <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full mb-1">
+              المركز الأول
+            </span>
+            <p className="text-xs font-black text-white truncate max-w-full">{ranks[0].user.name}</p>
+            <span className="text-xs text-amber-300 font-mono font-black mt-1">
+              {(ranks[0].points / 1000).toLocaleString()}K 🪙
+            </span>
+          </div>
+
+          {/* #3 Bronze */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-3 flex flex-col items-center text-center shadow-lg relative">
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-2xl">🥉</span>
+            <img
+              src={ranks[2].user.avatar}
+              alt={ranks[2].user.name}
+              className="w-14 h-14 rounded-full object-cover border-2 border-amber-700 mt-2 mb-1"
+            />
+            <p className="text-xs font-bold text-white truncate max-w-full">{ranks[2].user.name}</p>
+            <span className="text-[10px] text-amber-400 font-mono font-bold mt-1">
+              {(ranks[2].points / 1000).toLocaleString()}K 🪙
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Full Leaderboard List */}
+      <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-4 space-y-2">
+        <h3 className="text-xs font-bold text-slate-400 mb-2">قائمة الترتيب الكاملة</h3>
+        {ranks.map((item) => (
+          <div
+            key={item.rank}
+            className="flex items-center justify-between p-3 rounded-2xl bg-slate-950/60 border border-slate-800/80 hover:border-amber-500/40 transition"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 flex items-center justify-center font-bold">
+                {getRankMedal(item.rank)}
               </div>
-              <span className="text-[10px] font-extrabold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-100">
-                {post.tag}
-              </span>
+              <img
+                src={item.user.avatar}
+                alt={item.user.name}
+                className="w-10 h-10 rounded-full object-cover border border-amber-400/50"
+              />
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold text-white">{item.user.name}</h4>
+                  <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.2 rounded font-mono">
+                    VIP{item.user.vipLevel}
+                  </span>
+                </div>
+                <p className="text-[11px] text-amber-400/80 font-medium">{item.title}</p>
+              </div>
             </div>
 
-            <p className="text-xs text-slate-700 font-bold leading-relaxed">{post.content}</p>
-
-            <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-slate-500 text-xs font-bold">
-              <button className="flex items-center gap-1.5 hover:text-rose-500 cursor-pointer">
-                <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
-                <span>{post.likes}</span>
-              </button>
-              <button className="flex items-center gap-1.5 hover:text-sky-600 cursor-pointer">
-                <MessageCircle className="w-4 h-4 text-slate-400" />
-                <span>{post.comments} تعليق</span>
-              </button>
-              <button className="flex items-center gap-1.5 hover:text-indigo-600 cursor-pointer">
-                <Share2 className="w-4 h-4 text-slate-400" />
-                <span>مشاركة</span>
-              </button>
+            <div className="text-left">
+              <span className="text-xs font-extrabold text-amber-400 font-mono block">
+                {item.points.toLocaleString()}
+              </span>
+              <span className="text-[10px] text-slate-400">نقطة مجد</span>
             </div>
           </div>
         ))}
