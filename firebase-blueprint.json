@@ -1,0 +1,63 @@
+{
+  "entities": {
+    "Room": {
+      "title": "Room",
+      "description": "Voice room visual styling, theme configurations, and background wallpaper tied to roomId",
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string",
+          "description": "Unique identifier of the voice room",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Identifier of the room owner with exclusive theme edit rights",
+          "maxLength": 128
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Display name of the room owner",
+          "maxLength": 100
+        },
+        "roomTitle": {
+          "type": "string",
+          "description": "Title of the voice room",
+          "maxLength": 150
+        },
+        "wallpaperUrl": {
+          "type": "string",
+          "description": "URL of the room background wallpaper",
+          "maxLength": 2048
+        },
+        "wallpaperName": {
+          "type": "string",
+          "description": "Name of the equipped wallpaper theme",
+          "maxLength": 100
+        },
+        "themeConfig": {
+          "type": "object",
+          "description": "Comprehensive visual styling parameters for top bar, bottom bar, mics, seats, glow, and darkness"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp",
+          "format": "date-time"
+        }
+      },
+      "required": ["roomId", "ownerId", "wallpaperUrl"]
+    }
+  },
+  "firestore": {
+    "/rooms/{roomId}": {
+      "schema": "Room",
+      "description": "Collection of voice room documents indexed by roomId with theme and background data editable exclusively by the room owner"
+    }
+  }
+}
