@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { VoiceRoomScreen } from './VoiceRoomScreen';
+import { FloatingRoomWidget } from './FloatingRoomWidget';
+import { subscribeToRoomSession } from '../lib/roomSessionService';
 import { LuckyChestConfig } from './LuckyChestModal';
 import { ThreeDLuckyChest } from './ThreeDLuckyChest';
 import {
@@ -97,7 +99,20 @@ const DEFAULT_INITIAL_ROOM: RoomData = {
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
   const [selectedRoomModal, setSelectedRoomModal] = useState<RoomData | null>(null);
-  const [activeVoiceRoom, setActiveVoiceRoom] = useState<RoomData | null>(DEFAULT_INITIAL_ROOM);
+  const [activeVoiceRoom, setActiveVoiceRoom] = useState<RoomData | null>(null);
+  const [isRoomMinimized, setIsRoomMinimized] = useState<boolean>(false);
+
+  useEffect(() => {
+    const unsub = subscribeToRoomSession((session) => {
+      if (!session) {
+        setActiveVoiceRoom(null);
+        setIsRoomMinimized(false);
+      } else {
+        setIsRoomMinimized(Boolean(session.isMinimized));
+      }
+    });
+    return unsub;
+  }, []);
 
   // Smooth Auto-Play Carousel state (3.5s interval with easeInOut animation)
   const [currentBannerIndex, setCurrentBannerIndex] = useState<number>(0);
@@ -248,6 +263,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
     }
   });
 
+  const [, setMetadataRefresh] = useState(0);
+
   useEffect(() => {
     const syncChests = () => {
       try {
@@ -258,11 +275,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
         setLocallyClaimedIds(JSON.parse(localStorage.getItem('claimed_lucky_chest_ids') || '[]'));
       } catch (e) {}
     };
+
+    const handleRoomMetaUpdate = () => {
+      setMetadataRefresh((prev) => prev + 1);
+    };
+
     window.addEventListener('storage', syncChests);
+    window.addEventListener('storage', handleRoomMetaUpdate);
     window.addEventListener('lucky_chest_updated', syncChests);
+    window.addEventListener('room_metadata_updated', handleRoomMetaUpdate);
     return () => {
       window.removeEventListener('storage', syncChests);
+      window.removeEventListener('storage', handleRoomMetaUpdate);
       window.removeEventListener('lucky_chest_updated', syncChests);
+      window.removeEventListener('room_metadata_updated', handleRoomMetaUpdate);
     };
   }, []);
 
@@ -535,8 +561,27 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
     }
   ];
 
-  // Filter rooms by country & search query
-  const filteredRooms = roomList.filter((room) => {
+  // Function to resolve dynamically edited title and avatar for any room from cache or storage
+  const getDynamicRoomData = (room: RoomData): RoomData => {
+    let dynamicTitle = room.title;
+    let dynamicImage = room.image;
+
+    try {
+      const savedTitle = localStorage.getItem(`super_legend_room_title_${room.id}`);
+      if (savedTitle) dynamicTitle = savedTitle;
+      const savedAvatar = localStorage.getItem(`super_legend_room_avatar_${room.id}`);
+      if (savedAvatar) dynamicImage = savedAvatar;
+    } catch (e) {}
+
+    return {
+      ...room,
+      title: dynamicTitle,
+      image: dynamicImage
+    };
+  };
+
+  // Filter rooms by country & search query with dynamic titles/avatars
+  const filteredRooms = roomList.map(getDynamicRoomData).filter((room) => {
     const matchesCountry = selectedCountry === 'all' || room.countryName === selectedCountry || room.countryCode === selectedCountry;
     const matchesSearch = searchQuery.trim() === '' ||
       room.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -889,7 +934,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
                         <div className="flex items-center -space-x-1.5 dir-ltr">
                           {room.avatars.slice(0, 3).map((av, idx) => (
                             <img
-                              key={idx}
+                              key={`${room.id}-speaker-av-${idx}`}
                               src={av || 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=100'}
                               alt="mic speaker"
                               className="w-6 h-6 rounded-full border-2 border-slate-900 object-cover shadow-md ring-1 ring-cyan-400/50"
@@ -1179,14 +1224,29 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
         )}
       </AnimatePresence>
 
+      {/* FLOATING ROOM MINI WIDGET (عند تفعيل "احتفاظ" لوضع الروم بالخلفية) */}
+      {isRoomMinimized && activeVoiceRoom && (
+        <FloatingRoomWidget
+          onExpand={() => setIsRoomMinimized(false)}
+          onExit={() => {
+            setActiveVoiceRoom(null);
+            setIsRoomMinimized(false);
+          }}
+        />
+      )}
+
       {/* FULL SCREEN VOICE ROOM INTERIOR */}
-      {activeVoiceRoom && (
+      {activeVoiceRoom && !isRoomMinimized && (
         <VoiceRoomScreen
           roomTitle={activeVoiceRoom.title}
           hostName={activeVoiceRoom.host}
           roomId={activeVoiceRoom.id}
           isOwner={Boolean(activeVoiceRoom.isOwner || activeVoiceRoom.ownerId === currentUserId)}
-          onClose={() => setActiveVoiceRoom(null)}
+          onClose={() => {
+            setActiveVoiceRoom(null);
+            setIsRoomMinimized(false);
+          }}
+          onMinimize={() => setIsRoomMinimized(true)}
           onOpenRecharge={onOpenRecharge}
         />
       )}

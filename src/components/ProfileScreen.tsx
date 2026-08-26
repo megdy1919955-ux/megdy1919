@@ -27,7 +27,11 @@ import {
   Mic,
   Store,
   Gamepad2,
-  Globe
+  Globe,
+  Eye,
+  Users,
+  UserCheck,
+  Heart
 } from 'lucide-react';
 import { UserProfileData, StatItem, BadgeInfo } from '../types';
 import { INITIAL_USER_PROFILE, MOCK_VISITORS, MOCK_FRIENDS, MOCK_FOLLOWERS, MOCK_LIKES } from '../data/mockData';
@@ -46,10 +50,13 @@ import { CustomerServiceModal } from './CustomerServiceModal';
 import { DevPanelModal } from './DevPanelModal';
 import { UserProfileModal } from './UserProfileModal';
 import { VipCenterModal } from './VipCenterModal';
+import { AgencyModal } from './AgencyModal';
 import { HomeScreen } from './HomeScreen';
 import { ExploreScreen } from './ExploreScreen';
 import { GamesScreen } from './GamesScreen';
 import { MessagesScreen } from './MessagesScreen';
+import { FloatingRoomWidget } from './FloatingRoomWidget';
+import { subscribeToRoomSession, maximizeRoomSession, ActiveRoomSession } from '../lib/roomSessionService';
 
 export const ProfileScreen: React.FC = () => {
   // State Management
@@ -127,7 +134,7 @@ export const ProfileScreen: React.FC = () => {
   const [activeStatModal, setActiveStatModal] = useState<StatItem['id'] | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<BadgeInfo | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'home' | 'explore' | 'games' | 'messages' | 'profile'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'explore' | 'games' | 'messages' | 'profile'>('profile');
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
   const [coinsBalance, setCoinsBalance] = useState<number>(52500);
   const [diamondsBalance, setDiamondsBalance] = useState<number>(8377);
@@ -143,6 +150,15 @@ export const ProfileScreen: React.FC = () => {
   const [isBadgesCenterModalOpen, setIsBadgesCenterModalOpen] = useState(false);
   const [isAppearanceModalOpen, setIsAppearanceModalOpen] = useState(false);
   const [isVipCenterModalOpen, setIsVipCenterModalOpen] = useState(false);
+  const [isAgencyModalOpen, setIsAgencyModalOpen] = useState(false);
+  const [minimizedRoomSession, setMinimizedRoomSession] = useState<ActiveRoomSession | null>(null);
+
+  useEffect(() => {
+    const unsub = subscribeToRoomSession((session) => {
+      setMinimizedRoomSession(session && session.isMinimized ? session : null);
+    });
+    return unsub;
+  }, []);
   const [activeServiceModal, setActiveServiceModal] = useState<ServiceType | null>(null);
 
   // Copy ID functionality
@@ -165,7 +181,7 @@ export const ProfileScreen: React.FC = () => {
   return (
     <div
       dir="rtl"
-      className="min-h-screen bg-[#F3F6F9] text-slate-800 font-sans pb-24 select-none relative overflow-x-hidden w-full max-w-full touch-pan-y"
+      className="min-h-screen bg-[#F3F6F9] text-slate-800 font-sans pb-24 select-none relative overflow-x-hidden w-full max-w-full"
     >
       {/* Toast Notification for ID Copy */}
       <AnimatePresence>
@@ -193,251 +209,263 @@ export const ProfileScreen: React.FC = () => {
       {/* Profile View (Renders when activeTab === 'profile') */}
       {activeTab === 'profile' && (
         <>
-          {/* Top Header Background with Soft Pastel Tint */}
-          <div className="bg-gradient-to-b from-[#E2F1ED] via-[#EDF5F2] to-[#F3F6F9] px-4 pt-3 pb-2">
-        {/* Top Header Controls: Settings & Headphones Icons on the right, 7:35 on the left */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsSettingsModalOpen(true)}
-              className="p-2 rounded-full bg-white/80 shadow-xs hover:bg-white text-slate-700 transition-all cursor-pointer"
-              title="الإعدادات"
-            >
-              <Settings className="w-5 h-5 text-slate-700" />
-            </button>
-            <button
-              onClick={() => setIsCustomerServiceModalOpen(true)}
-              className="p-2 rounded-full bg-white/80 shadow-xs hover:bg-white text-slate-700 transition-all cursor-pointer"
-              title="خدمة العملاء والإنصات"
-            >
-              <Headphones className="w-5 h-5 text-slate-700" />
-            </button>
-          </div>
-          <span className="text-xs font-mono font-medium text-slate-500">7:35</span>
-        </div>
-
-        {/* User Info Row (Avatar on FAR RIGHT, Name & ID in center, Arrow on FAR LEFT) */}
-        <div className="flex items-center justify-between mt-2">
-          {/* Avatar Image on FAR RIGHT */}
-          <div className="relative shrink-0 cursor-pointer" onClick={() => setIsUserProfileModalOpen(true)}>
-            <img
-              src={profile.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200'}
-              alt={profile.name}
-              className="w-20 h-20 sm:w-22 sm:h-22 rounded-full object-cover border-3 border-white shadow-md"
-            />
-            {/* Pencil Edit Icon Badge */}
-            <div 
-              onClick={(e) => { e.stopPropagation(); setIsEditModalOpen(true); }}
-              className="absolute bottom-0 left-0 w-6 h-6 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center shadow-md cursor-pointer hover:scale-110 transition-transform"
-              title="تعديل الملف الشخصي"
-            >
-              <Pencil className="w-3 h-3 text-white fill-white" />
+              {/* Top Header Background with Soft Pastel Tint */}
+              <div className="bg-gradient-to-b from-[#E2F1ED] via-[#EDF5F2] to-[#F3F6F9] px-4 pt-3 pb-2">
+            {/* Top Header Controls: Settings & Headphones Icons on the right, 7:35 on the left */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsSettingsModalOpen(true)}
+                  className="p-2 rounded-full bg-white/80 shadow-xs hover:bg-white text-slate-700 transition-all cursor-pointer"
+                  title="الإعدادات"
+                >
+                  <Settings className="w-5 h-5 text-slate-700" />
+                </button>
+                <button
+                  onClick={() => setIsCustomerServiceModalOpen(true)}
+                  className="p-2 rounded-full bg-white/80 shadow-xs hover:bg-white text-slate-700 transition-all cursor-pointer"
+                  title="خدمة العملاء والإنصات"
+                >
+                  <Headphones className="w-5 h-5 text-slate-700" />
+                </button>
+              </div>
+              <span className="text-xs font-mono font-medium text-slate-500">7:35</span>
             </div>
-          </div>
 
-          {/* User Info (Name, Badges, ID) - Center/Right aligned */}
-          <div className="flex-1 mr-3 text-right flex flex-col justify-center space-y-1.5">
-            {/* User Name in Red */}
-            <h1 
-              onClick={() => setIsUserProfileModalOpen(true)}
-              className="text-xl sm:text-2xl font-black text-[#E53E3E] tracking-tight cursor-pointer hover:underline"
-            >
-              {profile.name}
-            </h1>
+            {/* User Info Row (Avatar on FAR RIGHT, Name & ID in center, Arrow on FAR LEFT) */}
+            <div className="flex items-center justify-between mt-2">
+              {/* Avatar Image on FAR RIGHT */}
+              <div className="relative shrink-0 cursor-pointer" onClick={() => setIsUserProfileModalOpen(true)}>
+                <img
+                  src={profile.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200'}
+                  alt={profile.name}
+                  className="w-20 h-20 sm:w-22 sm:h-22 rounded-full object-cover border-3 border-white shadow-md"
+                />
+                {/* Pencil Edit Icon Badge */}
+                <div 
+                  onClick={(e) => { e.stopPropagation(); setIsEditModalOpen(true); }}
+                  className="absolute bottom-0 left-0 w-6 h-6 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center shadow-md cursor-pointer hover:scale-110 transition-transform"
+                  title="تعديل الملف الشخصي"
+                >
+                  <Pencil className="w-3 h-3 text-white fill-white" />
+                </div>
+              </div>
 
-            {/* Badges and ID Row (Badges on right, ID after them in RTL) */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* VIP8 Badge */}
-              <span
-                onClick={() => setIsVipCenterModalOpen(true)}
-                className="bg-gradient-to-r from-amber-600 via-amber-800 to-slate-900 text-amber-300 px-2 py-0.5 rounded-full text-[10px] font-black border border-amber-400/60 shadow-xs cursor-pointer flex items-center gap-0.5"
-              >
-                <Crown className="w-3 h-3 text-amber-400 fill-amber-400" />
-                <span>{profile.vipLevel || 'VIP8'}</span>
-              </span>
+              {/* User Info (Name, Badges, ID) - Center/Right aligned */}
+              <div className="flex-1 mr-3 text-right flex flex-col justify-center space-y-1.5">
+                {/* User Name in Red */}
+                <h1 
+                  onClick={() => setIsUserProfileModalOpen(true)}
+                  className="text-xl sm:text-2xl font-black text-[#E53E3E] tracking-tight cursor-pointer hover:underline"
+                >
+                  {profile.name}
+                </h1>
 
-              {/* Super Legend SL1 Badge */}
-              <span
-                onClick={() => setIsSuperLegendModalOpen(true)}
-                className="bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-800 text-amber-100 px-2 py-0.5 rounded-full text-[10px] font-black border border-amber-300/60 shadow-xs cursor-pointer flex items-center gap-0.5"
-              >
-                <span className="text-xs">🐺</span>
-                <span>SL1</span>
-              </span>
+                {/* Badges and ID Row (Badges on right, ID after them in RTL) */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* VIP8 Badge */}
+                  <span
+                    onClick={() => setIsVipCenterModalOpen(true)}
+                    className="bg-gradient-to-r from-amber-600 via-amber-800 to-slate-900 text-amber-300 px-2 py-0.5 rounded-full text-[10px] font-black border border-amber-400/60 shadow-xs cursor-pointer flex items-center gap-0.5"
+                  >
+                    <Crown className="w-3 h-3 text-amber-400 fill-amber-400" />
+                    <span>{profile.vipLevel || 'VIP8'}</span>
+                  </span>
 
-              {/* ID + Copy Icon (ID on right, Copy icon on left in RTL) */}
-              <button
-                onClick={handleCopyId}
-                className="flex items-center gap-1 text-xs text-slate-500 font-mono hover:text-slate-800 transition-colors"
-                title="نسخ المعرف"
-              >
-                <span className="font-semibold">ID:{profile.userId}</span>
-                {copiedId ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-500" />
-                ) : (
-                  <Copy className="w-3.5 h-3.5 text-slate-400" />
-                )}
+                  {/* Super Legend SL1 Badge */}
+                  <span
+                    onClick={() => setIsSuperLegendModalOpen(true)}
+                    className="bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-800 text-amber-100 px-2 py-0.5 rounded-full text-[10px] font-black border border-amber-300/60 shadow-xs cursor-pointer flex items-center gap-0.5"
+                  >
+                    <span className="text-xs">🐺</span>
+                    <span>SL1</span>
+                  </span>
+
+                  {/* ID + Copy Icon (ID on right, Copy icon on left in RTL) */}
+                  <button
+                    onClick={handleCopyId}
+                    className="flex items-center gap-1 text-xs text-slate-500 font-mono hover:text-slate-800 transition-colors"
+                    title="نسخ المعرف"
+                  >
+                    <span className="font-semibold">ID:{profile.userId}</span>
+                    {copiedId ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5 text-slate-400" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Left Arrow Icon on FAR LEFT */}
+              <button className="text-slate-400 hover:text-slate-600 transition-colors p-1">
+                <ChevronLeft className="w-5 h-5" />
               </button>
             </div>
-          </div>
 
-          {/* Left Arrow Icon on FAR LEFT */}
-          <button className="text-slate-400 hover:text-slate-600 transition-colors p-1">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Statistics 4 Columns Row */}
-        <div className="grid grid-cols-4 gap-2 text-center mt-6 mb-2">
-          {/* Visitors */}
-          <div
-            onClick={() => setActiveStatModal('visitors')}
-            className="cursor-pointer hover:opacity-80 transition-opacity"
-          >
-            <div className="text-xl font-extrabold text-slate-900 leading-none">
-              {profile.stats.visitors}
-            </div>
-            <div className="text-xs text-slate-500 font-medium mt-1">الزوار</div>
-          </div>
-
-          {/* Friends */}
-          <div
-            onClick={() => setActiveStatModal('friends')}
-            className="cursor-pointer hover:opacity-80 transition-opacity"
-          >
-            <div className="text-xl font-extrabold text-slate-900 leading-none">
-              {profile.stats.friends}
-            </div>
-            <div className="text-xs text-slate-500 font-medium mt-1">أصدقاء</div>
-          </div>
-
-          {/* Followers */}
-          <div
-            onClick={() => setActiveStatModal('followers')}
-            className="cursor-pointer hover:opacity-80 transition-opacity"
-          >
-            <div className="text-xl font-extrabold text-slate-900 leading-none">
-              {profile.stats.followers}
-            </div>
-            <div className="text-xs text-slate-500 font-medium mt-1">تمت المتابعة</div>
-          </div>
-
-          {/* Likes */}
-          <div
-            onClick={() => setActiveStatModal('likes')}
-            className="cursor-pointer hover:opacity-80 transition-opacity"
-          >
-            <div className="text-xl font-extrabold text-slate-900 leading-none">
-              {profile.stats.likes}
-            </div>
-            <div className="text-xs text-slate-500 font-medium mt-1">المعجبون</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="max-w-md mx-auto px-4 space-y-3.5 mt-3">
-        {/* Super Legend Banner */}
-        <div
-          onClick={() => setIsSuperLegendModalOpen(true)}
-          className="relative rounded-2xl bg-gradient-to-r from-[#2B2313] via-[#3D3017] to-[#1F190D] p-3 text-white overflow-hidden shadow-md flex items-center justify-between border border-amber-500/30 cursor-pointer hover:border-amber-400 transition-all group"
-        >
-          {/* Sparkles Overlay Background */}
-          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#F59E0B_1px,transparent_1px)] [background-size:12px_12px]" />
-
-          {/* Tag on Left */}
-          <span className="bg-amber-400 text-slate-950 font-black text-[10px] px-2.5 py-0.5 rounded-full z-10 shadow-sm flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-slate-950 fill-slate-950" />
-            <span>مستوى جديد</span>
-          </span>
-
-          {/* Banner Title Center / Right */}
-          <div className="z-10 flex items-center gap-1.5">
-            <ChevronLeft className="w-4 h-4 text-amber-400 group-hover:-translate-x-0.5 transition-transform" />
-            <span className="text-sm sm:text-base font-black tracking-wider text-amber-300 italic font-serif uppercase flex items-center gap-1">
-              <span>SUPER LEGEND</span>
-              <span className="text-xs">👑</span>
-            </span>
-          </div>
-        </div>
-
-        {/* Currency Row (2 Horizontal Cards: Recharge on Right, Diamonds on Left) */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Recharge / Coins Card (Appears on the RIGHT in RTL) */}
-          <div
-            onClick={() => setIsRechargeModalOpen(true)}
-            className="bg-gradient-to-b from-white via-amber-50/30 to-amber-100/20 rounded-2xl p-3.5 shadow-xs border border-amber-200/60 flex items-center justify-between cursor-pointer hover:shadow-md hover:border-amber-300/80 transition-all group"
-          >
-            <ChevronLeft className="w-4 h-4 text-amber-300 shrink-0 group-hover:-translate-x-0.5 transition-transform" />
-            <div className="text-center flex-1 px-2">
-              <div className="text-xl font-black text-amber-600 tracking-tight leading-none drop-shadow-[0_1px_2px_rgba(217,119,6,0.25)] font-mono">
-                {coinsBalance.toLocaleString('ar-SA')}
+            {/* Statistics 4 Columns Row - Cute Small Square Cards in Dark-White (أيقونات صغيرة مربعة بلون أبيض غامق وأرقام إنجليزية) */}
+            <div className="grid grid-cols-4 gap-2 text-center mt-5 mb-2 px-1">
+              {/* 1. Visitors / الزوار */}
+              <div
+                onClick={() => setActiveStatModal('visitors')}
+                className="bg-[#E9EEF4] border border-[#CBD5E1] hover:bg-[#DEE6F0] rounded-2xl p-2.5 flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 shadow-xs group"
+              >
+                <div className="w-6 h-6 rounded-full bg-slate-300/70 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                  <Eye className="w-3.5 h-3.5 text-slate-700" />
+                </div>
+                <div className="text-sm sm:text-base font-black text-slate-900 font-mono leading-tight tracking-tight">
+                  {profile.stats.visitors.toLocaleString('en-US')}
+                </div>
+                <div className="text-[10px] text-slate-600 font-bold mt-0.5 whitespace-nowrap">الزوار</div>
               </div>
-              <div className="text-xs text-amber-900/60 font-bold mt-1">
-                شحن
+
+              {/* 2. Friends / أصدقاء */}
+              <div
+                onClick={() => setActiveStatModal('friends')}
+                className="bg-[#E9EEF4] border border-[#CBD5E1] hover:bg-[#DEE6F0] rounded-2xl p-2.5 flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 shadow-xs group"
+              >
+                <div className="w-6 h-6 rounded-full bg-slate-300/70 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                  <Users className="w-3.5 h-3.5 text-slate-700" />
+                </div>
+                <div className="text-sm sm:text-base font-black text-slate-900 font-mono leading-tight tracking-tight">
+                  {profile.stats.friends.toLocaleString('en-US')}
+                </div>
+                <div className="text-[10px] text-slate-600 font-bold mt-0.5 whitespace-nowrap">أصدقاء</div>
+              </div>
+
+              {/* 3. Followers / تمت المتابعة */}
+              <div
+                onClick={() => setActiveStatModal('followers')}
+                className="bg-[#E9EEF4] border border-[#CBD5E1] hover:bg-[#DEE6F0] rounded-2xl p-2.5 flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 shadow-xs group"
+              >
+                <div className="w-6 h-6 rounded-full bg-slate-300/70 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                  <UserCheck className="w-3.5 h-3.5 text-slate-700" />
+                </div>
+                <div className="text-sm sm:text-base font-black text-slate-900 font-mono leading-tight tracking-tight">
+                  {profile.stats.followers.toLocaleString('en-US')}
+                </div>
+                <div className="text-[10px] text-slate-600 font-bold mt-0.5 whitespace-nowrap">تمت المتابعة</div>
+              </div>
+
+              {/* 4. Likes / المعجبون */}
+              <div
+                onClick={() => setActiveStatModal('likes')}
+                className="bg-[#E9EEF4] border border-[#CBD5E1] hover:bg-[#DEE6F0] rounded-2xl p-2.5 flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 shadow-xs group"
+              >
+                <div className="w-6 h-6 rounded-full bg-rose-200/70 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                  <Heart className="w-3.5 h-3.5 text-rose-600 fill-rose-500/40" />
+                </div>
+                <div className="text-sm sm:text-base font-black text-slate-900 font-mono leading-tight tracking-tight">
+                  {profile.stats.likes.toLocaleString('en-US')}
+                </div>
+                <div className="text-[10px] text-slate-600 font-bold mt-0.5 whitespace-nowrap">المعجبون</div>
               </div>
             </div>
-            {/* 3D Shiny Gold Coin Icon Container */}
-            <div className="relative w-11 h-11 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-300 p-0.5 shadow-[0_0_12px_rgba(245,158,11,0.35)] border border-yellow-200 shrink-0 flex items-center justify-center">
-              <svg className="w-8 h-8 drop-shadow-md" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="18" cy="18" r="16" fill="url(#gold_coin_outer)" stroke="#FEF3C7" strokeWidth="1.5"/>
-                <circle cx="18" cy="18" r="12" fill="url(#gold_coin_inner)" stroke="#D97706" strokeWidth="1"/>
-                <path d="M18 10L20.2 14.8L25.5 15.4L21.5 19L22.6 24.2L18 21.5L13.4 24.2L14.5 19L10.5 15.4L15.8 14.8L18 10Z" fill="url(#gold_coin_star)"/>
-                <defs>
-                  <linearGradient id="gold_coin_outer" x1="4" y1="4" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#FBBF24"/>
-                    <stop offset="0.5" stopColor="#F59E0B"/>
-                    <stop offset="1" stopColor="#B45309"/>
-                  </linearGradient>
-                  <linearGradient id="gold_coin_inner" x1="8" y1="8" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#FEF08A"/>
-                    <stop offset="0.5" stopColor="#F59E0B"/>
-                    <stop offset="1" stopColor="#92400E"/>
-                  </linearGradient>
-                  <linearGradient id="gold_coin_star" x1="12" y1="10" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#FFFBEB"/>
-                    <stop offset="1" stopColor="#FBBF24"/>
-                  </linearGradient>
-                </defs>
-              </svg>
-            </div>
           </div>
 
-          {/* Diamonds Card (Appears on the LEFT in RTL) */}
-          <div
-            onClick={() => setIsRechargeModalOpen(true)}
-            className="bg-gradient-to-b from-white via-sky-50/30 to-sky-100/20 rounded-2xl p-3.5 shadow-xs border border-sky-200/60 flex items-center justify-between cursor-pointer hover:shadow-md hover:border-sky-300/80 transition-all group"
-          >
-            <ChevronLeft className="w-4 h-4 text-sky-300 shrink-0 group-hover:-translate-x-0.5 transition-transform" />
-            <div className="text-center flex-1 px-2">
-              <div className="text-xl font-black text-sky-600 tracking-tight leading-none drop-shadow-[0_1px_2px_rgba(2,132,199,0.25)] font-mono">
-                {diamondsBalance.toLocaleString('ar-SA')}
-              </div>
-              <div className="text-xs text-sky-900/60 font-bold mt-1">
-                ألماس
+          {/* Main Content Area */}
+          <div className="max-w-md mx-auto px-4 space-y-3.5 mt-3">
+            {/* Super Legend Banner */}
+            <div
+              onClick={() => setIsSuperLegendModalOpen(true)}
+              className="relative rounded-2xl bg-gradient-to-r from-[#2B2313] via-[#3D3017] to-[#1F190D] p-3 text-white overflow-hidden shadow-md flex items-center justify-between border border-amber-500/30 cursor-pointer hover:border-amber-400 transition-all group"
+            >
+              {/* Sparkles Overlay Background */}
+              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#F59E0B_1px,transparent_1px)] [background-size:12px_12px]" />
+
+              {/* Tag on Left */}
+              <span className="bg-amber-400 text-slate-950 font-black text-[10px] px-2.5 py-0.5 rounded-full z-10 shadow-sm flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-slate-950 fill-slate-950" />
+                <span>مستوى جديد</span>
+              </span>
+
+              {/* Banner Title Center / Right */}
+              <div className="z-10 flex items-center gap-1.5">
+                <ChevronLeft className="w-4 h-4 text-amber-400 group-hover:-translate-x-0.5 transition-transform" />
+                <span className="text-sm sm:text-base font-black tracking-wider text-amber-300 italic font-serif uppercase flex items-center gap-1">
+                  <span>SUPER LEGEND</span>
+                  <span className="text-xs">👑</span>
+                </span>
               </div>
             </div>
-            {/* Crystal Glowing Diamond Icon Container */}
-            <div className="relative w-11 h-11 rounded-full bg-gradient-to-tr from-blue-600 via-sky-400 to-cyan-300 p-0.5 shadow-[0_0_14px_rgba(56,189,248,0.45)] border border-sky-200 shrink-0 flex items-center justify-center">
-              <svg className="w-8 h-8 drop-shadow-md" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18 6L28 14L18 30L8 14L18 6Z" fill="url(#diamond_base)"/>
-                <path d="M18 6L28 14H8L18 6Z" fill="url(#diamond_top)"/>
-                <path d="M18 6L14 14H22L18 6Z" fill="url(#diamond_center_top)"/>
-                <path d="M18 30L8 14H18V30Z" fill="url(#diamond_left_bottom)"/>
-                <path d="M18 30L28 14H18V30Z" fill="url(#diamond_right_bottom)"/>
-                {/* Glint Sparkle */}
-                <circle cx="23" cy="11" r="1.5" fill="white" opacity="0.9"/>
-                <defs>
-                  <linearGradient id="diamond_base" x1="8" y1="6" x2="28" y2="30" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#38BDF8"/>
-                    <stop offset="0.5" stopColor="#0284C7"/>
-                    <stop offset="1" stopColor="#0369A1"/>
-                  </linearGradient>
-                  <linearGradient id="diamond_top" x1="8" y1="6" x2="28" y2="14" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#E0F2FE"/>
-                    <stop offset="1" stopColor="#38BDF8"/>
-                  </linearGradient>
-                  <linearGradient id="diamond_center_top" x1="14" y1="6" x2="22" y2="14" gradientUnits="userSpaceOnUse">
+
+            {/* Currency Row (2 Horizontal Cards: Recharge on Right, Diamonds on Left - English Numbers Only) */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Recharge / Coins Card (Appears on the RIGHT in RTL - English Numbers) */}
+              <div
+                onClick={() => setIsRechargeModalOpen(true)}
+                className="bg-gradient-to-b from-white via-amber-50/30 to-amber-100/20 rounded-2xl p-3.5 shadow-xs border border-amber-200/60 flex items-center justify-between cursor-pointer hover:shadow-md hover:border-amber-300/80 transition-all group"
+              >
+                <ChevronLeft className="w-4 h-4 text-amber-300 shrink-0 group-hover:-translate-x-0.5 transition-transform" />
+                <div className="text-center flex-1 px-2">
+                  <div className="text-xl font-black text-amber-600 tracking-tight leading-none drop-shadow-[0_1px_2px_rgba(217,119,6,0.25)] font-mono">
+                    {coinsBalance.toLocaleString('en-US')}
+                  </div>
+                  <div className="text-xs text-amber-900/60 font-bold mt-1">
+                    شحن
+                  </div>
+                </div>
+                {/* 3D Shiny Gold Coin Icon Container */}
+                <div className="relative w-11 h-11 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-300 p-0.5 shadow-[0_0_12px_rgba(245,158,11,0.35)] border border-yellow-200 shrink-0 flex items-center justify-center">
+                  <svg className="w-8 h-8 drop-shadow-md" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="18" cy="18" r="16" fill="url(#gold_coin_outer)" stroke="#FEF3C7" strokeWidth="1.5"/>
+                    <circle cx="18" cy="18" r="12" fill="url(#gold_coin_inner)" stroke="#D97706" strokeWidth="1"/>
+                    <path d="M18 10L20.2 14.8L25.5 15.4L21.5 19L22.6 24.2L18 21.5L13.4 24.2L14.5 19L10.5 15.4L15.8 14.8L18 10Z" fill="url(#gold_coin_star)"/>
+                    <defs>
+                      <linearGradient id="gold_coin_outer" x1="4" y1="4" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#FBBF24"/>
+                        <stop offset="0.5" stopColor="#F59E0B"/>
+                        <stop offset="1" stopColor="#B45309"/>
+                      </linearGradient>
+                      <linearGradient id="gold_coin_inner" x1="8" y1="8" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#FEF08A"/>
+                        <stop offset="0.5" stopColor="#F59E0B"/>
+                        <stop offset="1" stopColor="#92400E"/>
+                      </linearGradient>
+                      <linearGradient id="gold_coin_star" x1="12" y1="10" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#FFFBEB"/>
+                        <stop offset="1" stopColor="#FBBF24"/>
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </div>
+              </div>
+
+              {/* Diamonds Card (Appears on the LEFT in RTL - English Numbers) */}
+              <div
+                onClick={() => setIsRechargeModalOpen(true)}
+                className="bg-gradient-to-b from-white via-sky-50/30 to-sky-100/20 rounded-2xl p-3.5 shadow-xs border border-sky-200/60 flex items-center justify-between cursor-pointer hover:shadow-md hover:border-sky-300/80 transition-all group"
+              >
+                <ChevronLeft className="w-4 h-4 text-sky-300 shrink-0 group-hover:-translate-x-0.5 transition-transform" />
+                <div className="text-center flex-1 px-2">
+                  <div className="text-xl font-black text-sky-600 tracking-tight leading-none drop-shadow-[0_1px_2px_rgba(2,132,199,0.25)] font-mono">
+                    {diamondsBalance.toLocaleString('en-US')}
+                  </div>
+                  <div className="text-xs text-sky-900/60 font-bold mt-1">
+                    ألماس
+                  </div>
+                </div>
+                {/* Crystal Glowing Diamond Icon Container */}
+                <div className="relative w-11 h-11 rounded-full bg-gradient-to-tr from-blue-600 via-sky-400 to-cyan-300 p-0.5 shadow-[0_0_14px_rgba(56,189,248,0.45)] border border-sky-200 shrink-0 flex items-center justify-center">
+                  <svg className="w-8 h-8 drop-shadow-md" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 6L28 14L18 30L8 14L18 6Z" fill="url(#diamond_base)"/>
+                    <path d="M18 6L28 14H8L18 6Z" fill="url(#diamond_top)"/>
+                    <path d="M18 6L14 14H22L18 6Z" fill="url(#diamond_center_top)"/>
+                    <path d="M18 30L8 14H18V30Z" fill="url(#diamond_left_bottom)"/>
+                    <path d="M18 30L28 14H18V30Z" fill="url(#diamond_right_bottom)"/>
+                    {/* Glint Sparkle */}
+                    <circle cx="23" cy="11" r="1.5" fill="white" opacity="0.9"/>
+                    <defs>
+                      <linearGradient id="diamond_base" x1="8" y1="6" x2="28" y2="30" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#38BDF8"/>
+                        <stop offset="0.5" stopColor="#0284C7"/>
+                        <stop offset="1" stopColor="#0369A1"/>
+                      </linearGradient>
+                      <linearGradient id="diamond_top" x1="8" y1="6" x2="28" y2="14" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#E0F2FE"/>
+                        <stop offset="1" stopColor="#38BDF8"/>
+                      </linearGradient>
+                      <linearGradient id="diamond_center_top" x1="14" y1="6" x2="22" y2="14" gradientUnits="userSpaceOnUse">
                     <stop stopColor="#FFFFFF"/>
                     <stop offset="1" stopColor="#7DD3FC"/>
                   </linearGradient>
@@ -554,7 +582,7 @@ export const ProfileScreen: React.FC = () => {
           
           {/* 1. زر "وكالتي" المميز في قمة القائمة (أول عنصر) */}
           <div 
-            onClick={() => setActiveServiceModal('agency')}
+            onClick={() => setIsAgencyModalOpen(true)}
             className="my-1 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 border border-blue-500/40 rounded-2xl p-3.5 flex items-center justify-between shadow-md cursor-pointer hover:border-blue-500 transition-all"
           >
             <div className="flex items-center gap-3">
@@ -702,6 +730,16 @@ export const ProfileScreen: React.FC = () => {
       </>
       )}
 
+      {/* Floating Room Capsule across other tabs when active & minimized */}
+      {activeTab !== 'home' && minimizedRoomSession && (
+        <FloatingRoomWidget
+          onExpand={() => {
+            setActiveTab('home');
+            maximizeRoomSession();
+          }}
+        />
+      )}
+
       {/* Fixed Bottom Navigation Bar (RTL Order from Right to Left) */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-4 py-2 flex items-center justify-around z-40 max-w-md mx-auto shadow-lg" dir="rtl">
         {/* 1. Far Right (أقصى اليمين): Home / الرئيسية */}
@@ -811,6 +849,7 @@ export const ProfileScreen: React.FC = () => {
         isOpen={isUserProfileModalOpen}
         onClose={() => setIsUserProfileModalOpen(false)}
         onOpenFamily={() => setIsFamilyModalOpen(true)}
+        userProfile={profile}
       />
 
       {/* Services Modals */}
@@ -877,6 +916,14 @@ export const ProfileScreen: React.FC = () => {
             avatar: updated.avatarUrl
           }));
         }}
+      />
+
+      <AgencyModal
+        isOpen={isAgencyModalOpen}
+        onClose={() => setIsAgencyModalOpen(false)}
+        userAvatar={profile.avatarUrl}
+        userName={profile.name}
+        agencyGid="30032"
       />
 
       <ServicesModal

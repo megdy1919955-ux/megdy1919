@@ -8,6 +8,7 @@ export interface RoomFirestoreData {
   ownerId: string;
   ownerName?: string;
   roomTitle?: string;
+  roomAvatar?: string;
   wallpaperUrl: string;
   wallpaperName?: string;
   themeConfig?: MainRoomCustomizerConfig;
@@ -70,6 +71,27 @@ export async function fetchRoomThemeFromFirestore(roomId: string): Promise<RoomF
   }
 }
 
+function sanitizeFirestorePayload<T extends Record<string, any>>(obj: T): Record<string, any> {
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (
+        value !== null &&
+        typeof value === 'object' &&
+        !Array.isArray(value) &&
+        !(value instanceof Date) &&
+        // Preserve FieldValue / serverTimestamp objects
+        !(typeof value === 'object' && '_methodName' in value)
+      ) {
+        result[key] = sanitizeFirestorePayload(value);
+      } else {
+        result[key] = value;
+      }
+    }
+  }
+  return result;
+}
+
 /**
  * Save / Update room theme and background wallpaper in Firestore.
  * Strictly checks that isOwner is true before allowing mutation.
@@ -80,6 +102,7 @@ export async function saveRoomThemeAndWallpaperToFirestore({
   ownerId = '88492011',
   ownerName = 'أميرة الشرق',
   roomTitle,
+  roomAvatar,
   wallpaperUrl,
   wallpaperName,
   themeConfig
@@ -89,15 +112,16 @@ export async function saveRoomThemeAndWallpaperToFirestore({
   ownerId?: string;
   ownerName?: string;
   roomTitle?: string;
+  roomAvatar?: string;
   wallpaperUrl?: string;
   wallpaperName?: string;
   themeConfig?: MainRoomCustomizerConfig;
 }): Promise<{ success: boolean; error?: string; data?: RoomFirestoreData }> {
-  // STRICT PERMISSION CHECK: Only Room Owner is authorized to save/modify room theme & background
+  // STRICT PERMISSION CHECK: Only Room Owner is authorized to save/modify room theme & background & metadata
   if (!isOwner) {
     return {
       success: false,
-      error: 'عذراً، صلاحية تعديل وحفظ ثيم وخلفية الغرفة الصوتية في قاعدة البيانات مقتصرة حصرياً على صاحب الغرفة (المالك) فقط 👑'
+      error: 'عذراً، صلاحية تعديل وحفظ بيانات وثيم الغرفة في قاعدة البيانات مقتصرة حصرياً على صاحب الغرفة (المالك) فقط 👑'
     };
   }
 
@@ -119,12 +143,19 @@ export async function saveRoomThemeAndWallpaperToFirestore({
     createdAt: existing?.createdAt || now
   };
 
+  const resolvedAvatar = roomAvatar !== undefined ? roomAvatar : existing?.roomAvatar;
+  if (resolvedAvatar) {
+    payload.roomAvatar = resolvedAvatar;
+  }
+
   try {
     const docRef = doc(db, 'rooms', roomId);
-    await setDoc(docRef, {
+    const writeData = sanitizeFirestorePayload({
       ...payload,
       lastModified: serverTimestamp()
-    }, { merge: true });
+    });
+
+    await setDoc(docRef, writeData, { merge: true });
 
     // Update local cache
     setRoomThemeToCache(roomId, payload);
@@ -145,6 +176,13 @@ export async function saveRoomThemeAndWallpaperToFirestore({
           })
         );
       }
+      if (payload.roomAvatar || payload.roomTitle) {
+        window.dispatchEvent(
+          new CustomEvent('room_metadata_updated', {
+            detail: { roomId, roomAvatar: payload.roomAvatar, roomTitle: payload.roomTitle }
+          })
+        );
+      }
     }
 
     return { success: true, data: payload };
@@ -154,7 +192,7 @@ export async function saveRoomThemeAndWallpaperToFirestore({
     setRoomThemeToCache(roomId, payload);
     return {
       success: false,
-      error: errorDetails.message,
+      error: errorDetails.error,
       data: payload
     };
   }

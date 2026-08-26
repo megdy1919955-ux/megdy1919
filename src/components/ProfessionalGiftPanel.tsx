@@ -100,9 +100,9 @@ interface ProfessionalGiftPanelProps {
 }
 
 const GIFT_CATEGORIES = [
-  'الفعالية',
-  'رائج',
   'استرداد',
+  'رائج',
+  'الفعالية',
   'الدولة/المنطقة',
   'مخصصة',
   'الامتيازات',
@@ -136,17 +136,17 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
   // CMS Editor Modal State (undefined = closed, null = new gift, GiftItem = edit)
   const [editingGift, setEditingGift] = useState<GiftItem | null | undefined>(undefined);
 
-  const [selectedTab, setSelectedTab] = useState<CategoryType>('الفعالية');
+  const [selectedTab, setSelectedTab] = useState<CategoryType>('استرداد');
   const [selectedSubTab, setSelectedSubTab] = useState<string>('الكل');
 
-  // Default selected gift is position 0 in 'الفعالية'
-  const firstEventGift = giftsList.find((g) => g.category === 'الفعالية') || giftsList[0];
-  const [selectedGift, setSelectedGift] = useState<GiftItem>(firstEventGift || {
+  // Default selected gift is position 0 in 'استرداد'
+  const firstRefundGift = giftsList.find((g) => g.category === 'استرداد' || isRefundGift(g)) || giftsList[0];
+  const [selectedGift, setSelectedGift] = useState<GiftItem>(firstRefundGift || {
     id: 'default',
-    name: 'هدية أسطورية',
+    name: 'هدية استرداد',
     price: 100,
     icon: '🎁',
-    category: 'الفعالية'
+    category: 'استرداد'
   });
 
   const [giftQuantity, setGiftQuantity] = useState<number>(1);
@@ -195,6 +195,22 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
     Array<{ id: number; delay: number; xOffset: number; xTarget: number; scale: number }>
   >([]);
 
+  // ================= CONSECUTIVE SENDING (COMBO) STATE & REFS =================
+  const [isPanelVisible, setIsPanelVisible] = useState<boolean>(false);
+  const [isComboActive, setIsComboActive] = useState<boolean>(false);
+  const [comboCount, setComboCount] = useState<number>(1);
+  const [comboProgress, setComboProgress] = useState<number>(1); // 1.0 down to 0.0
+  const [comboFloatingBursts, setComboFloatingBursts] = useState<Array<{ id: number; text: string; x: number }>>([]);
+  
+  const comboEndTimeRef = useRef<number>(0);
+  const comboAnimFrameRef = useRef<number | null>(null);
+  const lastSentGiftRef = useRef<GiftItem | null>(null);
+  const lastQuantityRef = useRef<number>(1);
+  const lastTargetNamesRef = useRef<string>('');
+  const lastTargetSeatIdsRef = useRef<number[]>([]);
+  const lastListenerNamesRef = useRef<string[]>([]);
+  const lastTotalCostRef = useRef<number>(0);
+
   // Subscribe to real-time gift database updates & role changes
   useEffect(() => {
     const unsubscribeGifts = subscribeToGifts((updatedList) => {
@@ -239,27 +255,45 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
 
   const prevIsOpenRef = useRef(false);
 
-  // Sync initialSelectedSeatIds ONLY when panel opens
+  // Sync initialSelectedSeatIds and panel visibility ONLY when panel transitions to open
   useEffect(() => {
     if (isOpen && !prevIsOpenRef.current) {
+      setIsPanelVisible(true);
+      setIsComboActive(false);
+      if (comboAnimFrameRef.current) {
+        cancelAnimationFrame(comboAnimFrameRef.current);
+        comboAnimFrameRef.current = null;
+      }
+      setSelectedTab('استرداد');
+      setSelectedSubTab('الكل');
+      const defaultFirstGift = giftsList.find((g) => g.category === 'استرداد' || isRefundGift(g)) || giftsList[0];
+      if (defaultFirstGift) {
+        setSelectedGift(defaultFirstGift);
+      }
       const activeOccupied = seats.filter((s) => !s.isEmpty);
       const validInitial = (initialSelectedSeatIds || []).filter((id) =>
         activeOccupied.some((s) => s.id === id)
       );
       if (validInitial.length > 0) {
         setSelectedSeatIds(validInitial);
+      } else if (activeOccupied.length > 0) {
+        // Pre-select the first occupied speaker if none specified
+        setSelectedSeatIds([activeOccupied[0].id]);
       } else {
         setSelectedSeatIds([]);
       }
       setSelectedListenerIds([]);
       setIsAllSelected(false);
+    } else if (!isOpen && prevIsOpenRef.current) {
+      setIsPanelVisible(false);
+      // Keep isComboActive as is so circular countdown button remains visible while panel is closed
     }
     prevIsOpenRef.current = isOpen;
-  }, [isOpen, initialSelectedSeatIds, seats]);
+  }, [isOpen, initialSelectedSeatIds, seats, giftsList]);
 
-  // Auto-reset trigger when panel closes
+  // Auto-reset trigger when panel closes completely
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen && !isComboActive) {
       setSelectedSeatIds([]);
       setSelectedListenerIds([]);
       setIsAllSelected(false);
@@ -271,16 +305,113 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
       setShowCustomQtyInput(false);
       setShowRecipientDropdown(false);
       setShowRoleSelector(false);
-      setSelectedTab('الفعالية');
+      setSelectedTab('استرداد');
       setSelectedSubTab('الكل');
-      const defaultFirstGift = giftsList.find((g) => g.category === 'الفعالية') || giftsList[0];
+      if (comboAnimFrameRef.current) {
+        cancelAnimationFrame(comboAnimFrameRef.current);
+        comboAnimFrameRef.current = null;
+      }
+      const defaultFirstGift = giftsList.find((g) => g.category === 'استرداد' || isRefundGift(g)) || giftsList[0];
       if (defaultFirstGift) {
         setSelectedGift(defaultFirstGift);
       }
     }
-  }, [isOpen, giftsList]);
+  }, [isOpen, isComboActive, giftsList]);
+
+  // ================= 5-SECOND COUNTDOWN COMBO ANIMATION FRAME =================
+  const COMBO_DURATION_MS = 5000;
+
+  const startOrResetComboTimer = () => {
+    comboEndTimeRef.current = Date.now() + COMBO_DURATION_MS;
+    setComboProgress(1);
+  };
+
+  useEffect(() => {
+    if (!isComboActive) {
+      if (comboAnimFrameRef.current) {
+        cancelAnimationFrame(comboAnimFrameRef.current);
+        comboAnimFrameRef.current = null;
+      }
+      return;
+    }
+
+    const updateComboCountdown = () => {
+      const now = Date.now();
+      const remaining = comboEndTimeRef.current - now;
+      if (remaining <= 0) {
+        setComboProgress(0);
+        setIsComboActive(false);
+        setIsPanelVisible(false);
+        if (comboAnimFrameRef.current) {
+          cancelAnimationFrame(comboAnimFrameRef.current);
+          comboAnimFrameRef.current = null;
+        }
+        onClose(); // Auto-dismiss completely and notify parent
+      } else {
+        setComboProgress(Math.max(0, Math.min(1, remaining / COMBO_DURATION_MS)));
+        comboAnimFrameRef.current = requestAnimationFrame(updateComboCountdown);
+      }
+    };
+
+    comboAnimFrameRef.current = requestAnimationFrame(updateComboCountdown);
+
+    return () => {
+      if (comboAnimFrameRef.current) {
+        cancelAnimationFrame(comboAnimFrameRef.current);
+        comboAnimFrameRef.current = null;
+      }
+    };
+  }, [isComboActive, onClose]);
+
+  // ================= CONSECUTIVE TAP SEND HANDLER =================
+  const handleComboTap = () => {
+    const cost = lastTotalCostRef.current;
+    if (localCoins < cost) {
+      setBroadcastNotice('⚠️ رصيدك لا يكفي للإرسال المتتالي!');
+      setTimeout(() => setBroadcastNotice(null), 2500);
+      return;
+    }
+
+    // Deduct coins for this consecutive hit
+    setLocalCoins((prev) => Math.max(0, prev - cost));
+
+    // Play sound effect
+    if (lastSentGiftRef.current) {
+      playGiftAudioEffect(lastSentGiftRef.current);
+    }
+
+    // Trigger onSendGift in parent room
+    if (onSendGift && lastSentGiftRef.current) {
+      onSendGift(
+        lastSentGiftRef.current,
+        lastQuantityRef.current,
+        lastTargetNamesRef.current,
+        lastTargetSeatIdsRef.current,
+        lastListenerNamesRef.current
+      );
+    }
+
+    // Reset 3-second clock back to full 3.0s!
+    startOrResetComboTimer();
+
+    const newCount = comboCount + 1;
+    setComboCount(newCount);
+    setTotalSentCount((prev) => prev + lastQuantityRef.current);
+
+    // Dynamic floating multiplier burst particle
+    const burstId = Date.now() + Math.random();
+    setComboFloatingBursts((prev) => [
+      ...prev.slice(-6),
+      { id: burstId, text: `+${lastQuantityRef.current} (x${newCount}) 🔥`, x: (Math.random() - 0.5) * 24 }
+    ]);
+    setTimeout(() => {
+      setComboFloatingBursts((prev) => prev.filter((b) => b.id !== burstId));
+    }, 900);
+  };
 
   const handleClose = () => {
+    setIsPanelVisible(false);
+    setIsComboActive(false);
     setSelectedSeatIds([]);
     setSelectedListenerIds([]);
     setIsAllSelected(false);
@@ -292,7 +423,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
     setShowCustomQtyInput(false);
     setShowRecipientDropdown(false);
     setShowRoleSelector(false);
-    setSelectedTab('الفعالية');
+    setSelectedTab('استرداد');
     setSelectedSubTab('الكل');
     onClose();
   };
@@ -356,7 +487,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !isComboActive) return null;
 
   const activeOccupiedSeatIds = selectedSeatIds.filter((id) =>
     occupiedSeats.some((s) => s.id === id)
@@ -394,11 +525,13 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
       return;
     }
 
-    if (selectedSeatIds.includes(seatId)) {
-      setSelectedSeatIds(selectedSeatIds.filter((id) => id !== seatId));
-    } else {
-      setSelectedSeatIds([...selectedSeatIds, seatId]);
-    }
+    setSelectedSeatIds((prev) => {
+      if (prev.includes(seatId)) {
+        return prev.filter((id) => id !== seatId);
+      } else {
+        return [...prev, seatId];
+      }
+    });
   };
 
   const toggleListenerSelection = (listenerId: string) => {
@@ -464,6 +597,17 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
       return foundLis ? foundLis.name : id;
     });
 
+    const finalSeatIds = isAllSelected ? occupiedSeats.map((s) => s.id) : targetSeatIdsToSend;
+    const finalLisNames = isAllSelected ? roomListeners.map((l) => l.name) : listenerNamesToSend;
+
+    // Cache state for consecutive combo sending
+    lastSentGiftRef.current = selectedGift;
+    lastQuantityRef.current = giftQuantity;
+    lastTargetNamesRef.current = targetNames;
+    lastTargetSeatIdsRef.current = finalSeatIds;
+    lastListenerNamesRef.current = finalLisNames;
+    lastTotalCostRef.current = totalCost;
+
     // Play synthesized or custom audio effect
     if (selectedGift) {
       playGiftAudioEffect(selectedGift);
@@ -474,8 +618,8 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
         selectedGift,
         giftQuantity,
         targetNames,
-        isAllSelected ? occupiedSeats.map((s) => s.id) : targetSeatIdsToSend,
-        isAllSelected ? roomListeners.map((l) => l.name) : listenerNamesToSend
+        finalSeatIds,
+        finalLisNames
       );
     }
 
@@ -502,6 +646,13 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
     setTimeout(() => {
       setShowSuccessCheck(false);
     }, 1200);
+
+    // HIDE MAIN GIFT PANEL & ACTIVATE 5-SECOND CONSECUTIVE COMBO BUTTON
+    setIsPanelVisible(false);
+    setIsComboActive(true);
+    setComboCount(1);
+    startOrResetComboTimer();
+    onClose(); // Reset showGiftDrawer in parent so user can reopen gifts anytime
   };
 
   const handleApplyCustomQty = () => {
@@ -515,20 +666,36 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
 
   return (
     <>
+      {/* Top Floating Alert Banner (Notice) */}
       <AnimatePresence>
-        <div 
-          onClick={(e) => {
-            if (e.target === e.currentTarget) handleClose();
-          }}
-          className="fixed inset-0 z-50 bg-transparent flex items-end justify-center dir-rtl select-none"
-        >
+        {broadcastNotice && (
           <motion.div
-            initial={{ y: '100%', opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: '100%', opacity: 0 }}
-            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            className="w-full flex flex-col items-stretch gap-1 px-0 pb-0 relative pointer-events-none"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-rose-950/95 border border-rose-500/80 text-rose-200 text-xs font-bold px-4 py-2 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-2 pointer-events-none"
           >
+            <span>{broadcastNotice}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ================= 1. MAIN EXPANDED GIFT PANEL ================= */}
+      <AnimatePresence>
+        {isPanelVisible && (
+          <div 
+            onClick={(e) => {
+              if (e.target === e.currentTarget) handleClose();
+            }}
+            className="fixed inset-0 z-50 bg-transparent flex items-end justify-center dir-rtl select-none"
+          >
+            <motion.div
+              initial={{ y: '100%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '100%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="w-full flex flex-col items-stretch gap-1 px-0 pb-0 relative pointer-events-none"
+            >
             {/* Standalone Container for Global Broadcast Banner */}
             <AnimatePresence>
               {Boolean(selectedGift?.hasGlobalBroadcast && selectedGift.price >= 20000) && (
@@ -768,7 +935,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                 </div>
 
                 {/* Recipient Avatars Row */}
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 max-w-[78%]">
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 max-w-[78%]">
                   {occupiedSeats.length === 0 ? (
                     <span className="text-[10px] text-slate-400 font-medium px-2 italic">
                       لا يوجد متحدثون على المايك
@@ -779,14 +946,18 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                       return (
                         <button
                           key={seat.id}
-                          onClick={() => toggleSeatSelection(seat.id)}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSeatSelection(seat.id);
+                          }}
                           className="relative shrink-0 flex flex-col items-center cursor-pointer group transition-transform active:scale-90"
                           title={`${seat.userName} (مقعد ${seat.id})`}
                         >
                           <div
-                            className={`relative w-7.5 h-7.5 rounded-full transition-all duration-200 ${
+                            className={`relative w-8 h-8 rounded-full transition-all duration-200 ${
                               isSelected
-                                ? 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-[#0B1220] scale-105 opacity-100 shadow-[0_0_10px_rgba(52,211,153,0.5)]'
+                                ? 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-[#0B1220] scale-105 opacity-100 shadow-[0_0_12px_rgba(52,211,153,0.7)]'
                                 : 'opacity-40 hover:opacity-80 grayscale-[40%] scale-95'
                             }`}
                           >
@@ -795,15 +966,22 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                               alt={seat.userName}
                               className="w-full h-full rounded-full object-cover"
                             />
-                            <span className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 text-slate-950 font-black text-[7px] w-3.5 h-3.5 rounded-full flex items-center justify-center border border-slate-950">
+                            <span className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 text-slate-950 font-black text-[7.5px] w-4 h-4 rounded-full flex items-center justify-center border border-slate-950">
                               {seat.id}
                             </span>
                             {isSelected && (
-                              <span className="absolute -top-0.5 -left-0.5 bg-emerald-400 text-slate-950 rounded-full p-0.5 shadow-sm border border-[#0B1220]">
-                                <Check className="w-2 h-2 stroke-[3.5]" />
+                              <span className="absolute -top-1 -left-1 bg-emerald-400 text-slate-950 rounded-full p-0.5 shadow-md border border-[#0B1220]">
+                                <Check className="w-2.5 h-2.5 stroke-[3.5]" />
                               </span>
                             )}
                           </div>
+                          <span
+                            className={`text-[8.5px] mt-0.5 truncate max-w-[50px] text-center leading-tight transition-colors ${
+                              isSelected ? 'text-emerald-300 font-extrabold' : 'text-slate-400'
+                            }`}
+                          >
+                            {seat.userName || `مقعد ${seat.id}`}
+                          </span>
                         </button>
                       );
                     })
@@ -988,14 +1166,14 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
 
               {/* ================= 6. FOOTER CONTROL BAR (Static/Sticky Layer) ================= */}
               <div className="bg-[#070B14]/90 backdrop-blur-md p-2 border-t border-white/10 shrink-0 sticky bottom-0 z-30 relative">
-                {/* Multiplier / Quantity Dropup Popover */}
+                {/* Multiplier / Quantity Dropup Popover (Aligned on the Left above multiplier pill) */}
                 <AnimatePresence>
                   {showQuantityMenu && (
                     <motion.div
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute bottom-12 right-2 w-32 bg-[#131A2A] border border-cyan-400/40 rounded-xl shadow-2xl p-1 z-50 space-y-0.5"
+                      className="absolute bottom-12 left-2 w-32 bg-[#131A2A] border border-cyan-400/40 rounded-xl shadow-2xl p-1 z-50 space-y-0.5"
                     >
                       <button
                         onClick={() => setShowCustomQtyInput(!showCustomQtyInput)}
@@ -1042,22 +1220,33 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                   )}
                 </AnimatePresence>
 
-                <div className="flex items-center justify-between gap-2">
-                  {/* Left Side: Combined Cyan Send Button + Quantity Dropup Pill */}
-                  <div className="flex items-center gap-1 relative">
-                    <AnimatePresence>
-                      {showSuccessCheck && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 5, scale: 0.8 }}
-                          animate={{ opacity: 1, y: -24, scale: 1 }}
-                          exit={{ opacity: 0, y: -32, scale: 0.8 }}
-                          className="absolute -top-1 left-3 bg-gradient-to-r from-emerald-400 to-cyan-400 text-slate-950 font-black text-[9px] px-2 py-0.5 rounded-full shadow-lg border border-white/20 flex items-center gap-1 z-20 pointer-events-none whitespace-nowrap"
-                        >
-                          <Sparkles className="w-2.5 h-2.5 text-amber-900" />
-                          <span>تم الإرسال x{giftQuantity}!</span>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                {/* Footer Actions: Balance on Right (اليد اليمين) & Send on Left (اليد الشمال) */}
+                <div className="flex items-center justify-between gap-2" dir="rtl">
+                  {/* Right Side (اليد اليمين): Recharge / Coins Display */}
+                  <div
+                    onClick={onOpenRecharge}
+                    className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/10 hover:from-amber-500/30 hover:to-yellow-500/20 border border-amber-400/40 px-2.5 py-1 rounded-full cursor-pointer transition-all shadow-xs"
+                    title="شحن الكوينز"
+                  >
+                    <span className="text-amber-400 text-xs">🪙</span>
+                    <span className="font-mono font-black text-xs text-amber-300">
+                      {localCoins.toLocaleString()}
+                    </span>
+                    <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded-full shadow-xs">
+                      شحن
+                    </span>
+                  </div>
+
+                  {/* Left Side (اليد الشمال): Combined Cyan Send Button + Quantity Dropup Pill */}
+                  <div className="flex items-center gap-1 relative" dir="ltr">
+                    {/* Multiplier Pill Button */}
+                    <button
+                      onClick={() => setShowQuantityMenu(!showQuantityMenu)}
+                      className="bg-white/10 hover:bg-white/20 text-white font-mono font-bold text-[10px] px-2 py-1.5 rounded-full border border-white/10 flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <span>x{giftQuantity}</span>
+                      <ChevronDown className="w-2.5 h-2.5" />
+                    </button>
 
                     <button
                       id="gift-send-btn"
@@ -1081,35 +1270,142 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                       )}
                     </button>
 
-                    {/* Multiplier Pill Button */}
-                    <button
-                      onClick={() => setShowQuantityMenu(!showQuantityMenu)}
-                      className="bg-white/10 hover:bg-white/20 text-white font-mono font-bold text-[10px] px-2 py-1.5 rounded-full border border-white/10 flex items-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <span>x{giftQuantity}</span>
-                      <ChevronDown className="w-2.5 h-2.5" />
-                    </button>
-                  </div>
-
-                  {/* Right Side: Recharge / Coins Display */}
-                  <div
-                    onClick={onOpenRecharge}
-                    className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/10 hover:from-amber-500/30 hover:to-yellow-500/20 border border-amber-400/40 px-2.5 py-1 rounded-full cursor-pointer transition-all shadow-xs"
-                    title="شحن الكوينز"
-                  >
-                    <span className="text-amber-400 text-xs">🪙</span>
-                    <span className="font-mono font-black text-xs text-amber-300">
-                      {localCoins.toLocaleString()}
-                    </span>
-                    <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded-full shadow-xs">
-                      شحن
-                    </span>
+                    <AnimatePresence>
+                      {showSuccessCheck && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 5, scale: 0.8 }}
+                          animate={{ opacity: 1, y: -24, scale: 1 }}
+                          exit={{ opacity: 0, y: -32, scale: 0.8 }}
+                          className="absolute -top-1 right-2 bg-gradient-to-r from-emerald-400 to-cyan-400 text-slate-950 font-black text-[9px] px-2 py-0.5 rounded-full shadow-lg border border-white/20 flex items-center gap-1 z-20 pointer-events-none whitespace-nowrap"
+                        >
+                          <Sparkles className="w-2.5 h-2.5 text-amber-900" />
+                          <span>تم الإرسال x{giftQuantity}!</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
               </div>
             </div>
           </motion.div>
         </div>
+      )}
+      </AnimatePresence>
+
+      {/* ================= 2. CONSECUTIVE COMBO BUTTON WITH 5-SECOND COUNTDOWN RING ================= */}
+      <AnimatePresence>
+        {isComboActive && (
+          <motion.div
+            initial={{ scale: 0, opacity: 0, y: 30 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0, opacity: 0, y: 20 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 350 }}
+            className="fixed bottom-4 sm:bottom-6 left-16 sm:left-[64px] z-[9999] pointer-events-auto flex flex-col items-center select-none drop-shadow-2xl"
+          >
+            {/* Floating Combo Burst Badges */}
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 pointer-events-none whitespace-nowrap z-20">
+              <AnimatePresence>
+                {comboFloatingBursts.map((burst) => (
+                  <motion.div
+                    key={burst.id}
+                    initial={{ opacity: 1, y: 0, scale: 0.8, x: burst.x }}
+                    animate={{ opacity: 0, y: -45, scale: 1.35 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.75, ease: 'easeOut' }}
+                    className="font-black text-[11px] font-mono text-amber-300 drop-shadow-[0_0_10px_rgba(245,158,11,0.9)] bg-black/85 px-2.5 py-0.5 rounded-full border border-amber-400/60 shadow-xl"
+                  >
+                    {burst.text}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+
+            {/* Main Interactive Circular Button with 5s Clockwise Countdown Border */}
+            <motion.button
+              id="consecutive-combo-gift-btn"
+              whileTap={{ scale: 0.86 }}
+              whileHover={{ scale: 1.06 }}
+              onClick={handleComboTap}
+              className="relative w-20 h-20 flex items-center justify-center cursor-pointer rounded-full group focus:outline-hidden"
+              title="اضغط للإرسال المتتالي (خلال 5 ثوانٍ)"
+            >
+              {/* Outer Radiant Glow Halo */}
+              <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-amber-500 via-orange-500 to-yellow-300 opacity-70 blur-md group-hover:opacity-100 animate-pulse transition-opacity" />
+
+              {/* Clockwise SVG Border Countdown Ring (5-Second Countdown like Clock Hands) */}
+              <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 80 80">
+                <defs>
+                  <linearGradient id="comboTimerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#f59e0b" />
+                    <stop offset="50%" stopColor="#fbbf24" />
+                    <stop offset="100%" stopColor="#fde047" />
+                  </linearGradient>
+                </defs>
+                {/* Background Border Track Circle */}
+                <circle
+                  cx="40"
+                  cy="40"
+                  r="35"
+                  stroke="rgba(255, 255, 255, 0.2)"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                {/* Active Circular Countdown Line (Decreases Clockwise like Clock hands over 5 seconds) */}
+                <circle
+                  cx="40"
+                  cy="40"
+                  r="35"
+                  stroke="url(#comboTimerGradient)"
+                  strokeWidth="4.5"
+                  strokeLinecap="round"
+                  fill="none"
+                  strokeDasharray={219.91}
+                  strokeDashoffset={219.91 * (1 - comboProgress)}
+                  className="transition-[stroke-dashoffset] duration-75"
+                />
+              </svg>
+
+              {/* Inner Solid Interactive Button */}
+              <div className="relative w-15 h-15 rounded-full bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 border-2 border-amber-200/80 shadow-[inset_0_2px_5px_rgba(255,255,255,0.6),0_4px_15px_rgba(0,0,0,0.6)] flex flex-col items-center justify-center overflow-hidden">
+                {/* Gift Icon / Media Preview */}
+                <div className="relative flex items-center justify-center">
+                  {isVideoResource(lastSentGiftRef.current?.icon || '') || lastSentGiftRef.current?.videoUrl ? (
+                    <video
+                      src={lastSentGiftRef.current?.videoUrl || lastSentGiftRef.current?.icon}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-7 h-7 object-contain pointer-events-none"
+                    />
+                  ) : isMediaUrl(lastSentGiftRef.current?.icon || '') ? (
+                    <img
+                      src={lastSentGiftRef.current?.icon}
+                      alt={lastSentGiftRef.current?.name}
+                      className="w-7 h-7 object-contain pointer-events-none"
+                    />
+                  ) : (
+                    <span className="text-xl select-none">
+                      {getCleanGiftEmoji(lastSentGiftRef.current?.name || '', lastSentGiftRef.current?.icon || '🎁')}
+                    </span>
+                  )}
+                </div>
+
+                {/* Dynamic Combo Label & Consecutive Count */}
+                <div className="bg-slate-950/90 px-1.5 py-0.2 rounded-full border border-amber-400/50 text-[8.5px] font-black font-mono text-amber-300 tracking-tight leading-none mt-0.5 flex items-center gap-0.5 shadow-sm">
+                  <span>إرسال</span>
+                  <span className="text-yellow-400 font-extrabold">x{comboCount}</span>
+                </div>
+              </div>
+            </motion.button>
+
+            {/* Remaining Seconds Clock Countdown Badge */}
+            <div className="mt-1 px-2.5 py-0.5 rounded-full bg-slate-950/85 border border-amber-500/40 backdrop-blur-md text-[9px] font-mono font-black text-amber-300 flex items-center gap-1 shadow-md">
+              <Sparkles className="w-2.5 h-2.5 text-amber-400 animate-spin" />
+              <span>{(comboProgress * 5).toFixed(1)}s</span>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* ================= CMS GIFT EDITOR MODAL (Developer / Authorized Only) ================= */}

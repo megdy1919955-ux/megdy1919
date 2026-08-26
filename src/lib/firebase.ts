@@ -42,28 +42,61 @@ export enum OperationType {
   WRITE = 'write'
 }
 
-export interface FirestoreErrorDetails {
-  code: string;
-  message: string;
-  operation: OperationType;
-  path: string;
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  };
 }
 
 export function handleFirestoreError(
   error: unknown,
-  operation: OperationType,
-  path: string
-): FirestoreErrorDetails {
+  operationType: OperationType,
+  path: string | null
+): FirestoreErrorInfo {
   const err = error as { code?: string; message?: string };
-  const details: FirestoreErrorDetails = {
-    code: err.code || 'unknown',
-    message: err.message || 'An unexpected database error occurred',
-    operation,
+  const errMessage = error instanceof Error ? error.message : String(err?.message || error);
+
+  // If client is offline or unavailable, log softly without breaking the application
+  if (
+    errMessage.includes('unavailable') ||
+    errMessage.includes('offline') ||
+    errMessage.includes('Could not reach Cloud Firestore') ||
+    err?.code === 'unavailable'
+  ) {
+    console.warn(`[Firestore Offline/Unavailable] Operation: ${operationType} on path: ${path}. Operating with local persistence cache.`);
+  } else {
+    console.error(`[Firestore Error] Operation: ${operationType} on path: ${path}`, err);
+  }
+
+  const errInfo: FirestoreErrorInfo = {
+    error: errMessage,
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map((provider) => ({
+        providerId: provider.providerId,
+        email: provider.email
+      })) || []
+    },
+    operationType,
     path
   };
 
-  console.error(`[Firestore Error] Operation: ${operation} on path: ${path}`, details);
-  return details;
+  return errInfo;
 }
 
 export { app, db, auth };

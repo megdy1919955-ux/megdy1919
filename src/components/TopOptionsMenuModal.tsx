@@ -6,6 +6,7 @@ import {
   Eraser,
   MessageSquareLock,
   MessageSquare,
+  Image as ImageIcon,
   Palette,
   EyeOff,
   Eye,
@@ -17,6 +18,7 @@ import {
   Swords,
   Zap,
   Sparkles,
+  ShieldAlert,
   X,
   KeyRound,
   Check,
@@ -52,6 +54,7 @@ interface TopOptionsMenuModalProps {
   onStartTeamBattle?: () => void;
   onStartRoomPK?: () => void;
   onOpenCustomTheme?: () => void;
+  onOpenModeratorStats?: () => void;
   onTriggerToast?: (msg: string) => void;
 }
 
@@ -80,6 +83,7 @@ export const TopOptionsMenuModal: React.FC<TopOptionsMenuModalProps> = ({
   onStartTeamBattle,
   onStartRoomPK,
   onOpenCustomTheme,
+  onOpenModeratorStats,
   onTriggerToast,
 }) => {
   const [showPasscodeDialog, setShowPasscodeDialog] = useState(false);
@@ -223,12 +227,12 @@ export const TopOptionsMenuModal: React.FC<TopOptionsMenuModalProps> = ({
     },
     {
       id: 'wallpapers',
-      title: 'الخلفيات',
-      icon: Palette,
-      bgClass: 'bg-purple-500 text-white shadow-purple-500/30',
+      title: 'خلفيات الروم',
+      icon: ImageIcon,
+      bgClass: 'bg-gradient-to-tr from-purple-600 to-indigo-500 text-white shadow-purple-500/30',
       action: onOpenWallpapers,
       permissionRole: 'owner' as const,
-      deniedMessage: 'تغيير الخلفيات متاح للوكيل (صاحب الغرفة) فقط 🎨',
+      deniedMessage: 'تغيير الخلفيات متاح للوكيل (صاحب الغرفة) فقط 🖼️',
       badge: false,
     },
 
@@ -321,6 +325,16 @@ export const TopOptionsMenuModal: React.FC<TopOptionsMenuModalProps> = ({
     },
 
     // Row 4
+    {
+      id: 'moderator_stats',
+      title: 'إحصائيات المشرفين',
+      icon: ShieldAlert,
+      bgClass: 'bg-gradient-to-tr from-amber-500 via-yellow-500 to-rose-500 text-slate-950 shadow-amber-500/30',
+      action: onOpenModeratorStats,
+      permissionRole: 'admin' as const,
+      deniedMessage: 'إحصائيات وسجلات المشرفين متاحة لمالك الغرفة والمشرفين فقط 🛡️',
+      badge: false,
+    },
     {
       id: 'custom_theme',
       title: 'ثيم خاص',

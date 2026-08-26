@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Mic, ChevronLeft, Flag, Plus, X, Image as ImageIcon } from 'lucide-react';
+import { Users, Mic, ChevronLeft, Flag, Plus, X, Image as ImageIcon, Sparkles, Heart } from 'lucide-react';
 
 interface ProfileTabContentProps {
   onOpenFamily?: () => void;
@@ -94,7 +94,7 @@ export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({ onOpenFami
   };
 
   return (
-    <div className="space-y-5 text-right">
+    <div className="space-y-6 text-right">
       
       {/* حقل إدخال مخفي لاختيار صور الألبوم من استديو الهاتف مباشرة عند الضغط على رمز + */}
       <input
@@ -107,23 +107,29 @@ export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({ onOpenFami
       />
 
       {/* 1. قسم ألبوم الصور الشخصية (مفتوح للاستديو برمز + دائري) */}
-      <div className="space-y-2">
+      <div className="space-y-3 bg-[#F8FAFC] border border-slate-200/80 rounded-2xl p-4 shadow-xs">
         <div className="flex items-center justify-between">
-          <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-            <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+          <h4 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5">
+            <ImageIcon className="w-4 h-4 text-amber-500" />
             <span>ألبوم الصور الشخصية</span>
-            <span className="text-[10px] bg-amber-500/10 text-amber-400 px-1.5 py-0.2 rounded-md font-bold">
+            <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">
               {albumImages.length} صور
             </span>
           </h4>
-          <span className="text-[10px] text-slate-400 font-medium">اضغط (+) لاختيار صور من الهاتف</span>
+          <button 
+            onClick={() => photoInputRef.current?.click()}
+            className="text-[11px] text-amber-600 hover:text-amber-700 font-bold flex items-center gap-1 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>إضافة صور</span>
+          </button>
         </div>
 
         <div className="grid grid-cols-4 gap-2.5">
           {albumImages.map((imgUrl, index) => (
             <div
               key={index}
-              className="relative aspect-square rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 shadow-md group"
+              className="relative aspect-square rounded-2xl overflow-hidden bg-slate-200 border border-slate-300/80 shadow-xs group"
             >
               <img src={imgUrl} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
               <button
@@ -131,7 +137,7 @@ export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({ onOpenFami
                   e.stopPropagation();
                   handleDeletePhoto(index);
                 }}
-                className="absolute top-1 left-1 p-1 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full shadow-md transition-all cursor-pointer opacity-80 hover:opacity-100 z-10"
+                className="absolute top-1 left-1 p-1 bg-rose-600/90 hover:bg-rose-700 text-white rounded-full shadow-md transition-all cursor-pointer z-10"
                 title="حذف الصورة"
               >
                 <X className="w-3 h-3" />
@@ -142,72 +148,80 @@ export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({ onOpenFami
           {/* زر + الزائد الدائم لفتح استديو وقائمة صور الهاتف */}
           <div
             onClick={() => photoInputRef.current?.click()}
-            className="relative aspect-square bg-slate-900/80 hover:bg-slate-900 border-2 border-dashed border-amber-500/60 hover:border-amber-400 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all group shadow-sm text-center p-1"
+            className="relative aspect-square bg-white hover:bg-amber-50/40 border-2 border-dashed border-amber-400 hover:border-amber-500 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all group shadow-xs text-center p-1"
             title="فتح الاستديو وقائمة الصور في الهاتف"
           >
-            <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-slate-950 transition-all">
+            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-slate-950 transition-all">
               <Plus className="w-5 h-5 stroke-[2.5]" />
             </div>
-            <span className="text-[9px] font-black text-amber-300 mt-1">إضافة صور</span>
+            <span className="text-[10px] font-black text-slate-800 mt-1">إضافة</span>
           </div>
         </div>
       </div>
 
       {/* 2. قسم العائلة (Family Section) */}
-      <div className="space-y-2">
-        <h4 className="text-xs font-bold text-slate-400">العائلة</h4>
+      <div className="space-y-3 bg-[#F8FAFC] border border-slate-200/80 rounded-2xl p-4 shadow-xs">
+        <h4 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5">
+          <Users className="w-4 h-4 text-blue-600" />
+          <span>العائلة</span>
+        </h4>
         <div 
           onClick={onOpenFamily}
-          className="relative bg-gradient-to-r from-blue-950 via-blue-900/60 to-slate-950 border border-blue-500/30 rounded-2xl p-4 flex items-center justify-between shadow-lg overflow-hidden cursor-pointer hover:border-blue-400/50 transition-all"
+          className="relative bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-2xl p-4 flex items-center justify-between shadow-md overflow-hidden cursor-pointer hover:opacity-95 transition-all group"
         >
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-blue-500/10 rounded-full blur-xl"></div>
+          <div className="absolute -right-4 -bottom-4 w-28 h-28 bg-white/10 rounded-full blur-xl" />
           
           <div className="space-y-1 z-10">
-            <span className="text-sm font-black text-white">Y a</span>
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
-              <Users className="w-3.5 h-3.5 text-blue-400" />
-              <span>3/360</span>
+            <span className="text-base font-black tracking-wide">عائلة الملوك (Ya)</span>
+            <div className="flex items-center gap-2 text-xs text-blue-100 font-medium">
+              <span className="bg-white/20 px-2 py-0.5 rounded-md font-mono">3/360 عضو</span>
+              <span>•</span>
+              <span>المستوى 12</span>
             </div>
           </div>
 
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 p-0.5 shadow-md shrink-0 z-10">
-            <div className="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center text-lg">
-              🛡️
-            </div>
+          <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-2xl shadow-inner shrink-0 z-10 group-hover:scale-110 transition-transform">
+            🛡️
           </div>
         </div>
       </div>
 
       {/* 3. معلومات عني (Bio & Info) */}
-      <div className="space-y-2">
-        <h4 className="text-xs font-bold text-slate-400">معلومات عني</h4>
+      <div className="space-y-3 bg-[#F8FAFC] border border-slate-200/80 rounded-2xl p-4 shadow-xs">
+        <h4 className="text-xs sm:text-sm font-black text-slate-900">معلومات عني</h4>
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="bg-slate-900/80 border border-slate-800 text-slate-300 text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5">
-            <Flag className="w-3.5 h-3.5 text-rose-400" /> وطني
+          <span className="bg-white border border-slate-200 text-slate-800 font-bold text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs">
+            <Flag className="w-3.5 h-3.5 text-rose-500" /> وطني: اليمن 🇾🇪
+          </span>
+          <span className="bg-white border border-slate-200 text-slate-800 font-bold text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" /> الحالة: نشط دائماً
           </span>
         </div>
       </div>
 
       {/* 4. الصوت (Voice Bio) */}
-      <div className="space-y-2">
-        <h4 className="text-xs font-bold text-slate-400">الصوت</h4>
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex items-center justify-between">
+      <div className="space-y-3 bg-[#F8FAFC] border border-slate-200/80 rounded-2xl p-4 shadow-xs">
+        <h4 className="text-xs sm:text-sm font-black text-slate-900">الصوت</h4>
+        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 flex items-center justify-between shadow-2xs">
           <div className="space-y-0.5">
-            <span className="text-xs font-bold text-white">إجراء تسجيل!</span>
-            <p className="text-[10px] text-slate-400">يساعد هذا على جذب المزيد من المتابعين إليك.</p>
+            <span className="text-xs font-black text-slate-900">إجراء تسجيل صوتي!</span>
+            <p className="text-[11px] text-slate-500">يساعد الصوت على جذب المزيد من المتابعين والمعجبين إليك.</p>
           </div>
-          <button className="w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-white transition-colors cursor-pointer shrink-0">
-            <Mic className="w-4 h-4 text-amber-400" />
+          <button className="w-10 h-10 rounded-full bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-sm active:scale-95">
+            <Mic className="w-5 h-5 stroke-[2.5]" />
           </button>
         </div>
       </div>
 
       {/* 5. علاقاتي (Relationships / CP) */}
-      <div className="space-y-3">
+      <div className="space-y-3 bg-[#F8FAFC] border border-slate-200/80 rounded-2xl p-4 shadow-xs">
         <div className="flex items-center justify-between">
-          <h4 className="text-xs font-bold text-slate-400">علاقاتي</h4>
-          <span className="text-xs text-slate-400 hover:text-white cursor-pointer flex items-center gap-1">
-            إعداد <ChevronLeft className="w-3 h-3" />
+          <h4 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5">
+            <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
+            <span>علاقاتي (CP)</span>
+          </h4>
+          <span className="text-xs text-slate-500 hover:text-amber-600 font-bold cursor-pointer flex items-center gap-1">
+            إعداد <ChevronLeft className="w-3.5 h-3.5" />
           </span>
         </div>
 
@@ -215,20 +229,20 @@ export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({ onOpenFami
           {relationships.map((rel) => (
             <div 
               key={rel.id} 
-              className="relative bg-gradient-to-b from-rose-950/40 via-slate-900 to-slate-950 border border-rose-500/30 rounded-2xl p-4 flex flex-col items-center justify-between gap-3 shadow-xl overflow-hidden group"
+              className="relative bg-white border border-rose-200 rounded-2xl p-3.5 flex flex-col items-center justify-between gap-2.5 shadow-xs overflow-hidden group hover:border-rose-300 transition-all"
             >
               {/* Level Badge Header */}
-              <span className="text-[10px] font-bold text-rose-300 bg-rose-500/20 px-2.5 py-0.5 rounded-full border border-rose-500/30">
+              <span className="text-[10px] font-black text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
                 {rel.level}
               </span>
 
               {/* Avatar */}
-              <div className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-rose-500 to-pink-500 shadow-lg">
-                <img src={rel.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100'} alt={rel.name} className="w-full h-full object-cover rounded-full" />
+              <div className="w-14 h-14 rounded-full p-0.5 bg-gradient-to-tr from-rose-400 to-pink-500 shadow-md">
+                <img src={rel.avatar} alt={rel.name} className="w-full h-full object-cover rounded-full border border-white" />
               </div>
 
               {/* Name */}
-              <span className="text-xs font-bold text-white truncate w-full text-center">
+              <span className="text-xs font-black text-slate-900 truncate w-full text-center">
                 {rel.name}
               </span>
             </div>

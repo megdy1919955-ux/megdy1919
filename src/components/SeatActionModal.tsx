@@ -44,6 +44,7 @@ export const SeatActionModal: React.FC<SeatActionModalProps> = ({
   if (!isOpen || seatId === null) return null;
 
   const isOccupied = Boolean(seatUserName && seatUserName.trim() !== '' && !seatUserName.includes('فارغ'));
+  const canClimbLocked = isRoomOwner || isCurrentAdmin;
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -206,39 +207,57 @@ export const SeatActionModal: React.FC<SeatActionModalProps> = ({
                 {/* 1. Take Seat / Transfer to Seat */}
                 <button
                   onClick={() => {
-                    if (isSeatLocked) {
-                      triggerToast('عذراً! هذا المايك مغلق أو مقفل حالياً 🔒 لا يمكن الصعود عليه نهائياً.');
+                    if (isSeatLocked && !canClimbLocked) {
+                      triggerToast('عذراً! هذا المايك مغلق أو مقفل حالياً 🔒 لا يمكن الصعود عليه.');
                       return;
                     }
                     if (currentUserSeatId) {
                       triggerToast('جاري نقل المضيف والعداد تلقائياً... 🔄');
+                    } else if (isSeatLocked) {
+                      triggerToast('تم الجلوس على المايك المغلق بنجاح! 🪑🔒');
                     } else {
                       triggerToast('تم جلوسك على المقعد بنجاح! 🪑');
                     }
                     onTakeSeat?.(seatId);
                     setTimeout(onClose, 600);
                   }}
-                  disabled={isSeatLocked}
+                  disabled={isSeatLocked && !canClimbLocked}
                   className={`w-full p-3 rounded-2xl flex items-center justify-between shadow-lg transition-all ${
-                    isSeatLocked
+                    isSeatLocked && !canClimbLocked
                       ? 'bg-slate-800/80 border border-slate-700 text-slate-400 opacity-60 cursor-not-allowed'
+                      : isSeatLocked && canClimbLocked
+                      ? 'bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-500 hover:brightness-110 text-white font-black shadow-amber-500/25 cursor-pointer border border-amber-400/50'
                       : 'bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:brightness-110 text-slate-950 font-black shadow-amber-500/20 cursor-pointer'
                   }`}
-                  title={isSeatLocked ? 'المايك مقفل حالياً 🔒' : undefined}
+                  title={isSeatLocked && !canClimbLocked ? 'المايك مقفل حالياً 🔒' : undefined}
                 >
                   <div className="flex items-center gap-2.5">
-                    {isSeatLocked ? <Lock className="w-5 h-5 text-slate-400" /> : <Armchair className="w-5 h-5 fill-slate-950" />}
+                    {isSeatLocked && !canClimbLocked ? (
+                      <Lock className="w-5 h-5 text-slate-400" />
+                    ) : isSeatLocked ? (
+                      <Lock className="w-5 h-5 text-amber-200" />
+                    ) : (
+                      <Armchair className="w-5 h-5 fill-slate-950" />
+                    )}
                     <span className="text-sm font-black">
-                      {isSeatLocked
-                        ? 'المايك مغلق/مقفل 🔒 (غير متاح للصعود)'
+                      {isSeatLocked && !canClimbLocked
+                        ? 'المايك مغلق/مقفل 🔒 (متاح للمالك والمشرفين)'
+                        : isSeatLocked
+                        ? currentUserSeatId
+                          ? 'انتقال المضيف للمايك المغلق (نقل العداد 🔄)'
+                          : 'الصعود والجلوس على المقعد المغلق 🪑🔒'
                         : currentUserSeatId
                         ? 'انتقال المضيف للمايك (نقل العداد تلقائياً 🔄)'
                         : 'اجلس على المقعد (Take Seat)'}
                     </span>
                   </div>
                   {isSeatLocked ? (
-                    <span className="text-[10px] bg-rose-500/20 text-rose-300 font-bold px-2 py-0.5 rounded-lg border border-rose-500/30">
-                      مقفل 🔒
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border ${
+                      canClimbLocked
+                        ? 'bg-amber-400/30 text-amber-200 border-amber-300/60'
+                        : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                    }`}>
+                      {canClimbLocked ? 'مغلق (مخول للصعود 👑)' : 'مقفل 🔒'}
                     </span>
                   ) : (
                     <Sparkles className="w-4 h-4" />

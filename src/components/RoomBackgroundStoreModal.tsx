@@ -1,37 +1,143 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  X,
-  Palette,
-  Sparkles,
   Check,
-  Crown,
-  Gift,
-  ShoppingBag,
-  Lock,
-  Zap,
-  Star,
-  Flame,
-  CheckCircle2,
-  SlidersHorizontal,
+  Clock,
+  Scan,
+  Maximize2,
+  X,
+  Upload,
   Coins,
-  CloudCheck,
-  ShieldCheck
+  Sparkles,
+  CheckCircle2,
+  Crown
 } from 'lucide-react';
 import { saveRoomThemeAndWallpaperToFirestore } from '../lib/roomThemeFirestoreService';
 import { MainRoomCustomizerConfig } from '../types/roomCustomizer';
 
-export interface RoomBackgroundItem {
+export interface RoomWallpaperItem {
   id: string;
   name: string;
-  category: 'gifts_store' | 'royal' | 'animated' | 'vip';
   imageUrl: string;
-  isUnlocked: boolean;
-  unlockedVia: 'gift' | 'store' | 'default' | 'none';
+  durationDays?: number;
   priceCoins?: number;
-  giftRequirement?: string;
-  tag: string;
+  isPurchased?: boolean;
 }
+
+// Available (متاح) Wallpapers matching Screenshot 1 (3-column grid)
+export const AVAILABLE_WALLPAPERS: RoomWallpaperItem[] = [
+  {
+    id: 'avail-1-corridor',
+    name: 'الممر الغامض',
+    imageUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: 'avail-2-gothic-castle',
+    name: 'القلعة القوطية الزرقاء',
+    imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: 'avail-3-sky-combat',
+    name: 'طيران الكوماندوز الليلي',
+    imageUrl: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: 'avail-4-fire-car',
+    name: 'سيارة اللهب الحارقة',
+    imageUrl: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: 'avail-5-cyber-eyes',
+    name: 'محارب السايبر الأزرق',
+    imageUrl: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: 'avail-6-pubg-soldier',
+    name: 'بطل المعركة التكتيكي',
+    imageUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: 'avail-7-wedding-arch',
+    name: 'عشاق الحديقة الوردية',
+    imageUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: 'avail-8-mafia-trench',
+    name: 'الرجل الغامض الكلاسيكي',
+    imageUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: 'avail-9-eagle-suv',
+    name: 'نسر الصحراء والدفع الرباعي',
+    imageUrl: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: 'avail-10-fire-nebula',
+    name: 'سديم النار الكوني',
+    imageUrl: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: 'avail-11-blue-sky',
+    name: 'السماء الزرقاء الصافية',
+    imageUrl: 'https://images.unsplash.com/photo-1534088568595-a066f410bcda?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: 'avail-12-golden-crown',
+    name: 'التاج الملكي الذهبي',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: 'avail-13-dubai-skyline',
+    name: 'أبراج دبي المضيئة',
+    imageUrl: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&q=80&w=800'
+  }
+];
+
+// Store (متجر) Wallpapers matching Screenshot 2 (2-column grid with price & buy button)
+export const STORE_WALLPAPERS: RoomWallpaperItem[] = [
+  {
+    id: 'store-1-flower-couple',
+    name: 'عشاق الورد والقلوب',
+    imageUrl: 'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&q=80&w=800',
+    durationDays: 14,
+    priceCoins: 30000
+  },
+  {
+    id: 'store-2-bokeh-couple',
+    name: 'حب تحت أضواء البوكيه',
+    imageUrl: 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&q=80&w=800',
+    durationDays: 14,
+    priceCoins: 30000
+  },
+  {
+    id: 'store-3-dolphin-beach',
+    name: 'شاطئ الدلفين الاستوائي',
+    imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=800',
+    durationDays: 14,
+    priceCoins: 30000
+  },
+  {
+    id: 'store-4-pineapple-ocean',
+    name: 'منزل الأناناس تحت الماء',
+    imageUrl: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=800',
+    durationDays: 14,
+    priceCoins: 30000
+  },
+  {
+    id: 'store-5-golden-palace',
+    name: 'عرش الأساطير الملكي',
+    imageUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&q=80&w=800',
+    durationDays: 30,
+    priceCoins: 50000
+  },
+  {
+    id: 'store-6-neon-city',
+    name: 'سديم النيون السايبر',
+    imageUrl: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&q=80&w=800',
+    durationDays: 30,
+    priceCoins: 40000
+  }
+];
 
 interface RoomBackgroundStoreModalProps {
   isOpen: boolean;
@@ -47,98 +153,45 @@ interface RoomBackgroundStoreModalProps {
   themeConfig?: MainRoomCustomizerConfig;
 }
 
-export const ROOM_BACKGROUNDS: RoomBackgroundItem[] = [
-  {
-    id: 'bg-royal-palace',
-    name: 'القصر الملكي البنفسجي 🏰',
-    category: 'royal',
-    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=1200',
-    isUnlocked: true,
-    unlockedVia: 'default',
-    tag: 'المجهزة حالياً',
-  },
-  {
-    id: 'bg-cosmic-galaxy',
-    name: 'المجرة الكونية الذهبية 🌌',
-    category: 'gifts_store',
-    imageUrl: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&q=80&w=1200',
-    isUnlocked: true,
-    unlockedVia: 'gift',
-    giftRequirement: 'دعم هدايا الغرفة 5,000 قطعة',
-    tag: 'مفتوحة بدعم الهدايا 🎁',
-  },
-  {
-    id: 'bg-emerald-falls',
-    name: 'شلالات الزمرد الساحرة 🌊',
-    category: 'gifts_store',
-    imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=1200',
-    isUnlocked: true,
-    unlockedVia: 'store',
-    priceCoins: 1200,
-    tag: 'تم الشراء من المتجر 🛒',
-  },
-  {
-    id: 'bg-legend-throne',
-    name: 'عرش الأساطير الذهبي 👑',
-    category: 'royal',
-    imageUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&q=80&w=1200',
-    isUnlocked: true,
-    unlockedVia: 'gift',
-    giftRequirement: 'مستوى الغرفة VIP 10',
-    tag: 'مكافأة هدايا الغرفة 🎁',
-  },
-  {
-    id: 'bg-neon-cyberpunk',
-    name: 'سديم النجوم النيون 🎆',
-    category: 'animated',
-    imageUrl: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&q=80&w=1200',
-    isUnlocked: true,
-    unlockedVia: 'store',
-    priceCoins: 2500,
-    tag: 'متحركة 3D 🔮',
-  },
-  {
-    id: 'bg-dubai-nights',
-    name: 'ليالي دبي البرّاقة 🏙️',
-    category: 'gifts_store',
-    imageUrl: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&q=80&w=1200',
-    isUnlocked: true,
-    unlockedVia: 'gift',
-    giftRequirement: 'دعم هدايا الروم 10,000 كوينز',
-    tag: 'متجر الهدايا 💎',
-  },
-];
-
 export const RoomBackgroundStoreModal: React.FC<RoomBackgroundStoreModalProps> = ({
   isOpen,
   onClose,
-  activeBackgroundUrl = 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=1200',
+  activeBackgroundUrl = 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&q=80&w=800',
   onSelectBackground,
-  isUnlockedViaGiftOrStore = true,
   roomId = '884920',
   isOwner = true,
   ownerId = '88492011',
-  ownerName = 'أميرة الشرق',
+  ownerName = 'عابر سبيل',
   roomTitle = 'روم السهرة والنغم 🎵',
   themeConfig
 }) => {
-  const [activeTab, setActiveTab] = useState<'all' | 'gifts_store' | 'royal' | 'animated'>('gifts_store');
-  const [selectedBgId, setSelectedBgId] = useState<string>('bg-royal-palace');
-  const [equippedBgId, setEquippedBgId] = useState<string>('bg-royal-palace');
+  // Tab state: 'available' (متاح - Right Tab) or 'store' (متجر - Left Tab)
+  const [activeTab, setActiveTab] = useState<'available' | 'store'>('available');
+  const [equippedBgUrl, setEquippedBgUrl] = useState<string>(activeBackgroundUrl);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const [isSavingToCloud, setIsSavingToCloud] = useState<boolean>(false);
+  const [previewBg, setPreviewBg] = useState<RoomWallpaperItem | null>(null);
 
-  const backgroundList = ROOM_BACKGROUNDS.map((bg) =>
-    bg.id === 'bg-neon-cyberpunk' ? { ...bg, isUnlocked: isUnlockedViaGiftOrStore } : bg
-  );
+  // Purchased items store persistence
+  const [purchasedStoreIds, setPurchasedStoreIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('yoho_purchased_wallpapers');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
+  });
+
+  // Custom user-uploaded wallpapers
+  const [customWallpapers, setCustomWallpapers] = useState<RoomWallpaperItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('yoho_custom_user_wallpapers');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
+  });
 
   useEffect(() => {
     if (activeBackgroundUrl) {
-      const match = backgroundList.find((b) => b.imageUrl === activeBackgroundUrl);
-      if (match) {
-        setEquippedBgId(match.id);
-        setSelectedBgId(match.id);
-      }
+      setEquippedBgUrl(activeBackgroundUrl);
     }
   }, [activeBackgroundUrl]);
 
@@ -146,271 +199,355 @@ export const RoomBackgroundStoreModal: React.FC<RoomBackgroundStoreModalProps> =
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3200);
+    setTimeout(() => setToastMsg(null), 3000);
   };
 
-  const filteredBgs = backgroundList.filter((bg) => {
-    if (activeTab === 'all') return true;
-    return bg.category === activeTab;
-  });
+  // Combine default available with custom uploaded & purchased store items
+  const allAvailableWallpapers: RoomWallpaperItem[] = [
+    ...customWallpapers,
+    ...AVAILABLE_WALLPAPERS,
+    ...STORE_WALLPAPERS.filter((s) => purchasedStoreIds.includes(s.id))
+  ];
 
-  const selectedBg = backgroundList.find((b) => b.id === selectedBgId) || backgroundList[0];
-
-  const handleApplyBackground = async (bg: RoomBackgroundItem) => {
-    if (!bg.isUnlocked) {
-      showToast('هذه الخلفية تتطلب الشراء من المتجر أو الفتح عبر الهدايا 🔒');
-      return;
-    }
-
+  // Apply selected wallpaper to room & sync with Firestore
+  const handleSelectWallpaper = async (item: RoomWallpaperItem) => {
     if (!isOwner) {
-      showToast('عذراً، صلاحية تغيير وحفظ خلفية الغرفة الصوتية مخصصة حصرياً لصاحب الغرفة (المالك) فقط 👑');
+      showToast('تغيير خلفية الغرفة متاح لصاحب الغرفة (المالك) فقط 👑');
       return;
     }
 
-    setIsSavingToCloud(true);
-    setEquippedBgId(bg.id);
-    onSelectBackground?.(bg.imageUrl, bg.name);
+    setEquippedBgUrl(item.imageUrl);
+    onSelectBackground?.(item.imageUrl, item.name);
 
     try {
-      const res = await saveRoomThemeAndWallpaperToFirestore({
+      await saveRoomThemeAndWallpaperToFirestore({
         roomId,
         isOwner: true,
         ownerId,
         ownerName,
         roomTitle,
-        wallpaperUrl: bg.imageUrl,
-        wallpaperName: bg.name,
+        wallpaperUrl: item.imageUrl,
+        wallpaperName: item.name,
         themeConfig
       });
-
-      if (res.success) {
-        showToast(`تم حفظ وتطبيق خلفية "${bg.name}" في قاعدة بيانات الروم [${roomId}] بنجاح ☁️👑`);
-      } else {
-        showToast(res.error || `تم تطبيق الخلفية محلياً`);
-      }
+      showToast(`تم تطبيق خلفية "${item.name}" بنجاح 🖼️✨`);
     } catch (e) {
-      showToast(`تم تطبيق خلفية "${bg.name}" بنجاح 🎨`);
-    } finally {
-      setIsSavingToCloud(false);
+      showToast(`تم تطبيق خلفية "${item.name}" محلياً 🖼️`);
     }
+  };
+
+  // Buy wallpaper from Store tab
+  const handleBuyStoreWallpaper = async (item: RoomWallpaperItem) => {
+    const isAlreadyBought = purchasedStoreIds.includes(item.id);
+
+    if (isAlreadyBought) {
+      handleSelectWallpaper(item);
+      return;
+    }
+
+    // Check user coins
+    let currentCoins = 50000;
+    try {
+      const savedCoins = localStorage.getItem('user_wallet_coins');
+      if (savedCoins) {
+        currentCoins = parseInt(savedCoins, 10) || 50000;
+      }
+    } catch (e) {}
+
+    const price = item.priceCoins || 30000;
+    if (currentCoins < price) {
+      showToast(`رصيدك غير كافٍ (${currentCoins.toLocaleString()} كوينز). يلزم ${price.toLocaleString()} كوينز للشراء 🪙`);
+      return;
+    }
+
+    // Deduct coins
+    const newCoins = Math.max(0, currentCoins - price);
+    try {
+      localStorage.setItem('user_wallet_coins', newCoins.toString());
+      window.dispatchEvent(
+        new CustomEvent('user_coins_updated', {
+          detail: { coins: newCoins }
+        })
+      );
+    } catch (e) {}
+
+    // Save to purchased list
+    const updatedPurchased = [...purchasedStoreIds, item.id];
+    setPurchasedStoreIds(updatedPurchased);
+    try {
+      localStorage.setItem('yoho_purchased_wallpapers', JSON.stringify(updatedPurchased));
+    } catch (e) {}
+
+    // Equip immediately
+    await handleSelectWallpaper(item);
+    showToast(`تم شراء وتفعيل خلفية "${item.name}" بنجاح! 🛍️✨`);
+  };
+
+  // Custom upload handler
+  const handleCustomUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      if (base64) {
+        const newCustomItem: RoomWallpaperItem = {
+          id: `custom-${Date.now()}`,
+          name: `خلفية مخصصة ${customWallpapers.length + 1}`,
+          imageUrl: base64
+        };
+        const updated = [newCustomItem, ...customWallpapers];
+        setCustomWallpapers(updated);
+        try {
+          localStorage.setItem('yoho_custom_user_wallpapers', JSON.stringify(updated));
+        } catch (err) {}
+        handleSelectWallpaper(newCustomItem);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 pointer-events-auto select-none dir-rtl"
+        id="room-background-store-overlay"
+        className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex flex-col justify-end pointer-events-auto select-none dir-rtl"
         onClick={onClose}
       >
         <motion.div
-          initial={{ scale: 0.92, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.92, opacity: 0, y: 20 }}
-          transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+          initial={{ y: '100%', opacity: 0.5 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: '100%', opacity: 0 }}
+          transition={{ type: 'spring', damping: 28, stiffness: 320 }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-lg bg-[#0F1420] border border-purple-500/30 rounded-3xl overflow-hidden shadow-2xl text-white relative flex flex-col max-h-[92vh]"
+          className="w-full max-w-lg mx-auto bg-white rounded-t-[32px] overflow-hidden shadow-2xl flex flex-col max-h-[82vh] text-slate-900 relative"
         >
-          {/* Header Bar */}
-          <div className="relative bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 p-4 border-b border-purple-500/30 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-purple-500/20 border border-purple-400/50 flex items-center justify-center text-purple-300 shadow-md">
-                <Palette className="w-6 h-6 stroke-[2.2]" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-black text-white">متجر وخلفيات الغرفة 🎨</h2>
-                  <span className="bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-[9px] px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1">
-                    <Crown className="w-3 h-3 fill-slate-950" />
-                    <span>صاحب الغرفة فقط</span>
-                  </span>
-                  <span className="bg-slate-800 text-cyan-300 font-mono text-[9px] px-2 py-0.5 rounded-full border border-cyan-500/30">
-                    ID: {roomId}
-                  </span>
-                </div>
-                <p className="text-[11px] text-purple-200/80 font-medium mt-0.5">
-                  حفظ وتطبيق خلفية الغرفة يرتبط بـ (room_id: {roomId}) في قاعدة البيانات
-                </p>
-              </div>
-            </div>
-
+          {/* Top Bar Tabs: متاح (Right) | متجر (Left) matching screenshot header exactly */}
+          <div className="relative pt-4 pb-2 px-6 bg-white border-b border-slate-100 flex items-center justify-around shrink-0">
+            {/* Left Tab: متجر (Store) */}
             <button
-              onClick={onClose}
-              className="p-2 rounded-full bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+              id="tab-room-bg-store"
+              onClick={() => setActiveTab('store')}
+              className="flex flex-col items-center justify-center cursor-pointer transition-all flex-1 py-1"
             >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Live Room Preview Card */}
-          <div className="p-3 bg-slate-950/80 border-b border-slate-800/80 shrink-0 relative overflow-hidden">
-            <div className="relative h-44 rounded-2xl overflow-hidden border border-purple-500/30 shadow-inner group">
-              <img
-                src={selectedBg.imageUrl || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&q=80&w=800'}
-                alt={selectedBg.name}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              <span
+                className={`text-base sm:text-lg font-black transition-colors ${
+                  activeTab === 'store' ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600 font-bold'
+                }`}
+              >
+                متجر
+              </span>
+              {/* Green indicator bar under active tab */}
+              <div
+                className={`h-1 w-6 rounded-full mt-1.5 transition-all ${
+                  activeTab === 'store' ? 'bg-[#00c765]' : 'bg-transparent'
+                }`}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-between p-3">
-                {/* Top Badge */}
-                <div className="flex items-center justify-between">
-                  <span className="bg-black/60 backdrop-blur-md text-purple-300 text-[10px] font-bold px-2.5 py-1 rounded-full border border-purple-400/30 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-amber-400" />
-                    <span>معاينة الخلفية المباشرة</span>
-                  </span>
+            </button>
 
-                  {selectedBg.id === equippedBgId && (
-                    <span className="bg-emerald-500 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>مطبقة حالياً</span>
-                    </span>
-                  )}
-                </div>
+            {/* Right Tab: متاح (Available) */}
+            <button
+              id="tab-room-bg-available"
+              onClick={() => setActiveTab('available')}
+              className="flex flex-col items-center justify-center cursor-pointer transition-all flex-1 py-1"
+            >
+              <span
+                className={`text-base sm:text-lg font-black transition-colors ${
+                  activeTab === 'available' ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600 font-bold'
+                }`}
+              >
+                متاح
+              </span>
+              {/* Green indicator bar under active tab */}
+              <div
+                className={`h-1 w-6 rounded-full mt-1.5 transition-all ${
+                  activeTab === 'available' ? 'bg-[#00c765]' : 'bg-transparent'
+                }`}
+              />
+            </button>
+          </div>
 
-                {/* Bottom Details & Apply Action */}
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <h3 className="text-sm font-black text-white">{selectedBg.name}</h3>
-                    <p className="text-[10px] text-amber-300 font-bold flex items-center gap-1 mt-0.5">
-                      <Gift className="w-3 h-3 text-amber-400" />
-                      <span>{selectedBg.tag}</span>
-                    </p>
+          {/* TAB 1: متاح (Available Wallpapers - 3 Column Grid matching Screenshot 1) */}
+          {activeTab === 'available' && (
+            <div className="p-3.5 pb-10 overflow-y-auto max-h-[70vh] custom-scrollbar flex-1 bg-white">
+              <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
+                {/* Upload Custom Wallpaper Button */}
+                <label className="aspect-[9/14] rounded-xl border-2 border-dashed border-slate-200 hover:border-[#00c765] bg-slate-50/80 flex flex-col items-center justify-center text-slate-400 hover:text-[#00c765] cursor-pointer transition-all active:scale-95 group shadow-2xs">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCustomUpload}
+                    className="hidden"
+                  />
+                  <div className="w-8 h-8 rounded-full bg-white border border-slate-200 group-hover:border-[#00c765] flex items-center justify-center text-slate-500 group-hover:text-[#00c765] shadow-xs mb-1 transition-colors">
+                    <Upload className="w-4 h-4" />
                   </div>
+                  <span className="text-[10px] font-bold text-center leading-tight">
+                    رفع خلفية
+                  </span>
+                </label>
 
-                  <button
-                    onClick={() => handleApplyBackground(selectedBg)}
-                    className={`px-4 py-2 rounded-xl font-black text-xs transition-all shadow-lg flex items-center gap-1.5 cursor-pointer ${
-                      selectedBg.id === equippedBgId
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                        : 'bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-600 hover:from-purple-400 hover:to-indigo-400 text-white shadow-purple-500/30'
-                    }`}
-                  >
-                    <Palette className="w-4 h-4" />
-                    <span>{selectedBg.id === equippedBgId ? 'مجهزة' : 'تطبيق للروم'}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+                {/* Wallpapers List */}
+                {allAvailableWallpapers.map((bg) => {
+                  const isEquipped = bg.imageUrl === equippedBgUrl;
 
-          {/* Navigation Categories Tabs */}
-          <div className="flex gap-1.5 p-3 border-b border-slate-800 bg-[#121826] overflow-x-auto no-scrollbar shrink-0">
-            <button
-              onClick={() => setActiveTab('gifts_store')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'gifts_store'
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30 border border-purple-400/40'
-                  : 'bg-slate-800/70 text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              <Gift className="w-3.5 h-3.5 text-amber-400" />
-              <span>الهدايا والمشتريات 🎁</span>
-            </button>
+                  return (
+                    <div
+                      key={bg.id}
+                      onClick={() => handleSelectWallpaper(bg)}
+                      className={`relative aspect-[9/14] rounded-xl overflow-hidden shadow-xs cursor-pointer transition-all duration-200 group border-2 ${
+                        isEquipped
+                          ? 'border-[#00c765] shadow-md ring-2 ring-[#00c765]/30'
+                          : 'border-transparent hover:border-slate-300'
+                      }`}
+                    >
+                      <img
+                        src={bg.imageUrl}
+                        alt={bg.name}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        loading="lazy"
+                      />
 
-            <button
-              onClick={() => setActiveTab('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'all'
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30 border border-purple-400/40'
-                  : 'bg-slate-800/70 text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              الكل
-            </button>
-
-            <button
-              onClick={() => setActiveTab('royal')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'royal'
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30 border border-purple-400/40'
-                  : 'bg-slate-800/70 text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              <Crown className="w-3.5 h-3.5 text-yellow-400" />
-              <span>ملكية فاخرة 👑</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('animated')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'animated'
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30 border border-purple-400/40'
-                  : 'bg-slate-800/70 text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>متحركة 3D 🔮</span>
-            </button>
-          </div>
-
-          {/* Background Wallpapers Grid */}
-          <div className="p-3.5 grid grid-cols-2 gap-3 overflow-y-auto max-h-[320px] custom-scrollbar flex-1">
-            {filteredBgs.map((bg) => {
-              const isSelected = bg.id === selectedBgId;
-              const isEquipped = bg.id === equippedBgId;
-
-              return (
-                <div
-                  key={bg.id}
-                  onClick={() => setSelectedBgId(bg.id)}
-                  className={`relative rounded-2xl overflow-hidden border-2 cursor-pointer transition-all duration-200 bg-slate-900 flex flex-col justify-between group ${
-                    isSelected
-                      ? 'border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)] scale-[1.02]'
-                      : 'border-slate-800 hover:border-slate-700'
-                  }`}
-                >
-                  <div className="relative h-28 w-full overflow-hidden">
-                    <img
-                      src={bg.imageUrl || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&q=80&w=800'}
-                      alt={bg.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-
-                    {/* Top Status Tag */}
-                    <div className="absolute top-2 left-2 right-2 flex items-center justify-between pointer-events-none">
-                      {isEquipped ? (
-                        <span className="bg-emerald-500 text-slate-950 font-black text-[9px] px-2 py-0.5 rounded-full shadow-md">
-                          مجهزة
-                        </span>
-                      ) : bg.isUnlocked ? (
-                        <span className="bg-purple-600 text-white font-bold text-[9px] px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
-                          <Check className="w-3 h-3 text-amber-300" />
-                          <span>مفتوحة</span>
-                        </span>
-                      ) : (
-                        <span className="bg-rose-600 text-white font-bold text-[9px] px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
-                          <Lock className="w-3 h-3 text-amber-300" />
-                          <span>مغلقة</span>
-                        </span>
+                      {/* Equipped Checkmark Overlay */}
+                      {isEquipped && (
+                        <div className="absolute top-1.5 right-1.5 bg-[#00c765] text-white p-0.5 rounded-full shadow-md z-10 flex items-center justify-center">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        </div>
                       )}
                     </div>
-                  </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-                  {/* Card Title & Info */}
-                  <div className="p-2.5 bg-[#141A28] flex flex-col gap-1 border-t border-slate-800">
-                    <span className="text-xs font-black text-white truncate">{bg.name}</span>
-                    <span className="text-[10px] text-purple-300 font-bold truncate flex items-center gap-1">
-                      <Gift className="w-3 h-3 text-amber-400 shrink-0" />
-                      <span className="truncate">{bg.tag}</span>
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          {/* TAB 2: متجر (Store Wallpapers - 2 Column Grid matching Screenshot 2) */}
+          {activeTab === 'store' && (
+            <div className="p-3.5 pb-10 overflow-y-auto max-h-[70vh] custom-scrollbar flex-1 bg-white">
+              <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
+                {STORE_WALLPAPERS.map((bg) => {
+                  const isPurchased = purchasedStoreIds.includes(bg.id);
+                  const isEquipped = bg.imageUrl === equippedBgUrl;
 
-          {/* Toast Notice */}
+                  return (
+                    <div
+                      key={bg.id}
+                      className="rounded-2xl overflow-hidden border border-slate-100 shadow-xs flex flex-col bg-white transition-all hover:shadow-md"
+                    >
+                      {/* Image Preview Container */}
+                      <div className="relative aspect-square w-full overflow-hidden bg-slate-900">
+                        <img
+                          src={bg.imageUrl}
+                          alt={bg.name}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+
+                        {/* Top-Left: Scan / Preview Button with Duration Pill (e.g. 14 أيام) */}
+                        <div className="absolute top-2 left-2 flex items-center gap-1 z-10">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreviewBg(bg);
+                            }}
+                            className="bg-black/55 backdrop-blur-xs text-white text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 hover:bg-black/80 transition-colors shadow-xs"
+                            title="معاينة الخلفية بالكامل"
+                          >
+                            <Scan className="w-3.5 h-3.5 stroke-[2.2]" />
+                            <span>{bg.durationDays || 14} أيام</span>
+                            <Clock className="w-2.5 h-2.5 opacity-80" />
+                          </button>
+                        </div>
+
+                        {/* Bottom-Right Price Tag (e.g. 30,000 عملات) */}
+                        <div className="absolute bottom-2 right-2 text-right z-10">
+                          <span className="text-white text-xs font-black drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.9)] font-mono">
+                            {bg.priceCoins?.toLocaleString('en-US')} عملات
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Bottom Buy Button (يشترى) in Green */}
+                      <button
+                        onClick={() => handleBuyStoreWallpaper(bg)}
+                        className={`w-full py-2.5 px-3 font-black text-sm flex items-center justify-center transition-all cursor-pointer ${
+                          isEquipped
+                            ? 'bg-[#00c765] text-white'
+                            : isPurchased
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                            : 'bg-[#00c765] hover:bg-[#00b058] active:scale-[0.99] text-white shadow-xs'
+                        }`}
+                      >
+                        {isEquipped ? 'مجهزة حالياً ✓' : isPurchased ? 'استخدام' : 'يشترى'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* TOAST NOTIFICATION */}
           <AnimatePresence>
             {toastMsg && (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 px-4 py-2 rounded-2xl font-black text-xs shadow-2xl z-50 flex items-center gap-2 border border-amber-300"
+                exit={{ opacity: 0, y: 15 }}
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/95 text-white px-4 py-2 rounded-2xl font-bold text-xs shadow-2xl z-50 flex items-center gap-2 border border-slate-700 pointer-events-none whitespace-nowrap"
               >
-                <Sparkles className="w-4 h-4 fill-slate-950" />
+                <Sparkles className="w-3.5 h-3.5 text-[#00c765]" />
                 <span>{toastMsg}</span>
               </motion.div>
             )}
           </AnimatePresence>
         </motion.div>
+
+        {/* FULLSCREEN PREVIEW MODAL */}
+        <AnimatePresence>
+          {previewBg && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-60 bg-black/90 flex flex-col justify-between p-4 pointer-events-auto select-none dir-rtl"
+              onClick={() => setPreviewBg(null)}
+            >
+              <div className="flex items-center justify-between z-10">
+                <span className="text-white font-bold text-sm bg-black/50 px-3 py-1 rounded-full backdrop-blur-md">
+                  معاينة: {previewBg.name}
+                </span>
+                <button
+                  onClick={() => setPreviewBg(null)}
+                  className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="relative max-w-sm mx-auto w-full h-[65vh] rounded-3xl overflow-hidden shadow-2xl border border-white/20 my-auto">
+                <img
+                  src={previewBg.imageUrl}
+                  alt={previewBg.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+
+              <div className="flex justify-center pb-4 z-10">
+                <button
+                  onClick={() => {
+                    handleBuyStoreWallpaper(previewBg);
+                    setPreviewBg(null);
+                  }}
+                  className="bg-[#00c765] hover:bg-[#00b058] text-white font-black px-8 py-3 rounded-full text-base shadow-lg transition-transform active:scale-95"
+                >
+                  {purchasedStoreIds.includes(previewBg.id) ? 'تطبيق الخلفية' : `شراء الآن (${previewBg.priceCoins?.toLocaleString()} كوينز)`}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </AnimatePresence>
   );

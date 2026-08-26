@@ -78,8 +78,11 @@ import { MusicPlayerModal } from './MusicPlayerModal';
 import { EffectsAndSoundModal } from './EffectsAndSoundModal';
 import { MovableEmojiLottiePicker } from './MovableEmojiLottiePicker';
 import { TopOptionsMenuModal } from './TopOptionsMenuModal';
+import { ModeratorStatsModal } from './ModeratorStatsModal';
+import { recordModeratorAction } from '../lib/moderatorStatsService';
 import { DigitalCounterControlModal } from './DigitalCounterControlModal';
 import { RoomBackgroundStoreModal } from './RoomBackgroundStoreModal';
+import { YoHoRoomMessagesModal } from './YoHoRoomMessagesModal';
 import { YoHoRoomToolsAndGamesModal } from './YoHoRoomToolsAndGamesModal';
 import { TeamBattleModal } from './TeamBattleModal';
 import { TeamBattleResultModal, PKSupporter } from './TeamBattleResultModal';
@@ -110,6 +113,13 @@ import { LuckyChestWinnerToast, LuckyChestWinnerNoticeData } from './LuckyChestW
 import { LuckyRefundModal } from './LuckyRefundModal';
 import { SideGiftStream, SideGiftEvent } from './SideGiftStream';
 import { processRefundGiftDraw, isRefundGift, RefundDrawResult } from '../lib/refundVaultService';
+import { RoomExitModal } from './RoomExitModal';
+import {
+  setActiveRoomSession,
+  minimizeRoomSession,
+  exitRoomSession,
+  dissolveRoomSession
+} from '../lib/roomSessionService';
 import {
   AppRole,
   getActiveAppRole,
@@ -118,13 +128,17 @@ import {
   canManageGifts,
   isDeveloper
 } from '../lib/roleService';
+import { RealtimeVoiceEngine } from '../lib/realtimeVoiceService';
+import { RealtimeRoomPresence, RealtimePeerAudioState } from '../types/realtimeAudio';
 
 interface VoiceRoomScreenProps {
   roomTitle?: string;
+  roomAvatar?: string;
   hostName?: string;
   roomId?: string;
   isOwner?: boolean;
   onClose: () => void;
+  onMinimize?: () => void;
   onOpenRecharge?: () => void;
   onNavigateToRoom?: (roomName: string) => void;
 }
@@ -140,6 +154,7 @@ interface MicSeat {
   isSpeaking?: boolean;
   isEmpty?: boolean;
   isLocked?: boolean;
+  isPendingAudioAcceptance?: boolean;
   speakingAura?: SpeakingAuraType;
 }
 
@@ -464,12 +479,12 @@ const RoomChatFeed = React.memo(({ chatMessages, onReplyTo, onOpenChatInput, onO
 
   return (
     <div
-      className="flex-1 px-3 pt-1 pb-1 flex flex-col min-h-0 relative z-20 transition-all duration-300 overflow-hidden overflow-x-hidden w-full max-w-full isolate"
+      className="flex-1 pr-1 pl-6 pt-1 pb-1 flex flex-col min-h-0 relative z-20 transition-all duration-300 overflow-hidden overflow-x-hidden w-full max-w-full isolate"
       style={{ contain: 'layout paint' }}
     >
       <div
         ref={scrollContainerRef}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pr-1.5 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-amber-500/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent w-full max-w-full"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pr-0.5 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-amber-500/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent w-full max-w-full"
       >
         <div className="min-h-full flex flex-col justify-end space-y-1.5 py-1 w-full max-w-full overflow-x-hidden">
           {/* MOVING HOST ANNOUNCEMENT BOARD INSIDE CHAT STREAM */}
@@ -498,12 +513,12 @@ const RoomChatFeed = React.memo(({ chatMessages, onReplyTo, onOpenChatInput, onO
 
           {/* REGULAR CHAT MESSAGES WITH AVATARS, CONDITIONAL BADGES, DYNAMIC BUBBLE SKINS & SWIPE TO REPLY */}
           <AnimatePresence initial={false}>
-            {chatMessages.map((msg) => {
+            {chatMessages.map((msg, msgIndex) => {
               const isHighlighted = highlightedMessageId === msg.id;
               let hapticTriggered = false;
 
               return (
-                <div key={msg.id} id={`chat-msg-${msg.id}`} className="relative my-1 w-full max-w-full overflow-x-hidden touch-pan-y">
+                <div key={`${msg.id}-${msgIndex}`} id={`chat-msg-${msg.id}`} className="relative my-1 w-full max-w-full overflow-x-hidden touch-pan-y">
                   <motion.div
                     drag="x"
                     dragDirectionLock={true}
@@ -535,7 +550,7 @@ const RoomChatFeed = React.memo(({ chatMessages, onReplyTo, onOpenChatInput, onO
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, x: -20, height: 0, marginTop: 0, marginBottom: 0, overflow: 'hidden' }}
                     transition={{ duration: 0.2, ease: 'easeInOut' }}
-                    className={`flex items-start gap-2 text-xs w-full max-w-full pr-3 pl-1 py-1 rounded-2xl ${
+                    className={`flex items-start gap-2 text-xs w-full max-w-full pr-1 pl-1.5 py-1 rounded-2xl ${
                       isHighlighted
                         ? 'ring-2 ring-amber-400 bg-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.6)] z-30 transition-colors duration-300'
                         : ''
@@ -605,9 +620,9 @@ const RoomChatFeed = React.memo(({ chatMessages, onReplyTo, onOpenChatInput, onO
                         {/* CONDITIONAL BADGES / MEDALS */}
                         {msg.badges && msg.badges.length > 0 && (
                           <div className="flex items-center gap-1 flex-wrap">
-                            {msg.badges.map((badge) => (
+                            {msg.badges.map((badge, bIdx) => (
                               <span
-                                key={badge.id}
+                                key={`${badge.id || 'badge'}-${bIdx}`}
                                 className={`text-[8.5px] px-1.5 py-0.2 rounded-full font-black flex items-center gap-0.5 shadow-2xs shrink-0 ${badge.bgClass}`}
                               >
                                 {badge.icon && <span className="text-[9px]">{badge.icon}</span>}
@@ -688,10 +703,12 @@ const RoomChatFeed = React.memo(({ chatMessages, onReplyTo, onOpenChatInput, onO
 
 export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   roomTitle = 'روم صقر اليمن 🦅 - سوالف وتر',
+  roomAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400',
   hostName = 'أميرة الشرق',
   roomId = '7798my-r',
   isOwner: isOwnerProp = true,
   onClose,
+  onMinimize,
   onOpenRecharge,
   onNavigateToRoom
 }) => {
@@ -702,6 +719,15 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       if (saved) return saved;
     } catch (e) {}
     return roomTitle;
+  });
+
+  // Current active room avatar state (allows dedicated Room Avatar independent from host profile avatar)
+  const [currentRoomAvatar, setCurrentRoomAvatar] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem(`super_legend_room_avatar_${roomId}`);
+      if (saved) return saved;
+    } catch (e) {}
+    return roomAvatar;
   });
   const [navigationToast, setNavigationToast] = useState<{
     roomTitle: string;
@@ -983,6 +1009,54 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   const [inputMessage, setInputMessage] = useState('');
   const [showChatInputModal, setShowChatInputModal] = useState(false);
 
+  // Dynamic Visual Viewport Metrics for Chat Input Flush Alignment to Keyboard
+  const [chatInputViewport, setChatInputViewport] = useState<{
+    height: number;
+    offsetTop: number;
+    keyboardOpen: boolean;
+  }>({
+    height: typeof window !== 'undefined' ? window.innerHeight : 800,
+    offsetTop: 0,
+    keyboardOpen: false,
+  });
+
+  useEffect(() => {
+    if (!showChatInputModal) return;
+
+    const updateMetrics = () => {
+      if (window.visualViewport) {
+        const vv = window.visualViewport;
+        const isKeyboard = vv.height < window.innerHeight * 0.85;
+        setChatInputViewport({
+          height: vv.height,
+          offsetTop: vv.offsetTop,
+          keyboardOpen: isKeyboard,
+        });
+      } else {
+        setChatInputViewport({
+          height: window.innerHeight,
+          offsetTop: 0,
+          keyboardOpen: false,
+        });
+      }
+    };
+
+    updateMetrics();
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateMetrics);
+      window.visualViewport.addEventListener('scroll', updateMetrics);
+    }
+    window.addEventListener('resize', updateMetrics);
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateMetrics);
+        window.visualViewport.removeEventListener('scroll', updateMetrics);
+      }
+      window.removeEventListener('resize', updateMetrics);
+    };
+  }, [showChatInputModal]);
+
   // Stabilize viewport and instantly eliminate keyboard dismissal scroll gaps
   useEffect(() => {
     const handleViewportReset = () => {
@@ -1156,9 +1230,66 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   }>({});
   const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
   const [showTopOptionsMenuModal, setShowTopOptionsMenuModal] = useState(false);
+  const [showModeratorStatsModal, setShowModeratorStatsModal] = useState(false);
+  const [showRoomExitModal, setShowRoomExitModal] = useState(false);
   const [showMainRoomCustomizerModal, setShowMainRoomCustomizerModal] = useState(false);
   const [mainRoomConfig, setMainRoomConfig] = useState<MainRoomCustomizerConfig>(() => getMainRoomCustomizerConfig());
   const [currentRoomBgName, setCurrentRoomBgName] = useState<string>('القصر الملكي البنفسجي 🏰');
+
+  // Sync active room session with roomSessionService
+  useEffect(() => {
+    setActiveRoomSession({
+      roomId,
+      roomTitle: currentRoomTitle,
+      hostName: hostSeat.userName || hostName,
+      roomAvatar: currentRoomAvatar,
+      isOwner: isOwner,
+      ownerId: hostSeat.userId || '88492011',
+      listenerCount: 18,
+      isMinimized: false,
+      isMuted: isMyMicMuted,
+    });
+  }, [roomId, currentRoomTitle, hostSeat.userName, hostName, currentRoomAvatar, isOwner, isMyMicMuted]);
+
+  // Handle Room Session Keep in background (احتفاظ)
+  const handleKeepInBackground = () => {
+    minimizeRoomSession();
+    setShowRoomExitModal(false);
+    if (onMinimize) {
+      onMinimize();
+    } else {
+      onClose();
+    }
+  };
+
+  // Handle Individual Exit (خروج)
+  const handleSoloExit = () => {
+    exitRoomSession();
+    setIsRoomActive(false);
+    setRoomUptimeSeconds(0);
+    setShowRoomExitModal(false);
+    onClose();
+  };
+
+  // Handle Room Dissolve (إحالة - طرد وإخراج الجميع من الروم - للمالك فقط)
+  const handleDissolveRoom = () => {
+    if (!isOwner) return;
+    setAllMicSeats(prev => prev.map(s => ({
+      ...s,
+      isEmpty: true,
+      userId: undefined,
+      userName: `المقعد #${s.id}`,
+      avatar: undefined,
+      isLocked: false,
+      isMuted: false
+    })));
+    setSeatCounters({});
+    dissolveRoomSession(roomId);
+    setIsRoomActive(false);
+    setRoomUptimeSeconds(0);
+    setShowRoomExitModal(false);
+    onClose();
+  };
 
   useEffect(() => {
     // 1. Local event listeners for instantaneous UI feedback
@@ -1181,8 +1312,21 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       }
     };
 
+    const handleRoomMetadataUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.roomId === roomId || !customEvent.detail?.roomId) {
+        if (customEvent.detail?.roomAvatar) {
+          setCurrentRoomAvatar(customEvent.detail.roomAvatar);
+        }
+        if (customEvent.detail?.roomTitle) {
+          setCurrentRoomTitle(customEvent.detail.roomTitle);
+        }
+      }
+    };
+
     window.addEventListener('main_room_theme_updated', handleMainRoomThemeUpdated);
     window.addEventListener('room_wallpaper_updated', handleRoomWallpaperUpdated);
+    window.addEventListener('room_metadata_updated', handleRoomMetadataUpdated);
 
     // 2. Real-time Firestore subscription linked to room_id
     const unsubscribeFirestore = subscribeToRoomThemeFromFirestore(roomId, (cloudDoc) => {
@@ -1198,6 +1342,9 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         }
         if (cloudDoc.roomTitle) {
           setCurrentRoomTitle(cloudDoc.roomTitle);
+        }
+        if (cloudDoc.roomAvatar) {
+          setCurrentRoomAvatar(cloudDoc.roomAvatar);
         }
       }
     });
@@ -1223,6 +1370,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     return () => {
       window.removeEventListener('main_room_theme_updated', handleMainRoomThemeUpdated);
       window.removeEventListener('room_wallpaper_updated', handleRoomWallpaperUpdated);
+      window.removeEventListener('room_metadata_updated', handleRoomMetadataUpdated);
       window.removeEventListener('test_gift_in_room', handleTestGiftInRoom);
       unsubscribeFirestore();
     };
@@ -1301,6 +1449,87 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   };
 
   const [isIncognito, setIsIncognito] = useState(false);
+
+  // Real-time WebRTC & WebSocket Audio Engine Instance
+  const voiceEngineRef = useRef<RealtimeVoiceEngine | null>(null);
+  const [onlineRealtimePeers, setOnlineRealtimePeers] = useState<RealtimeRoomPresence[]>([]);
+  const [isVoiceEngineConnected, setIsVoiceEngineConnected] = useState<boolean>(false);
+
+  useEffect(() => {
+    const currentUserName = currentUserRole === 'host' ? (hostName || 'المضيف (أنا)') : 'أنا';
+    const currentUserAvatar = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200';
+    const engine = new RealtimeVoiceEngine(roomId, currentUserName, currentUserAvatar);
+    voiceEngineRef.current = engine;
+
+    engine.onConnectionStatus = (status) => {
+      setIsVoiceEngineConnected(status === 'connected');
+    };
+
+    engine.onPresenceUpdate = (peers) => {
+      setOnlineRealtimePeers(peers);
+      // Sync other connected devices/peers into mic seats if they occupy a seat
+      setAllMicSeats((prev) => {
+        return prev.map((seat) => {
+          // Check if a remote peer sits on this seat
+          const remotePeer = peers.find((p) => p.seatId === seat.id && p.peerId !== engine.myPeerId);
+          if (remotePeer) {
+            return {
+              ...seat,
+              isEmpty: false,
+              userId: `peer_${remotePeer.peerId}`,
+              userName: remotePeer.userName,
+              avatar: remotePeer.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+              isMuted: remotePeer.isMuted,
+              isHost: seat.id === 1
+            };
+          }
+          return seat;
+        });
+      });
+    };
+
+    engine.onPeerSpeaking = (speakingState) => {
+      if (speakingState.seatId) {
+        setAllMicSeats((prev) =>
+          prev.map((s) =>
+            s.id === speakingState.seatId
+              ? { ...s, isSpeaking: speakingState.isSpeaking }
+              : s
+          )
+        );
+      }
+    };
+
+    engine.onChatMessage = (incomingMsg) => {
+      setChatMessages((prev) => {
+        if (prev.some((m) => m.id === incomingMsg.id)) return prev;
+        return [
+          ...prev,
+          {
+            id: incomingMsg.id || `msg-${Date.now()}`,
+            userName: incomingMsg.userName || 'زائر',
+            avatar: incomingMsg.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
+            text: incomingMsg.text || '',
+            userColor: 'text-cyan-300 font-bold',
+            bubbleSkin: incomingMsg.bubbleSkin || 'default',
+            badges: incomingMsg.badges || []
+          }
+        ];
+      });
+    };
+
+    engine.onMicPermissionError = (err) => {
+      setToastNotification('تعذر الوصول للمايك: يرجى السماح بصلاحية الميكروفون في المتصفح 🎙️');
+      setTimeout(() => setToastNotification(null), 4000);
+    };
+
+    engine.connect();
+
+    return () => {
+      engine.destroy();
+      voiceEngineRef.current = null;
+    };
+  }, [roomId, currentUserRole, hostName]);
 
   // Digital Counter States & Protection Logic (منطق إدارة العدادات مع إجراءات الحماية)
   const [showCountersOnMics, setShowCountersOnMics] = useState(true);
@@ -1744,10 +1973,24 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   }, []);
   const [showSuperLegendModal, setShowSuperLegendModal] = useState(false);
   const [showRoomSupportModal, setShowRoomSupportModal] = useState(false);
+
+  // إحصائيات الدعم الكلي الشامل لمبالغ الدعم داخل الروم (Total Room Support Diamonds)
+  const [totalRoomSupportDiamonds, setTotalRoomSupportDiamonds] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(`room_total_support_diamonds_${roomId}`);
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+      }
+    } catch (e) {}
+    return 48500000; // القيمة التراكمية الأولية الشاملة لدعم الغرفة (48.5M 💎)
+  });
+
   const [showLeaderboardThemeModal, setShowLeaderboardThemeModal] = useState(false);
   const [leaderboardTheme, setLeaderboardTheme] = useState<LeaderboardThemeConfig>(() => getSavedLeaderboardTheme());
   const [showRoomInfoModal, setShowRoomInfoModal] = useState(false);
   const [showRoomBackgroundStoreModal, setShowRoomBackgroundStoreModal] = useState<boolean>(false);
+  const [showYoHoMessagesModal, setShowYoHoMessagesModal] = useState<boolean>(false);
   const [currentRoomBgUrl, setCurrentRoomBgUrl] = useState<string>(
     'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=1200'
   );
@@ -1825,6 +2068,11 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   const [showMicRequestsModal, setShowMicRequestsModal] = useState(false);
   const [toastNotification, setToastNotification] = useState<string | null>(null);
   const [invitedUserIds, setInvitedUserIds] = useState<string[]>([]);
+  const [pendingHostInvitation, setPendingHostInvitation] = useState<{
+    user: { id: string; name: string; avatar?: string; role?: string; isHost?: boolean };
+    seatId: number;
+    inviterName: string;
+  } | null>(null);
 
   // Tabbed Statistics Panel State
   const [statsMainTab, setStatsMainTab] = useState<'diamonds' | 'club' | 'charm'>('diamonds');
@@ -1883,13 +2131,15 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     if (!targetSeat) return;
 
     if (targetSeat.isEmpty) {
+      const canClimbLockedSeat = isOwner || isCurrentAdmin || currentUserRole === 'host' || currentUserRole === 'moderator' || currentUserRole === 'owner';
+
       if (targetSeat.isLocked) {
-        if (!isCurrentAdmin && !isOwner) {
-          setToastNotification('عذراً! هذا المايك مغلق أو مقفل حالياً 🔒 لا يمكن الصعود عليه.');
+        if (!canClimbLockedSeat) {
+          setToastNotification('عذراً! هذا المايك مغلق أو مقفل حالياً 🔒 لا يمكن الصعود عليه إلا بدعوة من الإدارة.');
           setTimeout(() => setToastNotification(null), 3000);
           return;
         }
-        // If admin/owner clicks a locked seat, open modal to allow unlocking or managing
+        // If owner or moderator/host clicks a locked seat, open modal to allow ascending directly or managing
         setSelectedSeatForAction(seatId);
         setShowSeatActionModal(true);
         return;
@@ -1940,7 +2190,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   };
 
   // Dedicated Mic Mute Toggle function for Current User Profile ID
-  const handleToggleMyMic = () => {
+  const handleToggleMyMic = async () => {
     // If the current user's seat is muted by an Admin / Owner (Profile-level / Admin mute lock active)
     if (isMySeatMutedByAdmin) {
       setToastNotification('🔒 تم كتم الميكروفون بقرار إداري. يُرجى إلغاء الكتم من نافذة الملف الشخصي / الإدارة حصراً');
@@ -1949,6 +2199,18 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     }
 
     const nextMuted = !isMyMicMuted;
+    
+    // Enable real device mic capture if unmuting
+    if (!nextMuted && voiceEngineRef.current) {
+      const ok = await voiceEngineRef.current.enableMicrophone();
+      if (!ok) {
+        setToastNotification('يرجى السماح بصلاحية الميكروفون في المتصفح لبدء التحدث 🎙️');
+        setTimeout(() => setToastNotification(null), 3000);
+      }
+    } else if (voiceEngineRef.current) {
+      voiceEngineRef.current.setMute(true);
+    }
+
     setUserMuteStates((prev) => ({
       ...prev,
       [CURRENT_USER_PROFILE_ID]: nextMuted
@@ -1970,7 +2232,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         return seat;
       })
     );
-    setToastNotification(nextMuted ? '🔇 تم كتم الميكروفون' : '🎙️ تم فتح الميكروفون');
+    setToastNotification(nextMuted ? '🔇 تم كتم الميكروفون' : '🎙️ تم فتح الميكروفون وبث الصوت الحقيقي!');
     setTimeout(() => setToastNotification(null), 2000);
   };
 
@@ -1987,9 +2249,11 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     const targetSeat = allMicSeats.find((s) => s.id === targetSeatId);
     if (!targetSeat) return;
 
-    // Strict Lock Validation: Prevent Host or any user from sitting on a locked / closed mic
-    if (targetSeat.isLocked) {
-      setToastNotification('عذراً! هذا المايك مغلق أو مقفل حالياً 🔒 لا يُسمح بالصعود عليه إلا بعد فتحه.');
+    // Strict Lock Validation:
+    // Room Owner, Moderator, Agent, and Host can climb locked seats directly!
+    const canClimbLockedSeat = isOwner || isCurrentAdmin || currentUserRole === 'host' || currentUserRole === 'moderator' || currentUserRole === 'owner';
+    if (targetSeat.isLocked && !canClimbLockedSeat) {
+      setToastNotification('عذراً! هذا المايك مغلق أو مقفل حالياً 🔒 لا يُسمح بالصعود عليه إلا بعد فتحه أو بدعوة من الإدارة.');
       setTimeout(() => setToastNotification(null), 3000);
       return;
     }
@@ -2098,10 +2362,15 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         [targetSeatId]: 0
       }));
 
+      // Sync seat with real-time audio signaling engine
+      if (voiceEngineRef.current) {
+        voiceEngineRef.current.updateSeat(targetSeatId);
+      }
+
       setToastNotification(
         isTargetSlotAdminMuted
           ? `🎙️ تم صعود المايك #${targetSeatId} في وضع الكتم الإداري 🔇 (المقعد مكتوم مسبقاً)`
-          : `🎙️ تم صعود المايك #${targetSeatId} وبدء جلسة عداد جديدة!`
+          : `🎙️ تم صعود المايك #${targetSeatId} وبدء جلسة صوتية واقعية!`
       );
       setTimeout(() => setToastNotification(null), 2500);
     }
@@ -2111,6 +2380,12 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   // Preserves admin mute status on the empty slot if it was muted by admin
   const handleLeaveSeat = (seatId?: number) => {
     const targetId = seatId || selectedSeatForQuickMic;
+
+    // Sync leave seat with real-time audio signaling engine
+    if (voiceEngineRef.current) {
+      voiceEngineRef.current.updateSeat(null);
+      voiceEngineRef.current.setMute(true);
+    }
 
     setAllMicSeats((prev) => {
       const seatsToVacate = prev.filter(
@@ -2272,7 +2547,8 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   };
 
   // Helper function to remove user from mic (move down to audience - Mic_Vacant_Event)
-  const handleRemoveFromMic = (seatId: number) => {
+  // Preserves seat lock state (وعند نزول المضيف يبقى المايك مغلقاً) and admin-mute
+  const handleRemoveFromMic = (seatId: number, customModName?: string) => {
     if (isTeamBattleActive) {
       setToastNotification('لا يمكن إنزال أو تحريك المقاعد أثناء معركة الفريق 🛑');
       setTimeout(() => setToastNotification(null), 3000);
@@ -2280,11 +2556,24 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     }
     const targetSeat = allMicSeats.find((s) => s.id === seatId);
     const removedName = targetSeat?.userName || `المقعد #${seatId}`;
+    const modName = customModName || (isOwner ? 'المالك (أميرة الشرق)' : 'المشرف عابر');
 
     setAllMicSeats((prev) =>
       prev.map((seat) => {
         if (seat.id === seatId) {
-          return { ...seat, isEmpty: true, userName: '', avatar: '', isHost: false };
+          const shouldKeepAdminMute = Boolean(seat.isMutedByAdmin);
+          return {
+            ...seat,
+            isEmpty: true,
+            userId: undefined,
+            userName: '',
+            avatar: '',
+            isHost: false,
+            isMuted: shouldKeepAdminMute,
+            isMutedByAdmin: shouldKeepAdminMute,
+            isSpeaking: false
+            // isLocked is strictly preserved as-is!
+          };
         }
         return seat;
       })
@@ -2296,8 +2585,220 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       [seatId]: 0
     }));
 
-    setToastNotification(`⬇️ تم إنزال ${removedName} وتصفير عداد المايك #${seatId} (Mic_Vacant_Event)`);
+    // Record action in supervisor statistics log
+    if (targetSeat && !targetSeat.isEmpty) {
+      recordModeratorAction({
+        moderatorName: modName,
+        moderatorAvatar: isOwner
+          ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'
+          : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
+        moderatorRole: isOwner ? 'owner' : 'moderator',
+        targetUserName: removedName,
+        targetUserAvatar: targetSeat.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+        targetSeatId: seatId,
+        actionType: 'drop_mic',
+        actionTitle: 'إنزال من المايك',
+        description: `${modName} قام بإنزال ${removedName} من المايك #${seatId}`,
+        reason: 'إفساح المقعد للمتحدثين'
+      });
+
+      // System notification message in chat
+      const dropChatMsg: ChatMessage = {
+        id: `chat-drop-${Date.now()}-${Math.random()}`,
+        userName: 'نظام الإشراف 🛡️',
+        text: `⬇️ ${modName} قام بإنزال ${removedName} من المايك #${seatId}`,
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150',
+        userColor: '#F59E0B'
+      };
+      setChatMessages((prev) => [...prev, dropChatMsg]);
+    }
+
+    setToastNotification(`⬇️ ${modName} قام بإنزال ${removedName} من المايك #${seatId}`);
     setTimeout(() => setToastNotification(null), 3000);
+  };
+
+  // Direct & Silent Host / Audience Mic Invitation (دعوة المضيف وظهور صورته فوراً مع فتح الصوت بعد الموافقة)
+  const handleDirectInviteToMic = (
+    user: { id: string; name: string; avatar?: string; role?: string; isHost?: boolean },
+    preferredSeatId?: number | null
+  ) => {
+    let targetSeatId: number | undefined;
+
+    // Check if the explicitly chosen seat is available
+    if (preferredSeatId) {
+      const pref = allMicSeats.find((s) => s.id === preferredSeatId);
+      if (pref && pref.isEmpty) {
+        targetSeatId = preferredSeatId;
+      }
+    }
+
+    // Otherwise find the first empty seat in active room mic slots
+    if (!targetSeatId) {
+      const firstAvailableSeat = allMicSeats
+        .slice(0, activeMicCount)
+        .find((s) => s.isEmpty);
+      if (firstAvailableSeat) {
+        targetSeatId = firstAvailableSeat.id;
+      }
+    }
+
+    if (!targetSeatId) {
+      setToastNotification('جميع مقاعد المايك ممتلئة حالياً 🛑');
+      setTimeout(() => setToastNotification(null), 2500);
+      return;
+    }
+
+    const assignedSeatId = targetSeatId;
+
+    // 1. Instantly place user's photo/avatar on the mic seat in pending audio mode (isMuted: true, isPendingAudioAcceptance: true)
+    setAllMicSeats((prev) =>
+      prev.map((seat) => {
+        if (seat.id === assignedSeatId) {
+          const isHostRole = Boolean(
+            user.isHost ||
+            user.role?.includes('مضيف') ||
+            user.name.includes('أميرة') ||
+            assignedSeatId === 1
+          );
+
+          return {
+            ...seat,
+            isEmpty: false,
+            userId: user.id,
+            userName: user.name,
+            avatar: user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+            isHost: isHostRole,
+            isMuted: true, // Muted initially until accepted
+            isMutedByAdmin: Boolean(seat.isMutedByAdmin),
+            isSpeaking: false,
+            isPendingAudioAcceptance: true
+            // Note: seat.isLocked is explicitly PRESERVED (يبقى المايك مغلقاً)!
+          };
+        }
+        return seat;
+      })
+    );
+
+    // Track invited users
+    if (!invitedUserIds.includes(user.id)) {
+      setInvitedUserIds((prev) => [...prev, user.id]);
+    }
+
+    // Reset/init counter for fresh mic session
+    setSeatCounters((prev) => ({
+      ...prev,
+      [assignedSeatId]: 0
+    }));
+
+    // Trigger acceptance modal for the invited host
+    const inviterTitle = isOwner ? 'صاحب الغرفة (أميرة الشرق)' : 'المشرف عابر';
+    setPendingHostInvitation({
+      user,
+      seatId: assignedSeatId,
+      inviterName: inviterTitle
+    });
+
+    // Close source modals immediately
+    setShowAudienceModal(false);
+    setShowSeatActionModal(false);
+    setSelectedSeatForAction(null);
+
+    setToastNotification(`🎙️ ظهرت صورة ${user.name} على المايك #${assignedSeatId} بانتظار فتح الصوت...`);
+    setTimeout(() => setToastNotification(null), 2500);
+  };
+
+  // Handle Host Accept Invitation -> Unmutes audio & activates voice stream
+  const handleAcceptHostInvitation = () => {
+    if (!pendingHostInvitation) return;
+    const { user, seatId } = pendingHostInvitation;
+
+    setAllMicSeats((prev) =>
+      prev.map((seat) => {
+        if (seat.id === seatId) {
+          return {
+            ...seat,
+            isMuted: false, // Open voice mic upon approval!
+            isSpeaking: true,
+            isPendingAudioAcceptance: false
+          };
+        }
+        return seat;
+      })
+    );
+
+    setPendingHostInvitation(null);
+    setToastNotification(`🎉 تم قبول الدعوة وفُتح المايك الصوتي لـ ${user.name} بنجاح!`);
+    setTimeout(() => setToastNotification(null), 3000);
+  };
+
+  // Handle Host Reject/Decline Invitation -> Removes occupant & keeps seat locked
+  const handleRejectHostInvitation = () => {
+    if (!pendingHostInvitation) return;
+    const { user, seatId } = pendingHostInvitation;
+
+    setAllMicSeats((prev) =>
+      prev.map((seat) => {
+        if (seat.id === seatId) {
+          return {
+            ...seat,
+            isEmpty: true,
+            userId: undefined,
+            userName: '',
+            avatar: '',
+            isHost: false,
+            isMuted: Boolean(seat.isMutedByAdmin),
+            isMutedByAdmin: Boolean(seat.isMutedByAdmin),
+            isSpeaking: false,
+            isPendingAudioAcceptance: false
+          };
+        }
+        return seat;
+      })
+    );
+
+    setInvitedUserIds((prev) => prev.filter((id) => id !== user.id));
+    setPendingHostInvitation(null);
+    setToastNotification(`❌ تم رفض الدعوة ونزل ${user.name} مع بقاء المايك مغلقاً.`);
+    setTimeout(() => setToastNotification(null), 2500);
+  };
+
+  // Helper function to kick user from room and log into moderator statistics
+  const handleKickFromRoom = (user: UserProfileData) => {
+    const modName = isOwner ? 'المالك (أميرة الشرق)' : 'المشرف عابر';
+
+    // Record into supervisor statistics
+    recordModeratorAction({
+      moderatorName: modName,
+      moderatorAvatar: isOwner
+        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'
+        : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
+      moderatorRole: isOwner ? 'owner' : 'moderator',
+      targetUserName: user.name || 'العضو',
+      targetUserAvatar: user.avatar,
+      targetSeatId: user.seatId,
+      actionType: 'kick_room',
+      actionTitle: 'طرد من الغرفة',
+      description: `${modName} قام بطرد ${user.name} من الغرفة`,
+      reason: 'مخالفة آداب وقوانين الروم'
+    });
+
+    // If occupying a mic seat, clear it
+    if (user.seatId) {
+      handleRemoveFromMic(user.seatId, modName);
+    }
+
+    // Add broadcast system chat notice
+    const kickChatMsg: ChatMessage = {
+      id: `chat-kick-${Date.now()}-${Math.random()}`,
+      userName: 'نظام الإشراف 🛡️',
+      text: `🚨 ${modName} قام بطرد ${user.name} من الغرفة`,
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150',
+      userColor: '#EF4444'
+    };
+    setChatMessages((prev) => [...prev, kickChatMsg]);
+
+    setToastNotification(`🚪 ${modName} قام بطرد ${user.name} من الغرفة`);
+    setTimeout(() => setToastNotification(null), 3500);
   };
 
   // Helper function to move/swap any host or user between mic seats while preserving & transferring counter balance
@@ -2548,7 +3049,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     setChatMessages((prev) => [
       ...prev,
       {
-        id: Date.now().toString(),
+        id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         userName: 'أنا (الزائر)',
         avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
         text: inputMessage,
@@ -2665,9 +3166,16 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       if (match) giftQty = parseInt(match[1], 10);
     }
 
-    // Deduct cost of gift from supporter balance
+    // Deduct cost of gift from supporter balance & increment total room support diamonds stats
     if (totalValue > 0) {
       setUserCoinsBalance((prev) => Math.max(0, prev - totalValue));
+      setTotalRoomSupportDiamonds((prev) => {
+        const nextVal = prev + totalValue;
+        try {
+          localStorage.setItem(`room_total_support_diamonds_${roomId}`, nextVal.toString());
+        } catch (e) {}
+        return nextVal;
+      });
     }
 
     // ================= LUCKY REFUND DRAW MECHANISM =================
@@ -3311,11 +3819,11 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             className="border rounded-full py-1 pr-1 pl-3.5 h-11.5 sm:h-12 flex items-center gap-2 min-w-0 max-w-[58%] sm:max-w-[65%] shadow-md cursor-pointer hover:border-amber-400/80 hover:brightness-110 transition-all active:scale-95 group shrink-0"
             title="انقر لعرض شاشة إدارة الغرفة وتعديل الاسم والمشرفين"
           >
-            {/* Host Avatar on Right Edge */}
+            {/* Room Avatar on Right Edge (صورة الغرفة الخاصة المستقلة) */}
             <div className="w-8.5 h-8.5 rounded-full border-2 border-amber-400 overflow-hidden shrink-0 shadow-[0_0_10px_rgba(245,158,11,0.45)] group-hover:scale-105 transition-transform">
               <img
-                src={hostSeat.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=300'}
-                alt={hostSeat.userName}
+                src={currentRoomAvatar || hostSeat.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300'}
+                alt={currentRoomTitle}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -3387,13 +3895,9 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
               <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-red-500 ring-1.5 ring-[#0B0E17]" />
             </button>
 
-            {/* Power/Close Button */}
+            {/* Power/Close Button -> Opens Room Exit Modal */}
             <button
-              onClick={() => {
-                setIsRoomActive(false);
-                setRoomUptimeSeconds(0);
-                onClose();
-              }}
+              onClick={() => setShowRoomExitModal(true)}
               style={{
                 backgroundColor: mainRoomConfig.topPowerBtnBg || '#1A2132'
               }}
@@ -3481,11 +3985,17 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                 setStatsTimeFilter('24h');
                 setShowRoomSupportModal(true);
               }}
-              className="bg-[#151D2C] border border-cyan-500/40 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 text-[8px] font-mono font-black text-cyan-300 shadow-2xs cursor-pointer hover:border-cyan-400 transition-colors"
-              title="إحصائيات الدعم الكلي في هذه الغرفة"
+              className="bg-gradient-to-r from-[#111A2E] to-[#16233B] border border-cyan-400/50 hover:border-cyan-300 px-2 py-0.5 rounded-full flex items-center gap-1 text-[8.5px] font-mono font-black text-cyan-300 shadow-xs cursor-pointer transition-all active:scale-95"
+              title={`إجمالي إحصائيات الدعم الكلي في الغرفة: ${totalRoomSupportDiamonds.toLocaleString()} 💎 (انقر لفتح الإحصائيات الكاملة)`}
             >
-              <span className="text-[9px]">💎</span>
-              <span>{userCoins}</span>
+              <span className="text-[9.5px] drop-shadow-[0_0_6px_rgba(6,182,212,0.8)]">💎</span>
+              <span className="tracking-tight">
+                {totalRoomSupportDiamonds >= 1_000_000
+                  ? `${(totalRoomSupportDiamonds / 1_000_000).toFixed(1)}M`
+                  : totalRoomSupportDiamonds >= 1_000
+                  ? `${(totalRoomSupportDiamonds / 1_000).toFixed(1)}k`
+                  : totalRoomSupportDiamonds.toLocaleString()}
+              </span>
             </button>
           </div>
 
@@ -4031,8 +4541,19 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                                 className="w-full h-full object-cover rounded-full relative z-10"
                               />
 
-                              {/* Lock Badge on occupied seat if locked by admin */}
-                              {seat.isLocked && (
+                              {/* Lock Badge on occupied seat: Hidden when occupied by Room Owner or Admin/Moderator */}
+                              {seat.isLocked && !(
+                                isSeatHost ||
+                                isOwner ||
+                                isCurrentAdmin ||
+                                currentUserRole === 'owner' ||
+                                currentUserRole === 'moderator' ||
+                                currentUserRole === 'host' ||
+                                seat.userName?.includes('أميرة') ||
+                                seat.userName?.includes('سارة') ||
+                                seat.userName?.includes('المضيف') ||
+                                seat.isHost
+                              ) && (
                                 <div className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 rounded-full flex items-center justify-center border border-[#0B0E17] bg-indigo-600 text-white shadow-xs z-20" title="المقعد مقفل 🔒">
                                   <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
                                 </div>
@@ -4046,6 +4567,19 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                                   transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                                   className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 rounded-full flex items-center justify-center border-1.5 border-[#0B0E17] bg-rose-600 text-white shadow-md z-30 ring-1.5 ring-rose-500/70"
                                   title="تم كتم المايك بواسطة الإدارة 🔇"
+                                >
+                                  <MicOff className="w-2.5 h-2.5 stroke-[2.8]" />
+                                </motion.div>
+                              )}
+
+                              {/* Pending Audio Mic Acceptance Badge - amber mic icon waiting for approval */}
+                              {seat.isPendingAudioAcceptance && !seat.isMutedByAdmin && (
+                                <motion.div
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: [1, 1.1, 1] }}
+                                  transition={{ repeat: Infinity, duration: 1.5 }}
+                                  className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 rounded-full flex items-center justify-center border-1.5 border-[#0B0E17] bg-amber-500 text-slate-950 shadow-md z-30 ring-1.5 ring-amber-400/80"
+                                  title="بانتظار موافقة المضيف لفتح الصوت 🎙️"
                                 >
                                   <MicOff className="w-2.5 h-2.5 stroke-[2.8]" />
                                 </motion.div>
@@ -4677,7 +5211,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         />
 
         {/* 4. ISOLATED LIVE CHAT MESSAGES FEED WITH ABSOLUTE OVERLAY CUMULATIVE CLOCK */}
-        <div className="relative flex-1 min-h-0 flex flex-col w-full">
+        <div className="relative flex-1 min-h-0 flex flex-col w-full overflow-hidden">
           {/* CUMULATIVE BROADCAST HOURS CLOCK BADGE FLOATING OVER TOP OF CHAT (TAKES ZERO LAYOUT SPACE) */}
           {showCountersOnMics && (
             <div className="absolute top-1 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none">
@@ -4702,6 +5236,10 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           <SideGiftStream
             events={sideGiftEvents}
             onExpireEvent={handleExpireSideGiftEvent}
+            onOpenUserProfile={(userData) => {
+              setSelectedUserForProfile(userData);
+              setShowAdvancedProfileModal(true);
+            }}
           />
         </div>
       </div>
@@ -4809,27 +5347,20 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           </div>
         </button>
 
-        {/* 3rd from Left (5th in DOM): Raise Hand / Mic Request Queue Button */}
+        {/* 3rd from Left (5th in DOM): YoHo Private Messages / Chat Bottom Sheet Button */}
         <button
-          onClick={() => {
-            if (isCurrentAdmin) {
-              setShowMicRequestsModal(true);
-            } else {
-              handleRequestMicFromUser();
-            }
-          }}
+          id="btn-room-bottom-messages"
+          onClick={() => setShowYoHoMessagesModal(true)}
           style={{
             backgroundColor: mainRoomConfig.bottomButtonsBg || '#1A2234'
           }}
-          className="w-8 h-8 rounded-full hover:brightness-125 text-cyan-300 flex items-center justify-center cursor-pointer transition-colors shadow-md relative"
-          title={isCurrentAdmin ? 'إدارة طلبات الصعود للمايك' : 'طلب صعود للمايك'}
+          className="w-8 h-8 rounded-full hover:brightness-125 text-slate-300 flex items-center justify-center cursor-pointer transition-colors shadow-md relative group"
+          title="الرسائل والمحادثات الخاصة (دردشة)"
         >
-          <Hand className="w-4 h-4 text-cyan-400" />
-          {micRequests.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-mono font-extrabold w-4 h-4 rounded-full flex items-center justify-center border border-[#0D121F] shadow-sm">
-              {micRequests.length}
-            </span>
-          )}
+          <Mail className="w-4 h-4 text-slate-300 group-hover:text-white transition-colors" />
+          <span className="absolute -top-0.5 -right-0.5 bg-[#FF4D61] text-white text-[8px] font-mono font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-[#0D121F] shadow-sm animate-pulse">
+            3
+          </span>
         </button>
 
         {/* 2nd from Left (6th in DOM): Gamepad Games Button (Pink Glow) */}
@@ -4855,11 +5386,15 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         </button>
       </div>
 
-      {/* CHAT INPUT MODAL POPUP (INSTANT ZERO-LAG & FLUSH ALIGNED) */}
+      {/* CHAT INPUT MODAL POPUP (INSTANT ZERO-LAG & FLUSH ALIGNED TO KEYBOARD) */}
       <AnimatePresence>
         {showChatInputModal && (
           <div
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 cursor-default select-none pointer-events-auto transition-opacity duration-75"
+            className="fixed inset-x-0 z-50 flex items-end justify-center bg-black/50 cursor-default select-none pointer-events-auto transition-opacity duration-75"
+            style={{
+              top: `${chatInputViewport.offsetTop}px`,
+              height: `${chatInputViewport.height}px`,
+            }}
             onPointerDown={(e) => {
               if (e.target === e.currentTarget) {
                 if (document.activeElement instanceof HTMLElement) {
@@ -4872,7 +5407,11 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             <div
               dir="rtl"
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md bg-[#121827] border-t border-x border-white/20 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] rounded-t-2xl shadow-2xl pointer-events-auto transform-gpu"
+              className={`w-full max-w-md bg-[#121827] border-t border-x border-white/20 px-3 pt-2.5 rounded-t-2xl shadow-2xl pointer-events-auto transform-gpu ${
+                chatInputViewport.keyboardOpen
+                  ? 'pb-2'
+                  : 'pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]'
+              }`}
             >
               {/* CONDITIONAL REPLY PREVIEW BAR (معاينة الرد الشرطية - تظهر فقط عند وجود رد مفعل) */}
               {replyingToMessage && (
@@ -5199,7 +5738,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                 <button
                   onClick={() => {
                     setShowSettingsDrawer(false);
-                    onClose();
+                    setShowRoomExitModal(true);
                   }}
                   className="w-full p-3 bg-red-600/80 rounded-2xl text-center text-xs font-black text-white hover:bg-red-600 cursor-pointer"
                 >
@@ -5265,6 +5804,17 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                     >
                       <X className="w-4 h-4" />
                     </button>
+                  </div>
+                </div>
+
+                {/* Total Comprehensive Room Support Stat Ribbon */}
+                <div className="bg-gradient-to-r from-amber-500/15 via-cyan-500/15 to-purple-500/15 border border-cyan-500/30 rounded-xl px-3 py-1.5 flex items-center justify-between shadow-inner">
+                  <div className="flex items-center gap-1.5 text-xs font-black text-cyan-300">
+                    <span className="text-sm drop-shadow-md">💎</span>
+                    <span>إجمالي الدعم الشامل للروم:</span>
+                  </div>
+                  <div className="font-mono font-black text-xs text-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]">
+                    {totalRoomSupportDiamonds.toLocaleString()} 💎
                   </div>
                 </div>
 
@@ -6158,8 +6708,9 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             setShowSeatActionModal(true);
           }
         }}
+        onKickFromRoom={(u) => handleKickFromRoom(u)}
         onOpenAdminControls={() => setShowRoomInfoModal(true)}
-        onOpenPrivateChat={() => setShowChatInputModal(true)}
+        onOpenPrivateChat={() => setShowYoHoMessagesModal(true)}
       />
 
       {/* AUDIENCE / INVITE LIST MODAL (قائمة الاستدعاء للمايك والحضور - 18) */}
@@ -6210,11 +6761,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                   const isInvited = invitedUserIds.includes(usr.id);
 
                   const handleSendInvite = () => {
-                    if (!isInvited) {
-                      setInvitedUserIds((prev) => [...prev, usr.id]);
-                    }
-                    setToastNotification(`تم إرسال دعوة صعود للمايك إلى ${usr.name} 🎙️✨`);
-                    setTimeout(() => setToastNotification(null), 3000);
+                    handleDirectInviteToMic(usr, selectedSeatForAction);
                   };
 
                   return (
@@ -6223,7 +6770,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                       onClick={handleSendInvite}
                       className="p-2.5 bg-[#1A2234] border border-white/10 hover:border-indigo-500/60 rounded-2xl flex items-center justify-between cursor-pointer transition-all hover:scale-[1.01] hover:bg-[#202B42]"
                     >
-                      {/* User Info - Clicking here or entire card triggers Invite to Mic */}
+                      {/* User Info - Clicking here or entire card triggers Direct Mic Ascension */}
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <img
                           src={usr.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
@@ -6247,7 +6794,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
 
                       {/* Right Side Actions: Invite Action Button + Separate Profile View Button */}
                       <div className="flex items-center gap-2 shrink-0">
-                        {/* Invite Button Badge */}
+                        {/* Direct Ascension / Invite Button */}
                         <button
                           type="button"
                           onClick={(e) => {
@@ -6261,7 +6808,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                           }`}
                         >
                           <Mic className="w-3 h-3" />
-                          <span>{isInvited ? 'تمت الدعوة ✓' : 'استدعاء للمايك'}</span>
+                          <span>{isInvited ? 'صعد للمايك ✓' : 'استدعاء للمايك'}</span>
                         </button>
 
                         {/* Separate Profile Button (Exclusively opens Profile) */}
@@ -6300,7 +6847,10 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       {/* SEAT ACTION MODAL (قائمة التحكم بالمقعد والمايك - خيارات الإدارة والجمهور) */}
       <SeatActionModal
         isOpen={showSeatActionModal}
-        onClose={() => setShowSeatActionModal(false)}
+        onClose={() => {
+          setShowSeatActionModal(false);
+          setSelectedSeatForAction(null);
+        }}
         seatId={selectedSeatForAction}
         seatUserName={
           selectedSeatForAction
@@ -6317,14 +6867,17 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             ? allMicSeats.find((s) => s.id === selectedSeatForAction)?.isMuted
             : false
         }
-        isCurrentAdmin={isCurrentAdmin}
-        isRoomOwner={currentUserRole === 'owner'}
+        isCurrentAdmin={isCurrentAdmin || currentUserRole === 'moderator' || isOwner}
+        isRoomOwner={isOwner || currentUserRole === 'owner'}
         currentUserSeatId={allMicSeats.find((s) => !s.isEmpty && (s.userName.includes('أنا') || s.userName.includes('المضيف') || (currentUserRole === 'host' && s.isHost)))?.id}
         onTakeSeat={(seatId) => handleTakeSeat(seatId)}
         onToggleLockSeat={(seatId) => handleToggleLockSeat(seatId)}
         onToggleMuteSeat={(seatId) => handleToggleMuteSeat(seatId, true)}
         onRequestMic={() => handleRequestMicFromUser()}
-        onInviteAudience={() => setShowAudienceModal(true)}
+        onInviteAudience={(seatId) => {
+          setSelectedSeatForAction(seatId);
+          setShowAudienceModal(true);
+        }}
         onRemoveFromMic={(seatId) => handleRemoveFromMic(seatId)}
         onViewProfile={(seatId) => {
           const targetSeat = allMicSeats.find((s) => s.id === seatId);
@@ -6370,6 +6923,72 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           >
             {toastNotification}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* HOST MIC INVITATION & AUDIO ACTIVATION MODAL (دعوة المضيف للصعود للمايك وفتح الصوت بعد الموافقة) */}
+      <AnimatePresence>
+        {pendingHostInvitation && (
+          <div
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 select-none"
+            dir="rtl"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+              className="w-full max-w-sm bg-gradient-to-b from-[#182035] to-[#0D111A] border-2 border-amber-400/80 rounded-3xl p-5 text-white shadow-[0_0_40px_rgba(251,191,36,0.35)] flex flex-col items-center text-center space-y-4"
+            >
+              {/* Pulsing Avatar with Crown */}
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-600 shadow-[0_0_20px_rgba(251,191,36,0.8)]">
+                  <img
+                    src={pendingHostInvitation.user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'}
+                    alt={pendingHostInvitation.user.name}
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                </div>
+                <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full border-2 border-[#182035] shadow-sm">
+                  <Mic className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* Title & Details */}
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-amber-300">
+                  دعوة صعود للمايك الصوتي 🎙️
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  قام <span className="font-extrabold text-amber-400">{pendingHostInvitation.inviterName}</span> بدعوة{' '}
+                  <span className="font-extrabold text-white">{pendingHostInvitation.user.name}</span> للصعود على المايك #{pendingHostInvitation.seatId}.
+                </p>
+                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/15 border border-amber-400/30 rounded-xl text-[11px] font-bold text-amber-200">
+                  <span>✨ ظهرت صورتك على المايك! اضغط موافقة لفتح الصوت</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="w-full grid grid-cols-2 gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={handleAcceptHostInvitation}
+                  className="w-full py-2.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:brightness-110 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                >
+                  <Mic className="w-4 h-4" />
+                  <span>موافقة وفتح المايك</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRejectHostInvitation}
+                  className="w-full py-2.5 bg-white/10 hover:bg-white/15 text-slate-300 font-bold text-xs rounded-xl border border-white/15 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                >
+                  <X className="w-4 h-4" />
+                  <span>رفض الدعوة</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
@@ -6731,6 +7350,22 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           setToastNotification('جاري تجهيز ثيم المايكات الموحد 🎙️');
           setTimeout(() => setToastNotification(null), 3000);
         }}
+        onOpenModeratorStats={() => {
+          setShowTopOptionsMenuModal(false);
+          setShowModeratorStatsModal(true);
+        }}
+        onTriggerToast={(msg) => {
+          setToastNotification(msg);
+          setTimeout(() => setToastNotification(null), 3200);
+        }}
+      />
+
+      {/* MODERATOR AUDIT & STATS MODAL (إحصائيات وسجل المشرفين - رصد الطرد وتنزيل المايكات) */}
+      <ModeratorStatsModal
+        isOpen={showModeratorStatsModal}
+        onClose={() => setShowModeratorStatsModal(false)}
+        currentUserRole={currentUserRole}
+        roomTitle={currentRoomTitle}
         onTriggerToast={(msg) => {
           setToastNotification(msg);
           setTimeout(() => setToastNotification(null), 3200);
@@ -6863,6 +7498,16 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         isUnlockedViaGiftOrStore={true}
       />
 
+      {/* YOHO ROOM DIRECT MESSAGES & CHAT MODAL (دردشة) */}
+      <YoHoRoomMessagesModal
+        isOpen={showYoHoMessagesModal}
+        onClose={() => setShowYoHoMessagesModal(false)}
+        onOpenUserProfile={(userData) => {
+          setSelectedUserForProfile(userData);
+          setShowAdvancedProfileModal(true);
+        }}
+      />
+
       {/* DIGITAL COUNTER CONTROL MODAL (العداد الرقمي المتزامن للتحكم والتصفير بواسطة صاحب الغرفة) */}
       <DigitalCounterControlModal
         isOpen={showCounterControlModal}
@@ -6952,13 +7597,13 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         topSupporter={pkResultData.topSupporter}
       />
 
-      {/* ROOM INFO & MANAGEMENT MODAL (نافذة تفاصيل ومعلومات الروم وإدارة المشرفين وتعديل اسم الروم للمالك) */}
+      {/* ROOM INFO & MANAGEMENT MODAL (نافذة تفاصيل ومعلومات الروم وإدارة المشرفين وتعديل اسم وصورة الروم للمالك) */}
       <RoomInfoModal
         isOpen={showRoomInfoModal}
         onClose={() => setShowRoomInfoModal(false)}
         roomTitle={currentRoomTitle}
         roomId={roomId}
-        hostAvatar={hostSeat.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'}
+        hostAvatar={currentRoomAvatar || hostSeat.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'}
         hostName={hostSeat.userName || 'مالك الغرفة'}
         userRole={currentUserRole}
         currentAppRole={currentAppRole}
@@ -6971,7 +7616,27 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           try {
             localStorage.setItem(`super_legend_room_title_${roomId}`, newTitle);
           } catch (e) {}
+          // Also persist to Firestore if owner
+          saveRoomThemeAndWallpaperToFirestore({
+            roomId,
+            isOwner: isOwner,
+            roomTitle: newTitle
+          }).catch(() => {});
           setToastNotification(`تم تغيير اسم الروم إلى "${newTitle}" بنجاح 🏷️👑`);
+          setTimeout(() => setToastNotification(null), 3000);
+        }}
+        onUpdateRoomAvatar={(newAvatarUrl) => {
+          setCurrentRoomAvatar(newAvatarUrl);
+          try {
+            localStorage.setItem(`super_legend_room_avatar_${roomId}`, newAvatarUrl);
+          } catch (e) {}
+          // Persist to Firestore and dispatch global event
+          saveRoomThemeAndWallpaperToFirestore({
+            roomId,
+            isOwner: isOwner,
+            roomAvatar: newAvatarUrl
+          }).catch(() => {});
+          setToastNotification(`تم تحديث صورة الغرفة بنجاح وتطبيقها خارج وداخل الروم 📸👑`);
           setTimeout(() => setToastNotification(null), 3000);
         }}
       />
@@ -6990,6 +7655,22 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         initialConfig={mainRoomConfig}
         onConfigChange={(newCfg) => {
           setMainRoomConfig(newCfg);
+        }}
+      />
+
+      {/* ROOM EXIT ACTION MODAL (نافذة خيارات مغادرة الغرفة: احتفاظ، خروج، إحالة) */}
+      <RoomExitModal
+        isOpen={showRoomExitModal}
+        onClose={() => setShowRoomExitModal(false)}
+        onKeepInBackground={handleKeepInBackground}
+        onExit={handleSoloExit}
+        onDissolveAll={handleDissolveRoom}
+        isOwner={isOwner}
+        roomTitle={currentRoomTitle}
+        hostName={hostSeat.userName || hostName}
+        onTriggerToast={(msg) => {
+          setToastNotification(msg);
+          setTimeout(() => setToastNotification(null), 3000);
         }}
       />
     </div>

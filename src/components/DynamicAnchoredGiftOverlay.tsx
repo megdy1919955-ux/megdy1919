@@ -88,32 +88,41 @@ const SingleGiftFlight: React.FC<SingleGiftFlightProps> = ({ gift, containerRef,
         }
       }
 
-      let targetX = (gift.fallbackTargetPct.x / 100) * containerRect.width;
-      let targetY = (gift.fallbackTargetPct.y / 100) * containerRect.height;
+      // Check if target is a mic seat -> apply upward elevation (total ~4cm = ~152px in CSS pixels)
+      const isMicSeat = gift.targetElementId ? gift.targetElementId.startsWith('mic-seat') : false;
+      const micElevationOffsetY = isMicSeat ? 152 : 0;
 
-      // Check DOM element once with exact center positioning over the mic seat
+      let targetX = (gift.fallbackTargetPct.x / 100) * containerRect.width;
+      let targetY = (gift.fallbackTargetPct.y / 100) * containerRect.height - micElevationOffsetY;
+
+      // Check DOM element once with exact positioning elevated above the mic seat
       const targetElem = document.getElementById(gift.targetElementId);
       if (targetElem) {
         const avatarElem = (targetElem.querySelector('.rounded-full') || targetElem) as HTMLElement;
         const targetRect = avatarElem.getBoundingClientRect();
         if (targetRect.width > 0 && targetRect.height > 0) {
           targetX = (targetRect.left + targetRect.width / 2) - containerRect.left;
-          // Target placed precisely on the center of the mic avatar
-          targetY = (targetRect.top + targetRect.height / 2) - containerRect.top;
+          // Target placed precisely elevated ~152px above the mic seat center
+          targetY = (targetRect.top + targetRect.height / 2) - containerRect.top - micElevationOffsetY;
         }
       }
 
       const deltaX = targetX - startX;
       const deltaY = targetY - startY;
       const distance = Math.max(100, Math.hypot(deltaX, deltaY));
-      const travelDuration = 0.9;
+      const travelDuration = 1.15;
+
+      // Parabolic Arc Apex (قمة القوس ترتفع عالياً في سماء الشاشة فوق المايكات):
+      const highestY = Math.min(startY, targetY);
+      const arcRise = Math.max(170, Math.min(270, distance * 0.42));
+      const apexY = Math.max(25, highestY - arcRise);
 
       return {
         startX,
         startY,
         targetX,
         targetY,
-        apexY: targetY - 20,
+        apexY,
         deltaX,
         deltaY,
         distance,
@@ -139,6 +148,7 @@ const SingleGiftFlight: React.FC<SingleGiftFlightProps> = ({ gift, containerRef,
         startY,
         targetX,
         targetY,
+        apexY,
         deltaX,
         deltaY,
         travelDuration,
@@ -162,23 +172,23 @@ const SingleGiftFlight: React.FC<SingleGiftFlightProps> = ({ gift, containerRef,
       }
 
       if (effectiveElapsed <= travelDuration) {
-        // Active Flight Phase: Smooth direct curved trajectory targeting the exact mic seat
+        // Active Flight Phase: High parabolic arc trajectory rising high above mics then descending
         const p = Math.min(1, Math.max(0, effectiveElapsed / travelDuration));
 
-        // Cubic Bézier control points:
+        // Cubic Bézier control points for a smooth, high arch:
         // P0: Start from bottom gift box / send button
         const p0x = startX;
         const p0y = startY;
 
-        // P1: Direct launch upwards towards the target direction
-        const p1x = startX + deltaX * 0.25;
-        const p1y = startY + deltaY * 0.45;
+        // P1: Launch steeply upwards into the sky forming the ascending side of the arc
+        const p1x = startX + deltaX * 0.15;
+        const p1y = apexY + (startY - apexY) * 0.28;
 
-        // P2: Gentle approach curving directly into the seat
-        const p2x = startX + deltaX * 0.8;
-        const p2y = targetY - 15;
+        // P2: Curve over the high peak of the arc above the mics
+        const p2x = targetX - deltaX * 0.12;
+        const p2y = apexY;
 
-        // P3: Exact Mic Seat center
+        // P3: Land precisely 2cm elevated above the specified mic seat
         const p3x = targetX;
         const p3y = targetY;
 
@@ -196,23 +206,28 @@ const SingleGiftFlight: React.FC<SingleGiftFlightProps> = ({ gift, containerRef,
 
         // Opacity smoothly visible throughout flight
         let opacity = 1;
-        if (p < 0.08) {
-          opacity = p / 0.08;
-        } else if (p > 0.92) {
-          opacity = 1 - (p - 0.92) / 0.08;
+        if (p < 0.05) {
+          opacity = p / 0.05;
+        } else if (p > 0.95) {
+          opacity = 1 - (p - 0.95) / 0.05;
         }
 
-        // Scale curve: starts small, reaches full size, settles onto the mic
+        // Scale curve:
+        // 1) Ascent (p: 0 -> 0.35): Rises in arc & expands prominently up to 1.70x at the apex of the screen
+        // 2) Descent (p: 0.35 -> 1.0): Continuously shrinks down ("تصغير تدريجي") from 1.70x down to 0.55x upon reaching the mic
         let scale = 1.0;
-        if (p < 0.2) {
-          scale = 0.3 + (p / 0.2) * 0.85;
-        } else if (p > 0.85) {
-          scale = 1.15 - (p - 0.85) * 1.5;
+        if (p <= 0.35) {
+          const tAscent = p / 0.35;
+          // Smooth ease-out growth: 0.45 -> 1.70
+          scale = 0.45 + Math.sin(tAscent * (Math.PI / 2)) * 1.25;
         } else {
-          scale = 1.15;
+          const tDescent = (p - 0.35) / 0.65;
+          // Smooth continuous shrinking: 1.70 -> 0.55
+          scale = 1.70 - Math.pow(tDescent, 0.85) * 1.15;
         }
 
-        const bankAngle = deltaX > 20 ? 8 : deltaX < -20 ? -8 : 0;
+        // Natural banking tilt following the arc curve
+        const bankAngle = deltaX > 20 ? 14 : deltaX < -20 ? -14 : 0;
         const rotation = Math.sin(p * Math.PI) * bankAngle;
 
         setFlightState({
@@ -228,7 +243,7 @@ const SingleGiftFlight: React.FC<SingleGiftFlightProps> = ({ gift, containerRef,
         return;
       }
 
-      // Complete & Cleanup cleanly upon arrival (No extra rising star or golden shockwave)
+      // Complete & Cleanup cleanly upon arrival
       completedRef.current = true;
       setFlightState({
         phase: 'done',

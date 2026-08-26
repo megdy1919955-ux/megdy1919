@@ -226,6 +226,7 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
   const [showDuckingPopover, setShowDuckingPopover] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(new Set());
+  const musicScreenConstraintsRef = useRef<HTMLDivElement>(null);
 
   // Load saved ROM MP3 songs from dedicated IndexedDB phone storage on initial mount
   useEffect(() => {
@@ -931,17 +932,22 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
         onChange={handleFileUpload}
       />
 
-      <AnimatePresence>
-        <div
-          className="fixed inset-0 z-50 pointer-events-none select-none"
-          dir="rtl"
-        >
+      {/* Screen Constraints Boundary Overlay */}
+      <div
+        ref={musicScreenConstraintsRef}
+        className="fixed inset-3 z-50 pointer-events-none select-none"
+        dir="rtl"
+        aria-hidden="true"
+      />
 
+      <AnimatePresence mode="wait">
         {/* Floating Draggable Container */}
         {isMinimized ? (
           /* MINIMIZED CIRCULAR CD FLOATING WIDGET (TOP LEFT POSITION) */
           <motion.div
+            key="minimized-music-disc"
             drag
+            dragConstraints={musicScreenConstraintsRef}
             dragMomentum={false}
             dragElastic={0}
             initial={{ scale: 0.5, opacity: 0 }}
@@ -1026,7 +1032,9 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
           /* FULL COMPACT DRAGGABLE FLOATING PLAYER CARD */
           <div className="w-full h-full flex items-center justify-center p-2 pointer-events-none">
             <motion.div
+              key="full-compact-music-player"
               drag
+              dragConstraints={musicScreenConstraintsRef}
               dragMomentum={false}
               dragElastic={0}
               initial={{ opacity: 0, scale: 0.9, y: 30 }}
@@ -1551,8 +1559,9 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
           </motion.div>
         </div>
         )}
+      </AnimatePresence>
 
-        {/* STANDALONE SEPARATE PLAYLIST POPUP MODAL */}
+      {/* STANDALONE SEPARATE PLAYLIST POPUP MODAL */}
         <AnimatePresence>
           {showPlaylist && (
             <div 
@@ -1880,8 +1889,6 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-    </AnimatePresence>
     </>
   );
 };

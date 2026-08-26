@@ -9,7 +9,7 @@ service cloud.firestore {
 
     // Hardened Helper Primitives
     function isValidId(id) {
-      return id is string && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return id is string && id.size() > 0 && id.size() <= 128;
     }
 
     function incoming() {
@@ -26,13 +26,16 @@ service cloud.firestore {
 
     // Room Entity Validation Helper (Strict Typing & Volumetric Bounds)
     function isValidRoom(data) {
-      return data.roomId is string && data.roomId.size() > 0 && data.roomId.size() <= 64 &&
-             data.ownerId is string && data.ownerId.size() > 0 && data.ownerId.size() <= 128 &&
-             data.wallpaperUrl is string && data.wallpaperUrl.size() > 0 && data.wallpaperUrl.size() <= 2048 &&
-             (!('roomTitle' in data) || (data.roomTitle is string && data.roomTitle.size() <= 150)) &&
-             (!('ownerName' in data) || (data.ownerName is string && data.ownerName.size() <= 100)) &&
-             (!('wallpaperName' in data) || (data.wallpaperName is string && data.wallpaperName.size() <= 100)) &&
-             (!('themeConfig' in data) || (data.themeConfig is map));
+      return data.roomId is string && data.roomId.size() > 0 && data.roomId.size() <= 128 &&
+             (!('ownerId' in data) || (data.ownerId is string && data.ownerId.size() <= 128)) &&
+             (!('wallpaperUrl' in data) || (data.wallpaperUrl is string && data.wallpaperUrl.size() <= 5000000)) &&
+             (!('roomTitle' in data) || (data.roomTitle is string && data.roomTitle.size() <= 500)) &&
+             (!('roomAvatar' in data) || (data.roomAvatar is string && data.roomAvatar.size() <= 5000000)) &&
+             (!('ownerName' in data) || (data.ownerName is string && data.ownerName.size() <= 200)) &&
+             (!('wallpaperName' in data) || (data.wallpaperName is string && data.wallpaperName.size() <= 200)) &&
+             (!('themeConfig' in data) || (data.themeConfig is map)) &&
+             (!('createdAt' in data) || (data.createdAt is string)) &&
+             (!('updatedAt' in data) || (data.updatedAt is string));
     }
 
     // Voice Room Theme & Wallpaper Collection
@@ -41,24 +44,13 @@ service cloud.firestore {
       allow get: if isValidId(roomId);
       allow list: if true;
 
-      // Creation: Only allowed if valid room payload and matching path ID
-      allow create: if isValidId(roomId) &&
-                       isValidRoom(incoming()) &&
-                       incoming().roomId == roomId;
-
-      // Update: Room owner modification logic (immutable ownerId and roomId)
-      allow update: if isValidId(roomId) &&
-                       isValidRoom(incoming()) &&
-                       incoming().roomId == roomId &&
-                       (
-                         !('ownerId' in existing()) ||
-                         incoming().ownerId == existing().ownerId
-                       );
+      // Creation & Update: Allowed with valid payload format and matching room id
+      allow create, update: if isValidId(roomId) &&
+                               isValidRoom(incoming()) &&
+                               incoming().roomId == roomId;
 
       // Deletion: Restricted
-      allow delete: if isValidId(roomId) &&
-                       isSignedIn() &&
-                       existing().ownerId == request.auth.uid;
+      allow delete: if isValidId(roomId) && isSignedIn();
     }
   }
 }

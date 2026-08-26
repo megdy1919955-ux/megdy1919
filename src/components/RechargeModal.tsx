@@ -168,7 +168,7 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
                             <div>
                               <div className="flex items-center gap-1.5">
                                 <span className="text-sm font-black text-slate-900 font-mono">
-                                  {pkg.coins.toLocaleString('ar-SA')} كوينز
+                                  {pkg.coins.toLocaleString('en-US')} كوينز
                                 </span>
                                 {pkg.tag && (
                                   <span className="text-[9px] font-extrabold bg-rose-500 text-white px-1.5 py-0.2 rounded-md">
@@ -178,7 +178,7 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
                               </div>
                               {pkg.bonus > 0 && (
                                 <div className="text-[11px] text-emerald-600 font-bold mt-0.5">
-                                  + {pkg.bonus.toLocaleString('ar-SA')} كوينز مجاناً كهدية!
+                                  + {pkg.bonus.toLocaleString('en-US')} كوينز مجاناً كهدية!
                                 </div>
                               )}
                             </div>
@@ -263,7 +263,7 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
                 <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-center space-y-1">
                   <span className="text-xs text-amber-900/70 font-bold block">ستحصل على:</span>
                   <div className="text-2xl font-black text-amber-600 font-mono">
-                    {(diamondsToExchange * 2).toLocaleString('ar-SA')} كوينز ✨
+                    {(diamondsToExchange * 2).toLocaleString('en-US')} كوينز ✨
                   </div>
                 </div>
 

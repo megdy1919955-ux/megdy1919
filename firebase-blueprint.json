@@ -26,10 +26,15 @@
           "description": "Title of the voice room",
           "maxLength": 150
         },
+        "roomAvatar": {
+          "type": "string",
+          "description": "Avatar image URL of the voice room",
+          "maxLength": 5000000
+        },
         "wallpaperUrl": {
           "type": "string",
           "description": "URL of the room background wallpaper",
-          "maxLength": 2048
+          "maxLength": 5000000
         },
         "wallpaperName": {
           "type": "string",

@@ -20,7 +20,11 @@ import {
   Eye,
   Lock,
   Sparkles,
-  Wrench
+  Wrench,
+  Camera,
+  Image as ImageIcon,
+  Upload,
+  RefreshCw
 } from 'lucide-react';
 import { isDeveloper } from '../lib/roleService';
 import { getSecretWindowTheme, getComputedModalStyle } from '../lib/secretCustomizerService';
@@ -57,6 +61,7 @@ interface RoomInfoModalProps {
   onRoleChange?: (role: 'owner' | 'host' | 'moderator' | 'guest') => void;
   onOpenSettings?: () => void;
   onUpdateRoomTitle?: (newTitle: string) => void;
+  onUpdateRoomAvatar?: (newAvatarUrl: string) => void;
 }
 
 export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
@@ -70,7 +75,8 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
   currentAppRole = 'developer',
   onRoleChange,
   onOpenSettings,
-  onUpdateRoomTitle
+  onUpdateRoomTitle,
+  onUpdateRoomAvatar
 }) => {
   // Current active role
   const [currentRole, setCurrentRole] = useState<'owner' | 'host' | 'moderator' | 'guest'>(userRole);
@@ -78,9 +84,47 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
   const [theme, setTheme] = useState<WindowThemeConfig>(() => getSecretWindowTheme('room_info'));
   const [showSecretCustomizer, setShowSecretCustomizer] = useState(false);
 
-  // Room Title Editing State
+  // Room Title & Avatar Editing States
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitleText, setTempTitleText] = useState(roomTitle);
+  const [showAvatarPickerModal, setShowAvatarPickerModal] = useState(false);
+  const [customAvatarUrlInput, setCustomAvatarUrlInput] = useState('');
+
+  // Preset Luxury Avatars for Quick Pick
+  const PRESET_ROOM_AVATARS = [
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400',
+    'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=400',
+    'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=400',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400',
+    'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=400',
+    'https://images.unsplash.com/photo-1609599006353-e629aaabfeae?auto=format&fit=crop&q=80&w=400',
+    'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&q=80&w=400',
+    'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=400',
+    'https://images.unsplash.com/photo-1563089145-599997674d42?auto=format&fit=crop&q=80&w=400',
+    'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=400',
+  ];
+
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('⚠️ حجم الصورة كبير جداً، يرجى اختيار صورة أقل من 5 ميغابايت');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (result) {
+          onUpdateRoomAvatar?.(result);
+          setShowAvatarPickerModal(false);
+          showToast('✓ تم تغيير صورة الغرفة بنجاح من جهازك! 📸👑');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   useEffect(() => {
     setTempTitleText(roomTitle);
@@ -281,15 +325,32 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
             {/* Room Info Main Card */}
             <div className="flex items-start justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-3">
-                <div className="relative">
+                {/* Room Avatar with Owner-only Edit Trigger */}
+                <div 
+                  className={`relative group ${isOwner ? 'cursor-pointer' : ''}`}
+                  onClick={() => {
+                    if (isOwner) {
+                      setShowAvatarPickerModal(true);
+                    } else {
+                      showToast('🔒 صورة الغرفة مخصصة ويمكن تغييرها من قبل صاحب الغرفة (المالك) فقط');
+                    }
+                  }}
+                  title={isOwner ? 'تغيير صورة الغرفة (خاص بصاحب الغرفة 👑)' : 'صورة الغرفة'}
+                >
                   <img
                     src={hostAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
                     alt={roomTitle}
-                    className="w-12 h-12 rounded-2xl object-cover border-2 border-amber-400 shadow-md"
+                    className="w-12 h-12 rounded-2xl object-cover border-2 border-amber-400 shadow-md group-hover:scale-105 transition-transform"
                   />
-                  <span className="absolute -bottom-1 -right-1 bg-amber-500 text-slate-950 text-[9px] font-black px-1 rounded-md shadow-xs">
-                    VIP
-                  </span>
+                  {isOwner ? (
+                    <div className="absolute -bottom-1 -left-1 bg-amber-500 text-slate-950 w-5 h-5 rounded-full flex items-center justify-center border-2 border-slate-900 shadow-md group-hover:scale-110 transition-transform">
+                      <Camera className="w-2.5 h-2.5 stroke-[2.5]" />
+                    </div>
+                  ) : (
+                    <span className="absolute -bottom-1 -right-1 bg-amber-500 text-slate-950 text-[9px] font-black px-1 rounded-md shadow-xs">
+                      VIP
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-1 min-w-0 flex-1">
@@ -702,6 +763,137 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
       windowId="room_info"
       onThemeChanged={(newTheme) => setTheme(newTheme)}
     />
+
+    {/* AVATAR PICKER MODAL (نافذة تغيير صورة الغرفة الحصرية لمالك الغرفة 👑) */}
+    <AnimatePresence>
+      {showAvatarPickerModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" dir="rtl">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="w-full max-w-sm bg-[#131B2E] border border-amber-400/40 rounded-3xl p-4 text-white shadow-2xl space-y-4"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-amber-300">
+                  <Camera className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-amber-300">تغيير صورة الغرفة (خاص بالمالك 👑)</h3>
+                  <p className="text-[10px] text-slate-400">ستظهر الصورة داخل الروم وخارج الروم في القائمة</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAvatarPickerModal(false)}
+                className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-slate-300"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Current Active Preview */}
+            <div className="flex flex-col items-center justify-center py-2 space-y-1.5">
+              <div className="relative w-20 h-20 rounded-3xl border-3 border-amber-400 overflow-hidden shadow-lg p-0.5 bg-slate-900">
+                <img
+                  src={hostAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'}
+                  alt="Room Avatar"
+                  className="w-full h-full object-cover rounded-2xl"
+                />
+              </div>
+              <span className="text-[10px] font-bold text-amber-200">الصورة الحالية للروم</span>
+            </div>
+
+            {/* Upload from Device Button */}
+            <div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept="image/*"
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 border border-emerald-400/40"
+              >
+                <Upload className="w-4 h-4" />
+                <span>رفع صورة من الاستوديو / الهاتف</span>
+              </button>
+            </div>
+
+            {/* Preset Library Grid */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-black text-slate-300 block">أو اختر من المعرض الملكي الفاخر:</span>
+              <div className="grid grid-cols-5 gap-2 max-h-36 overflow-y-auto no-scrollbar p-1 bg-slate-950/50 rounded-2xl border border-white/5">
+                {PRESET_ROOM_AVATARS.map((url, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      onUpdateRoomAvatar?.(url);
+                      setShowAvatarPickerModal(false);
+                      showToast('✓ تم تغيير وتطبيق صورة الغرفة بنجاح! 👑✨');
+                    }}
+                    className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all cursor-pointer hover:scale-105 ${
+                      hostAvatar === url ? 'border-amber-400 ring-2 ring-amber-400/50' : 'border-slate-700/60 hover:border-amber-300'
+                    }`}
+                  >
+                    <img src={url} alt={`Preset ${idx}`} className="w-full h-full object-cover" />
+                    {hostAvatar === url && (
+                      <div className="absolute inset-0 bg-amber-500/30 flex items-center justify-center">
+                        <Check className="w-4 h-4 text-white stroke-[3]" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom URL Input Option */}
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[10px] font-black text-slate-300 block">أو رابط صورة مباشر (URL):</span>
+              <div className="flex gap-1.5">
+                <input
+                  type="url"
+                  placeholder="https://example.com/image.jpg"
+                  value={customAvatarUrlInput}
+                  onChange={(e) => setCustomAvatarUrlInput(e.target.value)}
+                  className="flex-1 bg-slate-950/80 border border-slate-700 rounded-xl px-2.5 py-1.5 text-[11px] text-white focus:outline-none focus:border-amber-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (customAvatarUrlInput.trim()) {
+                      onUpdateRoomAvatar?.(customAvatarUrlInput.trim());
+                      setCustomAvatarUrlInput('');
+                      setShowAvatarPickerModal(false);
+                      showToast('✓ تم تطبيق رابط الصورة الجديد للغرفة! 🌐');
+                    } else {
+                      showToast('⚠️ يرجى إدخال رابط صورة صالح');
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[11px] rounded-xl transition-all cursor-pointer shrink-0"
+                >
+                  تطبيق
+                </button>
+              </div>
+            </div>
+
+            {/* Cancel Button */}
+            <button
+              type="button"
+              onClick={() => setShowAvatarPickerModal(false)}
+              className="w-full py-2 bg-white/10 hover:bg-white/20 text-slate-300 font-bold text-xs rounded-xl cursor-pointer"
+            >
+              إلغاء
+            </button>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
     </>
   );
 };
