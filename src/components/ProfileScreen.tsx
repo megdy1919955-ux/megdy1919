@@ -43,20 +43,46 @@ import { FamilyModal } from './FamilyModal';
 import { BadgesCenterModal } from './BadgesCenterModal';
 import { AppearanceModal } from './AppearanceModal';
 import { ServicesModal, ServiceType } from './ServicesModal';
+import {
+  UserLevel3DIcon,
+  Badges3DIcon,
+  Families3DIcon,
+  Appearance3DIcon,
+  VipCenter3DIcon,
+  Genius3DIcon,
+  FriendlyPoints3DIcon,
+  InviteCenter3DIcon,
+  InviteCard3DIcon,
+  Mall3DIcon
+} from './profile/RealisticIcons';
 import { RechargeModal } from './RechargeModal';
 import { SuperLegendModal } from './SuperLegendModal';
 import { SettingsModal } from './SettingsModal';
+import { TarafLogo } from './common/TarafLogo';
 import { CustomerServiceModal } from './CustomerServiceModal';
 import { DevPanelModal } from './DevPanelModal';
 import { UserProfileModal } from './UserProfileModal';
 import { VipCenterModal } from './VipCenterModal';
 import { AgencyModal } from './AgencyModal';
+import { BrokerCenterModal } from './BrokerCenterModal';
+import { SuperAdminControlModal } from './SuperAdminControlModal';
+import { AgencyAdminDashboardModal } from './AgencyAdminDashboardModal';
+import { ThemeAdminDashboardModal } from './ThemeAdminDashboardModal';
+import { ModeratorDashboardModal } from './ModeratorDashboardModal';
+import { BroadcasterCenterModal } from './BroadcasterCenterModal';
 import { HomeScreen } from './HomeScreen';
 import { ExploreScreen } from './ExploreScreen';
 import { GamesScreen } from './GamesScreen';
 import { MessagesScreen } from './MessagesScreen';
 import { FloatingRoomWidget } from './FloatingRoomWidget';
 import { subscribeToRoomSession, maximizeRoomSession, ActiveRoomSession } from '../lib/roomSessionService';
+import { 
+  getAdminRoleForUser, 
+  isOwnerOrSuperAdmin, 
+  subscribeToAdminRoles, 
+  OWNER_DEV_ID,
+  AdminRole
+} from '../lib/adminRoleService';
 
 export const ProfileScreen: React.FC = () => {
   // State Management
@@ -144,6 +170,11 @@ export const ProfileScreen: React.FC = () => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isCustomerServiceModalOpen, setIsCustomerServiceModalOpen] = useState(false);
   const [isDevPanelModalOpen, setIsDevPanelModalOpen] = useState(false);
+  const [isSuperAdminModalOpen, setIsSuperAdminModalOpen] = useState(false);
+  const [isAgencyAdminModalOpen, setIsAgencyAdminModalOpen] = useState(false);
+  const [isThemeAdminModalOpen, setIsThemeAdminModalOpen] = useState(false);
+  const [isModeratorModalOpen, setIsModeratorModalOpen] = useState(false);
+  const [isBrokerCenterModalOpen, setIsBrokerCenterModalOpen] = useState(false);
   const [isSuperLegendModalOpen, setIsSuperLegendModalOpen] = useState(false);
   const [isLevelModalOpen, setIsLevelModalOpen] = useState(false);
   const [isFamilyModalOpen, setIsFamilyModalOpen] = useState(false);
@@ -151,7 +182,28 @@ export const ProfileScreen: React.FC = () => {
   const [isAppearanceModalOpen, setIsAppearanceModalOpen] = useState(false);
   const [isVipCenterModalOpen, setIsVipCenterModalOpen] = useState(false);
   const [isAgencyModalOpen, setIsAgencyModalOpen] = useState(false);
+  const [isBroadcasterCenterModalOpen, setIsBroadcasterCenterModalOpen] = useState(false);
   const [minimizedRoomSession, setMinimizedRoomSession] = useState<ActiveRoomSession | null>(null);
+  
+  // Dynamic Role State
+  const [adminRole, setAdminRole] = useState<AdminRole>(() => getAdminRoleForUser(profile.userId));
+
+  useEffect(() => {
+    setAdminRole(getAdminRoleForUser(profile.userId));
+    const unsubscribe = subscribeToAdminRoles(() => {
+      setAdminRole(getAdminRoleForUser(profile.userId));
+    });
+    const handlePersonaSwitched = () => {
+      setAdminRole(getAdminRoleForUser(profile.userId));
+    };
+    window.addEventListener('testing_user_switched', handlePersonaSwitched);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('testing_user_switched', handlePersonaSwitched);
+    };
+  }, [profile.userId]);
+
+  const isOwner = isOwnerOrSuperAdmin(profile.userId);
 
   useEffect(() => {
     const unsub = subscribeToRoomSession((session) => {
@@ -211,7 +263,7 @@ export const ProfileScreen: React.FC = () => {
         <>
               {/* Top Header Background with Soft Pastel Tint */}
               <div className="bg-gradient-to-b from-[#E2F1ED] via-[#EDF5F2] to-[#F3F6F9] px-4 pt-3 pb-2">
-            {/* Top Header Controls: Settings & Headphones Icons on the right, 7:35 on the left */}
+            {/* Top Header Controls: Settings & Headphones Icons on the right, Super Admin button in center/left if owner, 7:35 on the left */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <button
@@ -228,6 +280,20 @@ export const ProfileScreen: React.FC = () => {
                 >
                   <Headphones className="w-5 h-5 text-slate-700" />
                 </button>
+
+                {/* زر السوبر أدمن (المبرمج / المالك): مشروط حصراً بـ currentUser.id === ownerId ومخفي تماماً عن غيره */}
+                {isOwner && (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setIsSuperAdminModalOpen(true)}
+                    className="px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-slate-950 text-xs font-black shadow-md border border-amber-200 flex items-center gap-1.5 cursor-pointer animate-pulse"
+                    title="لوحة تحكم السوبر أدمن (المالك والمبرمج)"
+                  >
+                    <Crown className="w-4 h-4 fill-slate-950 text-slate-950" />
+                    <span>لوحة السوبر أدمن 👑</span>
+                  </motion.button>
+                )}
               </div>
               <span className="text-xs font-mono font-medium text-slate-500">7:35</span>
             </div>
@@ -483,77 +549,112 @@ export const ProfileScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* 4 Square Navigation Items (User Level, Family, Badges, My Appearance) */}
-        <div className="bg-white rounded-2xl p-3.5 shadow-xs border border-slate-100 grid grid-cols-4 gap-2 text-center">
-          {/* Item 1: User Level */}
+        {/* 4 Rectangular Action Cards arranged 2 on the right and 2 on the left (2x2 grid) with Luxury Gold / Champagne Broadcaster Center styling */}
+        <div className="grid grid-cols-2 gap-2.5" dir="rtl">
+          {/* Right Column Top: مستوى المستخدم */}
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.92 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.96 }}
             onClick={() => setIsLevelModalOpen(true)}
-            className="flex flex-col items-center justify-center cursor-pointer group outline-none"
+            className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
           >
-            <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 via-rose-400 to-amber-400 flex items-center justify-center text-white shadow-[0_4px_12px_rgba(244,63,94,0.25)] border border-rose-200/50">
-              <Star className="w-6 h-6 fill-white text-white drop-shadow-xs" />
-              <span className="absolute -bottom-1 bg-rose-600 text-white font-black text-[9px] px-1.5 py-0.2 rounded-full border border-white shadow-xs">
-                25
-              </span>
+            <div className="flex items-center gap-2.5 min-w-0">
+              {/* 3D Inner Embossed Plinth */}
+              <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
+                <UserLevel3DIcon className="w-8 h-8" />
+                <span className="absolute -bottom-1 -right-1 bg-gradient-to-r from-[#C89228] to-[#7E4F0B] text-[#FFF9E6] font-black text-[8px] px-1.5 py-0.2 rounded-full border border-white shadow-xs font-mono">
+                  25
+                </span>
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
+                  مستوى المستخدم
+                </h4>
+                <span className="text-[10px] text-[#A89478] font-bold block truncate">
+                  المستوى 25 • 82%
+                </span>
+              </div>
             </div>
-            <span className="text-[11px] font-extrabold text-slate-800 leading-tight mt-2 group-hover:text-rose-600 transition-colors">
-              مستوى المستخدم
-            </span>
+            <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
           </motion.button>
 
-          {/* Item 2: Family */}
+          {/* Left Column Top: الشارات */}
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.92 }}
-            onClick={() => setIsFamilyModalOpen(true)}
-            className="flex flex-col items-center justify-center cursor-pointer group outline-none"
-          >
-            <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-500 to-purple-400 flex items-center justify-center text-white shadow-[0_4px_12px_rgba(147,51,234,0.25)] border border-purple-200/50">
-              <Shield className="w-6 h-6 fill-white text-white drop-shadow-xs" />
-              <span className="absolute -bottom-1 bg-purple-700 text-white font-black text-[9px] px-1.5 py-0.2 rounded-full border border-white shadow-xs">
-                Lv12
-              </span>
-            </div>
-            <span className="text-[11px] font-extrabold text-slate-800 leading-tight mt-2 group-hover:text-purple-600 transition-colors">
-              العائلة
-            </span>
-          </motion.button>
-
-          {/* Item 3: Badges */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.92 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.96 }}
             onClick={() => setIsBadgesCenterModalOpen(true)}
-            className="flex flex-col items-center justify-center cursor-pointer group relative outline-none"
+            className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
           >
-            <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-300 flex items-center justify-center text-white shadow-[0_4px_12px_rgba(245,158,11,0.25)] border border-amber-200/50">
-              <Award className="w-6 h-6 fill-white text-white drop-shadow-xs" />
-              {/* Notification Red Dot */}
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white animate-pulse shadow-xs" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              {/* 3D Inner Embossed Plinth */}
+              <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
+                <Badges3DIcon className="w-8 h-8" />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-white animate-pulse" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
+                  الشارات
+                </h4>
+                <span className="text-[10px] text-[#A89478] font-bold block truncate">
+                  الأوسمة والجوائز
+                </span>
+              </div>
             </div>
-            <span className="text-[11px] font-extrabold text-slate-800 leading-tight mt-2 group-hover:text-amber-600 transition-colors">
-              الشارات
-            </span>
+            <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
           </motion.button>
 
-          {/* Item 4: My Appearance */}
+          {/* Right Column Bottom: العائلات */}
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.92 }}
-            onClick={() => setIsAppearanceModalOpen(true)}
-            className="flex flex-col items-center justify-center cursor-pointer group outline-none"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={() => setIsFamilyModalOpen(true)}
+            className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
           >
-            <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500 via-cyan-400 to-blue-400 flex items-center justify-center text-white shadow-[0_4px_12px_rgba(14,165,233,0.25)] border border-sky-200/50">
-              <ShoppingBag className="w-6 h-6 text-white drop-shadow-xs" />
-              <span className="absolute -top-1 -left-1 w-3.5 h-3.5 bg-amber-400 rounded-full border-2 border-white flex items-center justify-center shadow-xs">
-                <Sparkles className="w-2 h-2 text-slate-950 fill-slate-950" />
-              </span>
+            <div className="flex items-center gap-2.5 min-w-0">
+              {/* 3D Inner Embossed Plinth */}
+              <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
+                <Families3DIcon className="w-8 h-8" />
+                <span className="absolute -bottom-1 -right-1 bg-gradient-to-r from-[#B38022] to-[#5C3F13] text-[#FFF9E6] font-black text-[8px] px-1.5 py-0.2 rounded-full border border-white shadow-xs font-mono">
+                  Lv12
+                </span>
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
+                  العائلات
+                </h4>
+                <span className="text-[10px] text-[#A89478] font-bold block truncate">
+                  عائلة فرسان المجد
+                </span>
+              </div>
             </div>
-            <span className="text-[11px] font-extrabold text-slate-800 leading-tight mt-2 group-hover:text-sky-600 transition-colors">
-              مظهري
-            </span>
+            <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
+          </motion.button>
+
+          {/* Left Column Bottom: مظهري */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={() => setIsAppearanceModalOpen(true)}
+            className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              {/* 3D Inner Embossed Plinth */}
+              <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
+                <Appearance3DIcon className="w-8 h-8" />
+                <span className="absolute -top-1 -left-1 w-3.5 h-3.5 bg-gradient-to-tr from-amber-400 to-yellow-200 rounded-full border border-white flex items-center justify-center shadow-xs">
+                  <Sparkles className="w-2 h-2 text-[#5C3F13] fill-[#5C3F13]" />
+                </span>
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
+                  مظهري
+                </h4>
+                <span className="text-[10px] text-[#A89478] font-bold block truncate">
+                  الإطارات والدخوليات
+                </span>
+              </div>
+            </div>
+            <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
           </motion.button>
         </div>
 
@@ -580,107 +681,357 @@ export const ProfileScreen: React.FC = () => {
         {/* قائمة الخيارات والخدمات */}
         <div className="bg-white border border-slate-200 rounded-3xl p-2 space-y-1 shadow-xs" dir="rtl">
           
-          {/* 1. زر "وكالتي" المميز في قمة القائمة (أول عنصر) */}
-          <div 
-            onClick={() => setIsAgencyModalOpen(true)}
-            className="my-1 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 border border-blue-500/40 rounded-2xl p-3.5 flex items-center justify-between shadow-md cursor-pointer hover:border-blue-500 transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 border border-blue-400 flex items-center justify-center text-white shadow-md">
-                👥
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black text-white tracking-wide">وكالتي</span>
-                  <span className="text-[9px] text-blue-200 bg-blue-500/30 px-2 py-0.5 rounded-md border border-blue-400/40 font-bold">حَصري</span>
+          {/* الأزرار الديناميكية المشروطة بالصلاحيات (تظهر حصراً لأصحاب الصلاحية وتختفي تماماً عن المستخدم العادي) */}
+          
+          {/* 1. إداري الوكالات (Agency Admin) */}
+          {adminRole === 'agency_admin' && (
+            <motion.div 
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsAgencyAdminModalOpen(true)}
+              className="my-1.5 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 border-2 border-blue-500/60 rounded-2xl p-3.5 flex items-center justify-between shadow-lg cursor-pointer hover:border-blue-400 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-600 border border-blue-400 flex items-center justify-center text-white shadow-md text-lg">
+                  🏛️
                 </div>
-                <span className="text-[10px] text-slate-300">إدارة الأداء والأعضاء</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-white tracking-wide">لوحة إدارة الوكالات</span>
+                    <span className="text-[9px] text-blue-200 bg-blue-500/30 px-2 py-0.5 rounded-md border border-blue-400/40 font-bold">
+                      إداري وكالات 🏛️
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-300">متابعة واعتماد الوكالات، مراقبة التارغت والوسطاء</span>
+                </div>
               </div>
-            </div>
-            <span className="text-xs font-bold text-blue-100 bg-blue-600/60 px-3 py-1.5 rounded-xl border border-blue-400/50 flex items-center gap-1 shadow-inner hover:bg-blue-600 transition-all">
-              دخول <ChevronLeft className="w-3.5 h-3.5" />
-            </span>
+              <span className="text-xs font-bold text-blue-100 bg-blue-600/70 px-3 py-1.5 rounded-xl border border-blue-400/50 flex items-center gap-1 shadow-inner group-hover:bg-blue-600 transition-all">
+                دخول <ChevronLeft className="w-3.5 h-3.5" />
+              </span>
+            </motion.div>
+          )}
+
+          {/* 2. إداري الثيمات والمتجر (Theme Admin) */}
+          {adminRole === 'theme_admin' && (
+            <motion.div 
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsThemeAdminModalOpen(true)}
+              className="my-1.5 bg-gradient-to-r from-slate-950 via-slate-900 to-pink-950 border-2 border-pink-500/60 rounded-2xl p-3.5 flex items-center justify-between shadow-lg cursor-pointer hover:border-pink-400 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-pink-600 border border-pink-400 flex items-center justify-center text-white shadow-md text-lg">
+                  🎨
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-white tracking-wide">لوحة إدارة الثيمات والمتجر</span>
+                    <span className="text-[9px] text-pink-200 bg-pink-500/30 px-2 py-0.5 rounded-md border border-pink-400/40 font-bold">
+                      إداري ثيمات 🎨
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-300">تصاميم الغرف الصوتية، لوحات الشرف، وعناصر المتجر</span>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-pink-100 bg-pink-600/70 px-3 py-1.5 rounded-xl border border-pink-400/50 flex items-center gap-1 shadow-inner group-hover:bg-pink-600 transition-all">
+                دخول <ChevronLeft className="w-3.5 h-3.5" />
+              </span>
+            </motion.div>
+          )}
+
+          {/* 3. الوكيل الرسمي (Official Agent) أو السوبر أدمن */}
+          {(adminRole === 'official_agent' || adminRole === 'super_admin') && (
+            <motion.div 
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsAgencyModalOpen(true)}
+              className="my-1.5 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 border-2 border-indigo-500/60 rounded-2xl p-3.5 flex items-center justify-between shadow-lg cursor-pointer hover:border-indigo-400 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 border border-indigo-400 flex items-center justify-center text-white shadow-md text-lg">
+                  💼
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-white tracking-wide">وكالتي</span>
+                    <span className="text-[9px] text-indigo-200 bg-indigo-500/30 px-2 py-0.5 rounded-md border border-indigo-400/40 font-bold">
+                      وكيل معتمد 💼
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-300">إدارة المذيعين، الوسطاء، العقود والرواتب</span>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-indigo-100 bg-indigo-600/70 px-3 py-1.5 rounded-xl border border-indigo-400/50 flex items-center gap-1 shadow-inner group-hover:bg-indigo-600 transition-all">
+                دخول <ChevronLeft className="w-3.5 h-3.5" />
+              </span>
+            </motion.div>
+          )}
+
+          {/* 4. الوسيط المعتمد (Broker) */}
+          {adminRole === 'broker' && (
+            <motion.div 
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsBrokerCenterModalOpen(true)}
+              className="my-1.5 bg-gradient-to-r from-slate-950 via-slate-900 to-emerald-950 border-2 border-emerald-500/60 rounded-2xl p-3.5 flex items-center justify-between shadow-lg cursor-pointer hover:border-emerald-400 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 border border-emerald-400 flex items-center justify-center text-white shadow-md text-lg">
+                  🤝
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-white tracking-wide">مركز الوساطة والتوظيف</span>
+                    <span className="text-[9px] text-emerald-200 bg-emerald-500/30 px-2 py-0.5 rounded-md border border-emerald-400/40 font-bold">
+                      وسيط معتمد 🤝
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-300">استقطاب المذيعين، متابعة ساعات البث والعمولات</span>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-emerald-100 bg-emerald-600/70 px-3 py-1.5 rounded-xl border border-emerald-400/50 flex items-center gap-1 shadow-inner group-hover:bg-emerald-600 transition-all">
+                دخول <ChevronLeft className="w-3.5 h-3.5" />
+              </span>
+            </motion.div>
+          )}
+
+          {/* 5. المراقب العام والدعم الفني (Moderator) */}
+          {adminRole === 'moderator' && (
+            <motion.div 
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsModeratorModalOpen(true)}
+              className="my-1.5 bg-gradient-to-r from-slate-950 via-slate-900 to-teal-950 border-2 border-teal-500/60 rounded-2xl p-3.5 flex items-center justify-between shadow-lg cursor-pointer hover:border-teal-400 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-600 border border-teal-400 flex items-center justify-center text-white shadow-md text-lg">
+                  🛡️
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-white tracking-wide">لوحة المراقب العام والدعم</span>
+                    <span className="text-[9px] text-teal-200 bg-teal-500/30 px-2 py-0.5 rounded-md border border-teal-400/40 font-bold">
+                      مراقب عام 🛡️
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-300">متابعة البلاغات، إدارة الحظر، والمراقبة الحية للغرف</span>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-teal-100 bg-teal-600/70 px-3 py-1.5 rounded-xl border border-teal-400/50 flex items-center gap-1 shadow-inner group-hover:bg-teal-600 transition-all">
+                دخول <ChevronLeft className="w-3.5 h-3.5" />
+              </span>
+            </motion.div>
+          )}
+
+          {/* للمستخدم العادي (regular_user): تظهر قائمته نقية وبدون أي أزرار إدارية إطلاقاً */}
+
+          {/* 2. شبكة الخدمات الملكية المخصصة (واحد يمين وواحد شمال) بأيقونات واقعية 3D وتنسيق مركز المذيعين */}
+          <div className="grid grid-cols-2 gap-2.5 py-1" dir="rtl">
+            {/* الصف 1 يمين: مركز VIP */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => setIsVipCenterModalOpen(true)}
+              className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+            >
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                {/* 3D Inner Embossed Plinth */}
+                <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
+                  <VipCenter3DIcon className="w-8 h-8" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
+                      مركز VIP
+                    </h4>
+                    <span className="text-[9px] font-black bg-gradient-to-r from-[#F5D061] to-[#C89228] text-[#3B2610] px-1.5 py-0.2 rounded-md border border-[#E8DFC8] shadow-2xs font-mono">
+                      VIP8
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-[#A89478] font-bold block mt-0.5 truncate">
+                    المزايا والامتيازات
+                  </span>
+                </div>
+              </div>
+              <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
+            </motion.button>
+
+            {/* الصف 1 شمال: جينيس */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => setActiveServiceModal('genius')}
+              className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+            >
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                {/* 3D Inner Embossed Plinth */}
+                <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
+                  <Genius3DIcon className="w-8 h-8" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
+                      جينيس
+                    </h4>
+                    <span className="text-[9px] font-black bg-[#FAF5E8] text-[#7E4F0B] px-1.5 py-0.2 rounded-md border border-[#E8DFC8] shadow-2xs">
+                      Genius
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-[#A89478] font-bold block mt-0.5 truncate">
+                    الذكاء والتحليلات
+                  </span>
+                </div>
+              </div>
+              <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
+            </motion.button>
+
+            {/* الصف 2 يمين: نقاط ودية */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => setActiveServiceModal('friendly_points')}
+              className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+            >
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                {/* 3D Inner Embossed Plinth */}
+                <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
+                  <FriendlyPoints3DIcon className="w-8 h-8" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
+                      نقاط ودية
+                    </h4>
+                    <span className="text-[9px] font-black bg-[#FAF5E8] text-[#7E4F0B] px-1.5 py-0.2 rounded-md border border-[#E8DFC8] shadow-2xs font-mono">
+                      2922
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-[#A89478] font-bold block mt-0.5 truncate">
+                    رصيد التفاعل والصداقة
+                  </span>
+                </div>
+              </div>
+              <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
+            </motion.button>
+
+            {/* الصف 2 شمال: مركز الدعوة */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => setActiveServiceModal('invitations')}
+              className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+            >
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                {/* 3D Inner Embossed Plinth */}
+                <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
+                  <InviteCenter3DIcon className="w-8 h-8" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
+                      مركز الدعوة
+                    </h4>
+                    <span className="text-[9px] font-black bg-gradient-to-r from-[#F5D061]/20 to-[#C89228]/20 text-[#7E4F0B] px-1.5 py-0.2 rounded-md border border-[#E8DFC8] shadow-2xs">
+                      ادع واربح
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-[#A89478] font-bold block mt-0.5 truncate">
+                    مكافآت الانضمام
+                  </span>
+                </div>
+              </div>
+              <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
+            </motion.button>
+
+            {/* الصف 3 يمين: بطاقة الدعوة */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => setActiveServiceModal('invite_card')}
+              className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+            >
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                {/* 3D Inner Embossed Plinth */}
+                <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
+                  <InviteCard3DIcon className="w-8 h-8" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
+                      بطاقة الدعوة
+                    </h4>
+                    <span className="text-[9px] font-black bg-[#FAF5E8] text-[#7E4F0B] px-1.5 py-0.2 rounded-md border border-[#E8DFC8] shadow-2xs">
+                      مشاركة
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-[#A89478] font-bold block mt-0.5 truncate">
+                    كود الدعوة الملكي
+                  </span>
+                </div>
+              </div>
+              <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
+            </motion.button>
+
+            {/* الصف 3 شمال: المركز التجاري */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => setActiveServiceModal('mall')}
+              className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+            >
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                {/* 3D Inner Embossed Plinth */}
+                <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
+                  <Mall3DIcon className="w-8 h-8" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
+                      المركز التجاري
+                    </h4>
+                    <span className="text-[9px] font-black bg-[#FAF5E8] text-[#7E4F0B] px-1.5 py-0.2 rounded-md border border-[#E8DFC8] shadow-2xs">
+                      المتجر
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-[#A89478] font-bold block mt-0.5 truncate">
+                    الهدايا والعناصر
+                  </span>
+                </div>
+              </div>
+              <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
+            </motion.button>
           </div>
 
-          {/* 2. مركز VIP */}
+          {/* 7. مركز الإدارة - الداشبورد (مركز الوسطاء بالشكل المخصص الجديد) */}
           <div 
-            onClick={() => setIsVipCenterModalOpen(true)}
-            className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
+            onClick={() => setIsBrokerCenterModalOpen(true)}
+            className="relative my-2 p-[2px] rounded-2xl bg-gradient-to-r from-[#0D404C] via-[#104D5B] to-[#165F6F] shadow-md cursor-pointer group transition-all"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-500 shadow-xs">
-                👑
+            <div className="bg-gradient-to-r from-teal-50/90 via-sky-50/80 to-slate-50/90 rounded-[14px] p-3 flex items-center justify-between border border-teal-200/80 group-hover:bg-white transition-all">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0D404C] via-[#104D5B] to-[#165F6F] flex items-center justify-center text-white shadow-md text-lg">
+                  📊
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-slate-900 tracking-wide">مركز الإدارة - الداشبورد</span>
+                    <span className="text-[9px] bg-[#104D5B] text-white font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
+                      مركز الوسطاء ✨
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-bold">دعوة المذيعين، تحليلات الأداء، وإدارة المهام</span>
+                </div>
               </div>
-              <span className="text-xs font-bold text-slate-800">مركز VIP</span>
-            </div>
-            <ChevronLeft className="w-4 h-4 text-slate-400" />
-          </div>
-
-          {/* 3. جينيس */}
-          <div 
-            onClick={() => setActiveServiceModal('genius')}
-            className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-pink-50 border border-pink-200/60 flex items-center justify-center text-pink-500 shadow-xs">
-                📊
+              <div className="flex items-center gap-1.5 text-xs font-black text-[#104D5B] bg-white/90 border border-teal-200 px-2.5 py-1 rounded-xl shadow-2xs group-hover:bg-[#104D5B] group-hover:text-white transition-all">
+                <span>دخول</span>
+                <ChevronLeft className="w-4 h-4" />
               </div>
-              <span className="text-xs font-bold text-slate-800">جينيس</span>
-            </div>
-            <ChevronLeft className="w-4 h-4 text-slate-400" />
-          </div>
-
-          {/* 4. نقاط ودية */}
-          <div 
-            onClick={() => setActiveServiceModal('friendly_points')}
-            className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-500 shadow-xs">
-                👍
-              </div>
-              <span className="text-xs font-bold text-slate-800">نقاط ودية</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-amber-600 font-bold">2922</span>
-              <ChevronLeft className="w-4 h-4 text-slate-400" />
             </div>
           </div>
 
-          {/* 5. مركز الدعوات */}
+          {/* 8. مركز المذيعين (محتوى داخل إطار مستطيل مميز وجذاب للغاية) */}
           <div 
-            onClick={() => setActiveServiceModal('invitations')}
-            className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-purple-50 border border-purple-200/60 flex items-center justify-center text-purple-500 shadow-xs">
-                🚀
-              </div>
-              <span className="text-xs font-bold text-slate-800">مركز الدعوات</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-lg border border-purple-200 font-bold">ادع واربح</span>
-              <ChevronLeft className="w-4 h-4 text-slate-400" />
-            </div>
-          </div>
-
-          {/* 6. بطاقة دعوتي */}
-          <div 
-            onClick={() => setActiveServiceModal('invite_card')}
-            className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-emerald-500 shadow-xs">
-                🎟️
-              </div>
-              <span className="text-xs font-bold text-slate-800">بطاقة دعوتي</span>
-            </div>
-            <ChevronLeft className="w-4 h-4 text-slate-400" />
-          </div>
-
-          {/* 7. مركز المذيعين (محتوى داخل إطار مستطيل مميز وجذاب للغاية) */}
-          <div 
-            onClick={() => setActiveServiceModal('broadcasters')}
+            onClick={() => setIsBroadcasterCenterModalOpen(true)}
             className="relative my-2 p-[2px] rounded-2xl bg-gradient-to-r from-rose-500 via-purple-500 to-indigo-500 shadow-md cursor-pointer group transition-all"
           >
             <div className="bg-gradient-to-r from-rose-50/90 via-purple-50/80 to-indigo-50/90 rounded-[14px] p-3 flex items-center justify-between border border-rose-200/80 group-hover:bg-white transition-all">
@@ -705,25 +1056,19 @@ export const ProfileScreen: React.FC = () => {
             </div>
           </div>
 
-          {/* 8. مركز تجاري */}
-          <div 
-            onClick={() => setActiveServiceModal('mall')}
-            className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200/60 flex items-center justify-center text-rose-500 shadow-xs">
-                🛍️
-              </div>
-              <span className="text-xs font-bold text-slate-800">مركز تجاري</span>
-            </div>
-            <ChevronLeft className="w-4 h-4 text-slate-400" />
-          </div>
+
 
         </div>
 
         {/* Copyright Notice */}
-        <div className="text-center py-3 text-[10px] text-slate-400 font-medium">
-          تطبيق <span className="font-extrabold text-slate-600">سوبر ليجند (Super Legend)</span> © 2026 — جميع الحقوق محفوظة للمالك والمطور
+        <div className="text-center py-4 text-[10px] text-slate-400 font-medium flex flex-col items-center justify-center gap-1.5 border-t border-slate-200/50 mt-2">
+          <div className="flex items-center gap-2">
+            <TarafLogo size="sm" className="scale-75" />
+            <span className="font-extrabold text-[#5C3F13] text-xs">تطبيق ترف شات (Taraf Chat)</span>
+          </div>
+          <span className="text-[10px] text-slate-400">
+            جميع حقوق الملكية الفكرية والعلامة التجارية مسجلة ومحفوظة © 2026 للمالك والمطور
+          </span>
         </div>
 
       </div>
@@ -924,6 +1269,50 @@ export const ProfileScreen: React.FC = () => {
         userAvatar={profile.avatarUrl}
         userName={profile.name}
         agencyGid="30032"
+      />
+
+      {/* لوحة السوبر أدمن (المالك والمبرمج) - مشروطة حصراً به */}
+      <SuperAdminControlModal
+        isOpen={isSuperAdminModalOpen}
+        onClose={() => setIsSuperAdminModalOpen(false)}
+        currentUserId={profile.userId}
+        onOpenAgencyModal={() => setIsAgencyAdminModalOpen(true)}
+        onOpenThemeModal={() => setIsThemeAdminModalOpen(true)}
+        onOpenModeratorModal={() => setIsModeratorModalOpen(true)}
+      />
+
+      {/* لوحة إداري الوكالات */}
+      <AgencyAdminDashboardModal
+        isOpen={isAgencyAdminModalOpen}
+        onClose={() => setIsAgencyAdminModalOpen(false)}
+      />
+
+      {/* لوحة إداري الثيمات والمتجر */}
+      <ThemeAdminDashboardModal
+        isOpen={isThemeAdminModalOpen}
+        onClose={() => setIsThemeAdminModalOpen(false)}
+      />
+
+      {/* لوحة المراقب العام والدعم */}
+      <ModeratorDashboardModal
+        isOpen={isModeratorModalOpen}
+        onClose={() => setIsModeratorModalOpen(false)}
+        userId={profile.userId}
+      />
+
+      {/* مركز الوساطة والتوظيف للوسطاء */}
+      <BrokerCenterModal
+        isOpen={isBrokerCenterModalOpen}
+        onClose={() => setIsBrokerCenterModalOpen(false)}
+      />
+
+      {/* مركز المذيعين - شاشة كاملة احترافية */}
+      <BroadcasterCenterModal
+        isOpen={isBroadcasterCenterModalOpen}
+        onClose={() => setIsBroadcasterCenterModalOpen(false)}
+        userName={profile.name}
+        userAvatar={profile.avatarUrl}
+        userId={profile.userId}
       />
 
       <ServicesModal

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
+  ArrowRight,
   Shield, 
   Users, 
   Crown, 
@@ -11,7 +12,10 @@ import {
   Radio, 
   Gamepad2, 
   MessageSquare, 
+  ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Flame,
   Volume2,
   Megaphone,
@@ -21,8 +25,19 @@ import {
   Sparkle,
   Lock,
   Check,
-  KeyRound
+  KeyRound,
+  Plus,
+  Share2,
+  Search,
+  CheckCircle2,
+  SlidersHorizontal,
+  Info,
+  UserCheck
 } from 'lucide-react';
+import { CastleEmblem, getCastleTierByLevel } from './family/CastleEmblem';
+import { CastleEvolutionModal } from './family/CastleEvolutionModal';
+import { FamilyMembersModal, FamilyMember } from './family/FamilyMembersModal';
+import { TarafLogo } from './common/TarafLogo';
 
 interface FamilyModalProps {
   isOpen: boolean;
@@ -31,7 +46,13 @@ interface FamilyModalProps {
 }
 
 export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSelectRoom }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'rooms'>('profile');
+  // Family state
+  const [familyLevel, setFamilyLevel] = useState<number>(12);
+  const [familyExp, setFamilyExp] = useState<number>(78500);
+  const [nextLevelExp, setNextLevelExp] = useState<number>(100000);
+  const [showCastleModal, setShowCastleModal] = useState<boolean>(false);
+  const [showMembersModal, setShowMembersModal] = useState<boolean>(false);
+  const [isStatsCollapsed, setIsStatsCollapsed] = useState<boolean>(false);
 
   // Global Lock state listener
   const [globalLockData, setGlobalLockData] = useState<{ isLocked: boolean; password?: string }>(() => {
@@ -87,304 +108,526 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
 
   if (!isOpen) return null;
 
-  // Image 1: Prominent Family Members
-  const prominentMembers = [
-    { rank: 1, name: 'الأمير أسامة (الرئيس)', role: 'قائد العائلة', level: 'VIP8', avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=150', exp: '124.5K' },
-    { rank: 2, name: 'سارة الكابيتانو', role: 'نائب القائد', level: 'VIP6', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150', exp: '98.2K' },
-    { rank: 3, name: 'فارس الليل', role: 'عضو أسطوري', level: 'VIP5', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150', exp: '76.1K' },
-    { rank: 4, name: 'نور الهدى', role: 'عضو نشط', level: 'VIP4', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150', exp: '54.0K' },
+  const castleTier = getCastleTierByLevel(familyLevel);
+
+  // Supervisors & Admins Data (المشرفين والإدارة) - will be displayed in the horizontal scroll bar
+  const supervisors = [
+    {
+      id: 'sup-1',
+      rank: 1,
+      name: 'الأمير أسامة (الرئيس)',
+      role: 'قائد العائلة وحامي القلعة',
+      roleBadge: 'قائد القلعة',
+      level: 'VIP8',
+      avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=150',
+      exp: '124.5K',
+      isOnline: true,
+      crownColor: 'from-amber-500 to-yellow-300'
+    },
+    {
+      id: 'sup-2',
+      rank: 2,
+      name: 'سارة الكابيتانو',
+      role: 'نائب القائد وإدارة الفرسان',
+      roleBadge: 'نائب القائد',
+      level: 'VIP6',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
+      exp: '98.2K',
+      isOnline: true,
+      crownColor: 'from-slate-400 to-slate-200'
+    },
+    {
+      id: 'sup-3',
+      rank: 3,
+      name: 'فارس الليل',
+      role: 'كبير المشرفين ومنسق الغرف',
+      roleBadge: 'مشرف أول',
+      level: 'VIP5',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150',
+      exp: '76.1K',
+      isOnline: true,
+      crownColor: 'from-amber-600 to-amber-400'
+    },
+    {
+      id: 'sup-4',
+      rank: 4,
+      name: 'نور الهدى',
+      role: 'مشرفة الفعاليات والمسابقات',
+      roleBadge: 'مشرف فعاليات',
+      level: 'VIP4',
+      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150',
+      exp: '54.0K',
+      isOnline: false,
+      crownColor: 'from-purple-500 to-indigo-400'
+    }
   ];
 
-  // Image 2: Avatars List for Members Section (891/980 members)
-  const familyMemberAvatars = [
-    { id: 1, name: 'ماما جنات', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=120', status: 'active' },
-    { id: 2, name: 'الربان حازم', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=120', status: 'active' },
-    { id: 3, name: 'مريم الأسطورة', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=120', status: 'active' },
-    { id: 4, name: 'أحمد كابيتانو', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=120', status: 'active' },
-    { id: 5, name: 'أميرة الشوق', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=120', status: 'inactive' },
-    { id: 6, name: 'عاشق القلم', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=120', status: 'inactive' },
-  ];
-
-  // Image 3: Family Rooms Grid Data
+  // Family Rooms (الرومات العائلية)
   const familyRooms = [
     {
       id: 'room-1',
-      title: 'وكالة شحن فرندلى1 وتسجيل...',
+      title: 'وكالة شحن فرندلى1 وتسجيل الفرسان...',
       category: 'دردشة',
-      categoryColor: 'bg-emerald-500',
-      listeners: 12,
+      categoryColor: 'from-amber-600 to-yellow-500',
+      listeners: 18,
+      isLocked: false,
+      hostName: 'الأمير أسامة',
+      hostAvatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=150',
       bgImage: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=400',
-      tagText: 'دردشة'
+      tagText: 'دردشة الفرسان'
     },
     {
       id: 'room-2',
-      title: 'وَكّالَةُ آلَطَيّارَ وَأَوُشَآ',
+      title: 'وَكّالَةُ آلَطَيّارَ وَأَوُشَآ - ألعاب وسهر',
       category: 'لعبة',
-      categoryColor: 'bg-amber-500',
-      listeners: 6,
+      categoryColor: 'from-amber-700 to-amber-500',
+      listeners: 12,
+      isLocked: false,
+      hostName: 'سارة الكابيتانو',
+      hostAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
       bgImage: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&q=80&w=400',
-      tagText: 'لعبة'
+      tagText: 'تحديات وألعاب'
     },
     {
       id: 'room-3',
-      title: 'شحن وشراء تارجت مصر 48...',
-      category: 'لعبة',
-      categoryColor: 'bg-orange-500',
-      listeners: 3,
+      title: 'شحن وشراء تارجت مصر 48 - قلعة ترف',
+      category: 'مسابقات',
+      categoryColor: 'from-yellow-600 to-amber-600',
+      listeners: 8,
+      isLocked: false,
+      hostName: 'فارس الليل',
+      hostAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150',
       bgImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=400',
-      tagText: 'لعبة'
+      tagText: 'مسابقات وجوائز'
     },
     {
       id: 'room-4',
-      title: 'رُولِيت لَمَّآضِهِ فريندلى1 لتس...',
+      title: 'رُولِيت لَمَّآضِهِ فريندلى1 الملكي 🔒',
       category: 'روليت',
-      categoryColor: 'bg-purple-600',
-      listeners: 13,
+      categoryColor: 'from-purple-700 to-indigo-600',
+      listeners: 14,
+      isLocked: true,
+      hostName: 'نور الهدى',
+      hostAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150',
       bgImage: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&q=80&w=400',
-      tagText: 'روليت'
+      tagText: 'روليت VIP'
     },
     {
       id: 'room-5',
-      title: 'كل ما هو اسوانى جميل... 💖✨',
-      category: 'دردشة',
-      categoryColor: 'bg-emerald-500',
-      listeners: 2,
+      title: 'كل ما هو اسوانى وطرب جميل... 💖✨',
+      category: 'طرب',
+      categoryColor: 'from-emerald-700 to-teal-600',
+      listeners: 9,
+      isLocked: false,
+      hostName: 'الربان حازم',
+      hostAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=120',
       bgImage: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=400',
-      tagText: 'دردشة'
+      tagText: 'صوتيات وطرب'
     },
     {
       id: 'room-6',
-      title: '• وگأْلَGEЛA♪ للموآهب ...',
+      title: '• وگأْلَGEЛA♪ للموآهب والبثوث المباشرة',
       category: 'إذاعة',
-      categoryColor: 'bg-indigo-600',
-      listeners: 3,
+      categoryColor: 'from-blue-700 to-indigo-600',
+      listeners: 6,
+      isLocked: false,
+      hostName: 'مريم الأسطورة',
+      hostAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=120',
       bgImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400',
-      tagText: 'إذاعة'
+      tagText: 'إذاعة ومواهب'
     },
   ];
 
   return (
     <AnimatePresence>
-      <div 
-        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm pointer-events-auto cursor-default select-none" 
-        dir="rtl" 
-        onClick={onClose}
+      <motion.div
+        initial={{ opacity: 0, x: '100%' }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: '100%' }}
+        transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+        className="fixed inset-0 z-50 bg-[#FBF9F4] text-slate-900 flex flex-col pointer-events-auto select-none overflow-hidden"
+        dir="rtl"
       >
-        <motion.div
-          initial={{ opacity: 0, y: 50, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 50, scale: 0.95 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-md bg-[#0F1420] text-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col pointer-events-auto border border-amber-500/30"
-        >
-          {/* Top Bar Navigation Tabs */}
-          <div className="bg-[#161C2C] border-b border-white/10 px-4 py-2.5 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/5 text-xs font-bold">
-              <button
-                onClick={() => setActiveTab('profile')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  activeTab === 'profile'
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                ملف الأسرة
-              </button>
-              <button
-                onClick={() => setActiveTab('rooms')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  activeTab === 'rooms'
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                غرفة عائلية ({familyRooms.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  activeTab === 'overview'
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                نظرة عامة
-              </button>
+        {/* TOP ROYAL APP BAR (شريط العنوان الملكي مع زر الرجوع) */}
+        <header className="sticky top-0 z-40 bg-gradient-to-r from-[#FFFDF9] via-[#FAF5E8] to-[#FFFDF9] border-b border-[#E8DFC8] px-4 py-3 flex items-center justify-between shadow-[0_2px_12px_rgba(180,160,130,0.1)]">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-2xl bg-white/90 border border-[#E8DFC8] shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex items-center justify-center text-[#5C3F13] hover:text-[#B38022] hover:bg-white active:scale-95 transition-all cursor-pointer"
+              title="رجوع"
+            >
+              <ArrowRight className="w-5 h-5 stroke-[2.5]" />
+            </button>
+
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-base sm:text-lg font-black text-[#5C3F13] tracking-tight">
+                  عائلة الفرسان الذهبية ☯
+                </h1>
+                <span className="bg-gradient-to-r from-[#B38022] to-[#5C3F13] text-[#FFF9E6] text-[9px] font-black px-2 py-0.5 rounded-full font-mono shadow-xs">
+                  Lv.{familyLevel}
+                </span>
+              </div>
+              <p className="text-[10px] text-[#A89478] font-bold">
+                منظومة القلعة العائلية الملكية • ترف شات
+              </p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowCastleModal(true)}
+              className="px-3 py-1.5 bg-gradient-to-r from-[#FAF5E8] to-[#F1E6CD] border border-[#DFC386] rounded-xl text-[#755013] font-black text-xs shadow-xs hover:shadow-md active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <Crown className="w-4 h-4 text-[#B38022] fill-[#B38022]" />
+              <span className="hidden sm:inline">تطور القلعة</span>
+              <span className="sm:hidden">القلعة</span>
+            </button>
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+              className="w-9 h-9 rounded-xl bg-white/80 border border-[#E8DFC8] text-[#755013] hover:text-[#B38022] flex items-center justify-center transition-all cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
+        </header>
 
-          {/* TAB 1: FULL FAMILY PROFILE (Design from Image 2) */}
-          {activeTab === 'profile' && (
-            <div className="flex-1 overflow-y-auto no-scrollbar pb-6">
-              {/* Golden Crown Diamond Header Banner */}
-              <div className="relative w-full h-64 bg-gradient-to-b from-amber-950/60 via-[#181108] to-[#0F1420] p-4 flex flex-col items-center justify-center overflow-hidden border-b border-amber-500/20">
-                {/* Golden Rays Background Effect */}
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-500/20 via-transparent to-transparent pointer-events-none" />
+        {/* MAIN SCROLLABLE CONTINUOUS PAGE */}
+        <main className="flex-1 overflow-y-auto no-scrollbar pb-16">
+          <div className="w-full max-w-4xl mx-auto p-3 sm:p-5 space-y-4 sm:space-y-5">
+            
+            {/* 1. HERO BANNER & FAMILY IDENTITY & CASTLE EVOLUTION CARD */}
+            <section className="relative bg-gradient-to-b from-[#FFFDF9] via-[#FAF5E8] to-[#F5EEDC] border-2 border-[#DFC386] rounded-3xl p-4 sm:p-6 shadow-[0_8px_30px_rgba(180,140,60,0.18)] overflow-hidden">
+              {/* Background Champagne Shimmer */}
+              <div className="absolute top-0 right-0 left-0 h-32 bg-gradient-to-b from-[#DFC386]/20 via-[#EAD39B]/10 to-transparent pointer-events-none" />
+              <div className="absolute -top-10 -left-10 w-48 h-48 bg-[#DFC386]/15 rounded-full blur-2xl pointer-events-none" />
+
+              <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-5 sm:gap-6">
                 
-                {/* Top Title Bar */}
-                <div className="absolute top-3 right-4 flex items-center gap-2 text-amber-200 font-bold text-sm">
-                  <span>friendly 1 ☯</span>
-                  <ChevronRight className="w-4 h-4 text-amber-400" />
-                </div>
+                {/* Family Avatar Crest & Basic Info */}
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-right">
+                  
+                  {/* Diamond Crest Avatar Frame */}
+                  <div className="relative w-24 h-24 sm:w-32 sm:h-32 shrink-0 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-[#755013] via-[#DFC386] to-[#C59A4E] rotate-45 rounded-3xl p-1 shadow-[0_8px_24px_rgba(180,140,60,0.35)]">
+                      <div className="w-full h-full bg-[#1A1309] rounded-2xl flex items-center justify-center overflow-hidden border-2 border-[#DFC386]/70">
+                        <img 
+                          src="https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&q=80&w=400" 
+                          alt="Family Cover" 
+                          className="w-full h-full object-cover -rotate-45 scale-135"
+                        />
+                      </div>
+                    </div>
 
-                {/* Eagle Crest Diamond Frame */}
-                <div className="relative mt-4 w-36 h-36 flex items-center justify-center">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-amber-600 via-amber-300 to-yellow-500 rotate-45 rounded-2xl p-1 shadow-[0_0_30px_rgba(245,158,11,0.4)]">
-                    <div className="w-full h-full bg-[#120C06] rounded-xl flex items-center justify-center overflow-hidden border border-amber-300/50">
-                      <img 
-                        src="https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&q=80&w=300" 
-                        alt="Family Crest" 
-                        className="w-full h-full object-cover -rotate-45 scale-125"
-                      />
+                    {/* Floating Level Tag */}
+                    <div className="absolute -bottom-2 bg-gradient-to-r from-[#B38022] via-[#EAD39B] to-[#755013] text-[#2A1B0A] font-black text-xs px-3.5 py-0.5 rounded-full border-2 border-white shadow-md z-10 font-mono">
+                      friendly 1 ☯
                     </div>
                   </div>
 
-                  {/* Level Crown Badge overlay */}
-                  <div className="absolute -bottom-2 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-slate-950 font-black text-xs px-3 py-0.5 rounded-full border border-white shadow-lg z-10 flex items-center gap-1">
-                    <span>friendly 1 ☯</span>
+                  <div className="space-y-1.5 mt-2 sm:mt-0">
+                    <div className="flex items-center justify-center sm:justify-start gap-2">
+                      <h2 className="text-lg sm:text-2xl font-black text-[#5C3F13] tracking-tight">
+                        عائلة الفرسان الذهبية
+                      </h2>
+                      <span className="bg-[#5C3F13] text-[#FFF9E6] text-[10px] font-black px-2 py-0.5 rounded-md font-mono">
+                        TOP 3
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-xs">
+                      <span className="font-mono font-bold text-[#8C7355] bg-white/80 px-2.5 py-0.5 rounded-full border border-[#E8DFC8]">
+                        ID: 33883
+                      </span>
+                      <span className="font-bold text-[#8C7355] bg-white/80 px-2.5 py-0.5 rounded-full border border-[#E8DFC8]">
+                        تأسست: 2024
+                      </span>
+                      <span className="font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        891 عضو نشط
+                      </span>
+                    </div>
+
+                    {/* Slogan */}
+                    <p className="text-xs text-[#755013] font-bold bg-white/90 border border-[#DFC386]/60 rounded-xl px-3 py-1.5 shadow-xs max-w-sm mt-1">
+                      ☯ البقاء ليس للأقوى بل للأحن والأوفى ☯
+                    </p>
                   </div>
                 </div>
 
-                {/* Family ID */}
-                <div className="mt-4 font-mono text-xs text-amber-300/80 font-bold">
-                  ID: 33883
-                </div>
-
-                {/* Level Crest Left Emblem */}
-                <div className="absolute bottom-2 left-4 w-12 h-12 bg-gradient-to-tr from-amber-500 to-yellow-300 rounded-2xl rotate-45 p-0.5 shadow-md">
-                  <div className="w-full h-full bg-slate-950 rounded-xl flex items-center justify-center -rotate-45">
-                    <Crown className="w-6 h-6 text-amber-400" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="px-5 pt-4 space-y-5">
-                {/* 1. Family Bio (السيرة الذاتية للعائلة) */}
-                <div className="space-y-1.5">
-                  <h3 className="text-xs font-bold text-slate-400">السيرة الذاتية للعائلة</h3>
-                  <div className="p-3 bg-[#171E2E] border border-amber-500/20 rounded-2xl text-center text-amber-200 text-xs font-semibold leading-relaxed shadow-sm">
-                    ☯ البقاء ليس للأقوى بل للأحن والأوفى ☯
-                  </div>
-                </div>
-
-                {/* 2. Family Members (أعضاء الأسرة 891/980) */}
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-extrabold text-white flex items-center gap-1.5">
-                      <Users className="w-4 h-4 text-amber-400" />
-                      <span>أعضاء الأسرة 891/980</span>
-                    </h3>
+                {/* CASTLE PROGRESSION & EVOLUTION PREVIEW */}
+                <div 
+                  onClick={() => setShowCastleModal(true)}
+                  className="w-full md:w-80 bg-white/95 border-2 border-[#DFC386] rounded-2xl p-3.5 sm:p-4 shadow-[0_4px_18px_rgba(180,140,60,0.18)] hover:border-[#B38022] hover:shadow-[0_6px_24px_rgba(180,140,60,0.28)] transition-all cursor-pointer group flex flex-col justify-between"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5 text-xs font-black text-[#5C3F13]">
+                      <Crown className="w-4 h-4 text-[#B38022] fill-[#B38022]" />
+                      <span>شعار القلعة التطورية</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-[#B38022] group-hover:underline flex items-center gap-0.5">
+                      <span>عرض التطور</span>
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </span>
                   </div>
 
-                  {/* Active vs Inactive Pills */}
-                  <div className="bg-[#172033] border border-cyan-500/30 rounded-xl p-2.5 text-center text-xs text-cyan-200 font-bold flex items-center justify-center gap-2">
-                    <span className="text-emerald-400">المستخدمون النشطون 608</span>
-                    <span className="text-slate-500">•</span>
-                    <span className="text-slate-400">المستخدمون غير النشطين 283</span>
-                  </div>
-
-                  {/* Horizontal Scroll / Grid of Member Avatars */}
-                  <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-2 px-1">
-                    {familyMemberAvatars.map((m) => (
-                      <div key={m.id} className="flex flex-col items-center shrink-0 w-14">
-                        <div className="relative w-12 h-12 rounded-full p-0.5 bg-gradient-to-tr from-amber-400 to-purple-500 shadow-md">
-                          <img src={m.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120'} alt={m.name} className="w-full h-full rounded-full object-cover" />
-                          <span className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-slate-900 ${
-                            m.status === 'active' ? 'bg-emerald-500' : 'bg-slate-500'
-                          }`} />
+                  <div className="flex items-center gap-3.5 py-1">
+                    <div className="relative group-hover:scale-110 transition-transform duration-300">
+                      <CastleEmblem level={familyLevel} size="md" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-black text-[#755013] truncate">{castleTier.name}</h4>
+                      <span className="text-[10px] text-[#A89478] font-bold block">{castleTier.levelRange} • الرتبة {castleTier.tier}/5</span>
+                      
+                      {/* EXP Bar */}
+                      <div className="mt-1.5">
+                        <div className="flex items-center justify-between text-[9px] font-mono text-[#8C7355] mb-0.5">
+                          <span>EXP للترقية</span>
+                          <span className="font-bold text-[#755013]">{Math.round((familyExp / nextLevelExp) * 100)}%</span>
                         </div>
-                        <span className="text-[10px] text-slate-300 font-bold truncate w-full text-center mt-1">
-                          {m.name}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 3. Family Announcement (إعلان عائلي) */}
-                <div className="space-y-1.5">
-                  <h3 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-                    <Megaphone className="w-4 h-4 text-amber-400" />
-                    <span>إعلان عائلي</span>
-                  </h3>
-                  <div className="p-3.5 bg-[#171E2E] border border-white/10 rounded-2xl text-xs text-slate-200 leading-relaxed font-medium">
-                    تصفية اسبوعية للى مش شغال ومش بيفتح والى حاطت صورة مغلق والروم المغلق طرد وشكرا ☯
-                  </div>
-                </div>
-
-                {/* 4. Contribution Log (سجل المساهمات) */}
-                <div className="space-y-2">
-                  <h3 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-                    <History className="w-4 h-4 text-amber-400" />
-                    <span>سجل المساهمات</span>
-                  </h3>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between p-3 bg-[#171E2E] border border-white/5 rounded-xl text-xs">
-                      <div className="flex items-center gap-2 text-slate-300 font-bold">
-                        <Calendar className="w-4 h-4 text-amber-400" />
-                        <span>البيانات التاريخية</span>
-                      </div>
-                      <div className="flex items-center gap-2 font-mono font-black text-amber-300">
-                        <span className="text-red-500 flex items-center gap-0.5">
-                          <Flame className="w-3.5 h-3.5 fill-red-500" />
-                          923444579
-                        </span>
-                        <span className="bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-md border border-amber-500/30">
-                          TOP29
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 bg-[#171E2E] border border-white/5 rounded-xl text-xs">
-                      <div className="flex items-center gap-2 text-slate-300 font-bold">
-                        <Award className="w-4 h-4 text-purple-400" />
-                        <span>البيانات الشهرية</span>
-                      </div>
-                      <div className="flex items-center gap-2 font-mono font-black text-amber-300">
-                        <span className="text-red-500 flex items-center gap-0.5">
-                          <Flame className="w-3.5 h-3.5 fill-red-500" />
-                          200092680
-                        </span>
-                        <span className="bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-md border border-amber-500/30">
-                          TOP29
-                        </span>
+                        <div className="w-full bg-[#EDE2CE] h-2 rounded-full overflow-hidden p-0.5">
+                          <div 
+                            className="h-full bg-gradient-to-r from-[#D9A036] via-[#B38022] to-[#755013] rounded-full"
+                            style={{ width: `${(familyExp / nextLevelExp) * 100}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
+
+                  <div className="mt-2.5 pt-2 border-t border-[#E8DFC8] flex items-center justify-between text-[10px] text-[#8C7355] font-bold">
+                    <span>الترقية القادمة: سعة 2500 عضو</span>
+                    <span className="text-[#B38022]">Lv.{familyLevel + 1}</span>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* COLLAPSIBLE STATS STRIP (الإحصائيات مع إمكانية الطي والفتح بالضغط) */}
+              <div className="mt-4 pt-3 border-t border-[#DFC386]/60">
+                <button
+                  onClick={() => setIsStatsCollapsed(!isStatsCollapsed)}
+                  className="w-full flex items-center justify-between py-1.5 px-2 rounded-xl hover:bg-white/60 text-[#5C3F13] font-black text-xs transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Trophy className="w-4 h-4 text-[#B38022]" />
+                    <span>إحصائيات ومعارك العائلة</span>
+                    <span className="text-[10px] font-bold text-[#8C7355] bg-white px-2 py-0.2 rounded-full border border-[#E8DFC8]">
+                      {isStatsCollapsed ? 'اضغط للعرض 📊' : 'اضغط للطي 📁'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1 text-[#8C7355]">
+                    {isStatsCollapsed ? (
+                      <ChevronDown className="w-4 h-4 text-[#B38022]" />
+                    ) : (
+                      <ChevronUp className="w-4 h-4 text-[#B38022]" />
+                    )}
+                  </div>
+                </button>
+
+                {/* Animated Collapsible Stats Grid */}
+                <AnimatePresence>
+                  {!isStatsCollapsed && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-2.5 overflow-hidden"
+                    >
+                      <div className="bg-white/90 border border-[#E8DFC8] rounded-2xl p-2.5 text-center shadow-xs">
+                        <span className="text-[10px] font-bold text-[#8C7355] block">نقاط معارك العائلة</span>
+                        <span className="text-sm font-black text-[#755013] font-mono mt-0.5 block flex items-center justify-center gap-1">
+                          <Swords className="w-3.5 h-3.5 text-[#B38022]" />
+                          482,900
+                        </span>
+                      </div>
+
+                      <div className="bg-white/90 border border-[#E8DFC8] rounded-2xl p-2.5 text-center shadow-xs">
+                        <span className="text-[10px] font-bold text-[#8C7355] block">الترتيب اليومي</span>
+                        <span className="text-sm font-black text-amber-600 font-mono mt-0.5 block flex items-center justify-center gap-1">
+                          <Trophy className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                          #3 TOP29
+                        </span>
+                      </div>
+
+                      <div className="bg-white/90 border border-[#E8DFC8] rounded-2xl p-2.5 text-center shadow-xs">
+                        <span className="text-[10px] font-bold text-[#8C7355] block">المساهمة الشهرية</span>
+                        <span className="text-sm font-black text-red-600 font-mono mt-0.5 block flex items-center justify-center gap-1">
+                          <Flame className="w-3.5 h-3.5 fill-red-500 text-red-500" />
+                          200,092,680
+                        </span>
+                      </div>
+
+                      <div className="bg-white/90 border border-[#E8DFC8] rounded-2xl p-2.5 text-center shadow-xs">
+                        <span className="text-[10px] font-bold text-[#8C7355] block">نسبة التفاعل</span>
+                        <span className="text-sm font-black text-emerald-600 mt-0.5 block flex items-center justify-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                          ممتاز (Top 1%)
+                        </span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </section>
+
+            {/* 2. FAMILY PINNED ANNOUNCEMENT */}
+            <section className="bg-gradient-to-r from-[#FAF4E6] via-[#FFFDF9] to-[#FAF4E6] border border-[#DFC386]/80 rounded-2xl p-3 sm:p-4 shadow-[0_2px_10px_rgba(180,140,60,0.08)] flex items-start gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-[#755013] to-[#B38022] text-[#FFF9E6] flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                <Megaphone className="w-4 h-4 sm:w-5 sm:h-5 text-amber-200" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-[#5C3F13] flex items-center gap-1.5">
+                    <span>إعلان وتوجيهات قائد العائلة</span>
+                    <span className="text-[9px] font-bold text-[#A89478] bg-white px-2 py-0.2 rounded-full border border-[#E8DFC8]">
+                      مثبت
+                    </span>
+                  </h4>
+                  <span className="text-[10px] text-[#A89478] font-mono">اليوم 14:30</span>
+                </div>
+                <p className="text-xs text-[#755013] font-semibold mt-1 leading-relaxed">
+                  تصفية اسبوعية لكل من لا يتواجد في الرومات أو لم يسجل حضوره في القلعة. نرجو من الجميع التواجد في رومات العائلة الرسمية لدعم ترفيع القلعة للمستوى 13 ☯
+                </p>
+              </div>
+            </section>
+
+            {/* 3. CLICKABLE FAMILY MEMBERS & KNIGHTS BANNER */}
+            <section 
+              onClick={() => setShowMembersModal(true)}
+              className="bg-gradient-to-r from-[#FFFDF9] via-[#FAF6ED] to-[#FFFDF9] border-2 border-[#DFC386] hover:border-[#B38022] rounded-2xl px-4 py-3 shadow-[0_4px_16px_rgba(180,140,60,0.12)] hover:shadow-[0_6px_22px_rgba(180,140,60,0.22)] transition-all cursor-pointer group flex items-center justify-between gap-3"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#755013] via-[#A8792A] to-[#B38022] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                  <Users className="w-5 h-5 text-amber-200" />
+                </div>
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <h3 className="text-sm sm:text-base font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors whitespace-nowrap">
+                    أعضاء وفرسان العائلة
+                  </h3>
+                  <span className="text-xs font-mono font-bold text-[#8C7355] bg-white px-2 py-0.5 rounded-lg border border-[#DFC386]/60 shrink-0">
+                    891 / 980
+                  </span>
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* TAB 2: AVAILABLE FAMILY ROOMS (Design from Image 3 - غرفة عائلية) */}
-          {activeTab === 'rooms' && (
-            <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3">
+              <div className="flex items-center gap-1.5 bg-[#FAF4E6] border border-[#DFC386] px-3.5 py-1.5 rounded-xl text-[#755013] group-hover:bg-[#755013] group-hover:text-white font-black text-xs transition-all shadow-xs shrink-0">
+                <span>عرض القائمة</span>
+                <ChevronLeft className="w-4 h-4" />
+              </div>
+            </section>
+
+            {/* 4. SUPERVISORS & LEADERSHIP IN HORIZONTAL BAR (ظهور المشرفين في المكان الأفقي) */}
+            <section className="space-y-2.5">
               <div className="flex items-center justify-between px-1">
-                <h3 className="text-sm font-extrabold text-amber-300 flex items-center gap-2">
-                  <Volume2 className="w-4 h-4 text-amber-400" />
-                  <span>غرفة عائلية (غرف العائلة المتاحة)</span>
-                </h3>
-                <span className="text-xs text-slate-400 font-mono">friendly 1 ☯</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-[#755013] to-[#B38022] flex items-center justify-center text-white shadow-xs">
+                    <Shield className="w-4 h-4 text-amber-200" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-[#5C3F13]">
+                      مشرفو وإدارة القلعة ({supervisors.length})
+                    </h3>
+                    <p className="text-[10px] text-[#A89478] font-bold">قيادة العائلة ومسؤولو الرومات والتنظيم</p>
+                  </div>
+                </div>
+
+                <span className="text-[10px] font-bold text-[#B38022] bg-[#FAF5E8] px-2.5 py-0.5 rounded-full border border-[#DFC386]/60">
+                  إدارة معتمدة
+                </span>
               </div>
 
-              {/* 2-Column Grid of Room Cards matching Image 3 */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Horizontal Scrollable Row of Supervisors */}
+              <div className="bg-white/90 border border-[#DFC386]/70 rounded-2xl p-3 shadow-xs overflow-hidden">
+                <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1 px-1">
+                  {supervisors.map((sup) => (
+                    <motion.div 
+                      key={sup.id}
+                      whileHover={{ scale: 1.04 }}
+                      className="flex flex-col items-center shrink-0 w-24 sm:w-28 bg-[#FAF6ED] border border-[#DFC386]/60 hover:border-[#B38022] rounded-2xl p-2 text-center group cursor-pointer shadow-xs hover:shadow-md transition-all"
+                    >
+                      {/* Avatar with Role Crown / Halo */}
+                      <div className="relative w-14 h-14 rounded-full p-0.5 bg-gradient-to-tr from-[#B38022] via-[#EAD39B] to-[#755013] shadow-md group-hover:scale-105 transition-transform">
+                        <img 
+                          src={sup.avatar} 
+                          alt={sup.name} 
+                          className="w-full h-full rounded-full object-cover" 
+                        />
+                        {/* Online Indicator */}
+                        <span className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white shadow-xs ${
+                          sup.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                        }`} />
+                        {/* Crown Tag for Rank 1 */}
+                        {sup.rank === 1 && (
+                          <span className="absolute -top-1.5 -right-1 bg-amber-500 text-white p-0.5 rounded-full shadow-xs">
+                            <Crown className="w-3 h-3 fill-white" />
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Supervisor Name */}
+                      <span className="text-[11px] font-black text-[#5C3F13] truncate w-full text-center mt-1.5">
+                        {sup.name}
+                      </span>
+
+                      {/* Supervisor Role Badge */}
+                      <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-md mt-0.5 border truncate w-full text-center ${
+                        sup.rank === 1 
+                          ? 'bg-amber-100 text-amber-900 border-amber-300' 
+                          : sup.rank === 2 
+                          ? 'bg-slate-100 text-slate-800 border-slate-300' 
+                          : 'bg-amber-50 text-amber-800 border-amber-200'
+                      }`}>
+                        {sup.roleBadge}
+                      </span>
+
+                      {/* EXP points */}
+                      <span className="text-[8px] font-mono text-[#8C7355] mt-0.5">
+                        EXP {sup.exp}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* 5. FAMILY ROOMS SECTION (عمودين شاشة جنب شاشة - 2 COLUMNS STRICTLY) */}
+            <section className="space-y-3 pt-1">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-[#755013] to-[#B38022] flex items-center justify-center text-white shadow-xs">
+                    <Volume2 className="w-4 h-4 text-amber-200" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-black text-[#5C3F13]">
+                      غرف ورومات العائلة الصوتية ({familyRooms.length})
+                    </h3>
+                    <p className="text-[10px] text-[#A89478] font-bold">
+                      بثوث صوتية مباشرة • عمودين جنب إلى جنب
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-[#8C7355] font-bold bg-[#FAF5E8] px-2.5 py-1 rounded-full border border-[#DFC386]/60">
+                    {familyRooms.length} غرف نشطة
+                  </span>
+                </div>
+              </div>
+
+              {/* STRICT 2-COLUMN GRID (عمودين شاشة جنب شاشة على جميع المقاسات) */}
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
                 {familyRooms.map((room) => {
-                  const isLocked = (room as any).isLocked || (room.id === 'room-1' && globalLockData.isLocked);
+                  const isLocked = room.isLocked || (room.id === 'room-1' && globalLockData.isLocked);
+
                   return (
                     <motion.div
                       key={room.id}
                       whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.97 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => {
                         if (isLocked) {
                           setPendingRoomId(room.id);
@@ -396,164 +639,111 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
                           onClose();
                         }
                       }}
-                      className="relative bg-[#171E2E] border border-amber-500/20 rounded-2xl overflow-hidden flex flex-col shadow-lg cursor-pointer group"
+                      className="bg-white border-2 border-[#E8DFC8] hover:border-[#B38022] rounded-2xl sm:rounded-3xl overflow-hidden shadow-[0_4px_16px_rgba(180,140,60,0.12)] hover:shadow-[0_8px_24px_rgba(180,140,60,0.22)] transition-all cursor-pointer group flex flex-col"
                     >
-                      {/* Room Poster Thumbnail */}
-                      <div className="relative h-36 w-full overflow-hidden bg-slate-900">
+                      {/* Room Poster Header */}
+                      <div className="relative h-28 sm:h-36 w-full overflow-hidden bg-slate-900">
                         <img 
-                          src={room.bgImage || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&q=80&w=300'} 
+                          src={room.bgImage} 
                           alt={room.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                         />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                        {/* Lock Overlay Badge if Room is Locked (مؤشر القفل في غرف العائلة) */}
-                        {isLocked && (
-                          <div className="absolute top-2 left-2 z-20 bg-rose-600/90 text-amber-300 px-2 py-0.5 rounded-full border border-amber-400/50 shadow-md backdrop-blur-xs flex items-center gap-1 text-[9px] font-black animate-pulse" title="الغرفة مقفلة برمز سري 🔒">
-                            <Lock className="w-3 h-3 text-amber-400 stroke-[2.5]" />
-                            <span>مقفل</span>
+                        {/* Top Category Tag & Lock Status */}
+                        <div className="absolute top-2 left-2 right-2 flex items-center justify-between gap-1">
+                          {isLocked ? (
+                            <span className="bg-rose-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow-md border border-rose-300 animate-pulse shrink-0">
+                              <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
+                              <span>مقفل</span>
+                            </span>
+                          ) : (
+                            <span className="bg-emerald-600/90 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow-md backdrop-blur-xs shrink-0">
+                              <Radio className="w-2.5 h-2.5" />
+                              <span>مباشر</span>
+                            </span>
+                          )}
+
+                          <span className={`bg-gradient-to-r ${room.categoryColor} text-white font-black text-[8px] sm:text-[10px] px-2 py-0.5 rounded-full shadow-md truncate max-w-[80px] sm:max-w-none`}>
+                            {room.tagText}
+                          </span>
+                        </div>
+
+                        {/* Bottom Bar: Host Avatar & Listeners count */}
+                        <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-white">
+                          <div className="flex items-center gap-1 min-w-0">
+                            <img 
+                              src={room.hostAvatar} 
+                              alt={room.hostName} 
+                              className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover border border-white/80 shadow-xs shrink-0"
+                            />
+                            <span className="text-[9px] sm:text-[11px] font-bold truncate max-w-[60px] sm:max-w-[100px] drop-shadow-md">
+                              {room.hostName}
+                            </span>
                           </div>
-                        )}
 
-                        {/* Top Overlay Badge & Listeners Count */}
-                        <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between pointer-events-none">
-                          {/* Active Listener Count */}
-                          <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full text-[10px] text-emerald-400 font-mono font-bold border border-white/10">
+                          {/* Listeners Badge */}
+                          <div className="bg-black/60 backdrop-blur-md px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[8px] sm:text-[10px] text-emerald-400 font-mono font-bold border border-white/20 flex items-center gap-0.5 shadow-xs shrink-0">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                             <span>{room.listeners}</span>
-                          </div>
-
-                          {/* Category Tag Badge */}
-                          <div className={`px-2 py-0.5 rounded-full text-[10px] font-black text-white ${room.categoryColor} shadow-md`}>
-                            {room.tagText}
                           </div>
                         </div>
                       </div>
 
-                      {/* Room Title */}
-                      <div className="p-2.5 bg-[#121826] flex items-center justify-between gap-1">
-                        <span className="text-xs font-bold text-slate-100 truncate w-full text-right dir-rtl flex items-center gap-1">
-                          <span className="truncate">{room.title}</span>
-                          {isLocked && <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0 stroke-[2.5]" />}
-                        </span>
+                      {/* Room Card Bottom Content */}
+                      <div className="p-2.5 sm:p-3 bg-gradient-to-b from-[#FFFDF9] to-[#FAF5E8] flex-1 flex flex-col justify-between">
+                        <h4 className="text-[11px] sm:text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors line-clamp-2 leading-relaxed text-right min-h-[32px]">
+                          {room.title}
+                        </h4>
+
+                        <div className="mt-2 pt-1.5 border-t border-[#E8DFC8]/80 flex items-center justify-between">
+                          <span className="text-[9px] text-[#A89478] font-bold truncate max-w-[65px] sm:max-w-none">
+                            روم الفرسان
+                          </span>
+
+                          <button className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-[#755013] to-[#B38022] text-white font-black text-[9px] sm:text-[10px] rounded-lg sm:rounded-xl shadow-xs group-hover:brightness-110 transition-all flex items-center gap-0.5 cursor-pointer">
+                            <span>دخول</span>
+                            <ChevronLeft className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                          </button>
+                        </div>
                       </div>
                     </motion.div>
                   );
                 })}
               </div>
-            </div>
-          )}
+            </section>
 
-          {/* TAB 3: OVERVIEW & PROMINENT MEMBERS (Design from Image 1) */}
-          {activeTab === 'overview' && (
-            <div className="flex-1 overflow-y-auto no-scrollbar">
-              {/* Header Banner */}
-              <div className="relative bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 p-6 text-white text-center overflow-hidden shrink-0 border-b border-purple-500/20">
-                {/* Shield Crest */}
-                <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-tr from-amber-400 via-purple-500 to-indigo-600 p-1 shadow-lg mb-3 relative flex items-center justify-center">
-                  <div className="w-full h-full bg-purple-950 rounded-xl flex items-center justify-center border border-amber-300/40">
-                    <Shield className="w-10 h-10 text-amber-300 fill-amber-300/30" />
-                  </div>
-                  <span className="absolute -bottom-2 bg-gradient-to-r from-amber-400 to-yellow-300 text-slate-950 font-black text-xs px-3 py-0.5 rounded-full border border-white shadow-md">
-                    Lv.12
-                  </span>
-                </div>
-
-                <h2 className="text-2xl font-black tracking-tight text-white">عائلة الفرسان</h2>
-                <div className="flex items-center justify-center gap-3 text-xs text-purple-200 mt-2 font-semibold">
-                  <span className="flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-full border border-white/10">
-                    <Trophy className="w-3.5 h-3.5 text-amber-300" />
-                    <span>الترتيب اليومي: #3</span>
-                  </span>
-                  <span className="flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-full border border-white/10">
-                    <Users className="w-3.5 h-3.5 text-purple-300" />
-                    <span>48 / 50 عضو</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Family Stats & Members */}
-              <div className="p-5 space-y-4">
-                {/* Battle Points & Level Progress */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-[#171E2E] border border-purple-500/30 p-3.5 rounded-2xl text-center">
-                    <div className="text-xs text-purple-300 font-bold flex items-center justify-center gap-1">
-                      <Swords className="w-3.5 h-3.5" />
-                      <span>نقاط معارك العائلة</span>
-                    </div>
-                    <div className="text-lg font-black text-amber-300 mt-1 font-mono">482,900</div>
-                  </div>
-                  <div className="bg-[#171E2E] border border-indigo-500/30 p-3.5 rounded-2xl text-center">
-                    <div className="text-xs text-indigo-300 font-bold flex items-center justify-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>مستوى التفاعل</span>
-                    </div>
-                    <div className="text-lg font-black text-emerald-400 mt-1">ممتاز (Top 1%)</div>
-                  </div>
-                </div>
-
-                {/* Top Family Members Header */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-black text-white flex items-center gap-1.5">
-                      <Crown className="w-4 h-4 text-amber-400 fill-amber-400" />
-                      <span>أعضاء العائلة البارزون</span>
-                    </h3>
-                  </div>
-
-                  <div className="space-y-2">
-                    {prominentMembers.map((member) => (
-                      <div
-                        key={member.rank}
-                        className="flex items-center justify-between p-3 rounded-2xl bg-[#171E2E] border border-white/5"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className={`w-5 text-center font-black text-xs ${
-                            member.rank === 1 ? 'text-amber-400' : member.rank === 2 ? 'text-slate-300' : 'text-amber-600'
-                          }`}>
-                            #{member.rank}
-                          </span>
-                          <img src={member.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120'} alt={member.name} className="w-10 h-10 rounded-full object-cover border-2 border-amber-500/30 shadow-xs" />
-                          <div>
-                            <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                              <span>{member.name}</span>
-                              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-black px-1.5 py-0.2 rounded">
-                                {member.level}
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-slate-400 mt-0.5">{member.role}</div>
-                          </div>
-                        </div>
-                        <div className="text-left font-mono font-bold text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-lg">
-                          {member.exp}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Action Footer Button */}
-          <div className="p-3 bg-[#121724] border-t border-white/10 flex gap-2 shrink-0">
-            <button
-              onClick={() => setActiveTab('rooms')}
-              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs shadow-md hover:brightness-110 transition-all cursor-pointer text-center"
-            >
-              عرض جميع غرف العائلة ({familyRooms.length})
-            </button>
           </div>
-        </motion.div>
+        </main>
 
-        {/* PIN CODE INPUT DIALOG FOR LOCKED FAMILY ROOMS */}
+        {/* CASTLE EVOLUTION MODAL */}
+        <CastleEvolutionModal
+          isOpen={showCastleModal}
+          onClose={() => setShowCastleModal(false)}
+          currentFamilyLevel={familyLevel}
+          currentExp={familyExp}
+          nextLevelExp={nextLevelExp}
+        />
+
+        {/* FULL FAMILY MEMBERS & ONLINE LIST MODAL */}
+        <FamilyMembersModal
+          isOpen={showMembersModal}
+          onClose={() => setShowMembersModal(false)}
+        />
+
+        {/* PIN CODE INPUT MODAL FOR LOCKED ROOMS */}
         <AnimatePresence>
           {showPinModal && (
-            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto" dir="rtl" onClick={(e) => e.stopPropagation()}>
+            <div 
+              className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto"
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+            >
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-5 text-white shadow-2xl relative space-y-4"
+                className="w-full max-w-sm bg-gradient-to-b from-[#FFFDF9] via-[#FAF6ED] to-[#F3EBD8] border-2 border-[#DFC386] rounded-3xl p-5 text-slate-900 shadow-2xl relative space-y-4"
               >
                 <button
                   onClick={() => {
@@ -561,18 +751,18 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
                     setEnteredPin('');
                     setPinError('');
                   }}
-                  className="absolute top-3 left-3 p-1.5 rounded-full bg-slate-800 text-slate-400 hover:text-white"
+                  className="absolute top-3 left-3 p-1.5 rounded-full bg-slate-200/80 text-slate-600 hover:text-slate-900 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
 
-                <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                <div className="flex items-center gap-3 border-b border-[#DFC386]/60 pb-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#755013] to-[#B38022] text-white flex items-center justify-center shrink-0 shadow-md">
                     <Lock className="w-5 h-5 stroke-[2.5]" />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-sm text-white">غرفة عائلية مقفلة 🔒</h3>
-                    <p className="text-[11px] text-slate-400">أدخل الرمز السري المكون من 6 أرقام للدخول</p>
+                    <h3 className="font-black text-sm text-[#5C3F13]">غرفة عائلية مقفلة 🔒</h3>
+                    <p className="text-[11px] text-[#8C7355] font-semibold">أدخل الرمز السري المكون من 6 أرقام للدخول</p>
                   </div>
                 </div>
 
@@ -589,18 +779,18 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
                       setEnteredPin(onlyDigits);
                       setPinError('');
                     }}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3 text-center text-xl font-mono font-bold tracking-widest text-amber-400 focus:outline-none focus:border-amber-500/80"
+                    className="w-full bg-white border-2 border-[#DFC386] rounded-2xl px-4 py-3 text-center text-xl font-mono font-bold tracking-widest text-[#755013] focus:outline-none focus:border-[#B38022] shadow-inner"
                     autoFocus
                   />
                   {pinError && (
-                    <p className="text-xs font-bold text-rose-400 text-center">{pinError}</p>
+                    <p className="text-xs font-bold text-rose-600 text-center">{pinError}</p>
                   )}
                 </div>
 
                 <div className="flex gap-2 pt-1">
                   <button
                     onClick={handleVerifyPin}
-                    className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    className="flex-1 py-3 bg-gradient-to-r from-[#755013] via-[#A8792A] to-[#755013] hover:opacity-95 text-white font-black text-xs rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <Check className="w-4 h-4" />
                     <span>تأكيد ودخول الروم</span>
@@ -611,7 +801,7 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
                       setEnteredPin('');
                       setPinError('');
                     }}
-                    className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl cursor-pointer"
+                    className="px-4 py-3 bg-[#EDE2CE] hover:bg-[#E2D4BD] text-[#755013] font-bold text-xs rounded-xl cursor-pointer"
                   >
                     إلغاء
                   </button>
@@ -620,7 +810,8 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
             </div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
     </AnimatePresence>
   );
 };
+export default FamilyModal;

@@ -7,6 +7,12 @@ import { BrokerCenterModal } from './BrokerCenterModal';
 import { TransferRecordModal } from './TransferRecordModal';
 import { HostStatisticsModal } from './HostStatisticsModal';
 import { 
+  getBroadcastersCount, 
+  subscribeToAgencyInvitations, 
+  sendNewInvitation, 
+  OFFICIAL_AGENCY_TERMS 
+} from '../lib/agencyInvitationService';
+import { 
   X, 
   ChevronUp, 
   ChevronDown, 
@@ -167,15 +173,36 @@ export const AgencyModal: React.FC<AgencyModalProps> = ({
 
   // أدواتي modals
   const [activeToolModal, setActiveToolModal] = useState<string | null>(null);
+  const [withdrawAddress, setWithdrawAddress] = useState('');
+  const [invoiceDownloading, setInvoiceDownloading] = useState(false);
+  const [invoiceDownloaded, setInvoiceDownloaded] = useState(false);
 
   const [copiedCode, setCopiedCode] = useState(false);
 
-  // حالات المحفظة وسحب الأرباح
-  const [withdrawAddress, setWithdrawAddress] = useState('TQn9Y2Kh...v98ZaL1');
+  // حالات دعوة المذيعين بالـ ID
+  const [shortcutInviteId, setShortcutInviteId] = useState('');
+  const [shortcutInviteType, setShortcutInviteType] = useState<'agency' | 'broker'>('agency');
+  const [shortcutInviteMsg, setShortcutInviteMsg] = useState('يسر وكالة الأساطير دعوتك للانضمام كمذيع رسمي لدينا.');
+  const [shortcutInviteSuccess, setShortcutInviteSuccess] = useState<string | null>(null);
 
-  // حالات تحميل الفاتورة
-  const [invoiceDownloading, setInvoiceDownloading] = useState(false);
-  const [invoiceDownloaded, setInvoiceDownloaded] = useState(false);
+  const handleSendShortcutInvite = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shortcutInviteId.trim()) return;
+    
+    sendNewInvitation({
+      hostId: shortcutInviteId.trim(),
+      inviterType: shortcutInviteType,
+      message: shortcutInviteMsg,
+      agencyGid: agencyGid,
+      agencyName: `وكالة الأساطير (${userName})`
+    });
+
+    setShortcutInviteSuccess(`تم إرسال الدعوة وشروط الانضمام بنجاح إلى المذيع (ID: ${shortcutInviteId.trim()}) عبر إشعارات الوكالة والرسائل الخاصة.`);
+    setShortcutInviteId('');
+    setTimeout(() => {
+      setShortcutInviteSuccess(null);
+    }, 4000);
+  };
 
   if (!isOpen) return null;
 
@@ -272,371 +299,480 @@ export const AgencyModal: React.FC<AgencyModalProps> = ({
         </div>
       )}
 
-      {/* Top App Bar (وكالتي) مع أزرار التحكم في قلب العرض وإدارة العناصر */}
-      <div className="sticky top-0 z-30 bg-[#F6F8FB]/95 backdrop-blur-md px-4 py-3.5 flex items-center justify-between border-b border-slate-200/50">
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-base font-black text-slate-900 tracking-tight">
-            {isRtl ? 'وكالتي' : 'My Agency'}
-          </h1>
-          
-          {/* شارة توضيح اتجاه العرض الحالي */}
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-bold border border-blue-100">
-            {isRtl ? 'RTL (يمين ➜ يسار)' : 'LTR (يسار ➜ يمين)'}
-          </span>
-        </div>
-
-        {/* أدوات التحكم العلوية: زر قلب العرض (Flip Display) + زر الإغلاق */}
+      {/* Top App Bar (لوحة معلومات الوكالة) */}
+      <div className="sticky top-0 z-30 bg-[#F4F6F9]/95 backdrop-blur-md px-4 py-3.5 flex items-center justify-between border-b border-slate-200/60" dir="rtl">
+        {/* عنوان الصفحة مع أيقونة الدرع الفضية */}
         <div className="flex items-center gap-2">
-          {/* زر قلب العرض من اليمين إلى اليسار والعكس (Flip Display) */}
-          <button
-            onClick={toggleDirection}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-600 border border-slate-200 hover:border-blue-300 rounded-full text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer"
-            title={isRtl ? 'قلب العرض إلى اليسار (LTR)' : 'قلب العرض إلى اليمين (RTL)'}
-          >
-            <ArrowRightLeft className="w-3.5 h-3.5 text-blue-500" />
-            <span className="text-[11px]">{isRtl ? 'قلب العرض (LTR)' : 'Flip to (RTL)'}</span>
-          </button>
-
-          {/* زر إغلاق */}
-          <button 
-            onClick={onClose}
-            className="p-1.5 hover:bg-slate-200/80 rounded-full text-slate-600 hover:text-slate-900 transition-colors cursor-pointer active:scale-95"
-            title="إغلاق"
-          >
-            <X className="w-5 h-5 stroke-[2.5]" />
-          </button>
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-slate-200 via-slate-400 to-slate-600 p-[1.5px] shadow-xs flex items-center justify-center">
+            <div className="w-full h-full bg-slate-100 rounded-[6px] flex items-center justify-center text-slate-700 text-xs font-black">
+              🛡️
+            </div>
+          </div>
+          <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+            لوحة معلومات الوكالة
+          </h1>
         </div>
+
+        {/* زر إغلاق */}
+        <button 
+          onClick={onClose}
+          className="p-1.5 hover:bg-slate-200/80 rounded-full text-slate-600 hover:text-slate-900 transition-colors cursor-pointer active:scale-95"
+          title="إغلاق"
+        >
+          <X className="w-5 h-5 stroke-[2.5]" />
+        </button>
       </div>
 
       {/* Main Content Container */}
-      <div className="w-full max-w-lg mx-auto p-4 space-y-5 pb-20 flex-1">
+      <div className="w-full max-w-lg mx-auto p-4 space-y-4 pb-20 flex-1">
         
         {/* ========================================================= */}
-        {/* 1. البطاقة العلوية (Top Gradient Card) */}
+        {/* 1. البطاقة العلوية (Petrol Teal Hero Card with Semi-Circular Dials) */}
         {/* ========================================================= */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#44a4f8] via-[#4d86f7] to-[#6055ef] p-5 text-white shadow-[0_10px_25px_rgba(68,164,248,0.28)]">
-          {/* خلفيات دوائر خفيفة */}
-          <div className="absolute -right-8 -top-8 w-40 h-40 bg-white/10 rounded-full blur-xl pointer-events-none" />
-          <div className="absolute -left-8 -bottom-8 w-40 h-40 bg-black/10 rounded-full blur-xl pointer-events-none" />
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#0A3D47] via-[#0E4E5B] to-[#0A3740] p-4 text-white shadow-[0_8px_25px_rgba(10,61,71,0.35)] border border-teal-500/20" dir="rtl">
+          {/* لمسات إضاءة خلفية ناعمة */}
+          <div className="absolute top-0 right-0 w-48 h-48 bg-teal-400/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-cyan-400/10 rounded-full blur-3xl pointer-events-none" />
 
-          {/* الصف العلوي: الاسم والمعرف مع الصورة على اليمين في RTL واليسار في LTR */}
+          {/* الصف العلوي: البروفايل على اليمين وزر تفاصيل الأرباح على الشمال */}
           <div className="flex items-center justify-between relative z-10">
-            {/* زر تفاصيل */}
+            {/* البروفايل: الصورة مع الإطار الفضي والنقاط الخضراء + الاسم والمعرف */}
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-14 h-14 rounded-full p-[2.5px] bg-gradient-to-tr from-slate-400 via-white/90 to-slate-500 shadow-md">
+                  <img 
+                    src={userAvatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200'} 
+                    alt={userName} 
+                    className="w-full h-full rounded-full object-cover bg-slate-900"
+                  />
+                </div>
+                {/* 3 نقاط خضراء أسفل البروفايل */}
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-slate-950/80 px-1.5 py-0.5 rounded-full border border-teal-400/40">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="text-base font-black text-white leading-tight">
+                  {userName || 'AbuAmjad'}
+                </div>
+                <div className="text-xs font-bold font-mono text-cyan-200/90 mt-0.5">
+                  GID:{agencyGid || '30032'}
+                </div>
+              </div>
+            </div>
+
+            {/* زر تفاصيل الأرباح */}
             <button 
               onClick={() => setShowEarningsDetails(true)}
-              className="bg-white/20 hover:bg-white/30 active:scale-95 transition-all backdrop-blur-md px-3.5 py-1.5 rounded-full text-[11px] font-bold text-white border border-white/25 shadow-xs cursor-pointer flex items-center gap-1"
+              className="bg-[#083038]/80 hover:bg-[#083038] active:scale-95 transition-all backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-bold text-teal-100 border border-teal-500/30 shadow-xs cursor-pointer"
             >
-              <span>{isRtl ? 'تفاصيل' : 'Details'}</span>
-              <ChevronLeft className={`w-3.5 h-3.5 ${isRtl ? '' : 'rotate-180'}`} />
+              تفاصيل الأرباح
             </button>
-
-            {/* الاسم والمعرف والصورة */}
-            <div className={`flex items-center gap-2.5 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
-              <div className={isRtl ? 'text-left' : 'text-right'}>
-                <div className="text-sm font-black text-white leading-tight">{userName}</div>
-                <div className="text-[11px] font-bold font-mono text-white/90">GID:{agencyGid}</div>
-              </div>
-              <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-white/50 shadow-md bg-slate-900 shrink-0">
-                <img 
-                  src={userAvatar} 
-                  alt={userName} 
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
           </div>
 
-          {/* الصف السفلي: الأرباح */}
-          <div className="grid grid-cols-2 gap-4 mt-7 pt-1 text-center relative z-10">
-            {/* أرباح الشهر الحالي */}
-            <div className="space-y-1">
-              <div className="text-3xl sm:text-4xl font-extrabold font-mono text-white tracking-tight drop-shadow-xs">
-                19.00
+          {/* الصف السفلي: عدادات نصف دائرية (Semi-circular Dials) */}
+          <div className="grid grid-cols-2 gap-4 mt-6 pt-2 text-center relative z-10">
+            {/* العداد الأيمن: أرباح هذا الشهر ($20.00) */}
+            <div className="flex flex-col items-center justify-center">
+              <div className="relative w-28 h-14 flex items-end justify-center">
+                {/* قوس بنفسجي نصف دائري */}
+                <div className="absolute inset-0 border-[5px] border-b-0 border-[#A855F7] rounded-t-full shadow-[0_0_12px_rgba(168,85,247,0.3)]" />
+                <div className="relative z-10 text-xl sm:text-2xl font-black font-mono text-white pb-1">
+                  $20.00
+                </div>
               </div>
-              <div className="text-[11px] sm:text-xs font-medium text-white/90">
-                {isRtl ? 'أرباح الشهر الحالي($)' : 'Current Month ($)'}
+              <div className="text-xs font-bold text-teal-100/90 mt-1.5">
+                أرباح هذا الشهر
               </div>
             </div>
 
-            {/* أرباح الأمس */}
-            <div className="space-y-1">
-              <div className="text-3xl sm:text-4xl font-extrabold font-mono text-white tracking-tight drop-shadow-xs">
-                0
+            {/* العداد الأيسر: أرباح الأمس (0$) */}
+            <div className="flex flex-col items-center justify-center">
+              <div className="relative w-28 h-14 flex items-end justify-center">
+                {/* قوس تركواز نصف دائري */}
+                <div className="absolute inset-0 border-[5px] border-b-0 border-[#14B8A6] rounded-t-full shadow-[0_0_12px_rgba(20,184,166,0.3)]" />
+                <div className="relative z-10 text-2xl sm:text-3xl font-black font-mono text-white pb-0.5">
+                  0$
+                </div>
               </div>
-              <div className="text-[11px] sm:text-xs font-medium text-white/90">
-                {isRtl ? 'أرباح الأمس($)' : "Yesterday's ($)"}
+              <div className="text-xs font-bold text-teal-100/90 mt-1.5">
+                أرباح الأمس
               </div>
             </div>
           </div>
         </div>
 
         {/* ========================================================= */}
-        {/* 2. قسم "إحصائيات الوكالة" (Agency Statistics Card) */}
+        {/* 2. قسم "إحصائيات الوكالة" (Agency Statistics Table) */}
         {/* ========================================================= */}
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-black text-slate-800">
-              {isRtl ? 'إحصائيات الوكالة' : 'Agency Statistics'}
-            </h2>
-          </div>
+        <div className="space-y-2">
+          <h2 className="text-sm font-black text-slate-900 px-1 text-right">
+            إحصائيات الوكالة
+          </h2>
 
-          <div className="bg-white rounded-3xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-slate-100/90 space-y-3.5">
-            <div className="space-y-3.5">
-              {(isStatsCollapsed ? agencyStats.slice(0, 3) : agencyStats).map((stat, idx) => (
-                <div 
-                  key={idx} 
-                  className={`flex items-center justify-between text-xs py-0.5 border-b border-slate-50 last:border-0 ${
-                    isRtl ? 'flex-row' : 'flex-row-reverse'
-                  }`}
-                >
-                  {/* Metric Value */}
-                  <span className={`font-mono font-extrabold text-sm ${
-                    stat.isNegative 
-                      ? 'text-[#F43F5E]' 
-                      : 'text-slate-800'
-                  }`}>
-                    {stat.value}
-                  </span>
-
-                  {/* Label */}
-                  <span className="text-slate-600 font-bold text-xs">
-                    {stat.label}
-                  </span>
+          <div className="bg-white rounded-3xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-slate-200/90 overflow-hidden divide-y divide-slate-100" dir="rtl">
+            {/* الصف 1: إجمالي الماسات لهذا الشهر */}
+            <div className="grid grid-cols-2 p-3.5 items-center divide-x divide-x-reverse divide-slate-100">
+              <div className="flex items-center gap-2.5 justify-start px-2">
+                <div className="w-8 h-8 rounded-xl bg-cyan-100/80 text-cyan-700 flex items-center justify-center text-base shrink-0 shadow-2xs">
+                  💎
                 </div>
-              ))}
+                <span className="text-xs font-bold text-slate-800">
+                  إجمالي الماسات لهذا الشهر
+                </span>
+              </div>
+              <div className="text-left px-2">
+                <span className="font-mono font-black text-sm sm:text-base text-slate-900">
+                  5,948,082
+                </span>
+              </div>
             </div>
 
-            {/* Toggle Collapse/Expand Button */}
-            <div className="pt-2 flex justify-center items-center">
+            {/* الصف 2: نسبة العمولة */}
+            <div className="grid grid-cols-2 p-3.5 items-center divide-x divide-x-reverse divide-slate-100">
+              <div className="flex items-center gap-2.5 justify-start px-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-100/80 text-purple-700 flex items-center justify-center text-base shrink-0 shadow-2xs">
+                  💸
+                </div>
+                <span className="text-xs font-bold text-slate-800">
+                  نسبة العمولة
+                </span>
+              </div>
+              <div className="text-left px-2">
+                <span className="font-mono font-black text-sm sm:text-base text-slate-900">
+                  0.80
+                </span>
+              </div>
+            </div>
+
+            {/* الصف 3: التقدم المتبقي للمستوى التالي + شريط التقدم */}
+            <div className="p-3.5 space-y-2">
+              <div className="grid grid-cols-2 items-center divide-x divide-x-reverse divide-slate-100">
+                <div className="flex items-center gap-2.5 justify-start px-2">
+                  <div className="w-8 h-8 rounded-xl bg-teal-100/80 text-teal-700 flex items-center justify-center text-base shrink-0 shadow-2xs">
+                    📊
+                  </div>
+                  <span className="text-xs font-bold text-slate-800">
+                    التقدم المتبقي المستوي التالي
+                  </span>
+                </div>
+                <div className="text-left px-2">
+                  <span className="font-mono font-black text-sm sm:text-base text-slate-900">
+                    44,051,918
+                  </span>
+                </div>
+              </div>
+              {/* شريط التقدم الخاص بالمستوى */}
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div className="w-2/3 h-full bg-[#0E4E5B] rounded-full" />
+              </div>
+            </div>
+
+            {/* الصف 4: الماسات لنفس الفترة من الشهر الماضي */}
+            <div className="grid grid-cols-2 p-3.5 items-center divide-x divide-x-reverse divide-slate-100">
+              <div className="flex items-center gap-2.5 justify-start px-2">
+                <span className="text-xs font-bold text-slate-800">
+                  الماسات لنفس الفترة من الشهر الماضي
+                </span>
+              </div>
+              <div className="text-left px-2">
+                <span className="font-mono font-black text-sm sm:text-base text-slate-900">
+                  4,074,134
+                </span>
+              </div>
+            </div>
+
+            {/* الصف 5: إجمالي الماسات الشهر الماضي */}
+            <div className="grid grid-cols-2 p-3.5 items-center divide-x divide-x-reverse divide-slate-100">
+              <div className="flex items-center gap-2.5 justify-start px-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-100/80 text-amber-700 flex items-center justify-center text-base shrink-0 shadow-2xs">
+                  💰
+                </div>
+                <span className="text-xs font-bold text-slate-800">
+                  إجمالي الماسات الشهر الماضي
+                </span>
+              </div>
+              <div className="text-left px-2">
+                <span className="font-mono font-black text-sm sm:text-base text-slate-900">
+                  4,895,304
+                </span>
+              </div>
+            </div>
+
+            {/* الصف 6: مقابل نفس الفترة من الشهر الماضي */}
+            <div className="grid grid-cols-2 p-3.5 items-center divide-x divide-x-reverse divide-slate-100">
+              <div className="flex items-center gap-2.5 justify-start px-2">
+                <span className="text-xs font-bold text-slate-800">
+                  مقابل نفس الفترة من الشهر الماضي
+                </span>
+              </div>
+              <div className="text-left px-2">
+                <span className="font-mono font-black text-sm sm:text-base text-[#0D9488]">
+                  46.00%
+                </span>
+              </div>
+            </div>
+
+            {/* الصف 7: مقابل الشهر الماضي */}
+            <div className="grid grid-cols-2 p-3.5 items-center divide-x divide-x-reverse divide-slate-100">
+              <div className="flex items-center gap-2.5 justify-start px-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-100/80 text-purple-700 flex items-center justify-center text-base shrink-0 shadow-2xs">
+                  📅
+                </div>
+                <span className="text-xs font-bold text-slate-800">
+                  مقابل الشهر الماضي
+                </span>
+              </div>
+              <div className="text-left px-2">
+                <span className="font-mono font-black text-sm sm:text-base text-[#0D9488]">
+                  21.51%
+                </span>
+              </div>
+            </div>
+
+            {/* زر الطي / التوسيع */}
+            <div className="p-2 flex justify-center bg-slate-50/50">
               <button 
                 onClick={() => setIsStatsCollapsed(!isStatsCollapsed)}
-                className="flex items-center gap-1 text-slate-400 hover:text-slate-600 text-xs font-bold transition-colors cursor-pointer py-1 px-3 rounded-full hover:bg-slate-50"
+                className="flex items-center gap-1 text-slate-400 hover:text-slate-600 text-xs font-bold transition-colors cursor-pointer py-1 px-4 rounded-full"
               >
-                <span>{isStatsCollapsed ? (isRtl ? 'توسيع' : 'Expand') : (isRtl ? 'طي' : 'Collapse')}</span>
-                {isStatsCollapsed ? (
-                  <ChevronDown className="w-3.5 h-3.5" />
-                ) : (
-                  <ChevronUp className="w-3.5 h-3.5" />
-                )}
+                <span>{isStatsCollapsed ? 'توسيع v' : 'طي ^'}</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* ========================================================= */}
-        {/* 3. قسم "إحصائيات المضيف" (Host Statistics Card) */}
+        {/* 3. قسم "إحصائيات المضيف" (Host Statistics) */}
         {/* ========================================================= */}
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between px-1">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between px-1" dir="rtl">
             <h2 
               onClick={() => {
                 setHostStatsInitialTab('all');
                 setShowHostStatsModal(true);
               }}
-              className="text-sm font-black text-slate-800 cursor-pointer hover:text-blue-600 transition-colors"
+              className="text-sm font-black text-slate-900 cursor-pointer hover:text-teal-700 transition-colors"
             >
-              {isRtl ? 'إحصائيات المضيف' : 'Host Statistics'}
+              إحصائيات المضيف
             </h2>
             <button 
               onClick={() => {
                 setHostStatsInitialTab('all');
                 setShowHostStatsModal(true);
               }}
-              className="flex items-center gap-1 text-slate-400 hover:text-slate-600 text-xs font-semibold cursor-pointer transition-colors"
+              className="flex items-center gap-1 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer transition-colors"
             >
-              <span>{isRtl ? 'عرض التفاصيل' : 'View Details'}</span>
-              {isRtl ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+              <span>عرض التفاصيل</span>
+              <ChevronLeft className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          <div className="space-y-2.5">
+          <div className="bg-white rounded-3xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-slate-200/90 space-y-4" dir="rtl">
             {/* البند الأول: 0 المضيفين لم تستكمل أيام البث المطلوبة */}
             <div 
               onClick={() => {
                 setHostStatsInitialTab('incomplete');
                 setShowHostStatsModal(true);
               }}
-              className="bg-white rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-slate-100/90 flex items-center justify-between cursor-pointer hover:border-slate-300 transition-all"
+              className="flex items-center justify-between gap-3 cursor-pointer group"
             >
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setHostStatsInitialTab('incomplete');
-                  setShowHostStatsModal(true);
-                }}
-                className="bg-[#00C458] hover:bg-[#00B04F] active:scale-95 text-white font-black text-xs px-6 py-2 rounded-full shadow-[0_2px_8px_rgba(0,196,88,0.3)] transition-all cursor-pointer"
-              >
-                {isRtl ? 'عرض' : 'View'}
-              </button>
+              <div className="text-right">
+                <span className="text-slate-800 font-bold text-xs leading-relaxed block">
+                  0 المضيفين لم تستكمل أيام البث المطلوبة
+                </span>
+              </div>
 
-              <span className="text-slate-800 font-bold text-xs">
-                {isRtl ? '0 المضيفين لم تستكمل أيام البث المطلوبة' : '0 Hosts have not completed required broadcast days'}
-              </span>
+              {/* أيقونة التقويم والعداد وشريط المؤشر */}
+              <div className="flex flex-col items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1.5 bg-[#0E4E5B] text-white px-2.5 py-1 rounded-lg text-xs font-black shadow-2xs font-mono">
+                  <span>📅</span>
+                  <span>0</span>
+                </div>
+                <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="w-2/3 h-full bg-[#0E4E5B] rounded-full" />
+                </div>
+              </div>
             </div>
 
-            {/* البند الثاني: 6 من المضيفين شهدت انخفاضًا كبيرًا (-20.00%) في الماسات */}
+            <div className="border-t border-slate-100" />
+
+            {/* البند الثاني: 6 من المضيفين شهدت انخفاضا كبيرا */}
             <div 
               onClick={() => {
                 setHostStatsInitialTab('dropped');
                 setShowHostStatsModal(true);
               }}
-              className="bg-white rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-slate-100/90 flex items-center justify-between cursor-pointer hover:border-slate-300 transition-all"
+              className="flex items-center justify-between gap-3 cursor-pointer group"
             >
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setHostStatsInitialTab('dropped');
-                  setShowHostStatsModal(true);
-                }}
-                className="bg-[#00C458] hover:bg-[#00B04F] active:scale-95 text-white font-black text-xs px-6 py-2 rounded-full shadow-[0_2px_8px_rgba(0,196,88,0.3)] transition-all cursor-pointer"
-              >
-                {isRtl ? 'عرض' : 'View'}
-              </button>
+              <div className="text-right">
+                <span className="text-slate-800 font-bold text-xs leading-relaxed block">
+                  6 من المضيفين شهدت انخفاضا كبيرا (-20.00%) في الماسات
+                </span>
+              </div>
 
-              <span className="text-slate-800 font-bold text-xs leading-relaxed">
-                {isRtl ? '6 من المضيفين شهدت انخفاضًا كبيرًا (-20.00%) في الماسات' : '6 Hosts experienced a high diamond drop (-20.00%)'}
-              </span>
+              {/* أيقونة الماس والرسم البياني ذو الأعمدة الأربعة */}
+              <div className="flex flex-col items-center gap-1 shrink-0">
+                <div className="flex items-end gap-1 h-5 px-2">
+                  <span className="text-sm self-center text-teal-600">💎</span>
+                  <div className="w-1.5 h-3 bg-teal-400 rounded-xs" />
+                  <div className="w-1.5 h-5 bg-teal-500 rounded-xs" />
+                  <div className="w-1.5 h-4 bg-purple-400 rounded-xs" />
+                  <div className="w-1.5 h-2 bg-purple-300 rounded-xs" />
+                </div>
+                <div className="w-16 h-1 bg-slate-200 rounded-full" />
+              </div>
             </div>
           </div>
         </div>
 
         {/* ========================================================= */}
-        {/* 4. قسم "مركز المهام" (Task Center) */}
+        {/* 4. قسم "مركز المهام" (Task Center with Milestone Track & Banners) */}
         {/* ========================================================= */}
         <div className="space-y-2.5">
-          <h2 className="text-sm font-black text-slate-800 px-1">
-            {isRtl ? 'مركز المهام' : 'Task Center'}
+          <h2 className="text-sm font-black text-slate-900 px-1 text-right">
+            مركز المهام
           </h2>
 
-          {/* بطاقة توظيف مضيفين جدد */}
+          {/* بطاقة توظيف مضيفين جدد مع مسار التقدم الشامل */}
           <div 
             onClick={() => setShowTaskModal(true)}
-            className="bg-gradient-to-b from-[#FFF9EE] via-[#FFF3DC] to-[#FFF0D4] border border-[#FFE7B8] rounded-3xl p-5 shadow-[0_2px_12px_rgba(245,158,11,0.08)] space-y-4 cursor-pointer hover:border-amber-400 transition-all group"
+            className="bg-white border border-slate-200/90 rounded-3xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-3 cursor-pointer hover:border-amber-300 transition-all group"
+            dir="rtl"
           >
             {/* Header: Title and Arrow */}
             <div className="flex items-center justify-between">
-              {isRtl ? (
-                <ChevronLeft className="w-4 h-4 text-slate-400 group-hover:text-amber-600 transition-colors" />
-              ) : (
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-600 transition-colors" />
-              )}
               <h3 className="text-xs sm:text-sm font-black text-slate-900">
-                {isRtl ? 'توظيف مضيفين جدد:' : 'Recruit New Hosts:'}
+                توظيف مضيفين جدد:
               </h3>
+              <ChevronLeft className="w-4 h-4 text-slate-400 group-hover:text-amber-600 transition-colors" />
             </div>
 
             {/* Description */}
-            <p className="text-[11px] sm:text-xs font-bold text-slate-600">
-              {isRtl ? 'قم بتوظيف 1 من المضيفين الجدد الصالحين هذا الشهر' : 'Recruit 1 new qualified host this month'}
+            <p className="text-[11px] sm:text-xs font-bold text-slate-500 text-right">
+              قم بتوظيف 1 من المضيفين الجدد الصالحين هذا الشهر
             </p>
 
-            {/* Progress Slider Bar */}
-            <div className="relative flex items-center justify-between pt-1">
-              <span className="font-mono font-black text-xs text-slate-800">1</span>
-
-              <div className="flex-1 mx-3 h-2 bg-[#F6E5C2] rounded-full overflow-hidden relative">
-                <div className="w-0 h-full bg-amber-500 rounded-full" />
+            {/* Progress Milestone Track */}
+            <div className="relative flex items-center justify-between pt-2 gap-2">
+              {/* درع التنين الفضي الأيسر مع Level */}
+              <div className="flex flex-col items-center shrink-0">
+                <div className="w-11 h-12 rounded-xl bg-gradient-to-b from-slate-200 via-slate-400 to-slate-600 p-[2px] shadow-sm flex items-center justify-center">
+                  <div className="w-full h-full bg-[#0A2E36] rounded-[10px] flex items-center justify-center text-xl">
+                    🐉
+                  </div>
+                </div>
+                <span className="text-[9px] font-black font-mono text-slate-700 mt-1">Level</span>
               </div>
 
-              <div className="w-6 h-6 rounded-full bg-[#FFAA00] text-white flex items-center justify-center font-black text-xs shadow-xs font-mono">
-                0
-              </div>
-            </div>
+              {/* خط المسار مع العقد المرقمة والشارات التوضيحية */}
+              <div className="flex-1 space-y-2">
+                <div className="relative flex items-center justify-between px-2">
+                  <div className="absolute top-1/2 left-4 right-4 h-1.5 bg-amber-200/80 -translate-y-1/2 rounded-full" />
+                  
+                  {/* عقدة 1 */}
+                  <div className="relative z-10 w-5 h-5 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-[10px] font-black font-mono shadow-xs">
+                    1
+                  </div>
+                  {/* عقدة 2 */}
+                  <div className="relative z-10 w-5 h-5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center justify-center text-[10px] font-black font-mono shadow-xs">
+                    2
+                  </div>
+                  {/* عقدة 1 */}
+                  <div className="relative z-10 w-5 h-5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center justify-center text-[10px] font-black font-mono shadow-xs">
+                    1
+                  </div>
+                  {/* عقدة 0 */}
+                  <div className="relative z-10 w-6 h-6 rounded-full bg-[#0E4E5B] text-white flex items-center justify-center text-[10px] font-black font-mono shadow-md">
+                    0
+                  </div>
+                </div>
 
-            {/* 3 Reward Badges */}
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <div className="w-9 h-9 rounded-xl bg-white/80 border border-amber-200/80 flex items-center justify-center shadow-xs text-lg">
-                🦅
-              </div>
-              <div className="w-9 h-9 rounded-xl bg-white/80 border border-amber-200/80 flex items-center justify-center shadow-xs text-xs font-black text-amber-600">
-                <div className="text-center leading-none">
-                  <span className="block text-[8px]">▲</span>
-                  <span className="text-[9px] font-mono">LEVEL</span>
+                {/* الشارات السفلية أسفل العقد */}
+                <div className="flex items-center justify-between px-1 pt-1">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-sm shadow-2xs">
+                    👥
+                  </div>
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-sm shadow-2xs">
+                    🦅
+                  </div>
+                  <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-sm shadow-2xs">
+                    👑
+                  </div>
+                  <div className="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-sm shadow-2xs">
+                    🛡️
+                  </div>
                 </div>
               </div>
-              <div className="w-9 h-9 rounded-xl bg-white/80 border border-amber-200/80 flex items-center justify-center shadow-xs text-lg">
-                🦁
-              </div>
             </div>
           </div>
 
-          {/* بطاقة "دعوة المذيعين" */}
+          {/* لافتة "دعوة المذيعين" (Dark Petrol Teal Glossy Banner) */}
           <div 
             onClick={() => setShowInviteModal(true)}
-            className="bg-gradient-to-r from-[#4fa0f9] via-[#5d8df8] to-[#6a6aef] text-white rounded-2xl p-4 flex items-center justify-between shadow-[0_4px_16px_rgba(79,160,249,0.25)] cursor-pointer hover:opacity-95 transition-all group"
+            className="relative overflow-hidden bg-gradient-to-r from-[#0B434E] via-[#105664] to-[#093943] text-white rounded-2xl p-3.5 flex items-center justify-between shadow-[0_4px_16px_rgba(11,67,78,0.3)] border border-teal-400/30 cursor-pointer hover:opacity-95 transition-all group"
+            dir="rtl"
           >
-            {isRtl ? (
-              <ChevronLeft className="w-4 h-4 text-white/80 group-hover:translate-x-[-2px] transition-transform" />
-            ) : (
-              <ChevronRight className="w-4 h-4 text-white/80 group-hover:translate-x-[2px] transition-transform" />
-            )}
             <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-2xs text-lg">
+                📡
+              </div>
               <span className="text-xs sm:text-sm font-black tracking-wide">
-                {isRtl ? 'دعوة المذيعين' : 'Invite Broadcasters'}
+                دعوة المذيعين
               </span>
-              <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white shadow-xs">
-                <Mail className="w-5 h-5" />
-              </div>
             </div>
-          </div>
-
-          {/* بطاقة "إنشاء وكيل شحن (2/3)" */}
-          <div 
-            onClick={() => setShowRechargeAgentModal(true)}
-            className="bg-white border border-slate-100 rounded-2xl p-4 flex items-center justify-between shadow-[0_2px_10px_rgba(0,0,0,0.03)] cursor-pointer hover:border-amber-300 transition-all group"
-          >
-            {isRtl ? (
-              <ChevronLeft className="w-4 h-4 text-slate-300 group-hover:translate-x-[-2px] transition-transform" />
-            ) : (
-              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:translate-x-[2px] transition-transform" />
-            )}
-            <div className="flex items-center gap-3">
-              <span className="text-xs sm:text-sm font-bold text-slate-400">
-                {isRtl ? 'إنشاء وكيل شحن(2/3)' : 'Create Recharge Agent (2/3)'}
-              </span>
-              <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-500 shadow-xs text-lg">
-                🪙
-              </div>
-            </div>
+            <ChevronLeft className="w-4 h-4 text-teal-200 group-hover:translate-x-[-2px] transition-transform" />
           </div>
         </div>
 
         {/* ========================================================= */}
-        {/* 5. قسم "أدواتي" مع زر إدارة العناصر والأيقونات */}
+        {/* 5. قسم "أدواتي" مع الأيقونات المجسمة (3D Isometric Styled Badges) */}
         {/* ========================================================= */}
         <div className="space-y-2.5 pt-2">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-black text-slate-800">
-              {isRtl ? 'أدواتي' : 'My Tools'}
+          <div className="flex items-center justify-between px-1" dir="rtl">
+            <h2 className="text-sm font-black text-slate-900">
+              أدواتي
             </h2>
 
-            {/* زر إدارة العناصر والأيقونات (Manage Items & Icons) */}
+            {/* زر إدارة العناصر والأيقونات */}
             <button
               onClick={() => setShowManageToolsModal(true)}
-              className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50/80 hover:bg-blue-100/80 px-3 py-1 rounded-full border border-blue-200/60 transition-all cursor-pointer active:scale-95"
+              className="flex items-center gap-1 text-[11px] font-bold text-teal-800 bg-teal-50 hover:bg-teal-100/80 px-2.5 py-1 rounded-full border border-teal-200/60 transition-all cursor-pointer active:scale-95"
             >
               <Sliders className="w-3.5 h-3.5" />
-              <span>{isRtl ? 'إدارة العناصر والأيقونات' : 'Manage Items & Icons'}</span>
+              <span>إدارة العناصر والايقونات</span>
             </button>
           </div>
           
-          {/* شبكة الأدوات القابلة للتخصيص والإدارة */}
-          <div className="grid grid-cols-4 gap-2.5 text-center">
+          {/* شبكة الأدوات بتصميم ثلاثي الأبعاد بلون التركواز المطابق للموك أب */}
+          <div className="grid grid-cols-4 gap-2 text-center" dir="rtl">
             {toolsList.filter(t => t.visible).map((tool) => {
               const IconComp = AVAILABLE_ICONS[tool.iconName] || Users;
+
               return (
-                <button 
+                <motion.button 
                   key={tool.id}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.94 }}
                   onClick={() => setActiveToolModal(tool.id)}
-                  className="flex flex-col items-center justify-center gap-2 bg-white border border-slate-100 p-3 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-md active:scale-95 hover:border-slate-300 transition-all cursor-pointer group"
+                  className="flex flex-col items-center justify-start gap-1.5 p-1 transition-all cursor-pointer group"
                 >
-                  <div className="w-11 h-11 rounded-2xl bg-[#EEF2F6] group-hover:bg-blue-50 group-hover:text-blue-600 flex items-center justify-center text-slate-700 transition-colors">
-                    <IconComp className="w-5 h-5 stroke-[2.2]" />
+                  {/* أيقونة مجسمة 3D مع قاعدة تركوازية وتدرج مائي */}
+                  <div className="relative w-13 h-13 flex items-center justify-center">
+                    {/* قاعدة الأيقونة المسدسة ثلاثية الأبعاد */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-[#14B8A6] to-[#0A3D47] rounded-2xl shadow-[0_6px_12px_rgba(10,61,71,0.25)] transform group-hover:-translate-y-0.5 transition-transform p-[1.5px]">
+                      <div className="w-full h-full bg-gradient-to-b from-[#1E5D6B] to-[#0D4450] rounded-[14px] flex items-center justify-center border-t border-cyan-300/40">
+                        <IconComp className="w-6 h-6 text-cyan-100 stroke-[2] drop-shadow-xs" />
+                      </div>
+                    </div>
                   </div>
-                  <span className="text-[11px] font-black text-slate-800 leading-tight">
+                  <span className="text-[11px] font-bold text-slate-800 leading-tight line-clamp-2 px-0.5">
                     {tool.title}
                   </span>
-                </button>
+                </motion.button>
               );
             })}
           </div>
@@ -1058,7 +1194,7 @@ export const AgencyModal: React.FC<AgencyModalProps> = ({
         )}
       </AnimatePresence>
 
-      {/* نافذة دعوة المذيعين */}
+      {/* نافذة دعوة المذيعين (زر الاختصار بنفس التنسيق الداخلي) */}
       <AnimatePresence>
         {showInviteModal && (
           <div className="fixed inset-0 z-60 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4" dir={direction}>
@@ -1069,46 +1205,97 @@ export const AgencyModal: React.FC<AgencyModalProps> = ({
               className="bg-white border border-slate-100 rounded-3xl w-full max-w-sm p-5 space-y-4 shadow-2xl text-slate-900"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="text-xs font-black text-slate-900">دعوة مذيعين لوكالتك</h3>
-                <button onClick={() => setShowInviteModal(false)} className="p-1.5 bg-slate-100 rounded-full text-slate-600">
+                <h3 className="text-xs font-black text-slate-900">
+                  {direction === 'rtl' ? 'دعوة مذيع بالـ ID' : 'Invite Broadcaster by ID'}
+                </h3>
+                <button onClick={() => setShowInviteModal(false)} className="p-1.5 bg-slate-100 rounded-full text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer">
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="space-y-3">
-                <div className="p-3 bg-[#F8FAFD] border border-slate-200 rounded-2xl space-y-1.5">
-                  <span className="text-[10px] text-slate-500 font-bold block">رابط الدعوة الخاص بوكالتك:</span>
-                  <div className="flex items-center justify-between bg-white border border-slate-200 p-2 rounded-xl">
-                    <span className="text-xs font-mono font-bold text-slate-700 truncate">https://yoho.live/agency/join?gid=30032</span>
-                    <button 
-                      onClick={() => handleCopy('https://yoho.live/agency/join?gid=30032')}
-                      className="p-1 text-blue-600 hover:text-blue-700 cursor-pointer"
+              <form onSubmit={handleSendShortcutInvite} className="space-y-3.5">
+                <div className="text-center space-y-1">
+                  <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto text-xl font-bold shadow-xs">
+                    🎙️
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {direction === 'rtl' ? 'أدخل معرّف المذيع لإرسال رسالة الدعوة وشروط الانضمام إلى رسائله فوراً' : 'Enter broadcaster ID to send the invite & agreement to their inbox'}
+                  </p>
+                </div>
+
+                {shortcutInviteSuccess && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold rounded-2xl text-center leading-relaxed animate-fade-in">
+                    {shortcutInviteSuccess}
+                  </div>
+                )}
+
+                <div className="space-y-1 text-right">
+                  <label className="text-[11px] font-bold text-slate-700 block">
+                    {direction === 'rtl' ? 'معرّف المذيع (ID):' : 'Broadcaster ID:'}
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder={direction === 'rtl' ? 'مثال: 81156183' : 'e.g. 81156183'}
+                    value={shortcutInviteId}
+                    onChange={(e) => setShortcutInviteId(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
+
+                <div className="space-y-1 text-right">
+                  <label className="text-[11px] font-bold text-slate-700 block">
+                    {direction === 'rtl' ? 'جهة إرسال الدعوة:' : 'Invited Via:'}
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShortcutInviteType('agency')}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                        shortcutInviteType === 'agency'
+                          ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-2xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
                     >
-                      <Copy className="w-4 h-4" />
+                      الوكالة الرئيسية (30032)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShortcutInviteType('broker')}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                        shortcutInviteType === 'broker'
+                          ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-2xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      وسيط معتمد
                     </button>
                   </div>
                 </div>
 
-                <div className="p-3 bg-[#F8FAFD] border border-slate-200 rounded-2xl space-y-1.5">
-                  <span className="text-[10px] text-slate-500 font-bold block">كود الوكالة المباشر:</span>
-                  <div className="flex items-center justify-between bg-white border border-slate-200 p-2 rounded-xl">
-                    <span className="text-sm font-mono font-black text-slate-900">30032</span>
-                    <button 
-                      onClick={() => handleCopy('30032')}
-                      className="px-2.5 py-1 bg-blue-600 text-white rounded-lg text-xs font-bold cursor-pointer"
-                    >
-                      نسخ
-                    </button>
-                  </div>
+                <div className="space-y-1 text-right">
+                  <label className="text-[11px] font-bold text-slate-700 block">
+                    {direction === 'rtl' ? 'نص رسالة الدعوة:' : 'Invitation Message:'}
+                  </label>
+                  <textarea 
+                    rows={2}
+                    value={shortcutInviteMsg}
+                    onChange={(e) => setShortcutInviteMsg(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white resize-none"
+                  />
                 </div>
-              </div>
 
-              <button 
-                onClick={() => setShowInviteModal(false)}
-                className="w-full py-2.5 bg-slate-900 text-white font-black text-xs rounded-xl"
-              >
-                تم
-              </button>
+                <div className="p-2.5 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[10px] text-amber-800 text-right leading-relaxed font-bold">
+                  ⚠️ ستصل للمضيف رسالتان: إشعار رسمي من الوكالة ورسالة من الوكيل مع بنود العقد للموافقة.
+                </div>
+
+                <button 
+                  type="submit"
+                  className="w-full py-3 bg-[#00C458] hover:bg-[#00B04F] active:scale-98 text-white font-black text-xs rounded-2xl shadow-xs transition-all cursor-pointer"
+                >
+                  {direction === 'rtl' ? 'إرسال الدعوة للمذيع' : 'Send Invitation'}
+                </button>
+              </form>
             </motion.div>
           </div>
         )}
@@ -1168,6 +1355,8 @@ export const AgencyModal: React.FC<AgencyModalProps> = ({
         isOpen={activeToolModal === 'broadcasters_center'}
         onClose={() => setActiveToolModal(null)}
         direction={direction}
+        userName={userName}
+        userAvatar={userAvatar}
       />
 
       {/* 3. مركز الوسطاء */}

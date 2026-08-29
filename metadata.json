@@ -1,6 +1,6 @@
 {
-  "name": "سوبر ليجند",
-  "description": "تطبيق سوبر ليجند (Super Legend) - المنصة الشاملة. جميع حقوق الملكية الفكرية والأكواد والتصاميم محفوظة للمالك والمطور.",
+  "name": "ترف شات",
+  "description": "تطبيق ترف شات (Taraf Chat) - المنصة الشاملة للغرف الصوتية والبث المباشر. جميع حقوق الملكية الفكرية والأكواد والتصاميم والعلامة التجارية مسجلة ومحفوظة بالكامل للمالك والمطور.",
   "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

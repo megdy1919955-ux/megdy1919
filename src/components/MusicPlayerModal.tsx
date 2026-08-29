@@ -406,6 +406,79 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
     }
   };
 
+  // Play / Pause Toggle
+  const togglePlayPause = (e?: React.MouseEvent | React.PointerEvent) => {
+    if (e) e.stopPropagation();
+
+    checkPermissionAndRun(() => {
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume();
+      } else {
+        initAudioEngine();
+      }
+
+      if (!audioRef.current) return;
+
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+        if (onToastNotification) onToastNotification('تم إيقاف تشغيل الموسيقى مؤقتاً ⏸️');
+      } else {
+        audioRef.current.play().then(() => {
+          setIsPlaying(true);
+          if (onToastNotification && currentTrack) {
+            onToastNotification(`جاري تشغيل: ${currentTrack.title} 🎵`);
+          }
+        }).catch((err) => {
+          console.warn('Playback error:', err);
+        });
+      }
+    });
+  };
+
+  // Next Track
+  const handleNextTrack = (e?: React.MouseEvent | React.PointerEvent) => {
+    if (e) e.stopPropagation();
+
+    checkPermissionAndRun(() => {
+      if (playlist.length === 0) return;
+      let nextIdx = currentTrackIndex + 1;
+      if (isShuffle) {
+        nextIdx = Math.floor(Math.random() * playlist.length);
+      } else if (nextIdx >= playlist.length) {
+        nextIdx = 0;
+      }
+      setCurrentTrackIndex(nextIdx);
+      setIsPlaying(true);
+    });
+  };
+
+  // Previous Track
+  const handlePrevTrack = (e?: React.MouseEvent | React.PointerEvent) => {
+    if (e) e.stopPropagation();
+
+    checkPermissionAndRun(() => {
+      if (playlist.length === 0) return;
+      let prevIdx = currentTrackIndex - 1;
+      if (prevIdx < 0) {
+        prevIdx = playlist.length - 1;
+      }
+      setCurrentTrackIndex(prevIdx);
+      setIsPlaying(true);
+    });
+  };
+
+  // Pointer drag start with pointer capture
+  const handleStartDragFull = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+    fullDragControls.start(e);
+  };
+
   // Apply Volume & Ducking Effect smoothly with Attack & Release
   useEffect(() => {
     const multiplier = getEffectiveMultiplier();
@@ -480,79 +553,6 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
   }, [volume, isMuted, duckingControlMode, manualPreset, debouncedSpeaking]);
 
   if (!isOpen) return null;
-
-  // Pointer drag start with pointer capture
-  const handleStartDragFull = (e: React.PointerEvent) => {
-    e.stopPropagation();
-    try {
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    } catch {
-      // ignore
-    }
-    fullDragControls.start(e);
-  };
-
-  // Play / Pause Toggle
-  const togglePlayPause = (e?: React.MouseEvent | React.PointerEvent) => {
-    if (e) e.stopPropagation();
-
-    checkPermissionAndRun(() => {
-      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-        audioContextRef.current.resume();
-      } else {
-        initAudioEngine();
-      }
-
-      if (!audioRef.current) return;
-
-      if (isPlaying) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-        if (onToastNotification) onToastNotification('تم إيقاف تشغيل الموسيقى مؤقتاً ⏸️');
-      } else {
-        audioRef.current.play().then(() => {
-          setIsPlaying(true);
-          if (onToastNotification && currentTrack) {
-            onToastNotification(`جاري تشغيل: ${currentTrack.title} 🎵`);
-          }
-        }).catch((err) => {
-          console.warn('Playback error:', err);
-        });
-      }
-    });
-  };
-
-  // Next Track
-  const handleNextTrack = (e?: React.MouseEvent | React.PointerEvent) => {
-    if (e) e.stopPropagation();
-
-    checkPermissionAndRun(() => {
-      if (playlist.length === 0) return;
-      let nextIdx = currentTrackIndex + 1;
-      if (isShuffle) {
-        nextIdx = Math.floor(Math.random() * playlist.length);
-      } else if (nextIdx >= playlist.length) {
-        nextIdx = 0;
-      }
-      setCurrentTrackIndex(nextIdx);
-      setIsPlaying(true);
-    });
-  };
-
-  // Previous Track
-  const handlePrevTrack = (e?: React.MouseEvent | React.PointerEvent) => {
-    if (e) e.stopPropagation();
-
-    checkPermissionAndRun(() => {
-      if (playlist.length === 0) return;
-      let prevIdx = currentTrackIndex - 1;
-      if (prevIdx < 0) {
-        prevIdx = playlist.length - 1;
-      }
-      setCurrentTrackIndex(prevIdx);
-      setIsPlaying(true);
-    });
-  };
 
   // Seek Slider Change
   const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1029,20 +1029,20 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
             </div>
           </motion.div>
         ) : (
-          /* FULL COMPACT DRAGGABLE FLOATING PLAYER CARD */
-          <div className="w-full h-full flex items-center justify-center p-2 pointer-events-none">
+          /* FULL COMPACT DRAGGABLE FLOATING PLAYER CARD (FLOATING OVERLAY) */
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 pointer-events-none select-none">
             <motion.div
               key="full-compact-music-player"
               drag
               dragConstraints={musicScreenConstraintsRef}
               dragMomentum={false}
               dragElastic={0}
-              initial={{ opacity: 0, scale: 0.9, y: 30 }}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 30 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               style={{ touchAction: 'none', willChange: 'transform' }}
-              className="pointer-events-auto w-full max-w-[285px] bg-[#0D1322]/98 text-white rounded-2xl shadow-[0_0_35px_rgba(245,158,11,0.25)] border-2 border-amber-500/40 overflow-hidden flex flex-col backdrop-blur-md select-none transform-gpu cursor-grab active:cursor-grabbing"
+              className="pointer-events-auto w-full max-w-[290px] bg-[#0D1322]/98 text-white rounded-2xl shadow-[0_0_35px_rgba(245,158,11,0.35)] border-2 border-amber-500/40 overflow-hidden flex flex-col backdrop-blur-md select-none transform-gpu cursor-grab active:cursor-grabbing"
             >
             {/* Header Bar: Simplified with Drag handle, Music Note button, AGC badge, Popover Gear, Minimize & Close */}
             <div 

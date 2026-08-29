@@ -35,8 +35,17 @@ import {
   Star,
   Pin,
   FolderPlus,
-  UserCheck
+  UserCheck,
+  FileCheck2
 } from 'lucide-react';
+import {
+  getAgencyNotifications,
+  getAgencyInvitations,
+  subscribeToAgencyInvitations,
+  AgencyInvitation,
+  AgencyNotificationItem
+} from '../lib/agencyInvitationService';
+import { AgencyTermsReviewModal } from './AgencyTermsReviewModal';
 
 export interface ChatMessageEntry {
   id: string;
@@ -269,19 +278,27 @@ export const UnifiedChatMessagesView: React.FC<UnifiedChatMessagesViewProps> = (
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [agencyNotifs, setAgencyNotifs] = useState<AgencyNotificationItem[]>(getAgencyNotifications());
+  const [reviewingInvitation, setReviewingInvitation] = useState<AgencyInvitation | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Sync with global custom event
+  // Sync with global custom events & agency invitation changes
   useEffect(() => {
     const handleSync = () => {
       try {
         const saved = localStorage.getItem('yoho_room_chats_list');
         if (saved) setChatList(JSON.parse(saved));
       } catch (err) {}
+      setAgencyNotifs(getAgencyNotifications());
     };
 
     window.addEventListener('chat_messages_updated', handleSync);
-    return () => window.removeEventListener('chat_messages_updated', handleSync);
+    const unsub = subscribeToAgencyInvitations(handleSync);
+
+    return () => {
+      window.removeEventListener('chat_messages_updated', handleSync);
+      unsub();
+    };
   }, []);
 
   // Save to localStorage & broadcast
@@ -584,7 +601,33 @@ export const UnifiedChatMessagesView: React.FC<UnifiedChatMessagesViewProps> = (
                         )}
 
                         {/* Message Text */}
-                        {msg.text && <p className="text-sm font-medium leading-relaxed select-text">{msg.text}</p>}
+                        {msg.text && <p className="text-sm font-medium leading-relaxed select-text whitespace-pre-line">{msg.text}</p>}
+
+                        {/* Interactive Agency Invitation Card inside Message */}
+                        {(msg as any).invitationId && (
+                          <div className="mt-2.5 p-3 rounded-xl bg-purple-50/90 border border-purple-200 text-slate-800 space-y-2">
+                            <div className="flex items-center gap-1.5 text-xs font-black text-purple-900">
+                              <FileCheck2 className="w-4 h-4 text-purple-600" />
+                              <span>عقد وشروط انضمام الوكالة</span>
+                            </div>
+                            <p className="text-[11px] text-slate-600 font-medium leading-normal">
+                              تم إرفاق بنود وسياسات الاستضافة الرسمية للوكالة. يرجى الاطلاع والموافقة.
+                            </p>
+                            <button
+                              onClick={() => {
+                                const allInvites = getAgencyInvitations();
+                                const target = allInvites.find((i) => i.id === (msg as any).invitationId);
+                                if (target) {
+                                  setReviewingInvitation(target);
+                                }
+                              }}
+                              className="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 active:scale-98 text-white font-bold text-xs rounded-lg shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                            >
+                              <FileCheck2 className="w-3.5 h-3.5" />
+                              <span>عرض الشروط وبنود العقد والموافقة 📜</span>
+                            </button>
+                          </div>
+                        )}
 
                         {/* Time & Read Status */}
                         <div
@@ -1144,24 +1187,61 @@ export const UnifiedChatMessagesView: React.FC<UnifiedChatMessagesViewProps> = (
                     </span>
                   </div>
 
-                  {AGENCY_NOTIFICATIONS.map((item) => (
-                    <div
-                      key={item.id}
-                      className="p-3.5 bg-white border border-slate-100 rounded-2xl shadow-xs hover:border-purple-200 transition-all space-y-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-slate-900">{item.title}</span>
-                        <span className="text-[10px] font-bold text-slate-400">{item.date}</span>
+                  {agencyNotifs.map((item) => {
+                    const isInvite = item.isInvitation;
+                    return (
+                      <div
+                        key={item.id}
+                        className={`p-3.5 rounded-2xl shadow-xs transition-all space-y-2.5 ${
+                          isInvite
+                            ? 'bg-gradient-to-br from-purple-50/90 to-indigo-50/60 border-2 border-purple-300 shadow-purple-500/5'
+                            : 'bg-white border border-slate-100 hover:border-purple-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            {isInvite && <FileCheck2 className="w-4 h-4 text-purple-600" />}
+                            <span className="text-xs font-black text-slate-900">{item.title}</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-400">{item.date}</span>
+                        </div>
+
+                        <p className="text-xs text-slate-600 leading-relaxed font-medium">{item.desc}</p>
+
+                        {/* Interactive Acceptance / Review Button for Invitations */}
+                        {isInvite && item.invitationId && (
+                          <div className="pt-1">
+                            {item.status === 'accepted' ? (
+                              <div className="flex items-center gap-1.5 p-2 bg-emerald-100/80 text-emerald-800 rounded-xl text-xs font-bold justify-center">
+                                <span>✓ تم قبول شروط الوكالة والانضمام بنجاح</span>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  const allInvites = getAgencyInvitations();
+                                  const target = allInvites.find((i) => i.id === item.invitationId);
+                                  if (target) {
+                                    setReviewingInvitation(target);
+                                  }
+                                }}
+                                className="w-full py-2.5 px-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 active:scale-98 text-white text-xs font-black rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+                              >
+                                <FileCheck2 className="w-4 h-4" />
+                                <span>مراجعة الشروط وبنود العقد والموافقة 📜</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                          <span className="text-[10px] font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">
+                            {item.badge}
+                          </span>
+                          <span className="text-xs font-black text-amber-600 font-mono">{item.amount}</span>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-600 leading-relaxed font-medium">{item.desc}</p>
-                      <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                        <span className="text-[10px] font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">
-                          {item.badge}
-                        </span>
-                        <span className="text-xs font-black text-amber-600 font-mono">{item.amount}</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -1309,6 +1389,19 @@ export const UnifiedChatMessagesView: React.FC<UnifiedChatMessagesViewProps> = (
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* AGENCY CONTRACT & TERMS REVIEW MODAL */}
+      <AgencyTermsReviewModal
+        isOpen={!!reviewingInvitation}
+        invitation={reviewingInvitation}
+        onClose={() => setReviewingInvitation(null)}
+        onAccepted={() => {
+          showToast('تهانينا! تم قبول الدعوة والانضمام للوكالة بنجاح 🌟');
+        }}
+        onRejected={() => {
+          showToast('تم رفض دعوة الوكالة');
+        }}
+      />
     </div>
   );
 };

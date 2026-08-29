@@ -189,8 +189,8 @@ export const DevPanelModal: React.FC<DevPanelModalProps> = ({
           </div>
 
           {/* Footer Rights Notice */}
-          <div className="pt-2 text-center text-[11px] text-slate-500 border-t border-slate-800/60">
-            تطبيق <strong className="text-slate-400">سوبر ليجند (Super Legend)</strong> © 2026 - جميع الحقوق محفوظة للمالك والمطور
+          <div className="pt-2 text-center text-[11px] text-slate-400 border-t border-slate-800/60">
+            تطبيق <strong className="text-amber-400">ترف شات (Taraf Chat)</strong> © 2026 - جميع حقوق الملكية الفكرية مسجلة ومحفوظة للمالك والمطور
           </div>
 
         </div>
