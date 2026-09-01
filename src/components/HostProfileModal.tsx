@@ -1,11 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Crown, Gift, MessageCircle, AtSign, UserPlus, UserCheck, ShieldCheck, Sparkles, Mic, MicOff, Wrench } from 'lucide-react';
+import { X, Crown, Gift, MessageCircle, AtSign, UserPlus, UserCheck, ShieldCheck, Sparkles, Mic, MicOff, User, ChevronLeft } from 'lucide-react';
 import { BadgeItem } from './VoiceRoomScreen';
-import { isDeveloper } from '../lib/roleService';
-import { getSecretWindowTheme, getComputedModalStyle } from '../lib/secretCustomizerService';
-import { SecretWindowCustomizerModal } from './SecretWindowCustomizerModal';
-import { WindowThemeConfig } from '../types/secretCustomizer';
 
 interface HostProfileModalProps {
   isOpen: boolean;
@@ -20,6 +16,7 @@ interface HostProfileModalProps {
   onToggleHostMute?: () => void;
   onSendGift?: () => void;
   onMentionHost?: () => void;
+  onOpenFullProfile?: () => void;
 }
 
 export const HostProfileModal: React.FC<HostProfileModalProps> = ({
@@ -35,31 +32,16 @@ export const HostProfileModal: React.FC<HostProfileModalProps> = ({
     { id: 'b4', label: 'زعيم العائلة', icon: '🛡️', bgClass: 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold' },
     { id: 'b5', label: 'بطل الأسبوع', icon: '🏆', bgClass: 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold' }
   ],
-  currentAppRole = 'developer',
   isHostMuted = false,
   canControlMic = false,
   onToggleHostMute,
   onSendGift,
-  onMentionHost
+  onMentionHost,
+  onOpenFullProfile
 }) => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [showToast, setShowToast] = useState<string | null>(null);
   const [currentBadges, setCurrentBadges] = useState<BadgeItem[]>(badges);
-  const [theme, setTheme] = useState<WindowThemeConfig>(() => getSecretWindowTheme('host_profile'));
-  const [showSecretCustomizer, setShowSecretCustomizer] = useState(false);
-
-  useEffect(() => {
-    const handleUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<{ windowId: string; theme: WindowThemeConfig }>;
-      if (customEvent.detail?.windowId === 'host_profile') {
-        setTheme(customEvent.detail.theme);
-      }
-    };
-    window.addEventListener('window_customizer_updated', handleUpdate);
-    return () => window.removeEventListener('window_customizer_updated', handleUpdate);
-  }, []);
-
-  const isDevUser = isDeveloper(currentAppRole);
 
   const triggerToast = (msg: string) => {
     setShowToast(msg);
@@ -69,46 +51,32 @@ export const HostProfileModal: React.FC<HostProfileModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <>
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 bg-transparent flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto cursor-default select-none"
+        className="fixed inset-0 z-50 bg-transparent flex items-end justify-center p-0 pointer-events-auto cursor-default select-none"
         onClick={onClose}
       >
         <motion.div
-          initial={{ y: 80, opacity: 0, scale: 0.95 }}
-          animate={{ y: 0, opacity: 1, scale: 1 }}
-          exit={{ y: 80, opacity: 0, scale: 0.95 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          initial={{ y: 80, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 80, opacity: 0 }}
+          transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
           onClick={(e) => e.stopPropagation()}
-          style={getComputedModalStyle(theme)}
-          className="w-full max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden text-white relative flex flex-col dir-rtl pointer-events-auto transition-all border"
+          className="w-full max-w-full sm:max-w-md bg-white rounded-t-xl rounded-b-none shadow-[0_-10px_35px_rgba(0,0,0,0.15)] overflow-hidden text-slate-900 relative flex flex-col dir-rtl pointer-events-auto transition-all border-t border-slate-200"
           dir="rtl"
         >
-          {/* Header Ambient Glow Banner */}
-          <div className="h-28 bg-gradient-to-b from-amber-500/20 via-purple-900/30 to-black/40 relative flex items-center justify-between px-4 pt-3">
-            <span className="text-xs font-black text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-full flex items-center gap-1">
-              <Crown className="w-3.5 h-3.5 fill-amber-400 text-amber-300" />
+          {/* Header Banner */}
+          <div className="h-20 bg-gradient-to-r from-amber-100 via-amber-50 to-orange-50 relative flex items-center justify-between px-4 pt-2 border-b border-amber-200/50">
+            <span className="text-xs font-black text-amber-900 bg-amber-200/60 border border-amber-300 px-2.5 py-1 rounded-full flex items-center gap-1">
+              <Crown className="w-3.5 h-3.5 fill-amber-500 text-amber-600" />
               <span>معاينة بروفايل المضيف</span>
             </span>
 
             <div className="flex items-center gap-1.5">
-              {/* Developer Secret Customizer Button */}
-              {isDevUser && (
-                <button
-                  type="button"
-                  onClick={() => setShowSecretCustomizer(true)}
-                  className="p-1.5 rounded-full bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/40 border border-cyan-400/50 shadow-[0_0_8px_rgba(6,182,212,0.4)] transition-colors cursor-pointer"
-                  title="تخصيص سري للمبرمج"
-                >
-                  <Wrench className="w-3.5 h-3.5 text-cyan-300" />
-                </button>
-              )}
-
               {/* Close Button */}
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer border border-slate-200"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -116,46 +84,65 @@ export const HostProfileModal: React.FC<HostProfileModalProps> = ({
           </div>
 
           {/* Profile Picture & Info */}
-          <div className="px-5 pb-5 -mt-14 flex flex-col items-center text-center space-y-3 relative z-10">
+          <div className="px-5 pb-5 -mt-10 flex flex-col items-center text-center space-y-3 relative z-10">
             {/* Clear Profile Picture without clipping */}
-            <div className="relative group">
-              <div className="w-22 h-22 rounded-full p-1 bg-gradient-to-tr from-amber-400 via-purple-500 to-cyan-400 shadow-[0_0_25px_rgba(245,158,11,0.5)] relative">
+            <div 
+              onClick={() => onOpenFullProfile?.()}
+              className="relative group cursor-pointer transition-transform active:scale-95"
+              title="اضغط لفتح الملف الشخصي الكامل"
+            >
+              <div className="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-amber-400 via-rose-400 to-cyan-400 shadow-md ring-4 ring-white relative group-hover:ring-amber-300 transition-all">
                 <img
                   src={hostAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
                   alt={hostName}
-                  className="w-full h-full object-cover rounded-full bg-slate-900"
+                  className="w-full h-full object-cover rounded-full bg-slate-100"
                 />
               </div>
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 p-1 rounded-full shadow-md border border-amber-300">
-                <Crown className="w-4 h-4 fill-slate-950" />
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white p-1 rounded-full shadow-md border border-white">
+                <Crown className="w-3.5 h-3.5 fill-white" />
               </div>
             </div>
 
             {/* Host Name & ID */}
-            <div className="space-y-1">
-              <h3 className="text-lg font-black text-white flex items-center justify-center gap-1.5">
+            <div className="space-y-0.5 flex flex-col items-center">
+              <h3 
+                onClick={() => onOpenFullProfile?.()}
+                className="text-base font-black text-slate-900 flex items-center justify-center gap-1.5 cursor-pointer hover:text-amber-600 transition-colors"
+                title="اضغط لفتح الملف الشخصي الكامل"
+              >
                 <span>{hostName}</span>
-                <ShieldCheck className="w-4 h-4 text-cyan-400 fill-cyan-400/20 shrink-0" />
+                <ShieldCheck className="w-4 h-4 text-cyan-600 fill-cyan-100 shrink-0" />
               </h3>
-              <div className="flex items-center justify-center gap-2 text-xs font-mono text-slate-400">
+              <div className="flex items-center justify-center gap-2 text-xs font-mono text-slate-500">
                 <span>ID: {hostId}</span>
-                <span className="text-slate-600">•</span>
-                <span className="text-amber-400 font-bold">مضيف الغرفة الصوتية</span>
+                <span className="text-slate-300">•</span>
+                <span className="text-amber-600 font-bold">مضيف الغرفة الصوتية</span>
               </div>
+
+              {/* RECTANGULAR FULL PROFILE BUTTON */}
+              <button
+                type="button"
+                onClick={() => onOpenFullProfile?.()}
+                className="inline-flex items-center justify-center gap-1 px-3.5 py-1 bg-slate-900 hover:bg-slate-800 text-amber-300 rounded-lg text-[11px] font-black shadow-xs hover:shadow transition-all cursor-pointer active:scale-95 border border-slate-700/50 mt-1.5"
+                title="فتح الملف الشخصي الكامل للمضيف"
+              >
+                <User className="w-3 h-3 text-amber-400" />
+                <span>فتح الملف الشخصي</span>
+                <ChevronLeft className="w-2.5 h-2.5 text-slate-400" />
+              </button>
             </div>
 
-            {/* BADGES & MEDALS LIST (CONDITIONAL RENDERING) */}
-            {/* Strictly if badges exist and length > 0, render badges row; otherwise hide completely */}
+            {/* BADGES & MEDALS LIST */}
             {currentBadges && currentBadges.length > 0 && (
-              <div className="w-full pt-2 pb-2 space-y-1.5 border-y border-white/10 my-1">
-                <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold px-1">
-                  <span className="flex items-center gap-1 text-amber-300 font-black">
-                    <Sparkles className="w-3 h-3 text-amber-400" />
+              <div className="w-full pt-2 pb-2 space-y-1.5 border-y border-slate-100 my-1">
+                <div className="flex items-center justify-between text-[11px] text-slate-500 font-bold px-1">
+                  <span className="flex items-center gap-1 text-amber-700 font-black">
+                    <Sparkles className="w-3 h-3 text-amber-500" />
                     <span>الشارات والألقاب المكتسبة ({currentBadges.length})</span>
                   </span>
                   <button
                     onClick={() => setCurrentBadges(currentBadges.length > 0 ? [] : badges)}
-                    className="text-[9px] text-slate-500 hover:text-slate-300 underline cursor-pointer"
+                    className="text-[9px] text-slate-400 hover:text-slate-600 underline cursor-pointer"
                     title="تبديل إخفاء/إظهار الشارات للتجربة"
                   >
                     {currentBadges.length > 0 ? 'إخفاء الشارات' : 'إظهار الشارات'}
@@ -166,7 +153,7 @@ export const HostProfileModal: React.FC<HostProfileModalProps> = ({
                   {currentBadges.map((b) => (
                     <span
                       key={b.id}
-                      className={`text-[10px] px-2.5 py-1 rounded-full font-black flex items-center gap-1 shadow-md shrink-0 border border-white/10 ${b.bgClass}`}
+                      className={`text-[10px] px-2.5 py-1 rounded-full font-black flex items-center gap-1 shadow-2xs shrink-0 border border-slate-200 ${b.bgClass}`}
                     >
                       {b.icon && <span className="text-[11px]">{b.icon}</span>}
                       <span>{b.label}</span>
@@ -185,14 +172,14 @@ export const HostProfileModal: React.FC<HostProfileModalProps> = ({
                     onToggleHostMute?.();
                     triggerToast(isHostMuted ? 'تم فتح مايك المضيف 🎙️' : 'تم كتم مايك المضيف 🔇');
                   }}
-                  className={`py-2 px-1 rounded-xl font-black text-xs flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                  className={`py-2 px-1 rounded-lg font-black text-xs flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
                     isHostMuted
-                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-lg shadow-rose-500/10'
-                      : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-lg shadow-emerald-500/10'
+                      ? 'bg-rose-50 text-rose-600 border-rose-300'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-300'
                   }`}
                   title={isHostMuted ? 'فتح مايك المضيف' : 'كتم مايك المضيف'}
                 >
-                  {isHostMuted ? <MicOff className="w-4 h-4 text-rose-400 stroke-[2.4]" /> : <Mic className="w-4 h-4 text-emerald-400 stroke-[2.4]" />}
+                  {isHostMuted ? <MicOff className="w-4 h-4 text-rose-600 stroke-[2.4]" /> : <Mic className="w-4 h-4 text-emerald-600 stroke-[2.4]" />}
                   <span className="text-[10px]">{isHostMuted ? 'إلغاء الكتم' : 'كتم المايك'}</span>
                 </button>
               )}
@@ -203,10 +190,10 @@ export const HostProfileModal: React.FC<HostProfileModalProps> = ({
                   setIsFollowing(!isFollowing);
                   triggerToast(isFollowing ? 'تم إلغاء المتابعة' : 'تمت متابعة المضيف بنجاح! ❤️');
                 }}
-                className={`py-2 px-1 rounded-xl font-black text-xs flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                className={`py-2 px-1 rounded-lg font-black text-xs flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
                   isFollowing
-                    ? 'bg-slate-800 text-slate-300 border border-slate-700'
-                    : 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-lg shadow-amber-500/20 hover:brightness-110'
+                    ? 'bg-slate-100 text-slate-700 border-slate-300'
+                    : 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 border-amber-400 shadow-xs hover:brightness-105'
                 }`}
               >
                 {isFollowing ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
@@ -219,7 +206,7 @@ export const HostProfileModal: React.FC<HostProfileModalProps> = ({
                   onClose();
                   onSendGift?.();
                 }}
-                className="py-2 px-1 rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 text-white font-black text-xs flex flex-col items-center justify-center gap-1 shadow-lg shadow-pink-500/20 hover:brightness-110 transition-all cursor-pointer"
+                className="py-2 px-1 rounded-lg bg-gradient-to-r from-pink-500 to-rose-600 text-white font-black text-xs flex flex-col items-center justify-center gap-1 shadow-xs hover:brightness-105 transition-all cursor-pointer border border-pink-500"
               >
                 <Gift className="w-4 h-4 fill-white" />
                 <span className="text-[10px]">إرسال هدية</span>
@@ -230,9 +217,9 @@ export const HostProfileModal: React.FC<HostProfileModalProps> = ({
                 onClick={() => {
                   triggerToast('تم فتح محادثة خاصة مع المضيف 💬');
                 }}
-                className="py-2 px-1 rounded-xl bg-[#1D273D] border border-white/10 text-cyan-300 font-bold text-xs flex flex-col items-center justify-center gap-1 hover:bg-[#25324D] transition-all cursor-pointer"
+                className="py-2 px-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition-all cursor-pointer"
               >
-                <MessageCircle className="w-4 h-4" />
+                <MessageCircle className="w-4 h-4 text-cyan-600" />
                 <span className="text-[10px]">خاص</span>
               </button>
 
@@ -242,9 +229,9 @@ export const HostProfileModal: React.FC<HostProfileModalProps> = ({
                   onClose();
                   onMentionHost?.();
                 }}
-                className="py-2 px-1 rounded-xl bg-[#1D273D] border border-white/10 text-amber-300 font-bold text-xs flex flex-col items-center justify-center gap-1 hover:bg-[#25324D] transition-all cursor-pointer"
+                className="py-2 px-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition-all cursor-pointer"
               >
-                <AtSign className="w-4 h-4" />
+                <AtSign className="w-4 h-4 text-amber-600" />
                 <span className="text-[10px]">إشارة @</span>
               </button>
             </div>
@@ -252,21 +239,13 @@ export const HostProfileModal: React.FC<HostProfileModalProps> = ({
 
           {/* Toast Notification Banner */}
           {showToast && (
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 text-[11px] font-black px-3 py-1.5 rounded-full shadow-lg z-50 animate-bounce">
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[11px] font-black px-3 py-1.5 rounded-full shadow-lg z-50 animate-bounce">
               {showToast}
             </div>
           )}
         </motion.div>
       </div>
     </AnimatePresence>
-
-    {/* Secret Customizer Modal for Host Profile */}
-    <SecretWindowCustomizerModal
-      isOpen={showSecretCustomizer}
-      onClose={() => setShowSecretCustomizer(false)}
-      windowId="host_profile"
-      onThemeChanged={(newTheme) => setTheme(newTheme)}
-    />
-    </>
   );
 };
+

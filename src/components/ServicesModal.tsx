@@ -89,7 +89,7 @@ export const ServicesModal: React.FC<ServicesModalProps> = ({ activeService, onC
     setAnnouncementSent(false);
   }, [activeService]);
 
-  if (!activeService) return null;
+  if (!activeService || ['genius', 'friendly_points', 'mall', 'broadcasters', 'agency', 'vip'].includes(activeService)) return null;
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);

@@ -84,6 +84,20 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
   // جلب البيانات المخزنة مسبقاً في ذاكرة الهاتف (localStorage) أو استخدام القيم من props
   const [user, setUser] = useState(() => {
+    if (userProfile) {
+      return {
+        name: userProfile.name || 'مستخدم',
+        id: userProfile.userId || (userProfile as any).id || '77989080',
+        country: userProfile.country || 'اليمن',
+        followers: (userProfile.stats as any)?.followers || 5365,
+        following: (userProfile.stats as any)?.friends || (userProfile.stats as any)?.following || 120,
+        bio: userProfile.bio || 'كسلان، لا توقيع الآن',
+        superLegendLevel: userProfile.superLegendLevel || 'SL1',
+        vipLevel: userProfile.vipLevel || 'VIP8',
+        avatar: (userProfile as any).avatarUrl || (userProfile as any).avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+        album: {}
+      };
+    }
     const savedData = localStorage.getItem('user_profile_data');
     if (savedData) {
       try {
@@ -93,15 +107,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       }
     }
     return {
-      name: userProfile?.name || 'عابر سبيل',
-      id: userProfile?.userId || '77989080',
-      country: userProfile?.country || 'اليمن',
-      followers: userProfile?.stats.followers || 5365,
-      following: userProfile?.stats.friends || 120,
-      bio: userProfile?.bio || 'كسلان، لا توقيع الآن',
-      superLegendLevel: userProfile?.superLegendLevel || 'SL1',
-      vipLevel: userProfile?.vipLevel || 'VIP8',
-      avatar: userProfile?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+      name: 'عابر سبيل',
+      id: '77989080',
+      country: 'اليمن',
+      followers: 5365,
+      following: 120,
+      bio: 'كسلان، لا توقيع الآن',
+      superLegendLevel: 'SL1',
+      vipLevel: 'VIP8',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
       album: {}
     };
   });
@@ -116,6 +130,21 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
   useEffect(() => {
     const syncUser = () => {
+      if (userProfile) {
+        setUser({
+          name: userProfile.name || 'مستخدم',
+          id: userProfile.userId || (userProfile as any).id || '77989080',
+          country: userProfile.country || 'اليمن',
+          followers: (userProfile.stats as any)?.followers || 5365,
+          following: (userProfile.stats as any)?.friends || (userProfile.stats as any)?.following || 120,
+          bio: userProfile.bio || 'كسلان، لا توقيع الآن',
+          superLegendLevel: userProfile.superLegendLevel || 'SL1',
+          vipLevel: userProfile.vipLevel || 'VIP8',
+          avatar: (userProfile as any).avatarUrl || (userProfile as any).avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+          album: {}
+        });
+        return;
+      }
       const savedData = localStorage.getItem('user_profile_data');
       if (savedData) {
         try {
@@ -123,19 +152,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         } catch (e) {
           console.error(e);
         }
-      } else if (userProfile) {
-        setUser((prev: any) => ({
-          ...prev,
-          name: userProfile.name,
-          id: userProfile.userId,
-          country: userProfile.country || 'اليمن',
-          followers: userProfile.stats.followers,
-          following: userProfile.stats.friends,
-          bio: userProfile.bio,
-          superLegendLevel: userProfile.superLegendLevel || 'SL1',
-          vipLevel: userProfile.vipLevel || 'VIP8',
-          avatar: userProfile.avatarUrl || prev.avatar
-        }));
       }
     };
 

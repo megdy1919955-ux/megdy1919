@@ -70,6 +70,7 @@ import { DevConfigModal } from './DevConfigModal';
 import { precacheAllLottieAssets, getStoredEmojiConfigs, EmojiLottieConfig } from '../lib/lottieCache';
 import { HostProfileModal } from './HostProfileModal';
 import { AdvancedUserProfileModal, UserProfileData } from './AdvancedUserProfileModal';
+import { UserProfileModal } from './UserProfileModal';
 import { SeatActionModal } from './SeatActionModal';
 import { QuickMicOptionsModal } from './QuickMicOptionsModal';
 import { MicRequestQueueModal, MicRequestItem } from './MicRequestQueueModal';
@@ -111,6 +112,8 @@ import { LuckyChestClaimModal } from './LuckyChestClaimModal';
 import { FloatingLuckyChestWidget } from './FloatingLuckyChestWidget';
 import { LuckyChestWinnerToast, LuckyChestWinnerNoticeData } from './LuckyChestWinnersTicker';
 import { LuckyRefundModal } from './LuckyRefundModal';
+import { ElectricRefundEnergySphere, ElectricOrbState } from './ElectricRefundEnergySphere';
+import { playElectricChargeZap, playElectricExplosionSound } from '../lib/electricSoundService';
 import { SideGiftStream, SideGiftEvent } from './SideGiftStream';
 import { processRefundGiftDraw, isRefundGift, RefundDrawResult } from '../lib/refundVaultService';
 import { RoomExitModal } from './RoomExitModal';
@@ -862,18 +865,18 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         (currentUserRole === 'host' && s.isHost))
   );
   const isMySeatMutedByAdmin = Boolean(myOccupiedSeat?.isMuted && myOccupiedSeat?.isMutedByAdmin);
-  // Supporter Coins Balance with real-time automatic persistence
+  // Supporter Coins Balance with real-time automatic persistence (Default 100,000,000 for testing)
   const getInitialUserCoins = (): number => {
     try {
       const saved = localStorage.getItem('user_wallet_coins');
       if (saved) {
         const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed) && parsed > 0) return parsed;
+        if (!isNaN(parsed) && parsed > 0) return Math.max(parsed, 100000000);
       }
     } catch {
       // ignore localStorage errors
     }
-    return 40000000;
+    return 100000000;
   };
 
   const [userCoinsBalance, setUserCoinsBalance] = useState<number>(getInitialUserCoins);
@@ -887,15 +890,40 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   };
 
   const userCoins = formatCoinsDisplay(userCoinsBalance);
+  const userCoinsBalanceRef = useRef<number>(userCoinsBalance);
+  userCoinsBalanceRef.current = userCoinsBalance;
+  const isInternalCoinsUpdateRef = useRef<boolean>(false);
+
+  // Ensure 100,000,000 coins are seeded to localStorage upon entering room
+  useEffect(() => {
+    try {
+      const currentCoins = localStorage.getItem('user_wallet_coins');
+      const parsedCoins = currentCoins ? parseInt(currentCoins, 10) : 0;
+      if (!currentCoins || isNaN(parsedCoins) || parsedCoins < 100000000) {
+        localStorage.setItem('user_wallet_coins', '100000000');
+        setUserCoinsBalance(100000000);
+        window.dispatchEvent(
+          new CustomEvent('user_coins_updated', {
+            detail: { coins: 100000000, source: 'voice_room' }
+          })
+        );
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   useEffect(() => {
     try {
       localStorage.setItem('user_wallet_coins', userCoinsBalance.toString());
-      window.dispatchEvent(
-        new CustomEvent('user_coins_updated', {
-          detail: { coins: userCoinsBalance }
-        })
-      );
+      if (isInternalCoinsUpdateRef.current) {
+        isInternalCoinsUpdateRef.current = false;
+        window.dispatchEvent(
+          new CustomEvent('user_coins_updated', {
+            detail: { coins: userCoinsBalance, source: 'voice_room' }
+          })
+        );
+      }
     } catch {
       // ignore
     }
@@ -904,7 +932,8 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   useEffect(() => {
     const handleGlobalCoinsUpdate = (e: Event) => {
       const customEvent = e as CustomEvent;
-      if (typeof customEvent.detail?.coins === 'number' && customEvent.detail.coins !== userCoinsBalance) {
+      if (customEvent.detail?.source === 'voice_room') return;
+      if (typeof customEvent.detail?.coins === 'number' && customEvent.detail.coins !== userCoinsBalanceRef.current) {
         setUserCoinsBalance(customEvent.detail.coins);
       }
     };
@@ -912,9 +941,115 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     return () => {
       window.removeEventListener('user_coins_updated', handleGlobalCoinsUpdate);
     };
-  }, [userCoinsBalance]);
+  }, []);
 
   const [activeRefundDrawResult, setActiveRefundDrawResult] = useState<RefundDrawResult | null>(null);
+  const [electricOrbState, setElectricOrbState] = useState<ElectricOrbState | null>(null);
+  const rapidRefundTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rapidRefundExplodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rapidRefundDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rapidRefundSuspenseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rapidRefundTapsRef = useRef<{
+    count: number;
+    accumulatedCoins: number;
+    accumulatedSpent: number;
+    hasMegaJackpot: boolean;
+    hasBigWin: boolean;
+    maxMultiplier: number;
+    giftName: string;
+    giftIcon: string;
+  }>({
+    count: 0,
+    accumulatedCoins: 0,
+    accumulatedSpent: 0,
+    hasMegaJackpot: false,
+    hasBigWin: false,
+    maxMultiplier: 1,
+    giftName: '',
+    giftIcon: ''
+  });
+
+  const handleDismissElectricOrb = () => {
+    setElectricOrbState(null);
+    if (rapidRefundTimerRef.current) clearTimeout(rapidRefundTimerRef.current);
+    if (rapidRefundExplodeTimerRef.current) clearTimeout(rapidRefundExplodeTimerRef.current);
+    if (rapidRefundSuspenseTimerRef.current) clearTimeout(rapidRefundSuspenseTimerRef.current);
+    if (rapidRefundDismissTimerRef.current) clearTimeout(rapidRefundDismissTimerRef.current);
+    rapidRefundTapsRef.current = {
+      count: 0,
+      accumulatedCoins: 0,
+      accumulatedSpent: 0,
+      hasMegaJackpot: false,
+      hasBigWin: false,
+      maxMultiplier: 1,
+      giftName: '',
+      giftIcon: ''
+    };
+  };
+
+  const handleRefundOrbDraw = (result: RefundDrawResult, gift: GiftItem, qty: number) => {
+    // 1. Play synthesized electric spark audio with rising pitch
+    const nextCount = rapidRefundTapsRef.current.count + 1;
+    playElectricChargeZap(nextCount);
+
+    // 2. Accumulate draw stats and total coins spent
+    const spentOnThisDraw = result.totalCost || (gift.price * qty) || 0;
+    rapidRefundTapsRef.current.count = nextCount;
+    rapidRefundTapsRef.current.accumulatedCoins += result.refundCoins;
+    rapidRefundTapsRef.current.accumulatedSpent += spentOnThisDraw;
+    rapidRefundTapsRef.current.hasMegaJackpot = rapidRefundTapsRef.current.hasMegaJackpot || result.winTier === 'mega_jackpot';
+    rapidRefundTapsRef.current.hasBigWin = rapidRefundTapsRef.current.hasBigWin || result.winTier === 'big';
+    rapidRefundTapsRef.current.maxMultiplier = Math.max(rapidRefundTapsRef.current.maxMultiplier, result.multiplier);
+    rapidRefundTapsRef.current.giftName = gift.name;
+    rapidRefundTapsRef.current.giftIcon = gift.icon;
+
+    const currentSnapshot = { ...rapidRefundTapsRef.current };
+
+    // 3. Update sphere state in charging mode
+    setElectricOrbState({
+      isActive: true,
+      isExploding: false,
+      showResult: false,
+      tapCount: currentSnapshot.count,
+      accumulatedCoins: currentSnapshot.accumulatedCoins,
+      accumulatedSpent: currentSnapshot.accumulatedSpent,
+      lastDrawResult: result,
+      hasMegaJackpot: currentSnapshot.hasMegaJackpot,
+      hasBigWin: currentSnapshot.hasBigWin,
+      maxMultiplier: currentSnapshot.maxMultiplier,
+      giftName: gift.name,
+      giftIcon: gift.icon
+    });
+
+    // Clear previous pending timers
+    if (rapidRefundTimerRef.current) clearTimeout(rapidRefundTimerRef.current);
+    if (rapidRefundExplodeTimerRef.current) clearTimeout(rapidRefundExplodeTimerRef.current);
+    if (rapidRefundSuspenseTimerRef.current) clearTimeout(rapidRefundSuspenseTimerRef.current);
+    if (rapidRefundDismissTimerRef.current) clearTimeout(rapidRefundDismissTimerRef.current);
+
+    // 1. Stop Tapping Detection (800ms of inactivity): Sphere immediately explodes and disappears
+    rapidRefundTimerRef.current = setTimeout(() => {
+      // Step A: Immediately trigger Sphere Explosion
+      setElectricOrbState((prev) => (prev ? { ...prev, isExploding: true } : null));
+
+      // Step B: After 400ms explosion burst, sphere disappears completely
+      rapidRefundExplodeTimerRef.current = setTimeout(() => {
+        setElectricOrbState((prev) => (prev ? { ...prev, isActive: false, isExploding: false } : null));
+
+        // Step C: Suspense countdown (exact 7 seconds suspense after tapping finishes) -> Trigger Lightning Flash & Payout Reveal
+        rapidRefundSuspenseTimerRef.current = setTimeout(() => {
+          // Trigger the grand tiered lightning strike & reveal the total won coins
+          setElectricOrbState((prev) => (prev ? { ...prev, isActive: true, isExploding: true, showResult: true } : null));
+
+          // Auto-dismiss the payout ribbon after 4.5 seconds
+          rapidRefundDismissTimerRef.current = setTimeout(() => {
+            handleDismissElectricOrb();
+          }, 4500);
+        }, 7000);
+      }, 400);
+    }, 800);
+  };
+
   const [sideGiftEvents, setSideGiftEvents] = useState<SideGiftEvent[]>([]);
 
   const handleExpireSideGiftEvent = (id: string) => {
@@ -2000,6 +2135,8 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   // Dynamic Context Menus & Action Sheets States
   const [selectedUserForProfile, setSelectedUserForProfile] = useState<UserProfileData | null>(null);
   const [showAdvancedProfileModal, setShowAdvancedProfileModal] = useState(false);
+  const [showFullUserProfileModal, setShowFullUserProfileModal] = useState<boolean>(false);
+  const [fullProfileUser, setFullProfileUser] = useState<UserProfileData | null>(null);
   const [selectedSeatForAction, setSelectedSeatForAction] = useState<number | null>(null);
   const [showSeatActionModal, setShowSeatActionModal] = useState(false);
   const [selectedSeatForQuickMic, setSelectedSeatForQuickMic] = useState<number | null>(null);
@@ -3168,6 +3305,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
 
     // Deduct cost of gift from supporter balance & increment total room support diamonds stats
     if (totalValue > 0) {
+      isInternalCoinsUpdateRef.current = true;
       setUserCoinsBalance((prev) => Math.max(0, prev - totalValue));
       setTotalRoomSupportDiamonds((prev) => {
         const nextVal = prev + totalValue;
@@ -3189,21 +3327,17 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       )
     );
 
+    let refundResult: RefundDrawResult | null = null;
+
     if (isRefund && giftItem) {
-      const refundResult = processRefundGiftDraw(giftItem, giftQty, 'أنا (الداعم)', recipient);
+      refundResult = processRefundGiftDraw(giftItem, giftQty, 'أنا (الداعم)', recipient);
 
       // AUTOMATICALLY and IMMEDIATELY add won refund coins to supporter's wallet balance
+      isInternalCoinsUpdateRef.current = true;
       setUserCoinsBalance((prev) => prev + refundResult.refundCoins);
 
-      // Delay showing the refund rectangle by exactly 3 seconds (after gift hit / multiplication)
-      setTimeout(() => {
-        setActiveRefundDrawResult(refundResult);
-
-        // Auto-clear failsafe after 3 seconds of display
-        setTimeout(() => {
-          setActiveRefundDrawResult((current) => (current?.id === refundResult.id ? null : current));
-        }, 3000);
-      }, 3000);
+      // Trigger Electric Energy Sphere in center of the screen (with rapid tap accumulation & explosion)
+      handleRefundOrbDraw(refundResult, giftItem, giftQty);
 
       // Post celebratory announcement in dedicated left side ticker (freeing room chat from spam)
       const isBigPrize = refundResult.winTier === 'big' || refundResult.winTier === 'mega_jackpot';
@@ -3224,12 +3358,15 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
               timestamp: Date.now()
             }
           ]);
-        }, 3000);
+        }, 2000);
       }
     }
 
+    // Effective coins received by the recipient on mic (for refund gifts, only recipientCoins is credited, remainder feeds the treasury)
+    const recipientGainValue = refundResult ? refundResult.recipientCoins : totalValue;
+
     // Increment Team Battle PK Points ONLY if Team PK is active and battle status is running
-    if (isTeamBattleActive && teamBattleStatus === 'running' && totalValue > 0) {
+    if (isTeamBattleActive && teamBattleStatus === 'running' && recipientGainValue > 0) {
       let recipientTeam: 'red' | 'blue' | 'none' = 'none';
       if (targetSeatIds && targetSeatIds.length > 0) {
         const occupiedTargetIds = targetSeatIds.filter((sid) =>
@@ -3237,16 +3374,16 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         );
         occupiedTargetIds.forEach((sid) => {
           const team = getTeamForSeat(sid, activeMicCount, ownerJoinedTeam);
-          if (team === 'red') setRedTeamScore((prev) => prev + totalValue);
-          if (team === 'blue') setBlueTeamScore((prev) => prev + totalValue);
+          if (team === 'red') setRedTeamScore((prev) => prev + recipientGainValue);
+          if (team === 'blue') setBlueTeamScore((prev) => prev + recipientGainValue);
           recipientTeam = team;
         });
       } else {
         const foundSeat = allMicSeats.find((s) => !s.isEmpty && s.userName === recipient);
         if (foundSeat) {
           const team = getTeamForSeat(foundSeat.id, activeMicCount, ownerJoinedTeam);
-          if (team === 'red') setRedTeamScore((prev) => prev + totalValue);
-          if (team === 'blue') setBlueTeamScore((prev) => prev + totalValue);
+          if (team === 'red') setRedTeamScore((prev) => prev + recipientGainValue);
+          if (team === 'blue') setBlueTeamScore((prev) => prev + recipientGainValue);
           recipientTeam = team;
         } else {
           recipientTeam = 'none';
@@ -3425,11 +3562,11 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       allMicSeats.some((s) => s.id === sId && !s.isEmpty)
     );
 
-    if (isTargetOnMic && strictlyOccupiedTargetSeats.length > 0 && totalValue > 0) {
+    if (isTargetOnMic && strictlyOccupiedTargetSeats.length > 0 && recipientGainValue > 0) {
       setSeatCounters((prev) => {
         const nextCounters = { ...prev };
         strictlyOccupiedTargetSeats.forEach((sId) => {
-          nextCounters[sId] = (nextCounters[sId] || 0) + totalValue;
+          nextCounters[sId] = (nextCounters[sId] || 0) + recipientGainValue;
         });
         return nextCounters;
       });
@@ -3440,7 +3577,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         const next = { ...prev };
         strictlyOccupiedTargetSeats.forEach((sId) => {
           next[sId] = {
-            amount: totalValue,
+            amount: recipientGainValue,
             giftIcon: cleanDisplayEmoji,
             id: `${nowId}-${sId}`
           };
@@ -3816,15 +3953,15 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
               borderColor: mainRoomConfig.topBarBorderColor || 'rgba(245, 158, 11, 0.35)',
               backdropFilter: `blur(${mainRoomConfig.topBarBackdropBlur || 16}px)`
             }}
-            className="border rounded-full py-1 pr-1 pl-3.5 h-11.5 sm:h-12 flex items-center gap-2 min-w-0 max-w-[58%] sm:max-w-[65%] shadow-md cursor-pointer hover:border-amber-400/80 hover:brightness-110 transition-all active:scale-95 group shrink-0"
+            className="border rounded-xl py-1.5 pr-1.5 pl-3.5 h-13 sm:h-14 flex items-center gap-2.5 min-w-0 max-w-[62%] sm:max-w-[68%] shadow-md cursor-pointer hover:border-amber-400/80 hover:brightness-110 transition-all active:scale-95 group shrink-0"
             title="انقر لعرض شاشة إدارة الغرفة وتعديل الاسم والمشرفين"
           >
-            {/* Room Avatar on Right Edge (صورة الغرفة الخاصة المستقلة) */}
-            <div className="w-8.5 h-8.5 rounded-full border-2 border-amber-400 overflow-hidden shrink-0 shadow-[0_0_10px_rgba(245,158,11,0.45)] group-hover:scale-105 transition-transform">
+            {/* Room Avatar on Right Edge (صورة الغرفة الخاصة المستقلة - مربعة الشكل موسعة ومنسقة) */}
+            <div className="w-10 h-10 sm:w-10.5 sm:h-10.5 rounded-lg border-2 border-amber-400 overflow-hidden shrink-0 shadow-[0_0_10px_rgba(245,158,11,0.45)] group-hover:scale-105 transition-transform bg-slate-900">
               <img
                 src={currentRoomAvatar || hostSeat.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300'}
                 alt={currentRoomTitle}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover rounded-md"
               />
             </div>
 
@@ -3833,14 +3970,14 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
               <div className="overflow-hidden w-full relative h-5 flex items-center">
                 {currentRoomTitle.length > 13 ? (
                   <span
-                    className="text-[12px] sm:text-[12.5px] font-black leading-none inline-block whitespace-nowrap animate-natural-marquee tracking-tight"
+                    className="text-[12.5px] sm:text-[13px] font-black leading-none inline-block whitespace-nowrap animate-natural-marquee tracking-tight"
                     style={{ color: mainRoomConfig.roomTitleColor || '#ffffff' }}
                   >
                     {currentRoomTitle}
                   </span>
                 ) : (
                   <span
-                    className="text-[12px] sm:text-[12.5px] font-black truncate leading-tight block tracking-tight"
+                    className="text-[12.5px] sm:text-[13px] font-black truncate leading-tight block tracking-tight"
                     style={{ color: mainRoomConfig.roomTitleColor || '#ffffff' }}
                   >
                     {currentRoomTitle}
@@ -5532,6 +5669,12 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         seats={activeSeats}
       />
 
+      {/* ELECTRIC REFUND ENERGY SPHERE (كرة طاقة كهربائية في وسط الشاشة مع التضخم والانفجار عند النقر السريع) */}
+      <ElectricRefundEnergySphere
+        orbState={electricOrbState}
+        onDismiss={handleDismissElectricOrb}
+      />
+
       {/* LUCKY REFUND JACKPOT MODAL */}
       <LuckyRefundModal
         result={activeRefundDrawResult}
@@ -6679,6 +6822,20 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           setInputMessage(`@${hostSeat.userName || 'أميرة الشرق'} `);
           setShowChatInputModal(true);
         }}
+        onOpenFullProfile={() => {
+          setFullProfileUser({
+            id: roomId || '8849201',
+            userId: roomId || '8849201',
+            name: hostSeat.userName || 'أميرة الشرق 👑',
+            avatar: hostSeat.avatar,
+            country: 'اليمن',
+            countryFlag: '🇾🇪',
+            isHost: true,
+            isAdmin: true
+          });
+          setShowHostProfileModal(false);
+          setShowFullUserProfileModal(true);
+        }}
       />
 
       {/* ADVANCED USER PROFILE MODAL (بطاقة البروفايل المتقدمة) */}
@@ -6711,7 +6868,36 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         onKickFromRoom={(u) => handleKickFromRoom(u)}
         onOpenAdminControls={() => setShowRoomInfoModal(true)}
         onOpenPrivateChat={() => setShowYoHoMessagesModal(true)}
+        onOpenFullProfile={(u) => {
+          setFullProfileUser(u);
+          setShowAdvancedProfileModal(false);
+          setShowFullUserProfileModal(true);
+        }}
       />
+
+      {/* FULL USER PROFILE MODAL (الملف الشخصي الكامل) */}
+      {showFullUserProfileModal && fullProfileUser && (
+        <UserProfileModal
+          isOpen={showFullUserProfileModal}
+          onClose={() => setShowFullUserProfileModal(false)}
+          userProfile={{
+            id: fullProfileUser.id,
+            userId: fullProfileUser.userId || fullProfileUser.id,
+            name: fullProfileUser.name,
+            avatarUrl: fullProfileUser.avatar,
+            country: fullProfileUser.country || 'اليمن',
+            countryFlag: fullProfileUser.countryFlag || '🇾🇪',
+            bio: (fullProfileUser as any).bio || 'أهلاً بكم في ملفي الشخصي في سوبر ليجند 🌟',
+            vipLevel: (fullProfileUser as any).vipLevel || (fullProfileUser.isHost ? 'VIP8' : 'VIP6'),
+            superLegendLevel: (fullProfileUser as any).superLegendLevel || 'SL1',
+            stats: {
+              friends: 120,
+              followers: 5365,
+              visitors: 892
+            }
+          } as any}
+        />
+      )}
 
       {/* AUDIENCE / INVITE LIST MODAL (قائمة الاستدعاء للمايك والحضور - 18) */}
       <AnimatePresence>

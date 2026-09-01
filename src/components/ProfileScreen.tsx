@@ -31,7 +31,10 @@ import {
   Eye,
   Users,
   UserCheck,
-  Heart
+  Heart,
+  Sun,
+  Moon,
+  Palette
 } from 'lucide-react';
 import { UserProfileData, StatItem, BadgeInfo } from '../types';
 import { INITIAL_USER_PROFILE, MOCK_VISITORS, MOCK_FRIENDS, MOCK_FOLLOWERS, MOCK_LIKES } from '../data/mockData';
@@ -53,7 +56,18 @@ import {
   FriendlyPoints3DIcon,
   InviteCenter3DIcon,
   InviteCard3DIcon,
-  Mall3DIcon
+  Mall3DIcon,
+  Visitors3DIcon,
+  Friends3DIcon,
+  Following3DIcon,
+  Likes3DIcon,
+  OfficialAgency3DIcon,
+  AgencyAdmin3DIcon,
+  ThemeAdmin3DIcon,
+  Broker3DIcon,
+  Moderator3DIcon,
+  TCoin3DIcon,
+  Diamond3DIcon
 } from './profile/RealisticIcons';
 import { RechargeModal } from './RechargeModal';
 import { SuperLegendModal } from './SuperLegendModal';
@@ -68,8 +82,14 @@ import { BrokerCenterModal } from './BrokerCenterModal';
 import { SuperAdminControlModal } from './SuperAdminControlModal';
 import { AgencyAdminDashboardModal } from './AgencyAdminDashboardModal';
 import { ThemeAdminDashboardModal } from './ThemeAdminDashboardModal';
+import { StoreAndThemeAdminModal } from './StoreAndThemeAdminModal';
+import { OfficialAgencyManagerModal } from './OfficialAgencyManagerModal';
+import { AgencyRepresentativeModal } from './AgencyRepresentativeModal';
 import { ModeratorDashboardModal } from './ModeratorDashboardModal';
 import { BroadcasterCenterModal } from './BroadcasterCenterModal';
+import { GeniusYoHoModal } from './GeniusYoHoModal';
+import { FriendlyPointsModal } from './FriendlyPointsModal';
+import { MallCenterModal } from './MallCenterModal';
 import { HomeScreen } from './HomeScreen';
 import { ExploreScreen } from './ExploreScreen';
 import { GamesScreen } from './GamesScreen';
@@ -162,17 +182,48 @@ export const ProfileScreen: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'home' | 'explore' | 'games' | 'messages' | 'profile'>('profile');
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
-  const [coinsBalance, setCoinsBalance] = useState<number>(52500);
+  const [coinsBalance, setCoinsBalance] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('user_wallet_coins');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed > 0) return Math.max(parsed, 100000000);
+      }
+    } catch {}
+    return 100000000;
+  });
   const [diamondsBalance, setDiamondsBalance] = useState<number>(8377);
+
+  // Synchronize coinsBalance with global user_coins_updated event
+  useEffect(() => {
+    const handleCoinsUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (typeof customEvent.detail?.coins === 'number') {
+        setCoinsBalance(customEvent.detail.coins);
+      }
+    };
+    window.addEventListener('user_coins_updated', handleCoinsUpdate);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'user_wallet_coins' && e.newValue) {
+        const parsed = parseInt(e.newValue, 10);
+        if (!isNaN(parsed)) setCoinsBalance(parsed);
+      }
+    });
+    return () => {
+      window.removeEventListener('user_coins_updated', handleCoinsUpdate);
+    };
+  }, []);
 
   // Services Row Modals State
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isCustomerServiceModalOpen, setIsCustomerServiceModalOpen] = useState(false);
   const [isDevPanelModalOpen, setIsDevPanelModalOpen] = useState(false);
-  const [isSuperAdminModalOpen, setIsSuperAdminModalOpen] = useState(false);
+  const [isSuperAdminModalOpen, setIsSuperAdminModalOpen] = useState(true);
   const [isAgencyAdminModalOpen, setIsAgencyAdminModalOpen] = useState(false);
   const [isThemeAdminModalOpen, setIsThemeAdminModalOpen] = useState(false);
+  const [isOfficialAgencyManagerModalOpen, setIsOfficialAgencyManagerModalOpen] = useState(false);
+  const [isAgencyRepModalOpen, setIsAgencyRepModalOpen] = useState(false);
   const [isModeratorModalOpen, setIsModeratorModalOpen] = useState(false);
   const [isBrokerCenterModalOpen, setIsBrokerCenterModalOpen] = useState(false);
   const [isSuperLegendModalOpen, setIsSuperLegendModalOpen] = useState(false);
@@ -183,8 +234,82 @@ export const ProfileScreen: React.FC = () => {
   const [isVipCenterModalOpen, setIsVipCenterModalOpen] = useState(false);
   const [isAgencyModalOpen, setIsAgencyModalOpen] = useState(false);
   const [isBroadcasterCenterModalOpen, setIsBroadcasterCenterModalOpen] = useState(false);
+  const [isGeniusModalOpen, setIsGeniusModalOpen] = useState(false);
+  const [isFriendlyPointsModalOpen, setIsFriendlyPointsModalOpen] = useState(false);
+  const [isMallModalOpen, setIsMallModalOpen] = useState(false);
   const [minimizedRoomSession, setMinimizedRoomSession] = useState<ActiveRoomSession | null>(null);
   
+  // Royal Theme State: Click 1 -> White (الأبيض اللؤلؤي) | Click 2 -> Night (الليلي الملكي) | Click 3 -> Gold (الملكي الذهبي)
+  type RoyalThemeMode = 'gold' | 'white' | 'dark';
+  const [royalTheme, setRoyalTheme] = useState<RoyalThemeMode>(() => {
+    try {
+      const saved = localStorage.getItem('app_royal_theme');
+      if (saved === 'white' || saved === 'dark' || saved === 'gold') return saved;
+    } catch {}
+    return 'gold';
+  });
+
+  const cycleRoyalTheme = () => {
+    setRoyalTheme((prev) => {
+      const next: RoyalThemeMode = prev === 'gold' ? 'white' : prev === 'white' ? 'dark' : 'gold';
+      try {
+        localStorage.setItem('app_royal_theme', next);
+      } catch {}
+      return next;
+    });
+  };
+
+  const curRoyal = {
+    gold: {
+      outerBorder: 'bg-gradient-to-r from-[#BF953F] via-[#FCF6BA] via-[#B38728] via-[#FBF5B7] to-[#AA771C]',
+      innerBg: 'bg-gradient-to-b from-[#FFFDF9] via-[#FAF5E8] to-[#FFF9ED]',
+      innerBorder: 'border-[#FFF8E7]/90',
+      titleText: 'text-[#5C3F13] group-hover:text-[#B38022]',
+      subText: 'text-[#8C7355]',
+      plinthBg: 'bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#DFC386]/80 shadow-[0_2px_6px_rgba(180,140,60,0.12),inset_0_1px_2px_rgba(255,255,255,1)]',
+      shadow: 'shadow-[0_4px_16px_rgba(180,140,50,0.18)] hover:shadow-[0_6px_20px_rgba(180,140,50,0.28)]',
+      chevron: 'text-[#C89228] group-hover:text-[#7A5210]',
+      coinsText: 'text-[#5C3F13] group-hover:text-[#B38022]',
+      diamondsText: 'text-[#0369A1] group-hover:text-[#0284C7]',
+      pillBadge: 'bg-gradient-to-r from-[#BF953F] via-[#FDE047] to-[#AA771C] text-[#3B2610] border-white shadow-[0_2px_6px_rgba(120,80,20,0.35)]',
+      roleBadge: 'bg-gradient-to-r from-[#F5D061]/30 to-[#C89228]/30 text-[#7E4F0B] border-[#E8DFC8]',
+      roleButton: 'text-[#7A5210] bg-white/95 border-[#E2B755]/50 group-hover:bg-gradient-to-r group-hover:from-[#B38022] group-hover:to-[#7A5210] group-hover:text-white',
+      listWrapper: 'bg-white border-slate-200'
+    },
+    white: {
+      outerBorder: 'bg-gradient-to-r from-slate-200 via-white via-slate-100 via-white to-slate-300',
+      innerBg: 'bg-gradient-to-b from-[#FFFFFF] via-[#F8FAFC] to-[#F1F5F9]',
+      innerBorder: 'border-white',
+      titleText: 'text-slate-800 group-hover:text-slate-950',
+      subText: 'text-slate-500',
+      plinthBg: 'bg-gradient-to-b from-white to-[#F8FAFC] border border-slate-200/90 shadow-[0_2px_6px_rgba(0,0,0,0.04),inset_0_1px_2px_rgba(255,255,255,1)]',
+      shadow: 'shadow-[0_4px_16px_rgba(148,163,184,0.2)] hover:shadow-[0_6px_20px_rgba(148,163,184,0.3)]',
+      chevron: 'text-slate-400 group-hover:text-slate-700',
+      coinsText: 'text-slate-800 group-hover:text-amber-600',
+      diamondsText: 'text-slate-800 group-hover:text-sky-600',
+      pillBadge: 'bg-gradient-to-r from-slate-700 to-slate-900 text-white border-white shadow-[0_2px_6px_rgba(0,0,0,0.12)]',
+      roleBadge: 'bg-slate-100 text-slate-700 border-slate-200',
+      roleButton: 'text-slate-700 bg-white border-slate-200 group-hover:bg-slate-800 group-hover:text-white',
+      listWrapper: 'bg-white border-slate-200'
+    },
+    dark: {
+      outerBorder: 'bg-gradient-to-r from-[#334155] via-[#64748B] via-[#1E293B] via-[#475569] to-[#0F172A]',
+      innerBg: 'bg-gradient-to-b from-[#1E293B] via-[#0F172A] to-[#0B1120]',
+      innerBorder: 'border-slate-700/80',
+      titleText: 'text-slate-100 group-hover:text-amber-300',
+      subText: 'text-slate-400',
+      plinthBg: 'bg-gradient-to-b from-[#334155] to-[#1E293B] border border-slate-600/70 shadow-[0_2px_6px_rgba(0,0,0,0.4),inset_0_1px_2px_rgba(255,255,255,0.05)]',
+      shadow: 'shadow-[0_4px_16px_rgba(0,0,0,0.4)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.55)]',
+      chevron: 'text-slate-400 group-hover:text-amber-300',
+      coinsText: 'text-amber-300 group-hover:text-amber-200',
+      diamondsText: 'text-sky-300 group-hover:text-sky-200',
+      pillBadge: 'bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600 text-slate-950 border-slate-800 shadow-[0_2px_6px_rgba(0,0,0,0.4)]',
+      roleBadge: 'bg-slate-800 text-amber-300 border-slate-700',
+      roleButton: 'text-amber-300 bg-slate-800/90 border-slate-700 group-hover:bg-amber-400 group-hover:text-slate-950',
+      listWrapper: 'bg-[#0f172a]/70 border-slate-800'
+    }
+  }[royalTheme];
+
   // Dynamic Role State
   const [adminRole, setAdminRole] = useState<AdminRole>(() => getAdminRoleForUser(profile.userId));
 
@@ -281,6 +406,34 @@ export const ProfileScreen: React.FC = () => {
                   <Headphones className="w-5 h-5 text-slate-700" />
                 </button>
 
+                {/* زر تبديل النمط الملكي الموحد (زر واحد: ضغطة 1 -> أبيض نقي | ضغطة 2 -> ليلي فاخر | ضغطة 3 -> ذهبي ملكي) */}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.94 }}
+                  onClick={cycleRoyalTheme}
+                  className={`px-2.5 py-1.5 rounded-full text-xs font-black shadow-xs border flex items-center gap-1.5 cursor-pointer transition-all duration-300 ${
+                    royalTheme === 'gold'
+                      ? 'bg-gradient-to-r from-[#FFFDF9] via-[#FAF5E8] to-[#FFF9ED] border-[#DFC386] text-[#7E4F0B] shadow-[0_2px_8px_rgba(180,140,50,0.2)] hover:border-[#B38022]'
+                      : royalTheme === 'white'
+                      ? 'bg-white border-slate-300 text-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:border-slate-400'
+                      : 'bg-gradient-to-r from-[#1E293B] to-[#0F172A] border-slate-700 text-amber-300 shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-slate-600'
+                  }`}
+                  title={
+                    royalTheme === 'gold'
+                      ? 'النمط الذهبي الملكي (انقر للتحويل إلى اللون الأبيض)'
+                      : royalTheme === 'white'
+                      ? 'النمط الأبيض النقي (انقر للتحويل إلى اللون الليلي)'
+                      : 'النمط الليلي الفاخر (انقر للتحويل إلى اللون الذهبي)'
+                  }
+                >
+                  {royalTheme === 'gold' && <Sparkles className="w-3.5 h-3.5 text-[#B38022] fill-[#B38022]" />}
+                  {royalTheme === 'white' && <Sun className="w-3.5 h-3.5 text-slate-700" />}
+                  {royalTheme === 'dark' && <Moon className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />}
+                  <span className="text-[11px] font-bold">
+                    {royalTheme === 'gold' ? 'الملكي الذهبي' : royalTheme === 'white' ? 'الأبيض اللؤلؤي' : 'الليلي الملكي'}
+                  </span>
+                </motion.button>
+
                 {/* زر السوبر أدمن (المبرمج / المالك): مشروط حصراً بـ currentUser.id === ownerId ومخفي تماماً عن غيره */}
                 {isOwner && (
                   <motion.button
@@ -369,63 +522,91 @@ export const ProfileScreen: React.FC = () => {
               </button>
             </div>
 
-            {/* Statistics 4 Columns Row - Cute Small Square Cards in Dark-White (أيقونات صغيرة مربعة بلون أبيض غامق وأرقام إنجليزية) */}
-            <div className="grid grid-cols-4 gap-2 text-center mt-5 mb-2 px-1">
+            {/* Statistics 4 Columns Row - Royal Luxury Cards (الزوار - الأصدقاء - تمت متابعتهم - المعجبين) */}
+            <div className="grid grid-cols-4 gap-2 text-center mt-5 mb-2 px-1" dir="rtl">
               {/* 1. Visitors / الزوار */}
-              <div
+              <motion.div
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setActiveStatModal('visitors')}
-                className="bg-[#E9EEF4] border border-[#CBD5E1] hover:bg-[#DEE6F0] rounded-2xl p-2.5 flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 shadow-xs group"
+                className={`relative p-[1.5px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} transition-all duration-300 cursor-pointer group`}
               >
-                <div className="w-6 h-6 rounded-full bg-slate-300/70 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-                  <Eye className="w-3.5 h-3.5 text-slate-700" />
+                <div className={`${curRoyal.innerBg} rounded-[14.5px] p-2 sm:p-2.5 flex flex-col items-center justify-center border ${curRoyal.innerBorder} h-full transition-all duration-300`}>
+                  {/* 3D Realistic Icon Container on Embossed Plinth */}
+                  <div className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center mb-1 group-hover:scale-105 transition-all shrink-0`}>
+                    <Visitors3DIcon className="w-6 h-6 sm:w-7 sm:h-7" />
+                  </div>
+                  <div className={`text-sm sm:text-base font-black ${curRoyal.titleText} font-mono leading-tight tracking-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]`}>
+                    {profile.stats.visitors.toLocaleString('en-US')}
+                  </div>
+                  <div className={`text-[10px] sm:text-[11px] ${curRoyal.subText} font-black mt-0.5 whitespace-nowrap transition-colors`}>
+                    الزوار
+                  </div>
                 </div>
-                <div className="text-sm sm:text-base font-black text-slate-900 font-mono leading-tight tracking-tight">
-                  {profile.stats.visitors.toLocaleString('en-US')}
-                </div>
-                <div className="text-[10px] text-slate-600 font-bold mt-0.5 whitespace-nowrap">الزوار</div>
-              </div>
+              </motion.div>
 
-              {/* 2. Friends / أصدقاء */}
-              <div
+              {/* 2. Friends / الأصدقاء */}
+              <motion.div
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setActiveStatModal('friends')}
-                className="bg-[#E9EEF4] border border-[#CBD5E1] hover:bg-[#DEE6F0] rounded-2xl p-2.5 flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 shadow-xs group"
+                className={`relative p-[1.5px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} transition-all duration-300 cursor-pointer group`}
               >
-                <div className="w-6 h-6 rounded-full bg-slate-300/70 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-                  <Users className="w-3.5 h-3.5 text-slate-700" />
+                <div className={`${curRoyal.innerBg} rounded-[14.5px] p-2 sm:p-2.5 flex flex-col items-center justify-center border ${curRoyal.innerBorder} h-full transition-all duration-300`}>
+                  {/* 3D Realistic Icon Container on Embossed Plinth */}
+                  <div className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center mb-1 group-hover:scale-105 transition-all shrink-0`}>
+                    <Friends3DIcon className="w-6 h-6 sm:w-7 sm:h-7" />
+                  </div>
+                  <div className={`text-sm sm:text-base font-black ${curRoyal.titleText} font-mono leading-tight tracking-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]`}>
+                    {profile.stats.friends.toLocaleString('en-US')}
+                  </div>
+                  <div className={`text-[10px] sm:text-[11px] ${curRoyal.subText} font-black mt-0.5 whitespace-nowrap transition-colors`}>
+                    الأصدقاء
+                  </div>
                 </div>
-                <div className="text-sm sm:text-base font-black text-slate-900 font-mono leading-tight tracking-tight">
-                  {profile.stats.friends.toLocaleString('en-US')}
-                </div>
-                <div className="text-[10px] text-slate-600 font-bold mt-0.5 whitespace-nowrap">أصدقاء</div>
-              </div>
+              </motion.div>
 
-              {/* 3. Followers / تمت المتابعة */}
-              <div
+              {/* 3. Following / تمت متابعتهم */}
+              <motion.div
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setActiveStatModal('followers')}
-                className="bg-[#E9EEF4] border border-[#CBD5E1] hover:bg-[#DEE6F0] rounded-2xl p-2.5 flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 shadow-xs group"
+                className={`relative p-[1.5px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} transition-all duration-300 cursor-pointer group`}
               >
-                <div className="w-6 h-6 rounded-full bg-slate-300/70 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-                  <UserCheck className="w-3.5 h-3.5 text-slate-700" />
+                <div className={`${curRoyal.innerBg} rounded-[14.5px] p-2 sm:p-2.5 flex flex-col items-center justify-center border ${curRoyal.innerBorder} h-full transition-all duration-300`}>
+                  {/* 3D Realistic Icon Container on Embossed Plinth */}
+                  <div className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center mb-1 group-hover:scale-105 transition-all shrink-0`}>
+                    <Following3DIcon className="w-6 h-6 sm:w-7 sm:h-7" />
+                  </div>
+                  <div className={`text-sm sm:text-base font-black ${curRoyal.titleText} font-mono leading-tight tracking-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]`}>
+                    {profile.stats.followers.toLocaleString('en-US')}
+                  </div>
+                  <div className={`text-[10px] sm:text-[11px] ${curRoyal.subText} font-black mt-0.5 whitespace-nowrap transition-colors`}>
+                    تمت متابعتهم
+                  </div>
                 </div>
-                <div className="text-sm sm:text-base font-black text-slate-900 font-mono leading-tight tracking-tight">
-                  {profile.stats.followers.toLocaleString('en-US')}
-                </div>
-                <div className="text-[10px] text-slate-600 font-bold mt-0.5 whitespace-nowrap">تمت المتابعة</div>
-              </div>
+              </motion.div>
 
-              {/* 4. Likes / المعجبون */}
-              <div
+              {/* 4. Likes / المعجبين */}
+              <motion.div
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setActiveStatModal('likes')}
-                className="bg-[#E9EEF4] border border-[#CBD5E1] hover:bg-[#DEE6F0] rounded-2xl p-2.5 flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 shadow-xs group"
+                className={`relative p-[1.5px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} transition-all duration-300 cursor-pointer group`}
               >
-                <div className="w-6 h-6 rounded-full bg-rose-200/70 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-                  <Heart className="w-3.5 h-3.5 text-rose-600 fill-rose-500/40" />
+                <div className={`${curRoyal.innerBg} rounded-[14.5px] p-2 sm:p-2.5 flex flex-col items-center justify-center border ${curRoyal.innerBorder} h-full transition-all duration-300`}>
+                  {/* 3D Realistic Icon Container on Embossed Plinth */}
+                  <div className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center mb-1 group-hover:scale-105 transition-all shrink-0`}>
+                    <Likes3DIcon className="w-6 h-6 sm:w-7 sm:h-7" />
+                  </div>
+                  <div className={`text-sm sm:text-base font-black ${curRoyal.titleText} font-mono leading-tight tracking-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]`}>
+                    {profile.stats.likes.toLocaleString('en-US')}
+                  </div>
+                  <div className={`text-[10px] sm:text-[11px] ${curRoyal.subText} font-black mt-0.5 whitespace-nowrap transition-colors`}>
+                    المعجبين
+                  </div>
                 </div>
-                <div className="text-sm sm:text-base font-black text-slate-900 font-mono leading-tight tracking-tight">
-                  {profile.stats.likes.toLocaleString('en-US')}
-                </div>
-                <div className="text-[10px] text-slate-600 font-bold mt-0.5 whitespace-nowrap">المعجبون</div>
-              </div>
+              </motion.div>
             </div>
           </div>
 
@@ -456,230 +637,200 @@ export const ProfileScreen: React.FC = () => {
             </div>
 
             {/* Currency Row (2 Horizontal Cards: Recharge on Right, Diamonds on Left - English Numbers Only) */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3" dir="rtl">
               {/* Recharge / Coins Card (Appears on the RIGHT in RTL - English Numbers) */}
-              <div
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => setIsRechargeModalOpen(true)}
-                className="bg-gradient-to-b from-white via-amber-50/30 to-amber-100/20 rounded-2xl p-3.5 shadow-xs border border-amber-200/60 flex items-center justify-between cursor-pointer hover:shadow-md hover:border-amber-300/80 transition-all group"
+                className={`relative p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} transition-all duration-300 cursor-pointer group w-full`}
               >
-                <ChevronLeft className="w-4 h-4 text-amber-300 shrink-0 group-hover:-translate-x-0.5 transition-transform" />
-                <div className="text-center flex-1 px-2">
-                  <div className="text-xl font-black text-amber-600 tracking-tight leading-none drop-shadow-[0_1px_2px_rgba(217,119,6,0.25)] font-mono">
+                <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex flex-col justify-between h-full border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300`}>
+                  {/* Top Header: T-Coin Icon + Label & Arrow */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <TCoin3DIcon className="w-5 h-5 shrink-0" />
+                      <span className={`text-xs font-black ${curRoyal.coinsText} transition-colors`}>
+                        شحن
+                      </span>
+                    </div>
+                    <ChevronLeft className={`w-4 h-4 ${curRoyal.chevron} group-hover:-translate-x-0.5 transition-transform shrink-0`} />
+                  </div>
+                  {/* Numbers taking full natural width */}
+                  <div className={`text-lg sm:text-xl font-black ${curRoyal.coinsText} font-mono leading-tight tracking-tight mt-1.5 drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)] truncate`}>
                     {coinsBalance.toLocaleString('en-US')}
                   </div>
-                  <div className="text-xs text-amber-900/60 font-bold mt-1">
-                    شحن
-                  </div>
                 </div>
-                {/* 3D Shiny Gold Coin Icon Container */}
-                <div className="relative w-11 h-11 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-300 p-0.5 shadow-[0_0_12px_rgba(245,158,11,0.35)] border border-yellow-200 shrink-0 flex items-center justify-center">
-                  <svg className="w-8 h-8 drop-shadow-md" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="18" cy="18" r="16" fill="url(#gold_coin_outer)" stroke="#FEF3C7" strokeWidth="1.5"/>
-                    <circle cx="18" cy="18" r="12" fill="url(#gold_coin_inner)" stroke="#D97706" strokeWidth="1"/>
-                    <path d="M18 10L20.2 14.8L25.5 15.4L21.5 19L22.6 24.2L18 21.5L13.4 24.2L14.5 19L10.5 15.4L15.8 14.8L18 10Z" fill="url(#gold_coin_star)"/>
-                    <defs>
-                      <linearGradient id="gold_coin_outer" x1="4" y1="4" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#FBBF24"/>
-                        <stop offset="0.5" stopColor="#F59E0B"/>
-                        <stop offset="1" stopColor="#B45309"/>
-                      </linearGradient>
-                      <linearGradient id="gold_coin_inner" x1="8" y1="8" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#FEF08A"/>
-                        <stop offset="0.5" stopColor="#F59E0B"/>
-                        <stop offset="1" stopColor="#92400E"/>
-                      </linearGradient>
-                      <linearGradient id="gold_coin_star" x1="12" y1="10" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#FFFBEB"/>
-                        <stop offset="1" stopColor="#FBBF24"/>
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                </div>
-              </div>
+              </motion.div>
 
               {/* Diamonds Card (Appears on the LEFT in RTL - English Numbers) */}
-              <div
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => setIsRechargeModalOpen(true)}
-                className="bg-gradient-to-b from-white via-sky-50/30 to-sky-100/20 rounded-2xl p-3.5 shadow-xs border border-sky-200/60 flex items-center justify-between cursor-pointer hover:shadow-md hover:border-sky-300/80 transition-all group"
+                className={`relative p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} transition-all duration-300 cursor-pointer group w-full`}
               >
-                <ChevronLeft className="w-4 h-4 text-sky-300 shrink-0 group-hover:-translate-x-0.5 transition-transform" />
-                <div className="text-center flex-1 px-2">
-                  <div className="text-xl font-black text-sky-600 tracking-tight leading-none drop-shadow-[0_1px_2px_rgba(2,132,199,0.25)] font-mono">
+                <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex flex-col justify-between h-full border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300`}>
+                  {/* Top Header: Diamond Icon + Label & Arrow */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Diamond3DIcon className="w-5 h-5 shrink-0" />
+                      <span className={`text-xs font-black ${curRoyal.diamondsText} transition-colors`}>
+                        الماسة
+                      </span>
+                    </div>
+                    <ChevronLeft className={`w-4 h-4 ${curRoyal.diamondsText} group-hover:-translate-x-0.5 transition-transform shrink-0`} />
+                  </div>
+                  {/* Numbers taking full natural width */}
+                  <div className={`text-lg sm:text-xl font-black ${curRoyal.diamondsText} font-mono leading-tight tracking-tight mt-1.5 drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)] truncate`}>
                     {diamondsBalance.toLocaleString('en-US')}
                   </div>
-                  <div className="text-xs text-sky-900/60 font-bold mt-1">
-                    ألماس
-                  </div>
                 </div>
-                {/* Crystal Glowing Diamond Icon Container */}
-                <div className="relative w-11 h-11 rounded-full bg-gradient-to-tr from-blue-600 via-sky-400 to-cyan-300 p-0.5 shadow-[0_0_14px_rgba(56,189,248,0.45)] border border-sky-200 shrink-0 flex items-center justify-center">
-                  <svg className="w-8 h-8 drop-shadow-md" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M18 6L28 14L18 30L8 14L18 6Z" fill="url(#diamond_base)"/>
-                    <path d="M18 6L28 14H8L18 6Z" fill="url(#diamond_top)"/>
-                    <path d="M18 6L14 14H22L18 6Z" fill="url(#diamond_center_top)"/>
-                    <path d="M18 30L8 14H18V30Z" fill="url(#diamond_left_bottom)"/>
-                    <path d="M18 30L28 14H18V30Z" fill="url(#diamond_right_bottom)"/>
-                    {/* Glint Sparkle */}
-                    <circle cx="23" cy="11" r="1.5" fill="white" opacity="0.9"/>
-                    <defs>
-                      <linearGradient id="diamond_base" x1="8" y1="6" x2="28" y2="30" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#38BDF8"/>
-                        <stop offset="0.5" stopColor="#0284C7"/>
-                        <stop offset="1" stopColor="#0369A1"/>
-                      </linearGradient>
-                      <linearGradient id="diamond_top" x1="8" y1="6" x2="28" y2="14" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#E0F2FE"/>
-                        <stop offset="1" stopColor="#38BDF8"/>
-                      </linearGradient>
-                      <linearGradient id="diamond_center_top" x1="14" y1="6" x2="22" y2="14" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#FFFFFF"/>
-                    <stop offset="1" stopColor="#7DD3FC"/>
-                  </linearGradient>
-                  <linearGradient id="diamond_left_bottom" x1="8" y1="14" x2="18" y2="30" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#0284C7"/>
-                    <stop offset="1" stopColor="#0C4A6E"/>
-                  </linearGradient>
-                  <linearGradient id="diamond_right_bottom" x1="18" y1="14" x2="28" y2="30" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#38BDF8"/>
-                    <stop offset="1" stopColor="#0284C7"/>
-                  </linearGradient>
-                </defs>
-              </svg>
+              </motion.div>
             </div>
-          </div>
-        </div>
 
-        {/* 4 Rectangular Action Cards arranged 2 on the right and 2 on the left (2x2 grid) with Luxury Gold / Champagne Broadcaster Center styling */}
+        {/* 4 Rectangular Action Cards arranged 2 on the right and 2 on the left (2x2 grid) with Luxury Gold / Pearl White / Obsidian Night styling */}
         <div className="grid grid-cols-2 gap-2.5" dir="rtl">
           {/* Right Column Top: مستوى المستخدم */}
-          <motion.button
+          <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.96 }}
             onClick={() => setIsLevelModalOpen(true)}
-            className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+            className={`relative p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} transition-all duration-300 cursor-pointer group text-right w-full`}
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              {/* 3D Inner Embossed Plinth */}
-              <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
-                <UserLevel3DIcon className="w-8 h-8" />
-                <span className="absolute -bottom-1 -right-1 bg-gradient-to-r from-[#C89228] to-[#7E4F0B] text-[#FFF9E6] font-black text-[8px] px-1.5 py-0.2 rounded-full border border-white shadow-xs font-mono">
-                  25
-                </span>
+            <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300 h-full`}>
+              <div className="flex items-center gap-2.5 min-w-0">
+                {/* 3D Inner Embossed Plinth */}
+                <div className={`relative w-11 h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                  <UserLevel3DIcon className="w-8 h-8" />
+                  <span className="absolute -bottom-1 -right-1 bg-gradient-to-r from-[#C89228] to-[#7E4F0B] text-[#FFF9E6] font-black text-[8px] px-1.5 py-0.2 rounded-full border border-white shadow-xs font-mono">
+                    113
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
+                    مستوى المستخدم
+                  </h4>
+                  <span className={`text-[10px] ${curRoyal.subText} font-bold block truncate`}>
+                    المستوى 113 • 97%
+                  </span>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
-                  مستوى المستخدم
-                </h4>
-                <span className="text-[10px] text-[#A89478] font-bold block truncate">
-                  المستوى 25 • 82%
-                </span>
-              </div>
+              <ChevronLeft className={`w-4 h-4 ${curRoyal.chevron} group-hover:-translate-x-0.5 transition-transform shrink-0 mr-0.5`} />
             </div>
-            <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
-          </motion.button>
+          </motion.div>
 
           {/* Left Column Top: الشارات */}
-          <motion.button
+          <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.96 }}
             onClick={() => setIsBadgesCenterModalOpen(true)}
-            className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+            className={`relative p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} transition-all duration-300 cursor-pointer group text-right w-full`}
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              {/* 3D Inner Embossed Plinth */}
-              <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
-                <Badges3DIcon className="w-8 h-8" />
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-white animate-pulse" />
+            <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300 h-full`}>
+              <div className="flex items-center gap-2.5 min-w-0">
+                {/* 3D Inner Embossed Plinth */}
+                <div className={`relative w-11 h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                  <Badges3DIcon className="w-8 h-8" />
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-white animate-pulse" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
+                    الشارات
+                  </h4>
+                  <span className={`text-[10px] ${curRoyal.subText} font-bold block truncate`}>
+                    الأوسمة والجوائز
+                  </span>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
-                  الشارات
-                </h4>
-                <span className="text-[10px] text-[#A89478] font-bold block truncate">
-                  الأوسمة والجوائز
-                </span>
-              </div>
+              <ChevronLeft className={`w-4 h-4 ${curRoyal.chevron} group-hover:-translate-x-0.5 transition-transform shrink-0 mr-0.5`} />
             </div>
-            <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
-          </motion.button>
+          </motion.div>
 
           {/* Right Column Bottom: العائلات */}
-          <motion.button
+          <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.96 }}
             onClick={() => setIsFamilyModalOpen(true)}
-            className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+            className={`relative p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} transition-all duration-300 cursor-pointer group text-right w-full`}
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              {/* 3D Inner Embossed Plinth */}
-              <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
-                <Families3DIcon className="w-8 h-8" />
-                <span className="absolute -bottom-1 -right-1 bg-gradient-to-r from-[#B38022] to-[#5C3F13] text-[#FFF9E6] font-black text-[8px] px-1.5 py-0.2 rounded-full border border-white shadow-xs font-mono">
-                  Lv12
-                </span>
+            <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300 h-full`}>
+              <div className="flex items-center gap-2.5 min-w-0">
+                {/* 3D Inner Embossed Plinth */}
+                <div className={`relative w-11 h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                  <Families3DIcon className="w-8 h-8" />
+                  <span className="absolute -bottom-1 -right-1 bg-gradient-to-r from-[#B38022] to-[#5C3F13] text-[#FFF9E6] font-black text-[8px] px-1.5 py-0.2 rounded-full border border-white shadow-xs font-mono">
+                    Lv12
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
+                    العائلات
+                  </h4>
+                  <span className={`text-[10px] ${curRoyal.subText} font-bold block truncate`}>
+                    عائلة فرسان المجد
+                  </span>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
-                  العائلات
-                </h4>
-                <span className="text-[10px] text-[#A89478] font-bold block truncate">
-                  عائلة فرسان المجد
-                </span>
-              </div>
+              <ChevronLeft className={`w-4 h-4 ${curRoyal.chevron} group-hover:-translate-x-0.5 transition-transform shrink-0 mr-0.5`} />
             </div>
-            <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
-          </motion.button>
+          </motion.div>
 
           {/* Left Column Bottom: مظهري */}
-          <motion.button
+          <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.96 }}
             onClick={() => setIsAppearanceModalOpen(true)}
-            className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+            className={`relative p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} transition-all duration-300 cursor-pointer group text-right w-full`}
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              {/* 3D Inner Embossed Plinth */}
-              <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
-                <Appearance3DIcon className="w-8 h-8" />
-                <span className="absolute -top-1 -left-1 w-3.5 h-3.5 bg-gradient-to-tr from-amber-400 to-yellow-200 rounded-full border border-white flex items-center justify-center shadow-xs">
-                  <Sparkles className="w-2 h-2 text-[#5C3F13] fill-[#5C3F13]" />
-                </span>
+            <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300 h-full`}>
+              <div className="flex items-center gap-2.5 min-w-0">
+                {/* 3D Inner Embossed Plinth */}
+                <div className={`relative w-11 h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                  <Appearance3DIcon className="w-8 h-8" />
+                  <span className="absolute -top-1 -left-1 w-3.5 h-3.5 bg-gradient-to-tr from-amber-400 to-yellow-200 rounded-full border border-white flex items-center justify-center shadow-xs">
+                    <Sparkles className="w-2 h-2 text-[#5C3F13] fill-[#5C3F13]" />
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
+                    مظهري
+                  </h4>
+                  <span className={`text-[10px] ${curRoyal.subText} font-bold block truncate`}>
+                    الإطارات والدخوليات
+                  </span>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
-                  مظهري
-                </h4>
-                <span className="text-[10px] text-[#A89478] font-bold block truncate">
-                  الإطارات والدخوليات
-                </span>
-              </div>
+              <ChevronLeft className={`w-4 h-4 ${curRoyal.chevron} group-hover:-translate-x-0.5 transition-transform shrink-0 mr-0.5`} />
             </div>
-            <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
-          </motion.button>
+          </motion.div>
         </div>
 
         {/* Mini Games Strip */}
-        <div className="bg-white rounded-2xl p-3 shadow-xs border border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar">
-          <ChevronLeft className="w-4 h-4 text-slate-300 shrink-0" />
-          <div className="flex items-center gap-2 flex-1 overflow-x-auto no-scrollbar py-1">
-            {gamesList.map((game) => (
-              <div
-                key={game.id}
-                className="shrink-0 w-16 text-center cursor-pointer group"
-              >
-                <div className={`w-14 h-14 mx-auto rounded-2xl ${game.bg} flex items-center justify-center text-2xl shadow-xs group-hover:scale-105 transition-transform`}>
-                  {game.emoji}
+        <div className={`relative p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} transition-all duration-300`}>
+          <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center gap-2 border ${curRoyal.innerBorder} transition-all duration-300`}>
+            <ChevronLeft className={`w-4 h-4 ${curRoyal.chevron} shrink-0`} />
+            <div className="flex items-center gap-3 flex-1 overflow-x-auto no-scrollbar py-1">
+              {gamesList.map((game) => (
+                <div
+                  key={game.id}
+                  onClick={() => setActiveTab('games')}
+                  className="shrink-0 w-16 text-center cursor-pointer group"
+                >
+                  <div className={`relative w-14 h-14 mx-auto rounded-2xl ${curRoyal.plinthBg} flex items-center justify-center text-2xl group-hover:scale-105 transition-all`}>
+                    {game.emoji}
+                  </div>
+                  <span className={`text-[10px] font-black ${curRoyal.titleText} block mt-1.5 truncate text-center transition-colors`}>
+                    {game.title}
+                  </span>
                 </div>
-                <span className="text-[9px] font-extrabold text-slate-600 block mt-1 truncate">
-                  {game.title}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
         {/* قائمة الخيارات والخدمات */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-2 space-y-1 shadow-xs" dir="rtl">
+        <div className={`${curRoyal.listWrapper} rounded-3xl p-2 space-y-1 shadow-xs transition-all duration-300`} dir="rtl">
           
           {/* الأزرار الديناميكية المشروطة بالصلاحيات (تظهر حصراً لأصحاب الصلاحية وتختفي تماماً عن المستخدم العادي) */}
           
@@ -689,25 +840,33 @@ export const ProfileScreen: React.FC = () => {
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsAgencyAdminModalOpen(true)}
-              className="my-1.5 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 border-2 border-blue-500/60 rounded-2xl p-3.5 flex items-center justify-between shadow-lg cursor-pointer hover:border-blue-400 transition-all group"
+              className={`relative my-2 p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} cursor-pointer group text-right transition-all duration-300`}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-600 border border-blue-400 flex items-center justify-center text-white shadow-md text-lg">
-                  🏛️
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black text-white tracking-wide">لوحة إدارة الوكالات</span>
-                    <span className="text-[9px] text-blue-200 bg-blue-500/30 px-2 py-0.5 rounded-md border border-blue-400/40 font-bold">
-                      إداري وكالات 🏛️
+              <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300`}>
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  {/* 3D Inner Embossed Plinth */}
+                  <div className={`relative w-11 h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                    <AgencyAdmin3DIcon className="w-8 h-8" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
+                        لوحة إدارة الوكالات
+                      </h4>
+                      <span className={`text-[9px] font-black ${curRoyal.roleBadge} px-1.5 py-0.2 rounded-md shadow-2xs`}>
+                        إداري وكالات 🏛️
+                      </span>
+                    </div>
+                    <span className={`text-[10px] ${curRoyal.subText} font-bold block mt-0.5 truncate`}>
+                      متابعة واعتماد الوكالات، مراقبة التارغت والوسطاء
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-300">متابعة واعتماد الوكالات، مراقبة التارغت والوسطاء</span>
+                </div>
+                <div className={`flex items-center gap-1.5 text-xs font-black ${curRoyal.roleButton} px-2.5 py-1 rounded-xl shadow-2xs transition-all`}>
+                  <span>دخول</span>
+                  <ChevronLeft className="w-4 h-4" />
                 </div>
               </div>
-              <span className="text-xs font-bold text-blue-100 bg-blue-600/70 px-3 py-1.5 rounded-xl border border-blue-400/50 flex items-center gap-1 shadow-inner group-hover:bg-blue-600 transition-all">
-                دخول <ChevronLeft className="w-3.5 h-3.5" />
-              </span>
             </motion.div>
           )}
 
@@ -717,53 +876,69 @@ export const ProfileScreen: React.FC = () => {
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsThemeAdminModalOpen(true)}
-              className="my-1.5 bg-gradient-to-r from-slate-950 via-slate-900 to-pink-950 border-2 border-pink-500/60 rounded-2xl p-3.5 flex items-center justify-between shadow-lg cursor-pointer hover:border-pink-400 transition-all group"
+              className={`relative my-2 p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} cursor-pointer group text-right transition-all duration-300`}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-pink-600 border border-pink-400 flex items-center justify-center text-white shadow-md text-lg">
-                  🎨
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black text-white tracking-wide">لوحة إدارة الثيمات والمتجر</span>
-                    <span className="text-[9px] text-pink-200 bg-pink-500/30 px-2 py-0.5 rounded-md border border-pink-400/40 font-bold">
-                      إداري ثيمات 🎨
+              <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300`}>
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  {/* 3D Inner Embossed Plinth */}
+                  <div className={`relative w-11 h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                    <ThemeAdmin3DIcon className="w-8 h-8" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
+                        لوحة إدارة الثيمات والمتجر
+                      </h4>
+                      <span className={`text-[9px] font-black ${curRoyal.roleBadge} px-1.5 py-0.2 rounded-md shadow-2xs`}>
+                        إداري ثيمات 🎨
+                      </span>
+                    </div>
+                    <span className={`text-[10px] ${curRoyal.subText} font-bold block mt-0.5 truncate`}>
+                      تصاميم الغرف الصوتية، لوحات الشرف، وعناصر المتجر
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-300">تصاميم الغرف الصوتية، لوحات الشرف، وعناصر المتجر</span>
+                </div>
+                <div className={`flex items-center gap-1.5 text-xs font-black ${curRoyal.roleButton} px-2.5 py-1 rounded-xl shadow-2xs transition-all`}>
+                  <span>دخول</span>
+                  <ChevronLeft className="w-4 h-4" />
                 </div>
               </div>
-              <span className="text-xs font-bold text-pink-100 bg-pink-600/70 px-3 py-1.5 rounded-xl border border-pink-400/50 flex items-center gap-1 shadow-inner group-hover:bg-pink-600 transition-all">
-                دخول <ChevronLeft className="w-3.5 h-3.5" />
-              </span>
             </motion.div>
           )}
 
-          {/* 3. الوكيل الرسمي (Official Agent) أو السوبر أدمن */}
+          {/* 3. الوكيل الرسمي (Official Agent) أو السوبر أدمن - وكالتي */}
           {(adminRole === 'official_agent' || adminRole === 'super_admin') && (
             <motion.div 
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsAgencyModalOpen(true)}
-              className="my-1.5 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 border-2 border-indigo-500/60 rounded-2xl p-3.5 flex items-center justify-between shadow-lg cursor-pointer hover:border-indigo-400 transition-all group"
+              className={`relative my-2 p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} cursor-pointer group text-right transition-all duration-300`}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 border border-indigo-400 flex items-center justify-center text-white shadow-md text-lg">
-                  💼
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black text-white tracking-wide">وكالتي</span>
-                    <span className="text-[9px] text-indigo-200 bg-indigo-500/30 px-2 py-0.5 rounded-md border border-indigo-400/40 font-bold">
-                      وكيل معتمد 💼
+              <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300`}>
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  {/* 3D Inner Embossed Plinth بنفس لون وشكل الأيقونات الموحدة */}
+                  <div className={`relative w-11 h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                    <OfficialAgency3DIcon className="w-8 h-8" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
+                        وكالتي
+                      </h4>
+                      <span className={`text-[9px] font-black ${curRoyal.roleBadge} px-1.5 py-0.2 rounded-md shadow-2xs font-mono`}>
+                        وكيل معتمد 💼
+                      </span>
+                    </div>
+                    <span className={`text-[10px] ${curRoyal.subText} font-bold block mt-0.5 truncate`}>
+                      إدارة المذيعين، الوسطاء، العقود والرواتب
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-300">إدارة المذيعين، الوسطاء، العقود والرواتب</span>
+                </div>
+                <div className={`flex items-center gap-1.5 text-xs font-black ${curRoyal.roleButton} px-2.5 py-1 rounded-xl shadow-2xs transition-all`}>
+                  <span>دخول</span>
+                  <ChevronLeft className="w-4 h-4" />
                 </div>
               </div>
-              <span className="text-xs font-bold text-indigo-100 bg-indigo-600/70 px-3 py-1.5 rounded-xl border border-indigo-400/50 flex items-center gap-1 shadow-inner group-hover:bg-indigo-600 transition-all">
-                دخول <ChevronLeft className="w-3.5 h-3.5" />
-              </span>
             </motion.div>
           )}
 
@@ -773,25 +948,33 @@ export const ProfileScreen: React.FC = () => {
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsBrokerCenterModalOpen(true)}
-              className="my-1.5 bg-gradient-to-r from-slate-950 via-slate-900 to-emerald-950 border-2 border-emerald-500/60 rounded-2xl p-3.5 flex items-center justify-between shadow-lg cursor-pointer hover:border-emerald-400 transition-all group"
+              className={`relative my-2 p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} cursor-pointer group text-right transition-all duration-300`}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-600 border border-emerald-400 flex items-center justify-center text-white shadow-md text-lg">
-                  🤝
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black text-white tracking-wide">مركز الوساطة والتوظيف</span>
-                    <span className="text-[9px] text-emerald-200 bg-emerald-500/30 px-2 py-0.5 rounded-md border border-emerald-400/40 font-bold">
-                      وسيط معتمد 🤝
+              <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300`}>
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  {/* 3D Inner Embossed Plinth */}
+                  <div className={`relative w-11 h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                    <Broker3DIcon className="w-8 h-8" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
+                        مركز الوساطة والتوظيف
+                      </h4>
+                      <span className={`text-[9px] font-black ${curRoyal.roleBadge} px-1.5 py-0.2 rounded-md shadow-2xs`}>
+                        وسيط معتمد 🤝
+                      </span>
+                    </div>
+                    <span className={`text-[10px] ${curRoyal.subText} font-bold block mt-0.5 truncate`}>
+                      استقطاب المذيعين، متابعة ساعات البث والعمولات
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-300">استقطاب المذيعين، متابعة ساعات البث والعمولات</span>
+                </div>
+                <div className={`flex items-center gap-1.5 text-xs font-black ${curRoyal.roleButton} px-2.5 py-1 rounded-xl shadow-2xs transition-all`}>
+                  <span>دخول</span>
+                  <ChevronLeft className="w-4 h-4" />
                 </div>
               </div>
-              <span className="text-xs font-bold text-emerald-100 bg-emerald-600/70 px-3 py-1.5 rounded-xl border border-emerald-400/50 flex items-center gap-1 shadow-inner group-hover:bg-emerald-600 transition-all">
-                دخول <ChevronLeft className="w-3.5 h-3.5" />
-              </span>
             </motion.div>
           )}
 
@@ -801,117 +984,134 @@ export const ProfileScreen: React.FC = () => {
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsModeratorModalOpen(true)}
-              className="my-1.5 bg-gradient-to-r from-slate-950 via-slate-900 to-teal-950 border-2 border-teal-500/60 rounded-2xl p-3.5 flex items-center justify-between shadow-lg cursor-pointer hover:border-teal-400 transition-all group"
+              className={`relative my-2 p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} cursor-pointer group text-right transition-all duration-300`}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-teal-600 border border-teal-400 flex items-center justify-center text-white shadow-md text-lg">
-                  🛡️
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black text-white tracking-wide">لوحة المراقب العام والدعم</span>
-                    <span className="text-[9px] text-teal-200 bg-teal-500/30 px-2 py-0.5 rounded-md border border-teal-400/40 font-bold">
-                      مراقب عام 🛡️
+              <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300`}>
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  {/* 3D Inner Embossed Plinth */}
+                  <div className={`relative w-11 h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                    <Moderator3DIcon className="w-8 h-8" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
+                        لوحة المراقب العام والدعم
+                      </h4>
+                      <span className={`text-[9px] font-black ${curRoyal.roleBadge} px-1.5 py-0.2 rounded-md shadow-2xs`}>
+                        مراقب عام 🛡️
+                      </span>
+                    </div>
+                    <span className={`text-[10px] ${curRoyal.subText} font-bold block mt-0.5 truncate`}>
+                      متابعة البلاغات، إدارة الحظر، والمراقبة الحية للغرف
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-300">متابعة البلاغات، إدارة الحظر، والمراقبة الحية للغرف</span>
+                </div>
+                <div className={`flex items-center gap-1.5 text-xs font-black ${curRoyal.roleButton} px-2.5 py-1 rounded-xl shadow-2xs transition-all`}>
+                  <span>دخول</span>
+                  <ChevronLeft className="w-4 h-4" />
                 </div>
               </div>
-              <span className="text-xs font-bold text-teal-100 bg-teal-600/70 px-3 py-1.5 rounded-xl border border-teal-400/50 flex items-center gap-1 shadow-inner group-hover:bg-teal-600 transition-all">
-                دخول <ChevronLeft className="w-3.5 h-3.5" />
-              </span>
             </motion.div>
           )}
 
           {/* للمستخدم العادي (regular_user): تظهر قائمته نقية وبدون أي أزرار إدارية إطلاقاً */}
 
-          {/* 2. شبكة الخدمات الملكية المخصصة (واحد يمين وواحد شمال) بأيقونات واقعية 3D وتنسيق مركز المذيعين */}
-          <div className="grid grid-cols-2 gap-2.5 py-1" dir="rtl">
+          {/* 2. شبكة الخدمات الملكية المخصصة (واحد يمين وواحد شمال) بالألوان الملكية المتغيرة مع شارات بارزة أعلى الحافة */}
+          <div className="grid grid-cols-2 gap-x-2.5 gap-y-3.5 pt-3 pb-1.5" dir="rtl">
             {/* الصف 1 يمين: مركز VIP */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.96 }}
               onClick={() => setIsVipCenterModalOpen(true)}
-              className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+              className={`relative p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} active:scale-95 transition-all duration-300 cursor-pointer group text-right w-full`}
             >
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                {/* 3D Inner Embossed Plinth */}
-                <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
-                  <VipCenter3DIcon className="w-8 h-8" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
+              {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+              <div className="absolute -top-2.5 right-4 z-20">
+                <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-black ${curRoyal.pillBadge} border font-mono tracking-wider transition-all duration-300`}>
+                  VIP 8
+                </span>
+              </div>
+              <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300 w-full h-full`}>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {/* 3D Inner Embossed Plinth */}
+                  <div className={`relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                    <VipCenter3DIcon className="w-7 h-7 sm:w-8 sm:h-8" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
                       مركز VIP
                     </h4>
-                    <span className="text-[9px] font-black bg-gradient-to-r from-[#F5D061] to-[#C89228] text-[#3B2610] px-1.5 py-0.2 rounded-md border border-[#E8DFC8] shadow-2xs font-mono">
-                      VIP8
+                    <span className={`text-[9.5px] sm:text-[10px] ${curRoyal.subText} font-bold block mt-0.5 truncate`}>
+                      المزايا والامتيازات
                     </span>
                   </div>
-                  <span className="text-[10px] text-[#A89478] font-bold block mt-0.5 truncate">
-                    المزايا والامتيازات
-                  </span>
                 </div>
+                <ChevronLeft className={`w-4 h-4 ${curRoyal.chevron} transition-transform group-hover:-translate-x-0.5 shrink-0 mr-0.5`} />
               </div>
-              <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
             </motion.button>
 
             {/* الصف 1 شمال: جينيس */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.96 }}
-              onClick={() => setActiveServiceModal('genius')}
-              className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+              onClick={() => setIsGeniusModalOpen(true)}
+              className={`relative p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} active:scale-95 transition-all duration-300 cursor-pointer group text-right w-full`}
             >
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                {/* 3D Inner Embossed Plinth */}
-                <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
-                  <Genius3DIcon className="w-8 h-8" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
+              {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+              <div className="absolute -top-2.5 right-4 z-20">
+                <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-black ${curRoyal.pillBadge} border font-sans tracking-wide transition-all duration-300`}>
+                  Genius
+                </span>
+              </div>
+              <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300 w-full h-full`}>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {/* 3D Inner Embossed Plinth */}
+                  <div className={`relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                    <Genius3DIcon className="w-7 h-7 sm:w-8 sm:h-8" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
                       جينيس
                     </h4>
-                    <span className="text-[9px] font-black bg-[#FAF5E8] text-[#7E4F0B] px-1.5 py-0.2 rounded-md border border-[#E8DFC8] shadow-2xs">
-                      Genius
+                    <span className={`text-[9.5px] sm:text-[10px] ${curRoyal.subText} font-bold block mt-0.5 truncate`}>
+                      الأرقام القياسية
                     </span>
                   </div>
-                  <span className="text-[10px] text-[#A89478] font-bold block mt-0.5 truncate">
-                    الذكاء والتحليلات
-                  </span>
                 </div>
+                <ChevronLeft className={`w-4 h-4 ${curRoyal.chevron} transition-transform group-hover:-translate-x-0.5 shrink-0 mr-0.5`} />
               </div>
-              <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
             </motion.button>
 
             {/* الصف 2 يمين: نقاط ودية */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.96 }}
-              onClick={() => setActiveServiceModal('friendly_points')}
-              className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+              onClick={() => setIsFriendlyPointsModalOpen(true)}
+              className={`relative p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} active:scale-95 transition-all duration-300 cursor-pointer group text-right w-full`}
             >
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                {/* 3D Inner Embossed Plinth */}
-                <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
-                  <FriendlyPoints3DIcon className="w-8 h-8" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
+              {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+              <div className="absolute -top-2.5 right-4 z-20">
+                <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-black ${curRoyal.pillBadge} border font-mono tracking-wider transition-all duration-300`}>
+                  2963
+                </span>
+              </div>
+              <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300 w-full h-full`}>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {/* 3D Inner Embossed Plinth */}
+                  <div className={`relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                    <FriendlyPoints3DIcon className="w-7 h-7 sm:w-8 sm:h-8" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
                       نقاط ودية
                     </h4>
-                    <span className="text-[9px] font-black bg-[#FAF5E8] text-[#7E4F0B] px-1.5 py-0.2 rounded-md border border-[#E8DFC8] shadow-2xs font-mono">
-                      2922
+                    <span className={`text-[9.5px] sm:text-[10px] ${curRoyal.subText} font-bold block mt-0.5 truncate`}>
+                      رصيد التفاعل
                     </span>
                   </div>
-                  <span className="text-[10px] text-[#A89478] font-bold block mt-0.5 truncate">
-                    رصيد التفاعل والصداقة
-                  </span>
                 </div>
+                <ChevronLeft className={`w-4 h-4 ${curRoyal.chevron} transition-transform group-hover:-translate-x-0.5 shrink-0 mr-0.5`} />
               </div>
-              <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
             </motion.button>
 
             {/* الصف 2 شمال: مركز الدعوة */}
@@ -919,28 +1119,31 @@ export const ProfileScreen: React.FC = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.96 }}
               onClick={() => setActiveServiceModal('invitations')}
-              className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+              className={`relative p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} active:scale-95 transition-all duration-300 cursor-pointer group text-right w-full`}
             >
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                {/* 3D Inner Embossed Plinth */}
-                <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
-                  <InviteCenter3DIcon className="w-8 h-8" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
+              {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+              <div className="absolute -top-2.5 right-4 z-20">
+                <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-black ${curRoyal.pillBadge} border font-sans tracking-wide transition-all duration-300`}>
+                  ادع واربح
+                </span>
+              </div>
+              <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300 w-full h-full`}>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {/* 3D Inner Embossed Plinth */}
+                  <div className={`relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                    <InviteCenter3DIcon className="w-7 h-7 sm:w-8 sm:h-8" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
                       مركز الدعوة
                     </h4>
-                    <span className="text-[9px] font-black bg-gradient-to-r from-[#F5D061]/20 to-[#C89228]/20 text-[#7E4F0B] px-1.5 py-0.2 rounded-md border border-[#E8DFC8] shadow-2xs">
-                      ادع واربح
+                    <span className={`text-[9.5px] sm:text-[10px] ${curRoyal.subText} font-bold block mt-0.5 truncate`}>
+                      مكافآت الانضمام
                     </span>
                   </div>
-                  <span className="text-[10px] text-[#A89478] font-bold block mt-0.5 truncate">
-                    مكافآت الانضمام
-                  </span>
                 </div>
+                <ChevronLeft className={`w-4 h-4 ${curRoyal.chevron} transition-transform group-hover:-translate-x-0.5 shrink-0 mr-0.5`} />
               </div>
-              <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
             </motion.button>
 
             {/* الصف 3 يمين: بطاقة الدعوة */}
@@ -948,58 +1151,147 @@ export const ProfileScreen: React.FC = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.96 }}
               onClick={() => setActiveServiceModal('invite_card')}
-              className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+              className={`relative p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} active:scale-95 transition-all duration-300 cursor-pointer group text-right w-full`}
             >
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                {/* 3D Inner Embossed Plinth */}
-                <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
-                  <InviteCard3DIcon className="w-8 h-8" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
+              {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+              <div className="absolute -top-2.5 right-4 z-20">
+                <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-black ${curRoyal.pillBadge} border font-sans tracking-wide transition-all duration-300`}>
+                  مشاركة
+                </span>
+              </div>
+              <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300 w-full h-full`}>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {/* 3D Inner Embossed Plinth */}
+                  <div className={`relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                    <InviteCard3DIcon className="w-7 h-7 sm:w-8 sm:h-8" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
                       بطاقة الدعوة
                     </h4>
-                    <span className="text-[9px] font-black bg-[#FAF5E8] text-[#7E4F0B] px-1.5 py-0.2 rounded-md border border-[#E8DFC8] shadow-2xs">
-                      مشاركة
+                    <span className={`text-[9.5px] sm:text-[10px] ${curRoyal.subText} font-bold block mt-0.5 truncate`}>
+                      كود الدعوة الملكي
                     </span>
                   </div>
-                  <span className="text-[10px] text-[#A89478] font-bold block mt-0.5 truncate">
-                    كود الدعوة الملكي
-                  </span>
                 </div>
+                <ChevronLeft className={`w-4 h-4 ${curRoyal.chevron} transition-transform group-hover:-translate-x-0.5 shrink-0 mr-0.5`} />
               </div>
-              <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
             </motion.button>
 
             {/* الصف 3 شمال: المركز التجاري */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.96 }}
-              onClick={() => setActiveServiceModal('mall')}
-              className="bg-white/80 backdrop-blur-md hover:bg-white/95 border border-[#E8DFC8]/90 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between shadow-[0_4px_16px_rgba(180,160,130,0.12),inset_0_1px_2px_rgba(255,255,255,1)] hover:shadow-[0_6px_20px_rgba(180,160,130,0.22)] active:scale-95 transition-all cursor-pointer group text-right"
+              onClick={() => setIsMallModalOpen(true)}
+              className={`relative p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} active:scale-95 transition-all duration-300 cursor-pointer group text-right w-full`}
             >
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                {/* 3D Inner Embossed Plinth */}
-                <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#E8DFC8] shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
-                  <Mall3DIcon className="w-8 h-8" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <h4 className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors truncate">
+              {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+              <div className="absolute -top-2.5 right-4 z-20">
+                <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-black ${curRoyal.pillBadge} border font-sans tracking-wide transition-all duration-300`}>
+                  المتجر
+                </span>
+              </div>
+              <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300 w-full h-full`}>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {/* 3D Inner Embossed Plinth */}
+                  <div className={`relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                    <Mall3DIcon className="w-7 h-7 sm:w-8 sm:h-8" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
                       المركز التجاري
                     </h4>
-                    <span className="text-[9px] font-black bg-[#FAF5E8] text-[#7E4F0B] px-1.5 py-0.2 rounded-md border border-[#E8DFC8] shadow-2xs">
-                      المتجر
+                    <span className={`text-[9.5px] sm:text-[10px] ${curRoyal.subText} font-bold block mt-0.5 truncate`}>
+                      الهدايا والعناصر
                     </span>
                   </div>
-                  <span className="text-[10px] text-[#A89478] font-bold block mt-0.5 truncate">
-                    الهدايا والعناصر
-                  </span>
+                </div>
+                <ChevronLeft className={`w-4 h-4 ${curRoyal.chevron} transition-transform group-hover:-translate-x-0.5 shrink-0 mr-0.5`} />
+              </div>
+            </motion.button>
+          </div>
+
+          {/* 6.5 إدارة المتجر وثيمات التطبيق (المستطيل البنفسجي الياقوتي الفاخر للمتجر والثيمات) */}
+          {(adminRole === 'theme_admin' || adminRole === 'super_admin' || isOwner) && (
+            <div 
+              onClick={() => setIsThemeAdminModalOpen(true)}
+              className="relative my-2 p-[2px] rounded-2xl bg-gradient-to-r from-[#7E22CE] via-[#D946EF] to-[#6366F1] shadow-[0_4px_16px_rgba(147,51,234,0.22)] cursor-pointer group transition-all"
+            >
+              <div className="bg-gradient-to-r from-[#FAF5FF] via-[#FDF4FF] to-[#F5F3FF] rounded-[14px] p-3 flex items-center justify-between border border-[#E9D5FF]/90 group-hover:bg-white transition-all">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#6B21A8] via-[#A855F7] to-[#F472B6] flex items-center justify-center text-white shadow-[0_2px_8px_rgba(147,51,234,0.35)] text-lg border border-white/80">
+                    🎨
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-[#4C1D95] tracking-wide">إدارة المتجر وثيمات التطبيق</span>
+                      <span className="text-[9px] bg-gradient-to-r from-[#7E22CE] to-[#6366F1] text-white font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
+                        إداري ثيمات 🎨
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-[#7E22CE] font-bold">رفع صور VIP، إدارة عناصر المتجر، وثيمات الغرف</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs font-black text-[#6B21A8] bg-white/95 border border-[#D8B4FE]/60 px-2.5 py-1 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-[#7E22CE] group-hover:to-[#6366F1] group-hover:text-white group-hover:border-transparent transition-all">
+                  <span>دخول</span>
+                  <ChevronLeft className="w-4 h-4" />
                 </div>
               </div>
-              <ChevronLeft className="w-4 h-4 text-[#D1C2A5] group-hover:text-[#B38022] transition-colors shrink-0 mr-0.5" />
-            </motion.button>
+            </div>
+          )}
+
+          {/* 6.7 مدير الوكالات الرسمية والمندوبين (المستطيل الماسي السيان الملكي الفاخر لرئيس الوكالات) */}
+          <div 
+            onClick={() => setIsOfficialAgencyManagerModalOpen(true)}
+            className="relative my-2 p-[2px] rounded-2xl bg-gradient-to-r from-[#0369A1] via-[#0284C7] to-[#0D9488] shadow-[0_4px_18px_rgba(2,132,199,0.28)] cursor-pointer group transition-all"
+          >
+            <div className="bg-gradient-to-r from-[#F0F9FF] via-[#E0F2FE] to-[#F0FDFA] rounded-[14px] p-3 flex items-center justify-between border border-[#BAE6FD]/90 group-hover:bg-white transition-all">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0369A1] via-[#0284C7] to-[#38BDF8] flex items-center justify-center text-white shadow-[0_2px_8px_rgba(2,132,199,0.35)] text-lg border border-white/80">
+                  👑
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-[#0C4A6E] tracking-wide">مدير الوكالات الرسمية والمندوبين</span>
+                    <span className="text-[9px] bg-gradient-to-r from-[#0284C7] to-[#0D9488] text-white font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
+                      رئيس الوكالات 💎
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-[#0369A1] font-bold">استدعاء وكالات رسمية، تعيين المندوبين، وفتح وإغلاق الصلاحيات</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs font-black text-[#0369A1] bg-white/95 border border-[#7DD3FC]/60 px-2.5 py-1 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-[#0284C7] group-hover:to-[#0D9488] group-hover:text-white group-hover:border-transparent transition-all">
+                <span>دخول</span>
+                <ChevronLeft className="w-4 h-4" />
+              </div>
+            </div>
+          </div>
+
+          {/* 6.8 مندوب وكالات (المستطيل الفضي البلاتيني الفاخر للمندوب) */}
+          <div 
+            onClick={() => setIsAgencyRepModalOpen(true)}
+            className="relative my-2 p-[2px] rounded-2xl bg-gradient-to-r from-[#334155] via-[#64748B] to-[#94A3B8] shadow-[0_4px_16px_rgba(71,85,105,0.25)] cursor-pointer group transition-all"
+          >
+            <div className="bg-gradient-to-r from-[#F8FAFC] via-[#F1F5F9] to-[#E2E8F0] rounded-[14px] p-3 flex items-center justify-between border border-[#CBD5E1]/90 group-hover:bg-white transition-all">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#334155] via-[#64748B] to-[#94A3B8] flex items-center justify-center text-white shadow-[0_2px_8px_rgba(71,85,105,0.35)] text-lg border border-white/80">
+                  🏛️
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-[#1E293B] tracking-wide">مندوب وكالات</span>
+                    <span className="text-[9px] bg-gradient-to-r from-[#475569] to-[#334155] text-white font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
+                      استدعاء وكلاء 🔱
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-[#475569] font-bold">صلاحية استدعاء وكلاء رسميين ومتابعة الأرباح والعمولات</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs font-black text-[#334155] bg-white/95 border border-[#94A3B8]/60 px-2.5 py-1 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-[#475569] group-hover:to-[#334155] group-hover:text-white group-hover:border-transparent transition-all">
+                <span>دخول</span>
+                <ChevronLeft className="w-4 h-4" />
+              </div>
+            </div>
           </div>
 
           {/* 7. مركز الإدارة - الداشبورد (مركز الوسطاء بالشكل المخصص الجديد) */}
@@ -1160,7 +1452,20 @@ export const ProfileScreen: React.FC = () => {
       <RechargeModal
         isOpen={isRechargeModalOpen}
         onClose={() => setIsRechargeModalOpen(false)}
-        onSuccessRecharge={(addedCoins) => setCoinsBalance((prev) => prev + addedCoins)}
+        onSuccessRecharge={(addedCoins) => {
+          setCoinsBalance((prev) => {
+            const next = prev + addedCoins;
+            try {
+              localStorage.setItem('user_wallet_coins', next.toString());
+              window.dispatchEvent(
+                new CustomEvent('user_coins_updated', {
+                  detail: { coins: next }
+                })
+              );
+            } catch {}
+            return next;
+          });
+        }}
       />
 
       {/* Modals & Dialogs */}
@@ -1228,7 +1533,9 @@ export const ProfileScreen: React.FC = () => {
       <UserLevelModal
         isOpen={isLevelModalOpen}
         onClose={() => setIsLevelModalOpen(false)}
-        level={25}
+        level={113}
+        userName={profile.name || "(عابر سبيل)"}
+        avatarUrl={profile.avatarUrl}
       />
 
       <FamilyModal
@@ -1239,6 +1546,8 @@ export const ProfileScreen: React.FC = () => {
       <BadgesCenterModal
         isOpen={isBadgesCenterModalOpen}
         onClose={() => setIsBadgesCenterModalOpen(false)}
+        userName={profile.name || "(عابر سبيل)"}
+        avatarUrl={profile.avatarUrl}
         badges={profile.badges}
         onSelectBadge={(badge) => setSelectedBadge(badge)}
       />
@@ -1247,6 +1556,7 @@ export const ProfileScreen: React.FC = () => {
         isOpen={isAppearanceModalOpen}
         onClose={() => setIsAppearanceModalOpen(false)}
         avatarUrl={profile.avatarUrl}
+        userName={profile.name || "عابر سبيل"}
       />
 
       <VipCenterModal
@@ -1287,10 +1597,32 @@ export const ProfileScreen: React.FC = () => {
         onClose={() => setIsAgencyAdminModalOpen(false)}
       />
 
-      {/* لوحة إداري الثيمات والمتجر */}
-      <ThemeAdminDashboardModal
+      {/* لوحة إداري الثيمات والمتجر ورفع الـ VIP المعتمدة */}
+      <StoreAndThemeAdminModal
         isOpen={isThemeAdminModalOpen}
         onClose={() => setIsThemeAdminModalOpen(false)}
+        userId={profile.userId}
+        isSuperAdmin={isOwner || adminRole === 'super_admin'}
+      />
+
+      {/* مركز ولوحة مدير الوكالات الرسمية والمندوبين (فتح الصلاحيات والتوثيق) */}
+      <OfficialAgencyManagerModal
+        isOpen={isOfficialAgencyManagerModalOpen}
+        onClose={() => setIsOfficialAgencyManagerModalOpen(false)}
+        managerId={profile.userId}
+        managerName={profile.nickname || profile.name}
+        managerAvatar={profile.avatarUrl}
+        isSuperAdmin={isOwner || adminRole === 'super_admin'}
+      />
+
+      {/* مركز ولوحة مندوب الوكالات الرسمية (استدعاء الوكلاء والعمولات) */}
+      <AgencyRepresentativeModal
+        isOpen={isAgencyRepModalOpen}
+        onClose={() => setIsAgencyRepModalOpen(false)}
+        repId={profile.userId}
+        repName={profile.nickname || profile.name}
+        repAvatar={profile.avatarUrl}
+        isSuperAdmin={isOwner || adminRole === 'super_admin'}
       />
 
       {/* لوحة المراقب العام والدعم */}
@@ -1313,6 +1645,45 @@ export const ProfileScreen: React.FC = () => {
         userName={profile.name}
         userAvatar={profile.avatarUrl}
         userId={profile.userId}
+      />
+
+      {/* جينيس YoHo - الذكاء والتحليلات ولوحة الشرف */}
+      <GeniusYoHoModal
+        isOpen={isGeniusModalOpen || activeServiceModal === 'genius'}
+        onClose={() => {
+          setIsGeniusModalOpen(false);
+          if (activeServiceModal === 'genius') setActiveServiceModal(null);
+        }}
+        currentUserName={profile.name}
+        currentUserAvatar={profile.avatarUrl}
+        currentUserId={profile.userId}
+      />
+
+      {/* نقاط ودية - الرصيد والمزايا والمهام */}
+      <FriendlyPointsModal
+        isOpen={isFriendlyPointsModalOpen || activeServiceModal === 'friendly_points'}
+        onClose={() => {
+          setIsFriendlyPointsModalOpen(false);
+          if (activeServiceModal === 'friendly_points') setActiveServiceModal(null);
+        }}
+        currentUserName={profile.name}
+        currentUserAvatar={profile.avatarUrl}
+      />
+
+      {/* المركز التجاري - المتجر الملكي (إطارات، سيارات، فقاعات، ملصقات) */}
+      <MallCenterModal
+        isOpen={isMallModalOpen || activeServiceModal === 'mall'}
+        onClose={() => {
+          setIsMallModalOpen(false);
+          if (activeServiceModal === 'mall') setActiveServiceModal(null);
+        }}
+        userName={profile.name}
+        userAvatar={profile.avatarUrl}
+        coinsBalance={30}
+        onRechargeClick={() => {
+          setIsMallModalOpen(false);
+          setIsRechargeModalOpen(true);
+        }}
       />
 
       <ServicesModal

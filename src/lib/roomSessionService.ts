@@ -24,6 +24,19 @@ export function getActiveRoomSession(): ActiveRoomSession | null {
 }
 
 export function setActiveRoomSession(session: ActiveRoomSession | null): void {
+  if (
+    activeSession &&
+    session &&
+    activeSession.roomId === session.roomId &&
+    activeSession.roomTitle === session.roomTitle &&
+    activeSession.hostName === session.hostName &&
+    activeSession.roomAvatar === session.roomAvatar &&
+    activeSession.isMinimized === session.isMinimized &&
+    activeSession.isMuted === session.isMuted &&
+    activeSession.isOwner === session.isOwner
+  ) {
+    return; // No meaningful change, avoid trigger loops
+  }
   activeSession = session;
   notifySubscribers();
   if (typeof window !== 'undefined') {

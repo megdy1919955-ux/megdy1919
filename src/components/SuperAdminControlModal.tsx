@@ -64,6 +64,7 @@ import {
   ModerationReport
 } from '../lib/adminRoleService';
 import { ManageAdminsHierarchyView } from './ManageAdminsHierarchyView';
+import { OfficialAgenciesManagement } from './OfficialAgenciesManagement';
 
 interface SuperAdminControlModalProps {
   isOpen: boolean;
@@ -91,7 +92,7 @@ export const SuperAdminControlModal: React.FC<SuperAdminControlModalProps> = ({
   onOpenThemeModal,
   onOpenModeratorModal
 }) => {
-  const [activeSection, setActiveSection] = useState<ActiveSection>('menu_hub');
+  const [activeSection, setActiveSection] = useState<ActiveSection>('manage_agencies');
 
   // Data states
   const [adminsList, setAdminsList] = useState<AssignedAdmin[]>([]);
@@ -286,12 +287,12 @@ export const SuperAdminControlModal: React.FC<SuperAdminControlModalProps> = ({
     },
     {
       id: 'manage_agencies' as ActiveSection,
-      arabicTitle: 'إدارة الوكالات الرسمية والوسطاء',
-      englishTitle: 'Official Agencies & Sub-Agents Hub',
+      arabicTitle: 'إدارة الوكالات الرسمية والمندوبين',
+      englishTitle: 'Official Agencies & Representatives Hub',
       icon: Building2,
       badgeText: `${agencyRequests.filter(r => r.status === 'pending').length} طلب معلق`,
-      glowColor: 'from-purple-500/20 to-violet-500/10 border-purple-500/40',
-      iconBg: 'bg-gradient-to-tr from-purple-600 to-violet-500 text-white',
+      glowColor: 'from-purple-500/20 to-fuchsia-500/10 border-purple-500/40',
+      iconBg: 'bg-gradient-to-tr from-purple-500 to-fuchsia-600 text-white',
     },
     {
       id: 'manage_store_themes' as ActiveSection,
@@ -503,83 +504,13 @@ export const SuperAdminControlModal: React.FC<SuperAdminControlModalProps> = ({
           )}
 
           {/* ========================================================================= */}
-          {/* 4. RECTANGLE 3: OFFICIAL AGENCIES & SUB-AGENTS HUB (إدارة الوكالات) */}
+          {/* 4. RECTANGLE 3: OFFICIAL AGENCIES & REPRESENTATIVES HUB (إدارة الوكالات الرسمية والمندوبين) */}
           {/* ========================================================================= */}
           {activeSection === 'manage_agencies' && (
-            <div className="space-y-4">
-              
-              {/* Pending Agency Applications */}
-              <div className="p-4 bg-slate-900/90 border-2 border-purple-500/40 rounded-3xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-black text-purple-300 flex items-center gap-1.5">
-                    <Building2 className="w-4 h-4 text-purple-400" />
-                    <span>طلبات توثيق الوكالات الجديدة ({agencyRequests.filter(r => r.status === 'pending').length})</span>
-                  </h4>
-                </div>
-
-                <div className="space-y-2">
-                  {agencyRequests.map((req) => (
-                    <div
-                      key={req.id}
-                      className="p-3 bg-slate-950 rounded-2xl border border-slate-800 text-xs space-y-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="font-black text-white">{req.agencyName}</span>
-                          <span className="text-[10px] text-purple-300 font-mono bg-purple-950 px-1.5 py-0.2 rounded border border-purple-800 mr-2">
-                            GID: {req.proposedGid}
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/30">
-                          {req.status === 'pending' ? 'قيد المراجعة' : req.status === 'approved' ? 'معتمدة ✓' : 'مرفوضة'}
-                        </span>
-                      </div>
-
-                      <p className="text-[11px] text-slate-400">
-                        مقدم الطلب: <strong className="text-slate-200">{req.applicantName}</strong> (ID: {req.applicantId}) | الدولة: {req.country}
-                      </p>
-
-                      {req.status === 'pending' && (
-                        <div className="flex items-center gap-2 pt-1">
-                          <button
-                            onClick={() => {
-                              approveAgencyRequest(req.id, OWNER_DEV_ID);
-                              showToast(`✅ تم اعتماد وكالة ${req.agencyName}`);
-                            }}
-                            className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-[11px] cursor-pointer"
-                          >
-                            اعتماد الوكالة رسمياً ✓
-                          </button>
-                          <button
-                            onClick={() => {
-                              rejectAgencyRequest(req.id, 'شروط غير مكتملة', OWNER_DEV_ID);
-                              showToast('تم رفض الطلب');
-                            }}
-                            className="py-1.5 px-3 bg-rose-600/20 text-rose-300 border border-rose-500/30 rounded-xl text-[11px] cursor-pointer"
-                          >
-                            رفض
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Certified Agency Hub button */}
-              {onOpenAgencyModal && (
-                <button
-                  onClick={() => {
-                    onClose();
-                    onOpenAgencyModal();
-                  }}
-                  className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs rounded-2xl shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Building2 className="w-4 h-4" />
-                  <span>فتح نافذة الوكالات والوسطاء الشاملة</span>
-                </button>
-              )}
-            </div>
+            <OfficialAgenciesManagement
+              onBackToMenu={() => setActiveSection('menu_hub')}
+              showToast={showToast}
+            />
           )}
 
           {/* ========================================================================= */}

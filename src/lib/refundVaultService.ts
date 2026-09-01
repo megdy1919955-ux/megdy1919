@@ -1,17 +1,31 @@
 /**
- * Refund Vault & Lucky Cashback Service
+ * Gift Cashback & Dedicated Treasury System (نظام استرداد الهدايا والخزينة المستقلة)
  * Super Legend App - 2026
  *
- * Manages the shared Refund Vault (خزينة الاسترداد),
- * calculates dynamic odds & cashback returns when sending Refund Gifts,
- * and broadcasts wins to the room and chat.
+ * ⚠️ تنبيه هام: هذا النظام خاص بـ "استرداد الهدايا (Gift Cashback)" وهو نظام منفصل تماماً
+ * ومستقل عن أي لعبة أخرى (كالجاك بوت Jackpot). الخزينة والمنطق البرمجي هنا خاصان بخصم
+ * وإرجاع مبالغ الهدايا فقط.
+ *
+ * 1. الخزينة المستقلة: gift_cashback_treasury
+ * 2. تغذية الخزينة: اقتطاع نسبة متبقية من قيمة الهدية (100% - نسبة المستلم العشوائية).
+ *    - نسبة المستلم: شائعة (25%-30%)، متوسطة (50%)، نادرة (70%)، نادرة جداً (100%).
+ * 3. صرف الاسترداد:
+ *    - استرداد جزئي (عشوائي): 10%، 20%، 30%، أو 40% من قيمة الهدية.
+ *    - استرداد مضاعف (نادر جداً وبشرط امتلاء الخزينة): 2x، 3x، أو 5x.
+ * 4. حماية الخزينة (Zero-Loss Logic): يمنع صرف أي استرداد يتجاوز رصيد الخزينة المتاح.
  */
 
 import { GiftItem } from './giftCmsService';
 
-const VAULT_STORAGE_KEY = 'super_legend_refund_vault_balance_v1';
-const RECENT_WINNERS_KEY = 'super_legend_refund_recent_winners_v1';
-const INITIAL_VAULT_BALANCE = 1854290; // Initial ~1.85M Coins in Vault
+// Dedicated isolated storage key for Gift Cashback Treasury
+const CASHBACK_TREASURY_KEY = 'gift_cashback_treasury';
+const LEGACY_VAULT_KEY = 'super_legend_refund_vault_balance_v1';
+const RECENT_WINNERS_KEY = 'gift_cashback_recent_winners_v1';
+
+// Initial Treasury baseline: 1,850,000 Coins
+const INITIAL_TREASURY_BALANCE = 1850000;
+// Minimum Safe Reserve to protect treasury from depletion
+const MIN_SAFE_RESERVE = 100000;
 
 export type RefundWinTier = 'minor' | 'medium' | 'big' | 'mega_jackpot';
 
@@ -23,13 +37,16 @@ export interface RefundDrawResult {
   giftPrice: number;
   quantity: number;
   totalCost: number;
-  refundCoins: number;
-  multiplier: number; // e.g. 0.25x, 0.8x, 2.5x, 15x
+  recipientRate: number;        // نسبة المستلم (25%-30%, 50%, 70%, 100%)
+  recipientCoins: number;       // المبلغ الذي استلمه المضيف
+  treasuryShare: number;        // حصة الخزينة من الهدية (100% - نسبة المستلم)
+  refundCoins: number;          // مبلغ الاسترداد المرجوع للداعم
+  multiplier: number;           // نسبة أو مضاعف الاسترداد (0.1x, 0.2x, 0.3x, 0.4x, 2x, 3x, 5x)
   winTier: RefundWinTier;
   tierLabel: string;
-  vaultContribution: number;
-  vaultBalanceBefore: number;
-  vaultBalanceAfter: number;
+  vaultContribution: number;    // نفس treasuryShare للتوافق
+  vaultBalanceBefore: number;   // رصيد الخزينة قبل العملية
+  vaultBalanceAfter: number;    // رصيد الخزينة بعد العملية
   senderName: string;
   recipientName: string;
   timestamp: string;
@@ -46,17 +63,17 @@ export interface RefundWinner {
   timeAgo: string;
 }
 
-// In-memory reactive state
-let currentVaultBalance = INITIAL_VAULT_BALANCE;
-let recentWinners: RefundWinner[] = [
+// In-memory state for Gift Cashback Treasury
+let currentCashbackTreasury = INITIAL_TREASURY_BALANCE;
+let recentCashbackWinners: RefundWinner[] = [
   {
     id: 'w-1',
     senderName: 'الملك الكويتي 👑',
     giftName: 'صندوق الكنز السحري 📦',
     giftIcon: '📦',
     refundCoins: 14400,
-    multiplier: 0.60,
-    winTier: 'medium',
+    multiplier: 0.40,
+    winTier: 'minor',
     timeAgo: 'منذ دقيقتين'
   },
   {
@@ -64,8 +81,8 @@ let recentWinners: RefundWinner[] = [
     senderName: 'أميرة الشرق ✨',
     giftName: 'السيارة الذهب الأسطورية 🏎️',
     giftIcon: '🏎️',
-    refundCoins: 15000,
-    multiplier: 1.5,
+    refundCoins: 50000,
+    multiplier: 5.0,
     winTier: 'mega_jackpot',
     timeAgo: 'منذ 5 دقائق'
   },
@@ -74,28 +91,28 @@ let recentWinners: RefundWinner[] = [
     senderName: 'صقر الشمال 🦅',
     giftName: 'حقيبة الأموال 💰',
     giftIcon: '💰',
-    refundCoins: 2500,
-    multiplier: 0.50,
-    winTier: 'medium',
+    refundCoins: 6000,
+    multiplier: 3.0,
+    winTier: 'big',
     timeAgo: 'منذ 9 دقائق'
   }
 ];
 
-// Initialize from localStorage
+// Initialize from isolated localStorage key
 if (typeof window !== 'undefined') {
   try {
-    const savedVault = localStorage.getItem(VAULT_STORAGE_KEY);
-    if (savedVault) {
-      const parsed = parseInt(savedVault, 10);
-      if (!isNaN(parsed) && parsed > 500000) {
-        currentVaultBalance = parsed;
+    const savedTreasury = localStorage.getItem(CASHBACK_TREASURY_KEY) || localStorage.getItem(LEGACY_VAULT_KEY);
+    if (savedTreasury) {
+      const parsed = parseInt(savedTreasury, 10);
+      if (!isNaN(parsed) && parsed > 50000) {
+        currentCashbackTreasury = parsed;
       }
     }
     const savedWinners = localStorage.getItem(RECENT_WINNERS_KEY);
     if (savedWinners) {
       const parsedW = JSON.parse(savedWinners);
       if (Array.isArray(parsedW) && parsedW.length > 0) {
-        recentWinners = parsedW;
+        recentCashbackWinners = parsedW;
       }
     }
   } catch {
@@ -103,12 +120,18 @@ if (typeof window !== 'undefined') {
   }
 }
 
-function saveVaultBalance(balance: number): void {
-  currentVaultBalance = balance;
+/**
+ * Save updated Gift Cashback Treasury balance securely
+ */
+function saveCashbackTreasuryBalance(balance: number): void {
+  currentCashbackTreasury = Math.max(0, balance);
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(VAULT_STORAGE_KEY, balance.toString());
-      window.dispatchEvent(new CustomEvent('refund_vault_updated', { detail: balance }));
+      localStorage.setItem(CASHBACK_TREASURY_KEY, currentCashbackTreasury.toString());
+      localStorage.setItem(LEGACY_VAULT_KEY, currentCashbackTreasury.toString());
+      // Broadcast isolated event
+      window.dispatchEvent(new CustomEvent('gift_cashback_treasury_updated', { detail: currentCashbackTreasury }));
+      window.dispatchEvent(new CustomEvent('refund_vault_updated', { detail: currentCashbackTreasury }));
     } catch {
       // Ignore
     }
@@ -116,11 +139,11 @@ function saveVaultBalance(balance: number): void {
 }
 
 function saveRecentWinners(winners: RefundWinner[]): void {
-  recentWinners = winners.slice(0, 10);
+  recentCashbackWinners = winners.slice(0, 10);
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(RECENT_WINNERS_KEY, JSON.stringify(recentWinners));
-      window.dispatchEvent(new CustomEvent('refund_winners_updated', { detail: recentWinners }));
+      localStorage.setItem(RECENT_WINNERS_KEY, JSON.stringify(recentCashbackWinners));
+      window.dispatchEvent(new CustomEvent('refund_winners_updated', { detail: recentCashbackWinners }));
     } catch {
       // Ignore
     }
@@ -128,30 +151,36 @@ function saveRecentWinners(winners: RefundWinner[]): void {
 }
 
 export function getRefundVaultBalance(): number {
-  return currentVaultBalance;
+  return currentCashbackTreasury;
+}
+
+export function getGiftCashbackTreasuryBalance(): number {
+  return currentCashbackTreasury;
 }
 
 export function getRecentRefundWinners(): RefundWinner[] {
-  return recentWinners;
+  return recentCashbackWinners;
 }
 
 export function subscribeToRefundVault(callback: (balance: number) => void): () => void {
   const handler = (e: Event) => {
     const custom = e as CustomEvent<number>;
-    callback(custom.detail ?? currentVaultBalance);
+    callback(custom.detail ?? currentCashbackTreasury);
   };
   if (typeof window !== 'undefined') {
+    window.addEventListener('gift_cashback_treasury_updated', handler);
     window.addEventListener('refund_vault_updated', handler);
   }
   return () => {
     if (typeof window !== 'undefined') {
+      window.removeEventListener('gift_cashback_treasury_updated', handler);
       window.removeEventListener('refund_vault_updated', handler);
     }
   };
 }
 
 /**
- * Check if a gift qualifies for Refund Vault processing
+ * Check if a gift qualifies for Gift Cashback processing
  */
 export function isRefundGift(gift: GiftItem): boolean {
   if (!gift) return false;
@@ -163,7 +192,32 @@ export function isRefundGift(gift: GiftItem): boolean {
 }
 
 /**
- * Execute the dynamic lucky draw calculation for a refund gift
+ * Calculate random recipient share according to specification:
+ * - شائعة: 25% - 30%
+ * - متوسطة: 50%
+ * - نادرة: 70%
+ * - نادرة جداً: 100%
+ */
+function calculateRecipientRate(): number {
+  const rand = Math.random() * 100;
+  if (rand < 66) {
+    // شائعة: 25% - 30%
+    return parseFloat((0.25 + Math.random() * 0.05).toFixed(2));
+  } else if (rand < 88) {
+    // متوسطة: 50%
+    return 0.50;
+  } else if (rand < 97) {
+    // نادرة: 70%
+    return 0.70;
+  } else {
+    // نادرة جداً: 100%
+    return 1.00;
+  }
+}
+
+/**
+ * Execute the Gift Cashback & Dedicated Treasury calculation
+ * Strictly adhering to the Zero-Loss logic and dedicated treasury rules.
  */
 export function processRefundGiftDraw(
   gift: GiftItem,
@@ -172,91 +226,122 @@ export function processRefundGiftDraw(
   recipientName: string = 'المضيف'
 ): RefundDrawResult {
   const totalCost = gift.price * quantity;
-  const vaultBefore = currentVaultBalance;
+  const treasuryBefore = currentCashbackTreasury;
 
-  // 1. Vault Contribution (15% goes into the collective treasury)
-  const contribution = Math.max(1, Math.round(totalCost * 0.15));
-  let updatedVault = vaultBefore + contribution;
+  // ================= 1. تغذية خزينة الاسترداد (Cashback Treasury Inflow) =================
+  // نسبة المستلم عشوائية: شائعة (25%-30%)، متوسطة (50%)، نادرة (70%)، نادرة جداً (100%)
+  const recipientRate = calculateRecipientRate();
+  const recipientCoins = Math.round(totalCost * recipientRate);
 
-  // 2. High-Morale Balanced RNG Draw:
-  // - 55% Regular High Cashback (استرداد جزئي محفز: 40% - 70% من قيمة الهدية)
-  // - 28% Excellent Return / Full Recovery (استرداد ممتاز واسترجاع كامل: 80% - 130%)
-  // - 13% Big Win & Multiplier Boost (مضاعفة وربح كبير: 180% - 320% = 1.8x إلى 3.2x)
-  // - 4% Mega Jackpot Treasury Breaker (الجائزة الكبرى كسر الخزينة: 400% - 800% = 4x إلى 8x)
-  const rng = Math.random() * 100;
+  // نسبة الخزينة: المتبقي من قيمة الهدية (100% - نسبة المستلم)
+  const treasuryShare = Math.max(0, totalCost - recipientCoins);
 
-  let multiplier = 0.50;
+  // الرصيد المؤقت بعد إضافة حصة الهدية
+  const treasuryWithInflow = treasuryBefore + treasuryShare;
+
+  // ================= 2. آلية صرف الاسترداد للداعم (Cashback Output Logic) =================
+  // شرط الاسترداد: توفر رصيد كافٍ يفوق حد الأمان
+  const availableLiquidity = Math.max(0, treasuryWithInflow - MIN_SAFE_RESERVE);
+
+  let multiplier = 0.20;
   let winTier: RefundWinTier = 'minor';
   let tierLabel = 'استرداد كوينز جزئي 🔄';
 
-  if (rng < 55) {
-    // Regular High Cashback (40% - 70%)
-    multiplier = parseFloat((0.40 + Math.random() * 0.30).toFixed(2));
-    winTier = 'minor';
-    tierLabel = 'استرداد كوينز محفز (40%-70%) 🔄';
-  } else if (rng < 83) {
-    // Excellent Return / Full Recovery (80% - 130%)
-    multiplier = parseFloat((0.80 + Math.random() * 0.50).toFixed(2));
-    winTier = 'medium';
-    tierLabel = 'مردود ممتاز واسترجاع مبارك ✨';
-  } else if (rng < 96) {
-    // Big Win (180% - 320% / 1.8x - 3.2x)
-    multiplier = parseFloat((1.80 + Math.random() * 1.40).toFixed(2));
-    winTier = 'big';
-    tierLabel = 'مضاعفة وربح كبير 🌟';
-  } else {
-    // Mega Jackpot (400% - 800% / 4x - 8x)
-    multiplier = parseFloat((4.00 + Math.random() * 4.00).toFixed(2));
+  // التحقق من إمكانية صرف الاسترداد المضاعف (مكافأة نادرة جداً وبشرط امتلاء الخزينة بمبلغ كبير جداً)
+  // شروط المضاعف:
+  // - الخزينة ممتلئة بمبلغ كبير (مثلاً فوق 300,000 وتغطي 8 أضعاف تكلفة الهدية على الأقل)
+  const canAffordGrandMultiplier = availableLiquidity >= totalCost * 6 && currentCashbackTreasury >= 300000;
+  const canAffordMediumMultiplier = availableLiquidity >= totalCost * 3.5 && currentCashbackTreasury >= 200000;
+
+  const multiplierRng = Math.random() * 100;
+
+  if (canAffordGrandMultiplier && multiplierRng < 1.0) {
+    // استرداد مضاعف أسطوري 5 أضعاف (5x) - نادر جداً (~1%)
+    multiplier = 5.0;
     winTier = 'mega_jackpot';
-    tierLabel = '👑 الجائزة الكبرى كسر الخزينة JACKPOT 🎰';
+    tierLabel = '👑 استرداد مضاعف أسطوري (5 أضعاف 5x)';
+  } else if (canAffordGrandMultiplier && multiplierRng < 3.0) {
+    // استرداد مضاعف 3 أضعاف (3x) - نادر جداً (~2%)
+    multiplier = 3.0;
+    winTier = 'big';
+    tierLabel = '🌟 استرداد مضاعف كبير (3 أضعاف 3x)';
+  } else if (canAffordMediumMultiplier && multiplierRng < 7.0) {
+    // استرداد مضاعف ضعفين (2x) - نادر (~4%)
+    multiplier = 2.0;
+    winTier = 'medium';
+    tierLabel = '✨ استرداد مضاعف مبارك (ضعف المبلغ 2x)';
+  } else {
+    // استرداد جزئي عشوائي: (10%، 20%، 30%، أو 40%) من قيمة الهدية
+    const partialOptions = [0.10, 0.20, 0.30, 0.40];
+    const randomIndex = Math.floor(Math.random() * partialOptions.length);
+    multiplier = partialOptions[randomIndex];
+    winTier = 'minor';
+    tierLabel = `استرداد كوينز جزئي (${Math.round(multiplier * 100)}%) 🔄`;
   }
 
-  // Calculate raw refund coins
-  let refundCoins = Math.max(1, Math.round(totalCost * multiplier));
+  // حساب قيمة الاسترداد المطلوب صرفه
+  let candidateRefundCoins = Math.round(totalCost * multiplier);
 
-  // If Big Win or Mega Jackpot exceeds the gift value, deduct the surplus from vault safely
-  if (refundCoins > totalCost) {
-    const surplusPayout = refundCoins - totalCost;
-    const safeDeduction = Math.min(surplusPayout, Math.round(updatedVault * 0.08));
-    updatedVault = Math.max(600000, updatedVault - safeDeduction);
+  // ================= 3. حماية الخزينة وضمان عدم الخسارة (Zero-Loss Logic) =================
+  // يمنع النظام صرف أي استرداد (جزئي أو مضاعف) إذا كان رصيد الخزينة < قيمة الاسترداد المطلوب
+  let finalRefundCoins = candidateRefundCoins;
+
+  if (finalRefundCoins > availableLiquidity) {
+    // في حال عدم كفاية السيولة للمضاعف، يتم التراجع للاسترداد الجزئي الآمن المتاح
+    if (multiplier > 0.40) {
+      multiplier = 0.20;
+      winTier = 'minor';
+      tierLabel = 'استرداد كوينز جزئي (20%) 🔄';
+      candidateRefundCoins = Math.round(totalCost * multiplier);
+    }
+    // قفل المبلغ بما لا يتجاوز السيولة المتاحة لضمان عدم الخسارة نهائياً
+    finalRefundCoins = Math.min(candidateRefundCoins, availableLiquidity);
   }
 
-  saveVaultBalance(updatedVault);
+  // تطبيق معادلة الخزينة: رصيد الخزينة = الرصيد السابق + حصة الخزينة من الهدية - مبلغ الاسترداد المرجوع للداعم
+  const updatedTreasury = Math.max(0, treasuryWithInflow - finalRefundCoins);
+
+  // حفظ الرصيد الجديد للخزينة
+  saveCashbackTreasuryBalance(updatedTreasury);
 
   const result: RefundDrawResult = {
-    id: `draw_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    id: `cashback_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     giftId: gift.id,
     giftName: gift.name,
     giftIcon: gift.icon,
     giftPrice: gift.price,
     quantity,
     totalCost,
-    refundCoins,
+    recipientRate,
+    recipientCoins,
+    treasuryShare,
+    refundCoins: finalRefundCoins,
     multiplier,
     winTier,
     tierLabel,
-    vaultContribution: contribution,
-    vaultBalanceBefore: vaultBefore,
-    vaultBalanceAfter: updatedVault,
+    vaultContribution: treasuryShare,
+    vaultBalanceBefore: treasuryBefore,
+    vaultBalanceAfter: updatedTreasury,
     senderName,
     recipientName,
     timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
   };
 
-  // Add to recent winners ticker if medium or above
-  if (winTier !== 'minor') {
+  // تسجيل الرابحين للمكافآت المضاعفة
+  if (winTier !== 'minor' && finalRefundCoins > 0) {
     const newWinner: RefundWinner = {
       id: result.id,
       senderName,
       giftName: gift.name,
       giftIcon: gift.icon,
-      refundCoins,
+      refundCoins: finalRefundCoins,
       multiplier,
       winTier,
       timeAgo: 'الآن'
     };
-    saveRecentWinners([newWinner, ...recentWinners]);
+    saveRecentWinners([newWinner, ...recentCashbackWinners]);
   }
 
   return result;
 }
+

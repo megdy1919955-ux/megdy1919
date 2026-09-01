@@ -61,7 +61,7 @@ export const SeatActionModal: React.FC<SeatActionModalProps> = ({
           initial={{ y: '100%', opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
-          transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+          transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
           onClick={(e) => e.stopPropagation()}
           className="w-full max-w-sm bg-[#121929] border-t-2 border-amber-500/60 border-x border-b border-amber-500/20 rounded-t-[2.5rem] sm:rounded-3xl shadow-[0_-12px_60px_rgba(0,0,0,0.85)] overflow-hidden text-white relative flex flex-col dir-rtl"
           dir="rtl"

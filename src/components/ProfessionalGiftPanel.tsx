@@ -286,37 +286,27 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
       setIsAllSelected(false);
     } else if (!isOpen && prevIsOpenRef.current) {
       setIsPanelVisible(false);
-      // Keep isComboActive as is so circular countdown button remains visible while panel is closed
+      // When transitioning from open to closed (and combo not active), clean up state
+      if (!isComboActive) {
+        setSelectedSeatIds([]);
+        setSelectedListenerIds([]);
+        setIsAllSelected(false);
+        setTotalSentCount(0);
+        setShowSuccessCheck(false);
+        setFlyingParticles([]);
+        setGiftQuantity(1);
+        setShowQuantityMenu(false);
+        setShowCustomQtyInput(false);
+        setShowRecipientDropdown(false);
+        setShowRoleSelector(false);
+        if (comboAnimFrameRef.current) {
+          cancelAnimationFrame(comboAnimFrameRef.current);
+          comboAnimFrameRef.current = null;
+        }
+      }
     }
     prevIsOpenRef.current = isOpen;
-  }, [isOpen, initialSelectedSeatIds, seats, giftsList]);
-
-  // Auto-reset trigger when panel closes completely
-  useEffect(() => {
-    if (!isOpen && !isComboActive) {
-      setSelectedSeatIds([]);
-      setSelectedListenerIds([]);
-      setIsAllSelected(false);
-      setTotalSentCount(0);
-      setShowSuccessCheck(false);
-      setFlyingParticles([]);
-      setGiftQuantity(1);
-      setShowQuantityMenu(false);
-      setShowCustomQtyInput(false);
-      setShowRecipientDropdown(false);
-      setShowRoleSelector(false);
-      setSelectedTab('استرداد');
-      setSelectedSubTab('الكل');
-      if (comboAnimFrameRef.current) {
-        cancelAnimationFrame(comboAnimFrameRef.current);
-        comboAnimFrameRef.current = null;
-      }
-      const defaultFirstGift = giftsList.find((g) => g.category === 'استرداد' || isRefundGift(g)) || giftsList[0];
-      if (defaultFirstGift) {
-        setSelectedGift(defaultFirstGift);
-      }
-    }
-  }, [isOpen, isComboActive, giftsList]);
+  }, [isOpen, isComboActive]);
 
   // ================= 5-SECOND COUNTDOWN COMBO ANIMATION FRAME =================
   const COMBO_DURATION_MS = 5000;
@@ -719,8 +709,8 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
               )}
             </AnimatePresence>
 
-            {/* Main Gift Panel Card - Edge to Edge Full Width */}
-            <div className="w-full pointer-events-auto bg-[#0A0E1A]/95 backdrop-blur-2xl border-t border-cyan-500/40 rounded-t-3xl text-white shadow-[0_-10px_35px_rgba(0,0,0,0.7)] flex flex-col justify-between max-h-[60vh] sm:max-h-[55vh] overflow-hidden relative">
+            {/* Main Gift Panel Card - Edge to Edge Full Width with subtle gentle rounded top */}
+            <div className="w-full pointer-events-auto bg-[#0A0E1A]/95 backdrop-blur-2xl border-t border-cyan-500/40 rounded-t-xl text-white shadow-[0_-10px_35px_rgba(0,0,0,0.7)] flex flex-col justify-between max-h-[60vh] sm:max-h-[55vh] overflow-hidden relative">
               {/* Flying Golden Tiny Lightning Stream Animation */}
               <AnimatePresence>
                 {flyingParticles.map((particle) => (
@@ -779,58 +769,6 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                           />
                         </div>
                       </div>
-
-                      {/* Role-Based CMS Switcher Button (Strictly Visible to Authorized Developer Only) */}
-                      {isCmsAuthorized && (
-                        <div className="relative">
-                          <button
-                            onClick={() => setShowRoleSelector(!showRoleSelector)}
-                            className="text-[8.5px] font-black px-1.5 py-0.5 rounded-md border flex items-center gap-1 transition-all cursor-pointer bg-cyan-500/20 text-cyan-300 border-cyan-400/50 hover:bg-cyan-500/30 shadow-[0_0_8px_rgba(6,182,212,0.4)]"
-                            title="تغيير صلاحيات إدارة الهدايا CMS (خاص بالمبرمج)"
-                          >
-                            <ShieldCheck className="w-2.5 h-2.5 text-cyan-400" />
-                            <span>{activeRole}</span>
-                          </button>
-
-                          {/* Role Selection Dropdown Menu */}
-                          <AnimatePresence>
-                            {showRoleSelector && (
-                              <motion.div
-                                initial={{ opacity: 0, scale: 0.9, y: 5 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.9, y: 5 }}
-                                className="absolute left-0 top-full mt-1.5 z-50 w-48 bg-[#0D1527] border border-cyan-400/60 rounded-xl p-1.5 shadow-2xl space-y-1"
-                                dir="rtl"
-                              >
-                                <div className="text-[9px] font-bold text-slate-400 px-1.5 pb-1 border-b border-white/10">
-                                  تبديل الصلاحية الإدارية (CMS):
-                                </div>
-                                {CMS_ROLES.map((role) => (
-                                  <button
-                                    key={role.id}
-                                    onClick={() => {
-                                      setCmsUserRole(role.id);
-                                      setActiveRole(role.id);
-                                      setShowRoleSelector(false);
-                                    }}
-                                    className={`w-full text-right px-2 py-1 rounded-lg text-[10px] font-bold flex items-center justify-between cursor-pointer transition-colors ${
-                                      activeRole === role.id
-                                        ? 'bg-cyan-500 text-slate-950 font-black shadow-xs'
-                                        : 'text-slate-300 hover:bg-white/10'
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-1.5">
-                                      <span>{role.icon}</span>
-                                      <span>{role.label}</span>
-                                    </div>
-                                    {activeRole === role.id && <Check className="w-3 h-3 stroke-[3]" />}
-                                  </button>
-                                ))}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      )}
 
                       {/* Next Level 114 */}
                       <span className="bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 shadow-xs flex items-center gap-0.5 border border-amber-400/40">
@@ -952,7 +890,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                             toggleSeatSelection(seat.id);
                           }}
                           className="relative shrink-0 flex flex-col items-center cursor-pointer group transition-transform active:scale-90"
-                          title={`${seat.userName} (مقعد ${seat.id})`}
+                          title={`مقعد ${seat.id} ${seat.userName ? `(${seat.userName})` : ''}`}
                         >
                           <div
                             className={`relative w-8 h-8 rounded-full transition-all duration-200 ${
@@ -963,7 +901,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                           >
                             <img
                               src={seat.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                              alt={seat.userName}
+                              alt={`مقعد ${seat.id}`}
                               className="w-full h-full rounded-full object-cover"
                             />
                             <span className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 text-slate-950 font-black text-[7.5px] w-4 h-4 rounded-full flex items-center justify-center border border-slate-950">
@@ -975,13 +913,6 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                               </span>
                             )}
                           </div>
-                          <span
-                            className={`text-[8.5px] mt-0.5 truncate max-w-[50px] text-center leading-tight transition-colors ${
-                              isSelected ? 'text-emerald-300 font-extrabold' : 'text-slate-400'
-                            }`}
-                          >
-                            {seat.userName || `مقعد ${seat.id}`}
-                          </span>
                         </button>
                       );
                     })
@@ -1403,6 +1334,34 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
             <div className="mt-1 px-2.5 py-0.5 rounded-full bg-slate-950/85 border border-amber-500/40 backdrop-blur-md text-[9px] font-mono font-black text-amber-300 flex items-center gap-1 shadow-md">
               <Sparkles className="w-2.5 h-2.5 text-amber-400 animate-spin" />
               <span>{(comboProgress * 5).toFixed(1)}s</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ================= 3. CONSECUTIVE COMBO WALLET BALANCE (Exact Designated Right Position During Combo) ================= */}
+      <AnimatePresence>
+        {isComboActive && (
+          <motion.div
+            initial={{ scale: 0, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0, opacity: 0, y: 20 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 350 }}
+            className="fixed bottom-4 sm:bottom-6 right-3 sm:right-4 z-[9999] pointer-events-auto select-none drop-shadow-2xl"
+            dir="rtl"
+          >
+            <div
+              onClick={onOpenRecharge}
+              className="flex items-center gap-1.5 bg-[#0A0E1A]/95 backdrop-blur-xl bg-gradient-to-r from-amber-500/25 via-yellow-500/15 to-amber-500/20 hover:from-amber-500/35 hover:to-yellow-500/30 border border-amber-400/50 px-3 py-1.5 rounded-full cursor-pointer transition-all shadow-[0_4px_20px_rgba(0,0,0,0.7)] ring-1 ring-amber-400/30"
+              title="شحن الكوينز"
+            >
+              <span className="text-amber-400 text-xs animate-bounce">🪙</span>
+              <span className="font-mono font-black text-xs text-amber-300 tracking-tight">
+                {localCoins.toLocaleString()}
+              </span>
+              <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-2 py-0.5 rounded-full shadow-xs hover:bg-amber-300 transition-colors">
+                شحن
+              </span>
             </div>
           </motion.div>
         )}

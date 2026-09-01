@@ -23,8 +23,9 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
   if (!isOpen) return null;
 
   const coinPackages = [
+    { id: 'pkg_vip_100m', coins: 100000000, bonus: 0, priceSAR: 'مجاني للتجربة 👑', priceUSD: 'VIP Free', popular: true, tag: 'شحن 100 مليون تجريبي 💎🔥' },
     { id: 'pkg_1', coins: 1000, bonus: 0, priceSAR: '3.75 ر.س', priceUSD: '$0.99', popular: false },
-    { id: 'pkg_2', coins: 5000, bonus: 500, priceSAR: '18.75 ر.س', priceUSD: '$4.99', popular: true, tag: 'الأكثر مبيعاً 🔥' },
+    { id: 'pkg_2', coins: 5000, bonus: 500, priceSAR: '18.75 ر.س', priceUSD: '$4.99', popular: false, tag: 'الأكثر مبيعاً 🔥' },
     { id: 'pkg_3', coins: 20000, bonus: 3500, priceSAR: '74.99 ر.س', priceUSD: '$19.99', popular: false, tag: '+18% بونص' },
     { id: 'pkg_4', coins: 50000, bonus: 12000, priceSAR: '187.50 ر.س', priceUSD: '$49.99', popular: false, tag: 'عرض ملكي 👑' },
     { id: 'pkg_5', coins: 150000, bonus: 45000, priceSAR: '562.50 ر.س', priceUSD: '$149.99', popular: false, tag: 'بونص ضخم x2' },

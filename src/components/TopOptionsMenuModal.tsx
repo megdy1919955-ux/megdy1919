@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Lock,
@@ -21,13 +21,8 @@ import {
   ShieldAlert,
   X,
   KeyRound,
-  Check,
-  Wrench
+  Check
 } from 'lucide-react';
-import { isDeveloper } from '../lib/roleService';
-import { getSecretWindowTheme, getComputedModalStyle } from '../lib/secretCustomizerService';
-import { SecretWindowCustomizerModal } from './SecretWindowCustomizerModal';
-import { WindowThemeConfig } from '../types/secretCustomizer';
 
 interface TopOptionsMenuModalProps {
   isOpen: boolean;
@@ -62,7 +57,6 @@ export const TopOptionsMenuModal: React.FC<TopOptionsMenuModalProps> = ({
   isOpen,
   onClose,
   currentUserRole = 'owner',
-  currentAppRole = 'developer',
   isVIP = true,
   userVipLevel = 8,
   isRoomLocked = false,
@@ -88,21 +82,6 @@ export const TopOptionsMenuModal: React.FC<TopOptionsMenuModalProps> = ({
 }) => {
   const [showPasscodeDialog, setShowPasscodeDialog] = useState(false);
   const [passcode, setPasscode] = useState('');
-  const [theme, setTheme] = useState<WindowThemeConfig>(() => getSecretWindowTheme('top_options'));
-  const [showSecretCustomizer, setShowSecretCustomizer] = useState(false);
-
-  useEffect(() => {
-    const handleUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<{ windowId: string; theme: WindowThemeConfig }>;
-      if (customEvent.detail?.windowId === 'top_options') {
-        setTheme(customEvent.detail.theme);
-      }
-    };
-    window.addEventListener('window_customizer_updated', handleUpdate);
-    return () => window.removeEventListener('window_customizer_updated', handleUpdate);
-  }, []);
-
-  const isDevUser = isDeveloper(currentAppRole);
 
   if (!isOpen || currentUserRole === 'host') return null;
 
@@ -348,159 +327,132 @@ export const TopOptionsMenuModal: React.FC<TopOptionsMenuModalProps> = ({
   ];
 
   return (
-    <>
-      <AnimatePresence>
-        <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 pointer-events-auto cursor-default select-none"
-          onClick={onClose}
+    <AnimatePresence>
+      <div
+        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 pointer-events-auto cursor-default select-none"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ scale: 0.92, opacity: 0, y: -10 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.92, opacity: 0, y: -10 }}
+          transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+          onClick={(e) => e.stopPropagation()}
+          className="w-full max-w-sm rounded-3xl p-5 bg-white text-slate-900 shadow-[0_15px_50px_rgba(0,0,0,0.18)] relative overflow-hidden dir-rtl border border-slate-200/90 transition-all"
+          dir="rtl"
         >
-          <motion.div
-            initial={{ scale: 0.88, opacity: 0, y: -10 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.88, opacity: 0, y: -10 }}
-            transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-            onClick={(e) => e.stopPropagation()}
-            style={getComputedModalStyle(theme)}
-            className="w-full max-w-sm rounded-3xl p-5 shadow-2xl relative overflow-hidden dir-rtl border transition-all"
-          >
-            {/* Top Header Actions */}
-            <div className="flex items-center justify-between absolute top-3.5 inset-x-3.5 z-10">
-              {/* Developer Secret Customizer Button */}
-              {isDevUser ? (
-                <button
-                  type="button"
-                  onClick={() => setShowSecretCustomizer(true)}
-                  title="التخصيص السري الشامل للمبرمج (ألوان، سطوع، أيقونات)"
-                  className="p-1.5 rounded-full bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/40 border border-cyan-400/50 shadow-[0_0_12px_rgba(6,182,212,0.4)] transition-all cursor-pointer flex items-center gap-1 text-[10px] font-black"
-                >
-                  <Wrench className="w-3.5 h-3.5 text-cyan-300 animate-spin-slow" />
-                  <span className="hidden sm:inline">تخصيص النافذة</span>
-                </button>
-              ) : <div />}
-
-              {/* Top Close Button */}
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+          {/* Top Header Actions */}
+          <div className="flex items-center justify-between absolute top-3.5 inset-x-3.5 z-10">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-black text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+                خيارات الغرفة
+              </span>
             </div>
 
-            {/* PASSCODE MODAL INPUT FOR ROOM LOCK */}
-            {showPasscodeDialog ? (
-              <div className="py-2 space-y-4 mt-6">
-                <div className="flex items-center gap-2.5 pb-3 border-b border-white/10" style={{ color: theme.titleColor }}>
-                  <KeyRound className="w-6 h-6 text-amber-400 shrink-0" />
-                  <div>
-                    <h3 className="font-extrabold text-sm" style={{ color: theme.titleColor }}>تثبيت رمز قفل الغرفة (Passcode)</h3>
-                    <p className="text-[11px]" style={{ color: theme.subtextColor }}>أدخل رمزاً سرياً لمنع الدخول بدون إذن المتطابق</p>
-                  </div>
-                </div>
+            {/* Top Close Button */}
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-200 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
 
-                <div className="space-y-2">
-                  <input
-                    type="password"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={6}
-                    placeholder="رمز القفل المكون من 6 أرقام..."
-                    value={passcode}
-                    onChange={(e) => setPasscode(e.target.value.replace(/\D/g, ''))}
-                    className="w-full bg-black/40 border border-white/20 rounded-2xl px-4 py-3 text-center text-lg font-mono font-bold tracking-widest text-white focus:outline-none focus:ring-2 focus:ring-amber-400/50"
-                    autoFocus
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <button
-                    onClick={handlePasscodeSubmit}
-                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-colors"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>تأكيد القفل 🔒</span>
-                  </button>
-                  <button
-                    onClick={() => setShowPasscodeDialog(false)}
-                    className="bg-white/10 hover:bg-white/20 text-slate-300 font-bold py-2.5 px-4 rounded-xl cursor-pointer transition-colors"
-                  >
-                    إلغاء
-                  </button>
+          {/* PASSCODE MODAL INPUT FOR ROOM LOCK */}
+          {showPasscodeDialog ? (
+            <div className="py-2 space-y-4 mt-8">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 text-slate-900">
+                <KeyRound className="w-6 h-6 text-amber-500 shrink-0" />
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900">تثبيت رمز قفل الغرفة (Passcode)</h3>
+                  <p className="text-[11px] text-slate-500">أدخل رمزاً سرياً لمنع الدخول بدون إذن المتطابق</p>
                 </div>
               </div>
-            ) : (
-              /* 4-Column Options Grid */
-              <div className="grid grid-cols-4 gap-y-5 gap-x-2 pt-8 pb-1">
-                {menuItems
-                  .filter((item) => {
-                    // شرط إظهار أيقونة الخلفيات، الثيم الخاص، إخفاء العدادات، ووضع المايكات لصاحب الروم (isOwner) حصرياً
-                    if (item.id === 'wallpapers' || item.id === 'custom_theme' || item.id === 'mic_mode' || item.id === 'leaderboard') {
-                      return isOwner;
-                    }
-                    return true;
-                  })
-                  .map((item) => {
-                  const IconComponent = item.icon;
-                  const isMicDisabled = item.id === 'mic_mode' && isCounterActive;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleItemClick(item)}
-                      className={`flex flex-col items-center gap-1.5 group cursor-pointer transition-transform active:scale-95 ${
-                        isMicDisabled ? 'opacity-50 grayscale cursor-not-allowed' : ''
-                      }`}
-                      title={isMicDisabled ? 'يجب إيقاف العداد أولاً لتعديل وضع المايكات' : item.title}
-                    >
-                      {/* Icon Container with dynamic theme shape */}
-                      <div className="relative">
-                        <div
-                          className={`w-13 h-13 flex items-center justify-center shadow-md transition-all group-hover:scale-105 ${
-                            theme.iconShape === 'circle'
-                              ? 'rounded-full'
-                              : theme.iconShape === 'squircle'
-                              ? 'rounded-2xl'
-                              : theme.iconShape === 'pill'
-                              ? 'rounded-3xl'
-                              : 'rounded-xl'
-                          } ${item.bgClass}`}
-                        >
-                          <IconComponent className="w-6 h-6 stroke-[2.2]" />
-                        </div>
 
-                        {/* Red Notification Badge Dot or Lock Icon */}
-                        {isMicDisabled ? (
-                          <span className="absolute -top-1 -right-1 bg-amber-500 text-slate-950 font-black text-[9px] px-1 rounded-full border border-amber-300 shadow-xs z-10">
-                            🔒
-                          </span>
-                        ) : item.badge ? (
-                          <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-rose-500 ring-2 ring-white animate-pulse z-10" />
-                        ) : null}
+              <div className="space-y-2">
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  placeholder="رمز القفل المكون من 6 أرقام..."
+                  value={passcode}
+                  onChange={(e) => setPasscode(e.target.value.replace(/\D/g, ''))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-center text-lg font-mono font-bold tracking-widest text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:bg-white"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={handlePasscodeSubmit}
+                  className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-colors"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>تأكيد القفل 🔒</span>
+                </button>
+                <button
+                  onClick={() => setShowPasscodeDialog(false)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl cursor-pointer transition-colors border border-slate-200"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* 4-Column Options Grid */
+            <div className="grid grid-cols-4 gap-y-5 gap-x-2 pt-9 pb-1">
+              {menuItems
+                .filter((item) => {
+                  // شرط إظهار أيقونة الخلفيات، الثيم الخاص، إخفاء العدادات، ووضع المايكات لصاحب الروم (isOwner) حصرياً
+                  if (item.id === 'wallpapers' || item.id === 'custom_theme' || item.id === 'mic_mode' || item.id === 'leaderboard') {
+                    return isOwner;
+                  }
+                  return true;
+                })
+                .map((item) => {
+                const IconComponent = item.icon;
+                const isMicDisabled = item.id === 'mic_mode' && isCounterActive;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleItemClick(item)}
+                    className={`flex flex-col items-center gap-1.5 group cursor-pointer transition-transform active:scale-95 ${
+                      isMicDisabled ? 'opacity-50 grayscale cursor-not-allowed' : ''
+                    }`}
+                    title={isMicDisabled ? 'يجب إيقاف العداد أولاً لتعديل وضع المايكات' : item.title}
+                  >
+                    {/* Icon Container with rounded-2xl */}
+                    <div className="relative">
+                      <div
+                        className={`w-13 h-13 flex items-center justify-center shadow-md rounded-2xl transition-all group-hover:scale-105 ${item.bgClass}`}
+                      >
+                        <IconComponent className="w-6 h-6 stroke-[2.2]" />
                       </div>
 
-                      {/* Label Text */}
-                      <span
-                        className="text-[11px] font-bold leading-tight text-center tracking-tight transition-colors"
-                        style={{ color: theme.textColor }}
-                      >
-                        {item.title}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </motion.div>
-        </div>
-      </AnimatePresence>
+                      {/* Red Notification Badge Dot or Lock Icon */}
+                      {isMicDisabled ? (
+                        <span className="absolute -top-1 -right-1 bg-amber-500 text-slate-950 font-black text-[9px] px-1 rounded-full border border-amber-300 shadow-xs z-10">
+                          🔒
+                        </span>
+                      ) : item.badge ? (
+                        <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-rose-500 ring-2 ring-white animate-pulse z-10" />
+                      ) : null}
+                    </div>
 
-      {/* Secret Customizer Modal */}
-      <SecretWindowCustomizerModal
-        isOpen={showSecretCustomizer}
-        onClose={() => setShowSecretCustomizer(false)}
-        windowId="top_options"
-        onThemeChanged={(newTheme) => setTheme(newTheme)}
-      />
-    </>
+                    {/* Label Text */}
+                    <span className="text-[11px] font-bold leading-tight text-center tracking-tight text-slate-700 group-hover:text-slate-900 transition-colors">
+                      {item.title}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </motion.div>
+      </div>
+    </AnimatePresence>
   );
 };
+
 
