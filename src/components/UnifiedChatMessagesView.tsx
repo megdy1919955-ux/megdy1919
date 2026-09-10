@@ -62,7 +62,7 @@ export interface ChatMessageEntry {
   };
 }
 
-export interface YoHoChatMessageItem {
+export interface NajmChatMessageItem {
   id: string;
   senderId: string;
   senderName: string;
@@ -79,7 +79,9 @@ export interface YoHoChatMessageItem {
   messages: ChatMessageEntry[];
 }
 
-export const INITIAL_CHATS_DATA: YoHoChatMessageItem[] = [
+export type YoHoChatMessageItem = NajmChatMessageItem;
+
+export const INITIAL_CHATS_DATA: NajmChatMessageItem[] = [
   {
     id: 'chat-1',
     senderId: '77989081',
@@ -247,28 +249,37 @@ interface UnifiedChatMessagesViewProps {
   isModalMode?: boolean;
   onCloseModal?: () => void;
   onOpenUserProfile?: (user: any) => void;
+  initialTargetUser?: {
+    id?: string;
+    userId?: string;
+    name?: string;
+    avatar?: string;
+    vipLevel?: number;
+    nobilityLevel?: string;
+  } | null;
 }
 
 export const UnifiedChatMessagesView: React.FC<UnifiedChatMessagesViewProps> = ({
   isModalMode = false,
   onCloseModal,
-  onOpenUserProfile
+  onOpenUserProfile,
+  initialTargetUser
 }) => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'special'>('all');
   const [activeCategoryModal, setActiveCategoryModal] = useState<
     'agency' | 'gifts' | 'friend-requests' | 'super-team' | 'promo' | 'online-support' | null
   >(null);
 
-  const [activeChat, setActiveChat] = useState<YoHoChatMessageItem | null>(null);
-  const [chatList, setChatList] = useState<YoHoChatMessageItem[]>(() => {
+  const [activeChat, setActiveChat] = useState<NajmChatMessageItem | null>(null);
+  const [chatList, setChatList] = useState<NajmChatMessageItem[]>(() => {
     try {
-      const saved = localStorage.getItem('yoho_room_chats_list');
+      const saved = localStorage.getItem('najm_room_chats_list') || localStorage.getItem('yoho_room_chats_list');
       if (saved) return JSON.parse(saved);
     } catch (e) {}
     return INITIAL_CHATS_DATA;
   });
 
-  const [selectedChatForOptions, setSelectedChatForOptions] = useState<YoHoChatMessageItem | null>(null);
+  const [selectedChatForOptions, setSelectedChatForOptions] = useState<NajmChatMessageItem | null>(null);
   const [inputMessage, setInputMessage] = useState('');
   const [replyingToMessage, setReplyingToMessage] = useState<{
     id: string;
@@ -282,11 +293,64 @@ export const UnifiedChatMessagesView: React.FC<UnifiedChatMessagesViewProps> = (
   const [reviewingInvitation, setReviewingInvitation] = useState<AgencyInvitation | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+  // Auto-open direct chat if initialTargetUser provided
+  useEffect(() => {
+    if (initialTargetUser && initialTargetUser.name) {
+      const targetId = String(initialTargetUser.userId || initialTargetUser.id || 'target_user');
+      const targetName = initialTargetUser.name;
+      const targetAvatar =
+        initialTargetUser.avatar ||
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300';
+
+      // Find existing chat in list
+      const existing = chatList.find(
+        (c) =>
+          c.senderId === targetId ||
+          c.senderName.trim().toLowerCase() === targetName.trim().toLowerCase()
+      );
+
+      if (existing) {
+        setActiveChat(existing);
+      } else {
+        const newChat: NajmChatMessageItem = {
+          id: `chat-${targetId}-${Date.now()}`,
+          senderId: targetId,
+          senderName: targetName,
+          senderAvatar: targetAvatar,
+          vipLevel: initialTargetUser.vipLevel || 8,
+          nobilityLevel: initialTargetUser.nobilityLevel || 'N1',
+          isLive: false,
+          isOnline: true,
+          isSpecial: true,
+          isPinned: false,
+          lastMessage: 'أهلاً بك! بدأت المحادثة الخاصة 🌹',
+          lastMessageTime: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+          unreadCount: 0,
+          messages: [
+            {
+              id: `msg-welcome-${Date.now()}`,
+              sender: 'them',
+              text: 'أهلاً وسهلاً يا غالي 🌹 نورت المحادثة الخاصة',
+              time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+              status: 'read'
+            }
+          ]
+        };
+        const updatedList = [newChat, ...chatList];
+        setChatList(updatedList);
+        try {
+          localStorage.setItem('najm_room_chats_list', JSON.stringify(updatedList));
+        } catch (_) {}
+        setActiveChat(newChat);
+      }
+    }
+  }, [initialTargetUser]);
+
   // Sync with global custom events & agency invitation changes
   useEffect(() => {
     const handleSync = () => {
       try {
-        const saved = localStorage.getItem('yoho_room_chats_list');
+        const saved = localStorage.getItem('najm_room_chats_list') || localStorage.getItem('yoho_room_chats_list');
         if (saved) setChatList(JSON.parse(saved));
       } catch (err) {}
       setAgencyNotifs(getAgencyNotifications());
@@ -302,10 +366,10 @@ export const UnifiedChatMessagesView: React.FC<UnifiedChatMessagesViewProps> = (
   }, []);
 
   // Save to localStorage & broadcast
-  const saveChats = (newChats: YoHoChatMessageItem[]) => {
+  const saveChats = (newChats: NajmChatMessageItem[]) => {
     setChatList(newChats);
     try {
-      localStorage.setItem('yoho_room_chats_list', JSON.stringify(newChats));
+      localStorage.setItem('najm_room_chats_list', JSON.stringify(newChats));
       window.dispatchEvent(new CustomEvent('chat_messages_updated', { detail: newChats }));
     } catch (e) {}
   };
@@ -337,7 +401,7 @@ export const UnifiedChatMessagesView: React.FC<UnifiedChatMessagesViewProps> = (
     };
 
     const updatedMessages = [...activeChat.messages, newMsg];
-    const updatedChat: YoHoChatMessageItem = {
+    const updatedChat: NajmChatMessageItem = {
       ...activeChat,
       lastMessage: inputMessage.trim(),
       lastMessageTime: newMsg.time,
@@ -379,7 +443,7 @@ export const UnifiedChatMessagesView: React.FC<UnifiedChatMessagesViewProps> = (
           return c;
         });
         try {
-          localStorage.setItem('yoho_room_chats_list', JSON.stringify(newList));
+          localStorage.setItem('najm_room_chats_list', JSON.stringify(newList));
           window.dispatchEvent(new CustomEvent('chat_messages_updated', { detail: newList }));
         } catch (e) {}
         return newList;
@@ -400,7 +464,7 @@ export const UnifiedChatMessagesView: React.FC<UnifiedChatMessagesViewProps> = (
   };
 
   // Chat Actions: Clear Chat, Move to Special, Pin
-  const handleClearChat = (chat: YoHoChatMessageItem) => {
+  const handleClearChat = (chat: NajmChatMessageItem) => {
     const updatedList = chatList.map((c) => {
       if (c.id === chat.id) {
         return {
@@ -425,7 +489,7 @@ export const UnifiedChatMessagesView: React.FC<UnifiedChatMessagesViewProps> = (
     showToast(`تم مسح الدردشة مع ${chat.senderName} بنجاح 🗑️`);
   };
 
-  const handleToggleSpecialChat = (chat: YoHoChatMessageItem) => {
+  const handleToggleSpecialChat = (chat: NajmChatMessageItem) => {
     const willBeSpecial = !chat.isSpecial;
     const updatedList = chatList.map((c) => (c.id === chat.id ? { ...c, isSpecial: willBeSpecial } : c));
     saveChats(updatedList);
@@ -437,7 +501,7 @@ export const UnifiedChatMessagesView: React.FC<UnifiedChatMessagesViewProps> = (
     );
   };
 
-  const handleTogglePinChat = (chat: YoHoChatMessageItem) => {
+  const handleTogglePinChat = (chat: NajmChatMessageItem) => {
     const willBePinned = !chat.isPinned;
     const updatedList = chatList.map((c) => (c.id === chat.id ? { ...c, isPinned: willBePinned } : c));
     saveChats(updatedList);
@@ -1007,7 +1071,7 @@ export const UnifiedChatMessagesView: React.FC<UnifiedChatMessagesViewProps> = (
       <AnimatePresence>
         {selectedChatForOptions && (
           <div
-            className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-end justify-center select-none"
+            className="fixed inset-0 z-60 bg-transparent flex items-end justify-center select-none cursor-default"
             onClick={() => setSelectedChatForOptions(null)}
           >
             <motion.div

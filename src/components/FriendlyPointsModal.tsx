@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  ChevronRight, X, ThumbsUp, ShieldAlert, Award, Sparkles, Clock, 
+  ChevronRight, X, Heart, ShieldAlert, Award, Sparkles, Clock, 
   HelpCircle, History, AlertTriangle, CheckCircle2, ArrowUpRight, 
-  ChevronLeft, Gift, UserPlus, Zap, Crown, Flame 
+  ChevronLeft, Gift, UserPlus, Zap, Crown, Flame, Star
 } from 'lucide-react';
 
 interface FriendlyPointsModalProps {
@@ -11,27 +11,46 @@ interface FriendlyPointsModalProps {
   onClose: () => void;
   userAvatar?: string;
   userName?: string;
+  currentUserAvatar?: string;
+  currentUserName?: string;
+  points?: number;
 }
 
 export const FriendlyPointsModal: React.FC<FriendlyPointsModalProps> = ({
   isOpen,
   onClose,
-  userAvatar = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
-  userName = "عابر سبيل"
+  userAvatar,
+  userName,
+  currentUserAvatar,
+  currentUserName,
+  points = 2963
 }) => {
+  const finalUserName = userName || currentUserName || "عابر سبيل";
+  const finalUserAvatar = userAvatar || currentUserAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150";
   const [activeTab, setActiveTab] = useState<'add_points' | 'negative_points' | 'rewards'>('add_points');
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   if (!isOpen) return null;
 
+  // Determine current tier based on points
+  const getTierInfo = (pts: number) => {
+    if (pts < 150) return { id: 'bad', name: 'سيئ', color: 'text-slate-400', rankLabel: 'الرتبة: بحاجة للتحسين ⚠️' };
+    if (pts < 400) return { id: 'average', name: 'متوسط', color: 'text-amber-400', rankLabel: 'الرتبة: متوسط (مقبول) 👌' };
+    if (pts < 700) return { id: 'good', name: 'جيد', color: 'text-emerald-400', rankLabel: 'الرتبة: جيد (نشط وموثوق) 👍' };
+    if (pts < 1100) return { id: 'great', name: 'عظيم', color: 'text-sky-400', rankLabel: 'الرتبة: عظيم (نجم المنصة) 🌟' };
+    return { id: 'excellent', name: 'ممتاز', color: 'text-yellow-400', rankLabel: 'الرتبة: ممتاز (النخبة الملكية) 👑' };
+  };
+
+  const currentTier = getTierInfo(points);
+
   // 5 Tiers
   const tiers = [
-    { id: 'bad', name: 'سيئ', range: '0-99', color: 'text-slate-400', icon: '👎' },
-    { id: 'average', name: 'متوسط', range: '150-399', color: 'text-amber-400', icon: '👌' },
-    { id: 'good', name: 'جيد', range: '400-699', color: 'text-emerald-400', icon: '👍' },
-    { id: 'great', name: 'عظيم', range: '700-1099', color: 'text-sky-400', icon: '🌟' },
-    { id: 'excellent', name: 'ممتاز', range: '+1100', color: 'text-yellow-400', icon: '👑', active: true },
+    { id: 'bad', name: 'سيئ', range: '0-99', color: 'text-slate-400', icon: '👎', active: currentTier.id === 'bad' },
+    { id: 'average', name: 'متوسط', range: '150-399', color: 'text-amber-400', icon: '👌', active: currentTier.id === 'average' },
+    { id: 'good', name: 'جيد', range: '400-699', color: 'text-emerald-400', icon: '👍', active: currentTier.id === 'good' },
+    { id: 'great', name: 'عظيم', range: '700-1099', color: 'text-sky-400', icon: '🌟', active: currentTier.id === 'great' },
+    { id: 'excellent', name: 'ممتاز', range: '+1100', color: 'text-yellow-400', icon: '👑', active: currentTier.id === 'excellent' },
   ];
 
   // Tasks for "إضافة نقطة"
@@ -142,42 +161,63 @@ export const FriendlyPointsModal: React.FC<FriendlyPointsModalProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md overflow-hidden font-sans" dir="rtl">
-      {/* Fullscreen Royal Glass Container */}
-      <div className="relative w-full max-w-lg h-full sm:h-[92vh] sm:rounded-3xl bg-gradient-to-b from-[#1b1406] via-[#0f0b03] to-[#080601] border border-amber-500/30 flex flex-col overflow-hidden shadow-2xl">
+    <AnimatePresence>
+      <motion.div 
+        key="friendly-points-backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-transparent select-none cursor-default font-sans" 
+        dir="rtl"
+        onClick={onClose}
+      >
+        {/* Floating Sheet / Royal Glass Container */}
+        <motion.div
+          initial={{ opacity: 0, y: 50, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 50, scale: 0.98 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          onClick={(e) => e.stopPropagation()}
+          className="relative w-full max-w-lg max-h-[88vh] h-[88vh] rounded-t-3xl sm:rounded-3xl bg-gradient-to-b from-[#1b1406] via-[#0f0b03] to-[#080601] border border-amber-500/30 flex flex-col overflow-hidden shadow-[0_-12px_45px_rgba(0,0,0,0.4)]"
+        >
         
         {/* Background Royal Ambient Light */}
         <div className="absolute top-0 inset-x-0 h-80 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-500/25 via-yellow-700/15 to-transparent pointer-events-none" />
         <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#F59E0B_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
 
         {/* Top Header Bar */}
-        <div className="relative z-10 px-4 py-3.5 flex items-center justify-between border-b border-amber-500/20 bg-slate-950/50 backdrop-blur-md">
+        <div className="relative z-10 px-4 py-3 flex items-center justify-between border-b border-amber-500/20 bg-slate-950/60 backdrop-blur-md shrink-0">
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-white/5 border border-amber-500/30 text-amber-300 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all cursor-pointer shadow-sm"
+            className="w-8 h-8 rounded-full bg-white/5 border border-amber-500/30 text-amber-300 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95"
+            title="إغلاق"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
 
           <div className="text-center">
-            <h2 className="text-base sm:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-300 tracking-wide flex items-center justify-center gap-1.5 font-serif">
-              <span>نقطة ودية</span>
-              <ThumbsUp className="w-4 h-4 text-amber-400 fill-amber-400" />
+            <h2 className="text-sm sm:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-rose-400 to-amber-300 tracking-wide flex items-center justify-center gap-1.5 font-serif">
+              <span>النقاط الودية • رصيد التفاعل</span>
+              <Heart className="w-4 h-4 text-rose-400 fill-rose-500" />
             </h2>
-            <p className="text-[10px] text-amber-200/60 font-bold">مؤشر السمعة الملكي ونقاط الثقة والتفاعل</p>
+            <p className="text-[10px] text-amber-200/70 font-bold flex items-center justify-center gap-1">
+              <span>{finalUserName}</span>
+              <span className="text-amber-500/60">•</span>
+              <span>مؤشر السمعة الملكي ونقاط الثقة</span>
+            </p>
           </div>
 
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setShowHistoryModal(true)}
-              className="w-8 h-8 rounded-full bg-white/5 border border-amber-500/20 text-amber-300 hover:bg-white/10 flex items-center justify-center cursor-pointer transition-all shadow-2xs"
+              className="w-8 h-8 rounded-full bg-white/5 border border-amber-500/20 text-amber-300 hover:bg-white/10 flex items-center justify-center cursor-pointer transition-all shadow-2xs active:scale-95"
               title="سجل النقاط"
             >
               <History className="w-4 h-4" />
             </button>
             <button
               onClick={() => setShowHelpModal(true)}
-              className="w-8 h-8 rounded-full bg-white/5 border border-amber-500/20 text-amber-300 hover:bg-white/10 flex items-center justify-center cursor-pointer transition-all shadow-2xs"
+              className="w-8 h-8 rounded-full bg-white/5 border border-amber-500/20 text-amber-300 hover:bg-white/10 flex items-center justify-center cursor-pointer transition-all shadow-2xs active:scale-95"
               title="تعليمات"
             >
               <HelpCircle className="w-4 h-4" />
@@ -186,38 +226,41 @@ export const FriendlyPointsModal: React.FC<FriendlyPointsModalProps> = ({
         </div>
 
         {/* Score & Tier Visual Card */}
-        <div className="relative z-10 px-4 pt-4 pb-2">
-          <div className="rounded-3xl bg-gradient-to-b from-[#3a2806] via-[#241903] to-[#140d01] border-2 border-amber-400/60 p-4 shadow-[0_0_25px_rgba(245,158,11,0.25)] relative overflow-hidden">
+        <div className="relative z-10 px-4 pt-3.5 pb-2 shrink-0">
+          <div className="rounded-2xl bg-gradient-to-b from-[#3a2806] via-[#241903] to-[#140d01] border-2 border-amber-400/60 p-3.5 shadow-[0_0_25px_rgba(245,158,11,0.25)] relative overflow-hidden">
             
             {/* Ambient Sparkles */}
-            <div className="absolute top-2 left-3 flex items-center gap-1 text-amber-300/80 text-[11px] font-bold">
+            <div className="absolute top-2 left-3 flex items-center gap-1 text-amber-300/80 text-[10px] font-bold">
               <Sparkles className="w-3.5 h-3.5 text-amber-400 fill-amber-400 animate-pulse" />
-              <span>أكثر من 100% مستخدم</span>
+              <span>أعلى 99% من المستخدمين</span>
             </div>
 
             {/* Main Score Number */}
-            <div className="text-center pt-3 pb-2">
-              <div className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 via-amber-300 to-amber-500 font-mono tracking-tight drop-shadow-[0_2px_12px_rgba(245,158,11,0.6)]">
-                2963
+            <div className="text-center pt-2 pb-1.5">
+              <div className="flex items-center justify-center gap-2">
+                <Heart className="w-7 h-7 sm:w-8 sm:h-8 text-rose-500 fill-rose-500 drop-shadow-[0_0_12px_rgba(244,63,94,0.6)] animate-pulse" />
+                <div className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 via-amber-300 to-amber-500 font-mono tracking-tight drop-shadow-[0_2px_12px_rgba(245,158,11,0.6)]">
+                  {points}
+                </div>
               </div>
               <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-black mt-1">
                 <Crown className="w-3.5 h-3.5 text-amber-300 fill-amber-400" />
-                <span>الرتبة: ممتاز (النخبة الملكية)</span>
+                <span>{currentTier.rankLabel}</span>
               </div>
             </div>
 
             {/* 5 Tiers Stepper */}
-            <div className="grid grid-cols-5 gap-1 pt-3 border-t border-amber-500/20 text-center">
+            <div className="grid grid-cols-5 gap-1 pt-2.5 border-t border-amber-500/20 text-center">
               {tiers.map((tier) => (
                 <div key={tier.id} className="flex flex-col items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform ${
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm shadow-md transition-transform ${
                     tier.active 
                       ? 'bg-gradient-to-tr from-amber-400 to-yellow-300 border-2 border-white scale-110 shadow-[0_0_10px_rgba(245,158,11,0.8)]' 
                       : 'bg-white/5 border border-white/10 text-slate-400'
                   }`}>
                     {tier.icon}
                   </div>
-                  <span className={`text-[10px] font-black mt-1 ${tier.active ? 'text-amber-300 font-bold' : 'text-slate-400'}`}>
+                  <span className={`text-[9.5px] font-black mt-1 ${tier.active ? 'text-amber-300 font-bold' : 'text-slate-400'}`}>
                     {tier.name}
                   </span>
                   <span className="text-[8px] text-slate-400 font-mono">
@@ -228,12 +271,12 @@ export const FriendlyPointsModal: React.FC<FriendlyPointsModalProps> = ({
             </div>
 
             {/* Countdown Progress Bar */}
-            <div className="mt-3.5 pt-2.5 border-t border-amber-500/20 flex items-center justify-between text-[10px] text-amber-200/80 font-bold">
+            <div className="mt-2.5 pt-2 border-t border-amber-500/20 flex items-center justify-between text-[9.5px] text-amber-200/80 font-bold">
               <div className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-amber-400" />
-                <span>18 ساعة 22 دقيقة 31 ثانية للانتقال إلى يوم جديد</span>
+                <span>18 ساعة 22 دقيقة للانتقال لليوم التالي</span>
               </div>
-              <span className="text-emerald-400 font-black">حالة آمنة</span>
+              <span className="text-emerald-400 font-black">حالة آمنة وممتازة</span>
             </div>
 
           </div>
@@ -498,7 +541,8 @@ export const FriendlyPointsModal: React.FC<FriendlyPointsModalProps> = ({
           )}
         </AnimatePresence>
 
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };

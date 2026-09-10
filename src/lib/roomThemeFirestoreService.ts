@@ -31,7 +31,15 @@ export function getRoomThemeFromCache(roomId: string): RoomFirestoreData | null 
   try {
     const raw = localStorage.getItem(getLocalCacheKey(roomId));
     if (raw) {
-      return JSON.parse(raw);
+      const data = JSON.parse(raw) as RoomFirestoreData;
+      if (data.themeConfig) {
+        data.themeConfig.roomOverlayDarkness = 0;
+        data.themeConfig.activeWallpaperDimming = 0;
+        data.themeConfig.activeWallpaperBrightness = 100;
+        data.themeConfig.roomAmbientGlowIntensity = 0;
+        data.themeConfig.roomBackdropBlur = 0;
+      }
+      return data;
     }
   } catch (e) {
     console.warn('Failed to read room theme cache:', e);
@@ -214,6 +222,13 @@ export function subscribeToRoomThemeFromFirestore(
     (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as RoomFirestoreData;
+        if (data.themeConfig) {
+          data.themeConfig.roomOverlayDarkness = 0;
+          data.themeConfig.activeWallpaperDimming = 0;
+          data.themeConfig.activeWallpaperBrightness = 100;
+          data.themeConfig.roomAmbientGlowIntensity = 0;
+          data.themeConfig.roomBackdropBlur = 0;
+        }
         setRoomThemeToCache(roomId, data);
         onUpdate(data);
       } else {

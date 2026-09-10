@@ -36,12 +36,14 @@ interface FamilyMembersModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectMember?: (member: FamilyMember) => void;
+  onSelectRoom?: (roomId: string) => void;
 }
 
 export const FamilyMembersModal: React.FC<FamilyMembersModalProps> = ({
   isOpen,
   onClose,
-  onSelectMember
+  onSelectMember,
+  onSelectRoom
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'online' | 'admins' | 'vip'>('all');
@@ -399,9 +401,20 @@ export const FamilyMembersModal: React.FC<FamilyMembersModalProps> = ({
                             {member.role}
                           </span>
                           {member.status === 'in_room' && (
-                            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200 truncate max-w-[140px]">
-                              🎙️ {member.currentRoom}
-                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (onSelectRoom) {
+                                  onSelectRoom(member.currentRoom === 'وَكّالَةُ آلَطَيّارَ' ? 'room-2' : 'room-1');
+                                  onClose();
+                                }
+                              }}
+                              className="text-[10px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-2 py-0.5 rounded-full border border-purple-200 truncate max-w-[140px] flex items-center gap-1 transition-all cursor-pointer"
+                              title="اضغط للدخول إلى روم العضو مباشرة"
+                            >
+                              <span>🎙️ {member.currentRoom}</span>
+                            </button>
                           )}
                         </div>
                       </div>

@@ -19,14 +19,7 @@ import {
   Zap,
   Menu,
   Headphones,
-  Mic,
-  Plus,
-  Upload,
-  ArrowUpToLine,
-  SlidersHorizontal,
-  Wrench,
-  ShieldCheck,
-  Edit3
+  Mic
 } from 'lucide-react';
 import {
   GiftItem,
@@ -50,11 +43,9 @@ import {
   isRefundGift
 } from '../lib/refundVaultService';
 import {
-  canManageGifts,
   getActiveAppRole,
   AppRole
 } from '../lib/roleService';
-import { GiftEditorModal } from './GiftEditorModal';
 
 export type { GiftItem };
 
@@ -129,12 +120,6 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
   const [appRole, setAppRole] = useState<AppRole>(() => getActiveAppRole());
   const [activeRole, setActiveRole] = useState<CmsRole>(() => getCmsUserRole());
   const [showRoleSelector, setShowRoleSelector] = useState<boolean>(false);
-
-  // Strictly check if current role can edit/manage gifts (Default: Developer only)
-  const isCmsAuthorized = canManageGifts(appRole);
-
-  // CMS Editor Modal State (undefined = closed, null = new gift, GiftItem = edit)
-  const [editingGift, setEditingGift] = useState<GiftItem | null | undefined>(undefined);
 
   const [selectedTab, setSelectedTab] = useState<CategoryType>('استرداد');
   const [selectedSubTab, setSelectedSubTab] = useState<string>('الكل');
@@ -663,7 +648,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-rose-950/95 border border-rose-500/80 text-rose-200 text-xs font-bold px-4 py-2 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-2 pointer-events-none"
+            className="fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-rose-950/95 border border-rose-500/80 text-rose-200 text-xs font-bold px-4 py-2 rounded-2xl shadow-2xl flex items-center gap-2 pointer-events-none"
           >
             <span>{broadcastNotice}</span>
           </motion.div>
@@ -696,7 +681,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                   transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                   className="w-full px-2 overflow-hidden pointer-events-auto shrink-0 z-30"
                 >
-                  <div className="w-full flex items-center justify-between bg-gradient-to-r from-cyan-950/95 via-[#0A1329]/95 to-cyan-950/95 backdrop-blur-xl border border-cyan-400/50 rounded-2xl px-3.5 py-2 text-[10px] text-cyan-200 shadow-[0_4px_25px_rgba(6,182,212,0.3)]">
+                  <div className="w-full flex items-center justify-between bg-gradient-to-r from-cyan-950/95 via-[#0A1329]/95 to-cyan-950/95 border border-cyan-400/50 rounded-2xl px-3.5 py-2 text-[10px] text-cyan-200 shadow-[0_4px_25px_rgba(6,182,212,0.3)]">
                     <div className="flex items-center gap-2">
                       <Globe className="w-4 h-4 text-cyan-400 animate-spin-slow shrink-0" />
                       <span className="font-bold tracking-wide">سيؤدي إرسال هذه الهدية إلى تشغيل إشعار عالمي</span>
@@ -710,7 +695,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
             </AnimatePresence>
 
             {/* Main Gift Panel Card - Edge to Edge Full Width with subtle gentle rounded top */}
-            <div className="w-full pointer-events-auto bg-[#0A0E1A]/95 backdrop-blur-2xl border-t border-cyan-500/40 rounded-t-xl text-white shadow-[0_-10px_35px_rgba(0,0,0,0.7)] flex flex-col justify-between max-h-[60vh] sm:max-h-[55vh] overflow-hidden relative">
+            <div className="w-full pointer-events-auto bg-[#0A0E1A] border-t border-cyan-500/40 rounded-t-xl text-white shadow-[0_-10px_35px_rgba(0,0,0,0.7)] flex flex-col justify-between max-h-[60vh] sm:max-h-[55vh] overflow-hidden relative">
               {/* Flying Golden Tiny Lightning Stream Animation */}
               <AnimatePresence>
                 {flyingParticles.map((particle) => (
@@ -788,7 +773,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
               </div>
 
               {/* ================= 2. RECIPIENT SEAT MIC SELECTOR BAR ================= */}
-              <div className="bg-[#0B1220]/85 backdrop-blur-md px-2 py-1.5 border-b border-white/5 flex items-center justify-between shrink-0 gap-2 relative z-40">
+              <div className="bg-[#0B1220] px-2 py-1.5 border-b border-white/5 flex items-center justify-between shrink-0 gap-2 relative z-40">
                 {/* Three-dash Menu Button */}
                 <div className="relative shrink-0 z-50">
                   <button
@@ -810,7 +795,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                     {showRecipientDropdown && (
                       <>
                         <div
-                          className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-[1px]"
+                          className="fixed inset-0 z-[100] bg-transparent"
                           onClick={(e) => {
                             e.stopPropagation();
                             setShowRecipientDropdown(false);
@@ -921,7 +906,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
               </div>
 
               {/* ================= 3. MAIN CATEGORY TABS ================= */}
-              <div className="bg-[#080D18]/70 backdrop-blur-md border-b border-white/5 px-1.5 pt-1 shrink-0 space-y-0.5">
+              <div className="bg-[#080D18] border-b border-white/5 px-1.5 pt-1 shrink-0 space-y-0.5">
                 <div 
                   ref={tabsContainerRef}
                   className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5 text-[10px] scroll-smooth"
@@ -1022,7 +1007,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                                 </span>
                               ) : null}
 
-                              {/* Top Right Icons & CMS EDIT BUTTON (Upload / Edit Arrow) */}
+                              {/* Top Right Icons */}
                               <div className="absolute top-0.5 right-0.5 flex items-center gap-0.5 z-20">
                                 {/* Global broadcast icon */}
                                 {gift.hasGlobalBroadcast && gift.price >= 20000 && (
@@ -1036,21 +1021,6 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                                   <span className="w-3 h-3 rounded-full bg-cyan-500/80 text-slate-950 flex items-center justify-center text-[6px]" title="مؤثر صوتي">
                                     🎵
                                   </span>
-                                )}
-
-                                {/* ================= CMS EDIT ARROW BUTTON (Strictly Visible to Authorized Roles Only) ================= */}
-                                {isCmsAuthorized && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingGift(gift);
-                                    }}
-                                    className="w-4.5 h-4.5 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-500 text-slate-950 flex items-center justify-center shadow-md hover:scale-125 active:scale-95 transition-all cursor-pointer ring-1 ring-cyan-300"
-                                    title="تعديل بيانات الهدية (سهم التحميل/التعديل CMS)"
-                                  >
-                                    <ArrowUpToLine className="w-2.5 h-2.5 stroke-[3]" />
-                                  </button>
                                 )}
                               </div>
 
@@ -1075,20 +1045,6 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                             </div>
                           );
                         })}
-
-                        {/* ================= ADD NEW GIFT (+) BUTTON IN CATEGORY GRID ================= */}
-                        {isCmsAuthorized && (
-                          <div
-                            onClick={() => setEditingGift(null)}
-                            className="relative rounded-xl p-1.5 flex flex-col items-center justify-center text-center transition-all cursor-pointer group min-h-[75px] bg-gradient-to-b from-cyan-950/30 to-purple-950/30 border-2 border-dashed border-cyan-400/50 hover:border-cyan-300 hover:bg-cyan-900/30 hover:scale-105 shadow-sm"
-                            title="إضافة هدية جديدة بالكامل (+)"
-                          >
-                            <div className="w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 flex items-center justify-center group-hover:bg-cyan-400 group-hover:text-slate-950 transition-colors shadow-xs">
-                              <Plus className="w-4 h-4 stroke-[3]" />
-                            </div>
-                            <span className="text-[8.5px] font-black text-cyan-300 mt-1">إضافة هدية (+)</span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   );
@@ -1096,7 +1052,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
               </div>
 
               {/* ================= 6. FOOTER CONTROL BAR (Static/Sticky Layer) ================= */}
-              <div className="bg-[#070B14]/90 backdrop-blur-md p-2 border-t border-white/10 shrink-0 sticky bottom-0 z-30 relative">
+              <div className="bg-[#070B14] p-2 border-t border-white/10 shrink-0 sticky bottom-0 z-30 relative">
                 {/* Multiplier / Quantity Dropup Popover (Aligned on the Left above multiplier pill) */}
                 <AnimatePresence>
                   {showQuantityMenu && (
@@ -1331,7 +1287,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
             </motion.button>
 
             {/* Remaining Seconds Clock Countdown Badge */}
-            <div className="mt-1 px-2.5 py-0.5 rounded-full bg-slate-950/85 border border-amber-500/40 backdrop-blur-md text-[9px] font-mono font-black text-amber-300 flex items-center gap-1 shadow-md">
+            <div className="mt-1 px-2.5 py-0.5 rounded-full bg-slate-950/85 border border-amber-500/40 text-[9px] font-mono font-black text-amber-300 flex items-center gap-1 shadow-md">
               <Sparkles className="w-2.5 h-2.5 text-amber-400 animate-spin" />
               <span>{(comboProgress * 5).toFixed(1)}s</span>
             </div>
@@ -1352,7 +1308,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
           >
             <div
               onClick={onOpenRecharge}
-              className="flex items-center gap-1.5 bg-[#0A0E1A]/95 backdrop-blur-xl bg-gradient-to-r from-amber-500/25 via-yellow-500/15 to-amber-500/20 hover:from-amber-500/35 hover:to-yellow-500/30 border border-amber-400/50 px-3 py-1.5 rounded-full cursor-pointer transition-all shadow-[0_4px_20px_rgba(0,0,0,0.7)] ring-1 ring-amber-400/30"
+              className="flex items-center gap-1.5 bg-[#0A0E1A] bg-gradient-to-r from-amber-500/25 via-yellow-500/15 to-amber-500/20 hover:from-amber-500/35 hover:to-yellow-500/30 border border-amber-400/50 px-3 py-1.5 rounded-full cursor-pointer transition-all shadow-[0_4px_20px_rgba(0,0,0,0.7)] ring-1 ring-amber-400/30"
               title="شحن الكوينز"
             >
               <span className="text-amber-400 text-xs animate-bounce">🪙</span>
@@ -1366,31 +1322,6 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* ================= CMS GIFT EDITOR MODAL (Developer / Authorized Only) ================= */}
-      {isCmsAuthorized && editingGift !== undefined && (
-        <GiftEditorModal
-          key={editingGift ? editingGift.id : 'new_gift_modal'}
-          isOpen={true}
-          giftToEdit={editingGift}
-          defaultCategory={selectedTab}
-          onClose={() => setEditingGift(undefined)}
-          onSaved={(savedGift) => {
-            // Update selected gift if this was the one edited
-            if (selectedGift?.id === savedGift.id) {
-              setSelectedGift(savedGift);
-            }
-          }}
-          onDeleted={(deletedId) => {
-            if (selectedGift?.id === deletedId) {
-              const remaining = giftsList.filter((g) => g.id !== deletedId);
-              if (remaining.length > 0) {
-                setSelectedGift(remaining[0]);
-              }
-            }
-          }}
-        />
-      )}
     </>
   );
 };

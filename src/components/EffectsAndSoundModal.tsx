@@ -128,16 +128,16 @@ export const EffectsAndSoundModal: React.FC<EffectsAndSoundModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto select-none cursor-default"
+        className="fixed inset-0 z-50 bg-transparent flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto select-none cursor-default"
         onClick={onClose}
       >
         <motion.div
           initial={{ y: '100%', opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
-          transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-md bg-[#0F172A] border-t sm:border border-slate-700/80 rounded-t-[32px] sm:rounded-3xl shadow-2xl text-white flex flex-col max-h-[90vh] overflow-hidden dir-rtl"
+          className="w-full max-w-md bg-[#0F172A] border-t sm:border border-slate-700/80 rounded-t-[32px] sm:rounded-3xl shadow-2xl text-white flex flex-col max-h-[82vh] overflow-hidden dir-rtl"
         >
           {/* Header Bar */}
           <div className="relative px-5 pt-4 pb-3.5 bg-gradient-to-r from-slate-900 via-indigo-950/80 to-slate-900 border-b border-slate-800 flex items-center justify-between shrink-0">

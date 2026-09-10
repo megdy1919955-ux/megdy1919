@@ -32,12 +32,14 @@ import {
   CheckCircle2,
   SlidersHorizontal,
   Info,
-  UserCheck
+  UserCheck,
+  Edit3
 } from 'lucide-react';
 import { CastleEmblem, getCastleTierByLevel } from './family/CastleEmblem';
 import { CastleEvolutionModal } from './family/CastleEvolutionModal';
 import { FamilyMembersModal, FamilyMember } from './family/FamilyMembersModal';
-import { TarafLogo } from './common/TarafLogo';
+import { UserProfileModal } from './UserProfileModal';
+import { NajmLogo } from './common/NajmLogo';
 
 interface FamilyModalProps {
   isOpen: boolean;
@@ -53,6 +55,22 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
   const [showCastleModal, setShowCastleModal] = useState<boolean>(false);
   const [showMembersModal, setShowMembersModal] = useState<boolean>(false);
   const [isStatsCollapsed, setIsStatsCollapsed] = useState<boolean>(false);
+
+  // User family role (owner / supervisor / member / visitor)
+  const [userFamilyRole, setUserFamilyRole] = useState<'owner' | 'supervisor' | 'member' | 'visitor'>('owner');
+  const isFamilyOwner = userFamilyRole === 'owner';
+  const isSupervisorOrOwner = userFamilyRole === 'owner' || userFamilyRole === 'supervisor';
+
+  // Family announcement state (Only owner can edit)
+  const [familyAnnouncement, setFamilyAnnouncement] = useState<string>(() => {
+    return localStorage.getItem('family_announcement_text') || 
+      'تصفية اسبوعية لكل من لا يتواجد في الرومات أو لم يسجل حضوره في القلعة. نرجو من الجميع التواجد في رومات العائلة الرسمية لدعم ترفيع القلعة للمستوى 13 ☯';
+  });
+  const [isEditingAnnouncement, setIsEditingAnnouncement] = useState<boolean>(false);
+  const [announcementDraft, setAnnouncementDraft] = useState<string>(familyAnnouncement);
+
+  // Inspected user profile for opening any member or supervisor's full profile
+  const [inspectedUserProfile, setInspectedUserProfile] = useState<any | null>(null);
 
   // Global Lock state listener
   const [globalLockData, setGlobalLockData] = useState<{ isLocked: boolean; password?: string }>(() => {
@@ -190,7 +208,7 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
     },
     {
       id: 'room-3',
-      title: 'شحن وشراء تارجت مصر 48 - قلعة ترف',
+      title: 'شحن وشراء تارجت مصر 48 - قلعة النجم',
       category: 'مسابقات',
       categoryColor: 'from-yellow-600 to-amber-600',
       listeners: 8,
@@ -240,16 +258,19 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
 
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, x: '100%' }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: '100%' }}
-        transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-        className="fixed inset-0 z-50 bg-[#FBF9F4] text-slate-900 flex flex-col pointer-events-auto select-none overflow-hidden"
+      <div
+        className="fixed inset-0 z-50 bg-[#FBF9F4] text-slate-900 w-full h-full flex flex-col pointer-events-auto select-none cursor-default overflow-hidden"
         dir="rtl"
       >
-        {/* TOP ROYAL APP BAR (شريط العنوان الملكي مع زر الرجوع) */}
-        <header className="sticky top-0 z-40 bg-gradient-to-r from-[#FFFDF9] via-[#FAF5E8] to-[#FFFDF9] border-b border-[#E8DFC8] px-4 py-3 flex items-center justify-between shadow-[0_2px_12px_rgba(180,160,130,0.1)]">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.99 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.99 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+          className="w-full h-full flex flex-col pointer-events-auto select-none overflow-hidden"
+        >
+          {/* TOP ROYAL APP BAR (شريط العنوان الملكي بملء الشاشة مع زر الرجوع) */}
+          <header className="sticky top-0 z-40 bg-gradient-to-r from-[#FFFDF9] via-[#FAF5E8] to-[#FFFDF9] border-b border-[#E8DFC8] px-4 py-3.5 flex items-center justify-between shadow-[0_2px_12px_rgba(180,160,130,0.1)] shrink-0">
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
@@ -269,7 +290,7 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
                 </span>
               </div>
               <p className="text-[10px] text-[#A89478] font-bold">
-                منظومة القلعة العائلية الملكية • ترف شات
+                منظومة القلعة العائلية الملكية • تطبيق النجم
               </p>
             </div>
           </div>
@@ -356,7 +377,7 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
                   </div>
                 </div>
 
-                {/* CASTLE PROGRESSION & EVOLUTION PREVIEW */}
+                {/* CASTLE PROGRESSION & EVOLUTION PREVIEW (صلاحيات الترقية والمساهمة) */}
                 <div 
                   onClick={() => setShowCastleModal(true)}
                   className="w-full md:w-80 bg-white/95 border-2 border-[#DFC386] rounded-2xl p-3.5 sm:p-4 shadow-[0_4px_18px_rgba(180,140,60,0.18)] hover:border-[#B38022] hover:shadow-[0_6px_24px_rgba(180,140,60,0.28)] transition-all cursor-pointer group flex flex-col justify-between"
@@ -380,25 +401,46 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
                       <h4 className="text-xs font-black text-[#755013] truncate">{castleTier.name}</h4>
                       <span className="text-[10px] text-[#A89478] font-bold block">{castleTier.levelRange} • الرتبة {castleTier.tier}/5</span>
                       
-                      {/* EXP Bar */}
+                      {/* EXP Progression Bar */}
                       <div className="mt-1.5">
                         <div className="flex items-center justify-between text-[9px] font-mono text-[#8C7355] mb-0.5">
-                          <span>EXP للترقية</span>
-                          <span className="font-bold text-[#755013]">{Math.round((familyExp / nextLevelExp) * 100)}%</span>
+                          <span>{isSupervisorOrOwner ? 'EXP للترقية' : 'نسبة مساهمتك'}</span>
+                          <span className="font-bold text-[#755013]">
+                            {isSupervisorOrOwner 
+                              ? `${Math.round((familyExp / nextLevelExp) * 100)}%`
+                              : '14.8%'
+                            }
+                          </span>
                         </div>
                         <div className="w-full bg-[#EDE2CE] h-2 rounded-full overflow-hidden p-0.5">
                           <div 
                             className="h-full bg-gradient-to-r from-[#D9A036] via-[#B38022] to-[#755013] rounded-full"
-                            style={{ width: `${(familyExp / nextLevelExp) * 100}%` }}
+                            style={{ width: isSupervisorOrOwner ? `${(familyExp / nextLevelExp) * 100}%` : '14.8%' }}
                           />
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-2.5 pt-2 border-t border-[#E8DFC8] flex items-center justify-between text-[10px] text-[#8C7355] font-bold">
-                    <span>الترقية القادمة: سعة 2500 عضو</span>
-                    <span className="text-[#B38022]">Lv.{familyLevel + 1}</span>
+                  {/* Role-based info bar */}
+                  <div className="mt-2.5 pt-2 border-t border-[#E8DFC8] flex items-center justify-between text-[10px] font-bold">
+                    {isSupervisorOrOwner ? (
+                      <>
+                        <span className="text-[#8C7355]">
+                          متبقي للترقية: <span className="font-mono text-[#5C3F13]">{(nextLevelExp - familyExp).toLocaleString()} EXP</span>
+                        </span>
+                        <span className="text-[#B38022] bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                          خاص بالإدارة 👑
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-[#8C7355]">
+                          نقاط دعمك الشخصي: <span className="font-mono text-emerald-700">28,400</span>
+                        </span>
+                        <span className="text-[#B38022]">Lv.{familyLevel + 1} القادم</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -479,19 +521,67 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-[#755013] to-[#B38022] text-[#FFF9E6] flex items-center justify-center shrink-0 shadow-sm mt-0.5">
                 <Megaphone className="w-4 h-4 sm:w-5 sm:h-5 text-amber-200" />
               </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <h4 className="text-xs font-black text-[#5C3F13] flex items-center gap-1.5">
                     <span>إعلان وتوجيهات قائد العائلة</span>
                     <span className="text-[9px] font-bold text-[#A89478] bg-white px-2 py-0.2 rounded-full border border-[#E8DFC8]">
                       مثبت
                     </span>
                   </h4>
-                  <span className="text-[10px] text-[#A89478] font-mono">اليوم 14:30</span>
+
+                  <div className="flex items-center gap-2">
+                    {isFamilyOwner && !isEditingAnnouncement && (
+                      <button
+                        onClick={() => {
+                          setAnnouncementDraft(familyAnnouncement);
+                          setIsEditingAnnouncement(true);
+                        }}
+                        className="text-[10px] font-black text-[#B38022] bg-white border border-[#DFC386] hover:bg-[#FAF5E8] px-2.5 py-0.5 rounded-lg flex items-center gap-1 transition-all shadow-xs cursor-pointer"
+                        title="تعديل الإعلان (خاص بمالك العائلة فقط)"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>تعديل الإعلان</span>
+                      </button>
+                    )}
+                    <span className="text-[10px] text-[#A89478] font-mono">اليوم 14:30</span>
+                  </div>
                 </div>
-                <p className="text-xs text-[#755013] font-semibold mt-1 leading-relaxed">
-                  تصفية اسبوعية لكل من لا يتواجد في الرومات أو لم يسجل حضوره في القلعة. نرجو من الجميع التواجد في رومات العائلة الرسمية لدعم ترفيع القلعة للمستوى 13 ☯
-                </p>
+
+                {isEditingAnnouncement ? (
+                  <div className="mt-2.5 space-y-2">
+                    <textarea
+                      value={announcementDraft}
+                      onChange={(e) => setAnnouncementDraft(e.target.value)}
+                      rows={3}
+                      className="w-full bg-white border-2 border-[#B38022] rounded-xl p-2.5 text-xs text-[#5C3F13] font-bold focus:outline-none shadow-inner"
+                      placeholder="اكتب توجيهات وإعلان العائلة هنا..."
+                    />
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setIsEditingAnnouncement(false)}
+                        className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                      >
+                        إلغاء
+                      </button>
+                      <button
+                        onClick={() => {
+                          setFamilyAnnouncement(announcementDraft);
+                          localStorage.setItem('family_announcement_text', announcementDraft);
+                          setIsEditingAnnouncement(false);
+                        }}
+                        className="px-3.5 py-1 bg-gradient-to-r from-[#755013] to-[#B38022] text-white font-bold text-xs rounded-lg shadow-xs transition-all cursor-pointer flex items-center gap-1"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>حفظ ونشر</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-[#755013] font-semibold mt-1 leading-relaxed whitespace-pre-wrap">
+                    {familyAnnouncement}
+                  </p>
+                )}
               </div>
             </section>
 
@@ -520,7 +610,7 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
               </div>
             </section>
 
-            {/* 4. SUPERVISORS & LEADERSHIP IN HORIZONTAL BAR (ظهور المشرفين في المكان الأفقي) */}
+            {/* 4. SUPERVISORS & LEADERSHIP (أيقونات دائرية مع الاسم بجانبها بتصميم أنيق وموفر للمساحة) */}
             <section className="space-y-2.5">
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
@@ -540,54 +630,56 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
                 </span>
               </div>
 
-              {/* Horizontal Scrollable Row of Supervisors */}
-              <div className="bg-white/90 border border-[#DFC386]/70 rounded-2xl p-3 shadow-xs overflow-hidden">
-                <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1 px-1">
+              {/* Horizontal Scrollable Row of Circular Supervisors with Names Beside */}
+              <div className="bg-white/90 border border-[#DFC386]/70 rounded-2xl p-2.5 shadow-xs overflow-hidden">
+                <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar py-1 px-1">
                   {supervisors.map((sup) => (
                     <motion.div 
                       key={sup.id}
-                      whileHover={{ scale: 1.04 }}
-                      className="flex flex-col items-center shrink-0 w-24 sm:w-28 bg-[#FAF6ED] border border-[#DFC386]/60 hover:border-[#B38022] rounded-2xl p-2 text-center group cursor-pointer shadow-xs hover:shadow-md transition-all"
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => {
+                        setInspectedUserProfile({
+                          userId: sup.id,
+                          name: sup.name,
+                          bio: sup.role,
+                          avatar: sup.avatar,
+                          countryFlag: '🇾🇪',
+                          vipLevel: sup.level,
+                          superLegendLevel: 'SL1',
+                          stats: { friends: 150, followers: 4200, visitors: 1100 }
+                        });
+                      }}
+                      className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-[#FAF6ED] border border-[#DFC386]/70 hover:border-[#B38022] hover:bg-white shrink-0 cursor-pointer shadow-xs transition-all group"
+                      title="اضغط لعرض الملف الشخصي"
                     >
-                      {/* Avatar with Role Crown / Halo */}
-                      <div className="relative w-14 h-14 rounded-full p-0.5 bg-gradient-to-tr from-[#B38022] via-[#EAD39B] to-[#755013] shadow-md group-hover:scale-105 transition-transform">
+                      {/* Circular Avatar */}
+                      <div className="relative w-8 h-8 rounded-full p-0.5 bg-gradient-to-tr from-[#B38022] via-[#EAD39B] to-[#755013] shadow-xs shrink-0 group-hover:scale-105 transition-transform">
                         <img 
                           src={sup.avatar} 
                           alt={sup.name} 
                           className="w-full h-full rounded-full object-cover" 
                         />
-                        {/* Online Indicator */}
-                        <span className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white shadow-xs ${
+                        <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border border-white ${
                           sup.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
                         }`} />
-                        {/* Crown Tag for Rank 1 */}
                         {sup.rank === 1 && (
-                          <span className="absolute -top-1.5 -right-1 bg-amber-500 text-white p-0.5 rounded-full shadow-xs">
-                            <Crown className="w-3 h-3 fill-white" />
+                          <span className="absolute -top-1 -right-1 bg-amber-500 text-white p-0.5 rounded-full shadow-xs">
+                            <Crown className="w-2.5 h-2.5 fill-white" />
                           </span>
                         )}
                       </div>
 
-                      {/* Supervisor Name */}
-                      <span className="text-[11px] font-black text-[#5C3F13] truncate w-full text-center mt-1.5">
-                        {sup.name}
-                      </span>
-
-                      {/* Supervisor Role Badge */}
-                      <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-md mt-0.5 border truncate w-full text-center ${
-                        sup.rank === 1 
-                          ? 'bg-amber-100 text-amber-900 border-amber-300' 
-                          : sup.rank === 2 
-                          ? 'bg-slate-100 text-slate-800 border-slate-300' 
-                          : 'bg-amber-50 text-amber-800 border-amber-200'
-                      }`}>
-                        {sup.roleBadge}
-                      </span>
-
-                      {/* EXP points */}
-                      <span className="text-[8px] font-mono text-[#8C7355] mt-0.5">
-                        EXP {sup.exp}
-                      </span>
+                      {/* Name and Role Beside It */}
+                      <div className="flex flex-col text-right">
+                        <span className="text-xs font-black text-[#5C3F13] group-hover:text-[#B38022] transition-colors whitespace-nowrap">
+                          {sup.name}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-bold text-[#A89478]">{sup.roleBadge}</span>
+                          <span className="text-[8px] font-mono text-[#B38022] font-bold">{sup.level}</span>
+                        </div>
+                      </div>
                     </motion.div>
                   ))}
                 </div>
@@ -729,13 +821,39 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
         <FamilyMembersModal
           isOpen={showMembersModal}
           onClose={() => setShowMembersModal(false)}
+          onSelectMember={(member) => {
+            setInspectedUserProfile({
+              userId: String(member.id),
+              name: member.name,
+              bio: member.role,
+              avatar: member.avatar,
+              countryFlag: '🇸🇦',
+              vipLevel: member.level,
+              superLegendLevel: 'SL1',
+              stats: { friends: 120, followers: 3400, visitors: 890 }
+            });
+          }}
+          onSelectRoom={(roomId) => {
+            if (onSelectRoom) onSelectRoom(roomId);
+            setShowMembersModal(false);
+            onClose();
+          }}
         />
+
+        {/* INSPECTED USER PROFILE MODAL (للتصفح الحر لأي عضو أو مشرف) */}
+        {inspectedUserProfile && (
+          <UserProfileModal
+            isOpen={Boolean(inspectedUserProfile)}
+            onClose={() => setInspectedUserProfile(null)}
+            userProfile={inspectedUserProfile}
+          />
+        )}
 
         {/* PIN CODE INPUT MODAL FOR LOCKED ROOMS */}
         <AnimatePresence>
           {showPinModal && (
             <div 
-              className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto"
+              className="fixed inset-0 z-[80] bg-transparent flex items-center justify-center p-4 pointer-events-auto"
               dir="rtl"
               onClick={(e) => e.stopPropagation()}
             >
@@ -810,7 +928,8 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSel
             </div>
           )}
         </AnimatePresence>
-      </motion.div>
+        </motion.div>
+      </div>
     </AnimatePresence>
   );
 };

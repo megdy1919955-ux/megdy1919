@@ -8,7 +8,6 @@ import {
   Mic,
   MicOff,
   Music,
-  UserPlus,
   Settings,
   Radio,
   Users,
@@ -20,16 +19,26 @@ import {
   Eye,
   Lock,
   Sparkles,
-  Wrench,
   Camera,
   Image as ImageIcon,
   Upload,
-  RefreshCw
+  RefreshCw,
+  Ban,
+  Clock,
+  Unlock,
+  UserX,
+  HelpCircle
 } from 'lucide-react';
-import { isDeveloper } from '../lib/roleService';
 import { getSecretWindowTheme, getComputedModalStyle } from '../lib/secretCustomizerService';
-import { SecretWindowCustomizerModal } from './SecretWindowCustomizerModal';
 import { WindowThemeConfig } from '../types/secretCustomizer';
+import {
+  RoomBannedUser,
+  getRoomBannedUsers,
+  removeRoomBannedUser,
+  formatRemainingBanTime,
+  getModeratorKickPermission,
+  setModeratorKickPermission
+} from '../lib/roomKickService';
 
 export interface AdminUser {
   id: string;
@@ -46,6 +55,7 @@ export interface AdminUser {
     musicControl: boolean;
     attendanceControl: boolean;
     seatPriority: boolean;
+    kickControl?: boolean;
   };
 }
 
@@ -58,6 +68,10 @@ interface RoomInfoModalProps {
   hostName?: string;
   userRole?: 'owner' | 'host' | 'moderator' | 'guest';
   currentAppRole?: string;
+  isRoomOwner?: boolean;
+  agencyName?: string;
+  agencyOwnerName?: string;
+  agencyGid?: string;
   onRoleChange?: (role: 'owner' | 'host' | 'moderator' | 'guest') => void;
   onOpenSettings?: () => void;
   onUpdateRoomTitle?: (newTitle: string) => void;
@@ -73,6 +87,10 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
   hostName = 'الأمير أسامة',
   userRole = 'owner',
   currentAppRole = 'developer',
+  isRoomOwner,
+  agencyName = 'وكالة أبو أمجد لتسجيل المضيفين',
+  agencyOwnerName = 'أبو أمجد 👑',
+  agencyGid = '88902',
   onRoleChange,
   onOpenSettings,
   onUpdateRoomTitle,
@@ -80,9 +98,35 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
 }) => {
   // Current active role
   const [currentRole, setCurrentRole] = useState<'owner' | 'host' | 'moderator' | 'guest'>(userRole);
-  const [activeTab, setActiveTab] = useState<'admins' | 'announcement'>('admins');
+  const [activeTab, setActiveTab] = useState<'admins' | 'banned'>('admins');
+  const [showPermissionsHelp, setShowPermissionsHelp] = useState(false);
   const [theme, setTheme] = useState<WindowThemeConfig>(() => getSecretWindowTheme('room_info'));
-  const [showSecretCustomizer, setShowSecretCustomizer] = useState(false);
+
+  // 24-Hour Banned Users List State
+  const [bannedUsers, setBannedUsers] = useState<RoomBannedUser[]>(() => getRoomBannedUsers(roomId));
+
+  useEffect(() => {
+    const handleBannedUpdated = (e: Event) => {
+      const custom = e as CustomEvent;
+      if (custom.detail?.roomId === roomId || !custom.detail?.roomId) {
+        setBannedUsers(getRoomBannedUsers(roomId));
+      }
+    };
+    window.addEventListener('room_banned_list_updated', handleBannedUpdated);
+    return () => {
+      window.removeEventListener('room_banned_list_updated', handleBannedUpdated);
+    };
+  }, [roomId]);
+
+  const handleUnbanUser = (targetUserId: string, targetName: string) => {
+    if (!isOwner) {
+      showToast('🔒 إلغاء الطرد متاح حصرياً لصاحب الروم (المالك) فقط');
+      return;
+    }
+    removeRoomBannedUser(targetUserId, roomId);
+    setBannedUsers(getRoomBannedUsers(roomId));
+    showToast(`✓ تم إلغاء طرد ${targetName} من قبل المالك، ويحق له الآن العودة إلى الروم! 🎉`);
+  };
 
   // Room Title & Avatar Editing States
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -141,8 +185,6 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
     return () => window.removeEventListener('window_customizer_updated', handleUpdate);
   }, []);
 
-  const isDevUser = isDeveloper(currentAppRole);
-
   React.useEffect(() => {
     setCurrentRole(userRole);
   }, [userRole]);
@@ -159,6 +201,9 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
   const [isEditingAnnouncement, setIsEditingAnnouncement] = useState(false);
   const [tempAnnouncementText, setTempAnnouncementText] = useState(announcement);
 
+  // Strict Room Owner calculation: only true if user is owner role AND isRoomOwner
+  const isOwner = Boolean((isRoomOwner !== undefined ? isRoomOwner : currentRole === 'owner') && currentRole === 'owner');
+
   // Toast Notification State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -168,6 +213,11 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
   };
 
   const handleSaveTitle = () => {
+    if (!isOwner) {
+      showToast('🔒 عذراً: تعديل اسم الغرفة متاح فقط لصاحب الروم (المالك)، ولا يحق للمشرف أو المضيف تعديل اسم الروم.');
+      setIsEditingTitle(false);
+      return;
+    }
     if (!tempTitleText.trim()) {
       showToast('⚠️ يرجى إدخال اسم صحيح للغرفة');
       return;
@@ -227,7 +277,8 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
         micsControl: true,
         musicControl: true,
         attendanceControl: true,
-        seatPriority: true
+        seatPriority: true,
+        kickControl: getModeratorKickPermission(roomId)
       }
     },
     {
@@ -244,7 +295,8 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
         micsControl: true,
         musicControl: false,
         attendanceControl: true,
-        seatPriority: true
+        seatPriority: true,
+        kickControl: getModeratorKickPermission(roomId)
       }
     },
     {
@@ -261,7 +313,62 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
         micsControl: false,
         musicControl: true,
         attendanceControl: false,
-        seatPriority: true
+        seatPriority: true,
+        kickControl: false
+      }
+    },
+    {
+      id: '6',
+      name: 'فارس نجد 🇸🇦',
+      avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&q=80&w=200',
+      role: 'moderator',
+      roleTitle: '🛡️ مراقب عام وتنظيم الاستيج',
+      level: 'Lv.70',
+      vip: 'VIP6',
+      nLevel: 'N.11',
+      isOnline: true,
+      permissions: {
+        micsControl: true,
+        musicControl: false,
+        attendanceControl: true,
+        seatPriority: true,
+        kickControl: getModeratorKickPermission(roomId)
+      }
+    },
+    {
+      id: '7',
+      name: 'ريم البوادي 🌸',
+      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200',
+      role: 'host',
+      roleTitle: '🎙️ مذيعة الفعاليات والمسابقات',
+      level: 'Lv.61',
+      vip: 'VIP5',
+      nLevel: 'N.9',
+      isOnline: true,
+      permissions: {
+        micsControl: true,
+        musicControl: true,
+        attendanceControl: true,
+        seatPriority: false,
+        kickControl: false
+      }
+    },
+    {
+      id: '8',
+      name: 'سلطان القلوب 💎',
+      avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=200',
+      role: 'moderator',
+      roleTitle: '🛡️ مشرف الاستقبال والترحيب',
+      level: 'Lv.58',
+      vip: 'VIP4',
+      nLevel: 'N.7',
+      isOnline: false,
+      permissions: {
+        micsControl: false,
+        musicControl: false,
+        attendanceControl: true,
+        seatPriority: true,
+        kickControl: false
       }
     }
   ]);
@@ -278,8 +385,12 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
             micsControl: 'التحكم بالمايكات',
             musicControl: 'التحكم بالموسيقى',
             attendanceControl: 'إدارة الحضور',
-            seatPriority: 'أولوية المقاعد'
+            seatPriority: 'أولوية المقاعد',
+            kickControl: 'طرد وحظر الأعضاء (24 ساعة)'
           };
+          if (permKey === 'kickControl') {
+            setModeratorKickPermission(updatedValue, roomId);
+          }
           showToast(
             `تم ${updatedValue ? 'تفعيل' : 'إلغاء'} صلاحية (${permNames[permKey]}) لـ ${admin.name}`
           );
@@ -305,8 +416,6 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
 
   if (!isOpen) return null;
 
-  const isOwner = currentRole === 'owner';
-
   return (
     <>
     <AnimatePresence>
@@ -318,7 +427,7 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
           transition={{ duration: 0.25, ease: 'easeOut' }}
           onClick={(e) => e.stopPropagation()}
           style={getComputedModalStyle(theme)}
-          className="w-full max-w-md rounded-t-3xl sm:rounded-3xl p-4 text-white shadow-2xl max-h-[90vh] flex flex-col justify-between overflow-hidden dir-rtl pointer-events-auto transition-all border"
+          className="w-full max-w-md rounded-t-3xl sm:rounded-3xl p-4 text-white shadow-2xl h-[88vh] sm:h-[85vh] max-h-[92vh] flex flex-col justify-between overflow-hidden dir-rtl pointer-events-auto transition-all border"
         >
           {/* Top Header Card */}
           <div className="space-y-3 shrink-0">
@@ -332,10 +441,10 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
                     if (isOwner) {
                       setShowAvatarPickerModal(true);
                     } else {
-                      showToast('🔒 صورة الغرفة مخصصة ويمكن تغييرها من قبل صاحب الغرفة (المالك) فقط');
+                      showToast('🔒 صورة الغرفة مخصصة ويمكن تغييرها من قبل صاحب الغرفة (المالك) فقط، ولا يحق للمضيف أو المشرف تعديلها');
                     }
                   }}
-                  title={isOwner ? 'تغيير صورة الغرفة (خاص بصاحب الغرفة 👑)' : 'صورة الغرفة'}
+                  title={isOwner ? 'تغيير صورة الغرفة (خاص بصاحب الغرفة 👑)' : 'صورة الغرفة (تعديلها لصاحب الروم فقط 🔒)'}
                 >
                   <img
                     src={hostAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
@@ -357,7 +466,7 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
                   {!isEditingTitle ? (
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <h2 className="text-base font-black truncate max-w-[200px]" style={{ color: theme.titleColor }}>{roomTitle}</h2>
-                      {isOwner && (
+                      {isOwner ? (
                         <button
                           type="button"
                           onClick={() => {
@@ -368,6 +477,16 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
                           title="تعديل وتغيير اسم الغرفة (خاص بالمالك 👑)"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => showToast('🔒 عذراً: تعديل اسم الغرفة متاح لصاحب الروم فقط، ولا يحق للمشرف أو المضيف تعديل اسم الروم.')}
+                          className="p-1 rounded-lg bg-amber-500/10 text-amber-400/90 hover:bg-amber-500/20 border border-amber-400/20 transition-colors cursor-pointer flex items-center gap-1 text-[10px]"
+                          title="🔒 تعديل اسم الروم مخصص لمالك الغرفة فقط"
+                        >
+                          <Lock className="w-3 h-3 text-amber-400" />
+                          <span className="text-[9px] text-amber-300/80 font-normal">اسم محمي</span>
                         </button>
                       )}
                       <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-[9px] font-black px-1.5 py-0.2 rounded-full">
@@ -417,18 +536,6 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
               </div>
 
               <div className="flex items-center gap-1.5">
-                {/* Developer Secret Customizer Button */}
-                {isDevUser && (
-                  <button
-                    type="button"
-                    onClick={() => setShowSecretCustomizer(true)}
-                    className="p-1.5 rounded-full bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/40 border border-cyan-400/50 shadow-[0_0_8px_rgba(6,182,212,0.4)] transition-colors cursor-pointer"
-                    title="تخصيص سري للمبرمج"
-                  >
-                    <Wrench className="w-3.5 h-3.5 text-cyan-300" />
-                  </button>
-                )}
-
                 <button
                   onClick={onClose}
                   className="p-1.5 rounded-full bg-white/10 text-slate-300 hover:text-white hover:bg-white/20 transition-colors cursor-pointer"
@@ -438,14 +545,41 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
               </div>
             </div>
 
-            {/* Direct Section Header */}
-            <div className="flex items-center justify-between bg-[#1A2234] px-3 py-2 rounded-2xl border border-white/10 text-xs font-black text-amber-300">
-              <span className="flex items-center gap-1.5">
-                <Info className="w-4 h-4 text-amber-400" />
-                <span>تفاصيل وإعلانات الغرفة</span>
-              </span>
-              <span className="text-[10px] text-slate-400 font-normal">إدارة ومعلومات مباشرة</span>
-            </div>
+            {/* Segmented Navigation Tabs (Only visible to Room Owner) */}
+            {isOwner && (
+              <div className="flex items-center gap-1 bg-[#1A2234] p-1 rounded-2xl border border-white/10 text-xs font-black">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('admins')}
+                  className={`flex-1 py-1.5 px-2 rounded-xl text-center transition-all cursor-pointer flex items-center justify-center gap-1 text-[11px] font-bold ${
+                    activeTab === 'admins'
+                      ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>طاقم المشرفين</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('banned')}
+                  className={`flex-1 py-1.5 px-2 rounded-xl text-center transition-all cursor-pointer flex items-center justify-center gap-1 text-[11px] font-bold ${
+                    activeTab === 'banned'
+                      ? 'bg-gradient-to-r from-rose-600 to-red-700 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Ban className="w-3.5 h-3.5 text-rose-300" />
+                  <span>المطرودين خلال 24 ساعة</span>
+                  {bannedUsers.length > 0 && (
+                    <span className="bg-rose-500 text-white text-[9px] font-mono px-1.5 py-0.2 rounded-full font-black">
+                      {bannedUsers.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Toast Notification */}
@@ -463,267 +597,442 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
           </AnimatePresence>
 
           {/* Main Scrollable Content Area */}
-          <div className="overflow-y-auto no-scrollbar my-3 space-y-3 flex-1 min-h-[260px] pr-0.5">
-            {/* 1. DIRECTLY INTEGRATED ROOM ANNOUNCEMENT CARD */}
-            <div className="bg-gradient-to-r from-[#1A2234] via-slate-900 to-purple-950/60 border border-purple-500/40 rounded-2xl p-3 space-y-2 shadow-lg relative">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-purple-300 flex items-center gap-1.5">
-                  <Megaphone className="w-4 h-4 text-purple-400" />
-                  <span>إعلان وتنبيـه الغرفة</span>
-                </span>
+          <div className="overflow-y-auto overscroll-contain my-3 space-y-3 flex-1 min-h-[320px] pr-0.5 scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            {/* TAB 1: ADMINS & ANNOUNCEMENT */}
+            {activeTab === 'admins' && (
+              <div className="space-y-3">
+                {/* 1. ROOM ANNOUNCEMENT BOX - مربع كبير ظاهر بالكامل فوق طاقم المشرفين */}
+                <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5 space-y-2.5 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                        <Megaphone className="w-4 h-4" />
+                      </div>
+                      <span className="text-xs font-black text-amber-300">إعلان وتنبيـه الغرفة</span>
+                    </div>
 
-                {/* Edit button ONLY visible for Owner */}
-                {isOwner && !isEditingAnnouncement && (
-                  <button
-                    onClick={() => {
-                      setTempAnnouncementText(announcement);
-                      setIsEditingAnnouncement(true);
-                    }}
-                    className="bg-purple-600/30 text-purple-200 border border-purple-500/50 px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1 hover:bg-purple-600/50 transition-colors cursor-pointer"
-                  >
-                    <Edit3 className="w-3 h-3" />
-                    <span>تعديل الإعلان</span>
-                  </button>
-                )}
-              </div>
+                    {isOwner && !isEditingAnnouncement && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTempAnnouncementText(announcement);
+                          setIsEditingAnnouncement(true);
+                        }}
+                        className="bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40 px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>تعديل الإعلان</span>
+                      </button>
+                    )}
+                  </div>
 
-              {/* Announcement Editable Content for Owner OR Read-Only for Others */}
-              {isOwner && isEditingAnnouncement ? (
-                <div className="space-y-2">
-                  <textarea
-                    value={tempAnnouncementText}
-                    onChange={(e) => setTempAnnouncementText(e.target.value)}
-                    rows={3}
-                    className="w-full bg-slate-950/80 border border-purple-500/60 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:ring-1 focus:ring-purple-400 resize-none dir-rtl"
-                    placeholder="أدخل نص إعلان الغرفة هنا..."
-                  />
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => setIsEditingAnnouncement(false)}
-                      className="px-3 py-1 bg-white/10 text-slate-300 text-[11px] font-bold rounded-lg hover:bg-white/20 transition-colors cursor-pointer"
+                  {/* Spacious Announcement Canvas */}
+                  {isOwner && isEditingAnnouncement ? (
+                    <div className="space-y-2">
+                      <textarea
+                        value={tempAnnouncementText}
+                        onChange={(e) => setTempAnnouncementText(e.target.value)}
+                        rows={4}
+                        className="w-full bg-slate-950/80 border border-amber-500/50 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:ring-1 focus:ring-amber-400 resize-none dir-rtl leading-relaxed"
+                        placeholder="أدخل نص إعلان أو تنبيـه الغرفة هنا..."
+                      />
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingAnnouncement(false)}
+                          className="px-3 py-1.5 bg-white/10 text-slate-300 text-[11px] font-bold rounded-xl hover:bg-white/20 transition-colors cursor-pointer"
+                        >
+                          إلغاء
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveAnnouncement}
+                          className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 text-[11px] font-black rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>حفظ الإعلان</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => {
+                        if (isOwner) {
+                          setTempAnnouncementText(announcement);
+                          setIsEditingAnnouncement(true);
+                        }
+                      }}
+                      className={`min-h-[70px] bg-slate-950/40 border border-white/5 rounded-xl p-3 flex items-start text-xs leading-relaxed dir-rtl ${
+                        isOwner ? 'cursor-pointer hover:border-amber-500/30 transition-colors' : ''
+                      }`}
                     >
-                      إلغاء
-                    </button>
-                    <button
-                      onClick={handleSaveAnnouncement}
-                      className="px-3 py-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-[11px] font-black rounded-lg shadow-sm hover:brightness-110 transition-all cursor-pointer flex items-center gap-1"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      <span>حفظ الإعلان</span>
-                    </button>
+                      {announcement.trim() ? (
+                        <p className="text-slate-200 font-medium whitespace-pre-wrap">{announcement}</p>
+                      ) : (
+                        <p className="text-slate-500 italic text-[11px] m-auto text-center">
+                          {isOwner ? 'مربع الإعلان خالي... انقر هنا لكتابة إعلان وتنبيـه للغرفة ✍️' : 'لا يوجد إعلان معلن في الغرفة حالياً'}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. ADMINS & MODERATORS LIST */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-purple-400" />
+                      <span className="text-xs font-black text-amber-300">
+                        {isOwner ? 'إدارة طاقم المشرفين والمضيفين' : 'طاقم مشرفي ومضييفي الغرفة'}
+                      </span>
+
+                      {/* Question Mark Button (نظام صلاحية المشرفين) */}
+                      <button
+                        type="button"
+                        onClick={() => setShowPermissionsHelp((prev) => !prev)}
+                        className="w-5 h-5 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-300 flex items-center justify-center transition-all cursor-pointer active:scale-95 ml-1"
+                        title="نظام صلاحية المشرفين"
+                      >
+                        <HelpCircle className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Permissions Notice Banner (Shown when clicking ?) */}
+                  <AnimatePresence>
+                    {showPermissionsHelp && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0, y: -4 }}
+                        animate={{ opacity: 1, height: 'auto', y: 0 }}
+                        exit={{ opacity: 0, height: 0, y: -4 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10.5px] leading-relaxed flex items-start justify-between gap-2 shadow-xs">
+                          <div className="flex items-start gap-2">
+                            <Crown className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                            <div>
+                              <span className="font-black block text-amber-200">نظام صلاحيات المشرفين 👑</span>
+                              <span className="text-slate-300 text-[10px] leading-relaxed block mt-0.5">
+                                صلاحيات المشرف (المايكات، الحضور، وصلاحية طرد الأعضاء) تُمنح وتُدار حصراً من صاحب الروم فقط.
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowPermissionsHelp(false)}
+                            className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer shrink-0"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <div className="space-y-2">
+                    {adminsList
+                      .filter((admin) => admin.role !== 'owner') // Exclude owner card from supervisors list to prevent duplication
+                      .map((admin) => {
+                        return (
+                          <div
+                            key={admin.id}
+                            className="bg-white/[0.03] border border-white/8 rounded-2xl p-2.5 space-y-2 hover:border-white/15 transition-all"
+                          >
+                            {/* Admin Header Info */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2.5">
+                                <div className="relative">
+                                  <img
+                                    src={admin.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
+                                    alt={admin.name}
+                                    className="w-10 h-10 rounded-full object-cover border-2 border-amber-400/60"
+                                  />
+                                  {admin.isOnline && (
+                                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-slate-900" />
+                                  )}
+                                </div>
+
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-black text-slate-100 text-xs">{admin.name}</span>
+                                    <ShieldCheck className="w-4 h-4 text-purple-400" />
+                                  </div>
+                                  <span className="text-[10px] text-amber-300 font-bold block">
+                                    {admin.roleTitle}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Badges Row */}
+                              <div className="flex items-center gap-1">
+                                <span className="bg-purple-600/90 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md">
+                                  {admin.level}
+                                </span>
+                                <span className="bg-amber-500/90 text-slate-950 text-[8px] font-black px-1.5 py-0.5 rounded-md">
+                                  {admin.vip}
+                                </span>
+                                <span className="bg-emerald-600/90 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md">
+                                  {admin.nLevel}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Granular Permissions Section */}
+                            {isOwner ? (
+                              /* OWNER VIEW: Granular Interactive Permission Toggles for Moderators */
+                              <div className="pt-2 border-t border-white/5 space-y-1.5">
+                                <div className="flex items-center justify-between text-[10px] font-black text-amber-200">
+                                  <span className="flex items-center gap-1">
+                                    <Sliders className="w-3 h-3 text-amber-400" />
+                                    <span>تخصيص صلاحيات المشرف:</span>
+                                  </span>
+                                  <span className="text-[9px] text-slate-400 font-normal">انقر لتفعيل/تعطيل الصلاحية</span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  {/* 1. Mics Control Toggle */}
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleModeratorPermission(admin.id, 'micsControl')}
+                                    className={`p-1.5 rounded-xl border text-[10px] font-black flex items-center justify-between transition-all cursor-pointer ${
+                                      admin.permissions.micsControl
+                                        ? 'bg-cyan-500/20 border-cyan-400/60 text-cyan-200'
+                                        : 'bg-white/5 border-white/10 text-slate-400 opacity-60 hover:opacity-100'
+                                    }`}
+                                  >
+                                    <span className="flex items-center gap-1">
+                                      <Mic className="w-3 h-3" />
+                                      <span>التحكم بالمايكات</span>
+                                    </span>
+                                    <span className={`text-[9px] px-1 rounded ${admin.permissions.micsControl ? 'bg-cyan-500 text-slate-950 font-black' : 'bg-slate-700 text-slate-300'}`}>
+                                      {admin.permissions.micsControl ? 'مُفعّل' : 'معطّل'}
+                                    </span>
+                                  </button>
+
+                                  {/* 2. Music Control Toggle */}
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleModeratorPermission(admin.id, 'musicControl')}
+                                    className={`p-1.5 rounded-xl border text-[10px] font-black flex items-center justify-between transition-all cursor-pointer ${
+                                      admin.permissions.musicControl
+                                        ? 'bg-purple-500/20 border-purple-400/60 text-purple-200'
+                                        : 'bg-white/5 border-white/10 text-slate-400 opacity-60 hover:opacity-100'
+                                    }`}
+                                  >
+                                    <span className="flex items-center gap-1">
+                                      <Music className="w-3 h-3" />
+                                      <span>تشغيل الموسيقى</span>
+                                    </span>
+                                    <span className={`text-[9px] px-1 rounded ${admin.permissions.musicControl ? 'bg-purple-500 text-white font-black' : 'bg-slate-700 text-slate-300'}`}>
+                                      {admin.permissions.musicControl ? 'مُفعّل' : 'معطّل'}
+                                    </span>
+                                  </button>
+
+                                  {/* 3. Attendance Control Toggle */}
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleModeratorPermission(admin.id, 'attendanceControl')}
+                                    className={`p-1.5 rounded-xl border text-[10px] font-black flex items-center justify-between transition-all cursor-pointer ${
+                                      admin.permissions.attendanceControl
+                                        ? 'bg-rose-500/20 border-rose-400/60 text-rose-200'
+                                        : 'bg-white/5 border-white/10 text-slate-400 opacity-60 hover:opacity-100'
+                                    }`}
+                                  >
+                                    <span className="flex items-center gap-1">
+                                      <UserCheck className="w-3 h-3" />
+                                      <span>إدارة الحضور</span>
+                                    </span>
+                                    <span className={`text-[9px] px-1 rounded ${admin.permissions.attendanceControl ? 'bg-rose-500 text-white font-black' : 'bg-slate-700 text-slate-300'}`}>
+                                      {admin.permissions.attendanceControl ? 'مُفعّل' : 'معطّل'}
+                                    </span>
+                                  </button>
+
+                                  {/* 4. Seat Priority Toggle */}
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleModeratorPermission(admin.id, 'seatPriority')}
+                                    className={`p-1.5 rounded-xl border text-[10px] font-black flex items-center justify-between transition-all cursor-pointer ${
+                                      admin.permissions.seatPriority
+                                        ? 'bg-amber-500/20 border-amber-400/60 text-amber-200'
+                                        : 'bg-white/5 border-white/10 text-slate-400 opacity-60 hover:opacity-100'
+                                    }`}
+                                  >
+                                    <span className="flex items-center gap-1">
+                                      👑 أولوية المقاعد
+                                    </span>
+                                    <span className={`text-[9px] px-1 rounded ${admin.permissions.seatPriority ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-700 text-slate-300'}`}>
+                                      {admin.permissions.seatPriority ? 'مُفعّل' : 'معطّل'}
+                                    </span>
+                                  </button>
+
+                                  {/* 5. Kick Control Toggle (Owner Grants Kick Permission to Moderator) */}
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleModeratorPermission(admin.id, 'kickControl')}
+                                    className={`col-span-2 p-2 rounded-xl border text-[10px] font-black flex items-center justify-between transition-all cursor-pointer ${
+                                      admin.permissions.kickControl
+                                        ? 'bg-rose-500/20 border-rose-400/60 text-rose-200 shadow-xs'
+                                        : 'bg-white/5 border-white/10 text-slate-400 opacity-60 hover:opacity-100'
+                                    }`}
+                                  >
+                                    <span className="flex items-center gap-1.5">
+                                      <Ban className="w-3.5 h-3.5 text-rose-400" />
+                                      <span>صلاحية طرد وحظر الأعضاء (مهلة 24 ساعة)</span>
+                                    </span>
+                                    <span className={`text-[9.5px] px-2 py-0.5 rounded font-black ${admin.permissions.kickControl ? 'bg-rose-500 text-white' : 'bg-slate-700 text-slate-300'}`}>
+                                      {admin.permissions.kickControl ? 'مُصرّح بالطرد ✓' : 'معطّل (سحب الصلاحية)'}
+                                    </span>
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              /* MODERATOR / GUEST VIEW: Read-Only Badges Only (No Toggles) */
+                              <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-white/5 text-[9px] font-bold text-slate-300">
+                                <span className="text-slate-400">الصلاحيات الممنوحة:</span>
+                                {admin.permissions.micsControl && (
+                                  <span className="bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-md border border-cyan-500/30 flex items-center gap-0.5">
+                                    <Mic className="w-2.5 h-2.5" /> المايكات
+                                  </span>
+                                )}
+                                {admin.permissions.musicControl && (
+                                  <span className="bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-md border border-purple-500/30 flex items-center gap-0.5">
+                                    <Music className="w-2.5 h-2.5" /> الموسيقى
+                                  </span>
+                                )}
+                                {admin.permissions.attendanceControl && (
+                                  <span className="bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-md border border-rose-500/30 flex items-center gap-0.5">
+                                    <UserCheck className="w-2.5 h-2.5" /> الحضور
+                                  </span>
+                                )}
+                                {admin.permissions.seatPriority && (
+                                  <span className="bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-md border border-amber-500/30 flex items-center gap-0.5">
+                                    👑 الأولوية
+                                  </span>
+                                )}
+                                {admin.permissions.kickControl && (
+                                  <span className="bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-md border border-rose-500/30 flex items-center gap-0.5">
+                                    <Ban className="w-2.5 h-2.5" /> صلاحية الطرد 24س
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
-              ) : (
-                <div className="bg-slate-950/60 p-2.5 rounded-xl border border-white/5 text-slate-200 text-xs leading-relaxed font-bold dir-rtl">
-                  {announcement}
-                </div>
-              )}
 
-              {!isOwner && (
-                <span className="text-[9px] text-slate-400 font-bold block text-left">
-                  🔒 يمكن لمالك الغرفة فقط تعديل هذا الإعلان
-                </span>
-              )}
+                {/* 3. ROOM INTEREST TAGS */}
+                <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-2.5 space-y-1.5">
+                  <span className="font-black text-slate-200 text-xs block flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>اهتمامات ووسوم الغرفة</span>
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['🎭 طرب وسوالف', '🇸🇦 السعودية', '💎 كبار الداعمين', '👑 الأساطير', '🎵 دي جي'].map((tag, idx) => (
+                      <span key={idx} className="bg-white/5 border border-white/10 text-slate-300 px-2.5 py-1 rounded-full text-[10px] font-bold">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+        {/* TAB 2: 24-HOUR BANNED USERS LIST (قائمة المطرودين حصرياً لمالك الروم) */}
+        {isOwner && activeTab === 'banned' && (
+          <div className="space-y-3">
+            {/* Explanation Card */}
+            <div className="p-2.5 rounded-2xl bg-rose-950/40 border border-rose-500/30 text-xs flex items-start gap-2.5">
+              <Ban className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <p className="text-rose-200 font-bold text-[11px]">
+                  قائمة المطرودين من الغرفة (مهلة الحظر 24 ساعة) 🚫
+                </p>
+                <p className="text-slate-300 text-[10px] leading-relaxed">
+                  يستمر الطرد لمدة 24 ساعة ثم يُلغى تلقائياً من القائمة. في حال قام مالك الروم بإلغاء الطرد، يحق للشخص العودة للروم فوراً.
+                </p>
+              </div>
             </div>
 
-            {/* 2. ADMINS & MODERATORS LIST (EXCLUDING OWNER TO PREVENT DUPLICATION) */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-black text-amber-300 flex items-center gap-1">
-                  <ShieldCheck className="w-4 h-4 text-purple-400" />
-                  <span>{isOwner ? 'إدارة طاقم المشرفين والمضيفين' : 'طاقم مشرفي ومضييفي الغرفة'}</span>
-                </span>
-
-                {isOwner && (
-                  <button
-                    onClick={() => showToast('✓ تم فتح قائمة اختيار مشرف جديد!')}
-                    className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1 hover:bg-amber-500/30 transition-colors cursor-pointer"
-                  >
-                    <UserPlus className="w-3.5 h-3.5" />
-                    <span>إضافة مشرف جديد</span>
-                  </button>
-                )}
+            {bannedUsers.length === 0 ? (
+              <div className="py-10 text-center text-slate-400 space-y-2">
+                <div className="w-12 h-12 mx-auto rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-md">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <p className="text-xs font-bold text-slate-200">لا يوجد أي أعضاء مطرودين حالياً</p>
+                <p className="text-[10px] text-slate-400 max-w-[260px] mx-auto">
+                  سجل المطرودين نظيف، وجميع الأعضاء المصرح لهم يمكنهم الدخول والمشاركة بحرية.
+                </p>
               </div>
-
+            ) : (
               <div className="space-y-2">
-                {adminsList
-                  .filter((admin) => admin.role !== 'owner') // Exclude owner card from supervisors list to prevent duplication
-                  .map((admin) => {
-                    return (
-                      <div
-                        key={admin.id}
-                        className="bg-[#1A2234] border border-white/10 rounded-2xl p-3 space-y-2.5 hover:border-amber-500/30 transition-colors"
-                      >
-                        {/* Admin Header Info */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className="relative">
-                              <img
-                                src={admin.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                alt={admin.name}
-                                className="w-10 h-10 rounded-full object-cover border-2 border-amber-400/60"
-                              />
-                              {admin.isOnline && (
-                                <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#1A2234]" />
-                              )}
-                            </div>
-
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-black text-slate-100 text-xs">{admin.name}</span>
-                                <ShieldCheck className="w-4 h-4 text-purple-400" />
-                              </div>
-                              <span className="text-[10px] text-amber-300 font-bold block">
-                                {admin.roleTitle}
+                {bannedUsers.map((bUser) => (
+                  <div
+                    key={bUser.id}
+                    className="bg-[#1A2234] border border-rose-500/25 rounded-2xl p-3 space-y-2.5 hover:border-rose-500/40 transition-colors shadow-md"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src={bUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
+                          alt={bUser.name}
+                          className="w-10 h-10 rounded-full object-cover border-2 border-rose-500/60"
+                        />
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-black text-white">{bUser.name}</span>
+                            {bUser.vipLabel && (
+                              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                                {bUser.vipLabel}
                               </span>
-                            </div>
+                            )}
                           </div>
-
-                          {/* Badges Row */}
-                          <div className="flex items-center gap-1">
-                            <span className="bg-purple-600/90 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md">
-                              {admin.level}
-                            </span>
-                            <span className="bg-amber-500/90 text-slate-950 text-[8px] font-black px-1.5 py-0.5 rounded-md">
-                              {admin.vip}
-                            </span>
-                            <span className="bg-emerald-600/90 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md">
-                              {admin.nLevel}
-                            </span>
+                          <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono mt-0.5">
+                            <span>ID: {bUser.userId}</span>
+                            <span>•</span>
+                            <span className="text-rose-400 font-bold">طرده: {bUser.bannedBy}</span>
                           </div>
                         </div>
-
-                        {/* Granular Permissions Section */}
-                        {isOwner ? (
-                          /* OWNER VIEW: Granular Interactive Permission Toggles for Moderators */
-                          <div className="pt-2 border-t border-white/10 space-y-1.5">
-                            <div className="flex items-center justify-between text-[10px] font-black text-amber-200">
-                              <span className="flex items-center gap-1">
-                                <Sliders className="w-3 h-3 text-amber-400" />
-                                <span>تخصيص صلاحيات المشرف:</span>
-                              </span>
-                              <span className="text-[9px] text-slate-400 font-normal">انقر لتفعيل/تعطيل الصلاحية</span>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {/* 1. Mics Control Toggle */}
-                              <button
-                                onClick={() => toggleModeratorPermission(admin.id, 'micsControl')}
-                                className={`p-1.5 rounded-xl border text-[10px] font-black flex items-center justify-between transition-all cursor-pointer ${
-                                  admin.permissions.micsControl
-                                    ? 'bg-cyan-500/20 border-cyan-400/60 text-cyan-200'
-                                    : 'bg-white/5 border-white/10 text-slate-400 opacity-60 hover:opacity-100'
-                                }`}
-                              >
-                                <span className="flex items-center gap-1">
-                                  <Mic className="w-3 h-3" />
-                                  <span>التحكم بالمايكات</span>
-                                </span>
-                                <span className={`text-[9px] px-1 rounded ${admin.permissions.micsControl ? 'bg-cyan-500 text-slate-950 font-black' : 'bg-slate-700 text-slate-300'}`}>
-                                  {admin.permissions.micsControl ? 'مُفعّل' : 'معطّل'}
-                                </span>
-                              </button>
-
-                              {/* 2. Music Control Toggle */}
-                              <button
-                                onClick={() => toggleModeratorPermission(admin.id, 'musicControl')}
-                                className={`p-1.5 rounded-xl border text-[10px] font-black flex items-center justify-between transition-all cursor-pointer ${
-                                  admin.permissions.musicControl
-                                    ? 'bg-purple-500/20 border-purple-400/60 text-purple-200'
-                                    : 'bg-white/5 border-white/10 text-slate-400 opacity-60 hover:opacity-100'
-                                }`}
-                              >
-                                <span className="flex items-center gap-1">
-                                  <Music className="w-3 h-3" />
-                                  <span>تشغيل الموسيقى</span>
-                                </span>
-                                <span className={`text-[9px] px-1 rounded ${admin.permissions.musicControl ? 'bg-purple-500 text-white font-black' : 'bg-slate-700 text-slate-300'}`}>
-                                  {admin.permissions.musicControl ? 'مُفعّل' : 'معطّل'}
-                                </span>
-                              </button>
-
-                              {/* 3. Attendance Control Toggle */}
-                              <button
-                                onClick={() => toggleModeratorPermission(admin.id, 'attendanceControl')}
-                                className={`p-1.5 rounded-xl border text-[10px] font-black flex items-center justify-between transition-all cursor-pointer ${
-                                  admin.permissions.attendanceControl
-                                    ? 'bg-rose-500/20 border-rose-400/60 text-rose-200'
-                                    : 'bg-white/5 border-white/10 text-slate-400 opacity-60 hover:opacity-100'
-                                }`}
-                              >
-                                <span className="flex items-center gap-1">
-                                  <UserCheck className="w-3 h-3" />
-                                  <span>إدارة الحضور</span>
-                                </span>
-                                <span className={`text-[9px] px-1 rounded ${admin.permissions.attendanceControl ? 'bg-rose-500 text-white font-black' : 'bg-slate-700 text-slate-300'}`}>
-                                  {admin.permissions.attendanceControl ? 'مُفعّل' : 'معطّل'}
-                                </span>
-                              </button>
-
-                              {/* 4. Seat Priority Toggle */}
-                              <button
-                                onClick={() => toggleModeratorPermission(admin.id, 'seatPriority')}
-                                className={`p-1.5 rounded-xl border text-[10px] font-black flex items-center justify-between transition-all cursor-pointer ${
-                                  admin.permissions.seatPriority
-                                    ? 'bg-amber-500/20 border-amber-400/60 text-amber-200'
-                                    : 'bg-white/5 border-white/10 text-slate-400 opacity-60 hover:opacity-100'
-                                }`}
-                              >
-                                <span className="flex items-center gap-1">
-                                  👑 أولوية المقاعد
-                                </span>
-                                <span className={`text-[9px] px-1 rounded ${admin.permissions.seatPriority ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-700 text-slate-300'}`}>
-                                  {admin.permissions.seatPriority ? 'مُفعّل' : 'معطّل'}
-                                </span>
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          /* MODERATOR / GUEST VIEW: Read-Only Badges Only (No Toggles) */
-                          <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-white/5 text-[9px] font-bold text-slate-300">
-                            <span className="text-slate-400">الصلاحيات الممنوحة:</span>
-                            {admin.permissions.micsControl && (
-                              <span className="bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-md border border-cyan-500/30 flex items-center gap-0.5">
-                                <Mic className="w-2.5 h-2.5" /> المايكات
-                              </span>
-                            )}
-                            {admin.permissions.musicControl && (
-                              <span className="bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-md border border-purple-500/30 flex items-center gap-0.5">
-                                <Music className="w-2.5 h-2.5" /> الموسيقى
-                              </span>
-                            )}
-                            {admin.permissions.attendanceControl && (
-                              <span className="bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-md border border-rose-500/30 flex items-center gap-0.5">
-                                <UserCheck className="w-2.5 h-2.5" /> الحضور
-                              </span>
-                            )}
-                            {admin.permissions.seatPriority && (
-                              <span className="bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-md border border-amber-500/30 flex items-center gap-0.5">
-                                👑 الأولوية
-                              </span>
-                            )}
-                          </div>
-                        )}
                       </div>
-                    );
-                  })}
-              </div>
-            </div>
 
-            {/* 3. ROOM INTEREST TAGS */}
-            <div className="bg-[#1A2234] border border-white/10 rounded-2xl p-3 space-y-2">
-              <span className="font-black text-slate-200 text-xs block flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>اهتمامات ووسوم الغرفة</span>
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {['🎭 طرب وسوالف', '🇸🇦 السعودية', '💎 كبار الداعمين', '👑 الأساطير', '🎵 دي جي'].map((tag, idx) => (
-                  <span key={idx} className="bg-white/5 border border-white/10 text-slate-300 px-2.5 py-1 rounded-full text-[10px] font-bold">
-                    {tag}
-                  </span>
+                      {/* Remaining Countdown Timer */}
+                      <div className="text-left">
+                        <span className="text-[10px] bg-slate-900/80 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full flex items-center gap-1 font-mono font-bold shadow-xs">
+                          <Clock className="w-3 h-3 text-amber-400" />
+                          <span>{formatRemainingBanTime(bUser.bannedUntil)}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Bottom Action / Unban */}
+                    <div className="pt-2 border-t border-white/5 flex items-center justify-between">
+                      <span className="text-[9.5px] text-slate-400 font-medium">
+                        مهلة الطرد: 24 ساعة (تلقائية)
+                      </span>
+
+                      {isOwner ? (
+                        <button
+                          type="button"
+                          onClick={() => handleUnbanUser(bUser.id, bUser.name)}
+                          className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-slate-950 text-[10.5px] font-black rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                        >
+                          <Unlock className="w-3.5 h-3.5" />
+                          <span>إلغاء الطرد والسماح بالعودة 🔓</span>
+                        </button>
+                      ) : (
+                        <span className="text-[9.5px] text-amber-400/90 font-bold flex items-center gap-1">
+                          <span>🔒</span>
+                          <span>إلغاء الطرد متاح للمالك فقط</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
-            </div>
+            )}
+          </div>
+        )}
 
             {/* 4. ADVANCED ROOM SETTINGS BUTTON (OWNER ONLY) */}
             {isOwner && (
@@ -756,18 +1065,10 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
       </div>
     </AnimatePresence>
 
-    {/* Secret Customizer Modal for Room Info */}
-    <SecretWindowCustomizerModal
-      isOpen={showSecretCustomizer}
-      onClose={() => setShowSecretCustomizer(false)}
-      windowId="room_info"
-      onThemeChanged={(newTheme) => setTheme(newTheme)}
-    />
-
     {/* AVATAR PICKER MODAL (نافذة تغيير صورة الغرفة الحصرية لمالك الغرفة 👑) */}
     <AnimatePresence>
       {showAvatarPickerModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" dir="rtl">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-transparent" dir="rtl">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}

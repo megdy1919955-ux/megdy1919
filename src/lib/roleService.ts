@@ -3,7 +3,7 @@
  * نظام أمني شامل لقفل واجهات التحكم وتعديلات الهدايا وحصرها بـ (المبرمج) مع نظام تخويل مرن
  */
 
-export type AppRole = 'developer' | 'owner' | 'host' | 'moderator' | 'designer' | 'guest';
+export type AppRole = 'developer' | 'owner' | 'moderator' | 'guest';
 
 export interface RoleInfo {
   id: AppRole;
@@ -21,7 +21,7 @@ export const APP_ROLES: RoleInfo[] = [
   {
     id: 'developer',
     title: 'المبرمج (Developer)',
-    subtitle: 'صلاحيات المطور الكاملة (Root) - الوحيد المخول بالتحكم وتعديل الهدايا افتراضياً',
+    subtitle: 'صلاحيات المطور الكاملة (Root) - التحكم بالمنظومة والخصائص والجذور',
     badge: 'ROOT / DEV 💻',
     icon: '💻',
     color: 'text-cyan-300',
@@ -37,69 +37,39 @@ export const APP_ROLES: RoleInfo[] = [
   {
     id: 'owner',
     title: 'مالك الروم (Room Owner)',
-    subtitle: 'السيادة الكاملة على الغرفة، المقاعد، الشارات، والأعضاء',
+    subtitle: 'السيادة الكاملة على الغرفة، وتخويل وإلغاء صلاحيات المشرفين وحظر الأعضاء',
     badge: 'ROOM OWNER 👑',
     icon: '👑',
     color: 'text-amber-300',
     bgGradient: 'from-amber-950/90 via-yellow-950/80 to-slate-950/90',
     borderColor: 'border-amber-400/60',
     permissions: [
-      'التحكم بعدد وتوزيع المايكات (2 إلى 20 مايك)',
-      'إدارة المشرفين وقفل وفتح المايكات والغرفة',
-      'تشغيل وإيقاف عداد الجولات والمسابقات',
-      'كتم وطرد أي مستخدم وتعيين المضيفين'
-    ]
-  },
-  {
-    id: 'host',
-    title: 'المضيف / مقدم الغرفة (Host)',
-    subtitle: 'صلاحيات إدارة النقاش، تشغيل الموسيقى، والتحكم بالمايك الرئيسي',
-    badge: 'HOST 🎙️',
-    icon: '🎙️',
-    color: 'text-emerald-300',
-    bgGradient: 'from-emerald-950/90 via-teal-950/80 to-slate-950/90',
-    borderColor: 'border-emerald-400/60',
-    permissions: [
-      'الصعود الفوري للمقعد الأول بدون طابور',
-      'تشغيل مشغل الموسيقى والمؤثرات الصوتية',
-      'قبول طلبات الصعود للمايك',
-      'شارة المضيف الذهبية'
+      'منح وسحب صلاحيات المشرفين (الطرد، المايكات، الموسيقى)',
+      'التحكم بعدد وتوزيع المايكات وقفل الغرفة',
+      'طرد المخالفين وإلغاء الطرد من قائمة المحظورين',
+      'تشغيل وإيقاف عداد الجولات والمسابقات'
     ]
   },
   {
     id: 'moderator',
-    title: 'المشرف الإداري (Moderator)',
-    subtitle: 'صلاحيات ضبط النظام، إدارة طابور الانتظار، وكتم المخالفين',
+    title: 'مشرف في الروم (Moderator)',
+    subtitle: 'صلاحيات المشرف تُمنح وتُدار حصراً من صاحب الروم فقط',
     badge: 'ADMIN 🛡️',
     icon: '🛡️',
     color: 'text-purple-300',
     bgGradient: 'from-purple-950/90 via-indigo-950/80 to-slate-950/90',
     borderColor: 'border-purple-400/60',
     permissions: [
+      'صلاحية طرد المخالفين (فقط إذا منحها مالك الروم)',
       'قبول ورفض طلبات الصعود للمايك',
       'كتم الميكروفون عن المستخدمين المخالفين',
-      'إلغاء قفل الدردشة والرد على البلاغات'
-    ]
-  },
-  {
-    id: 'designer',
-    title: 'مصمم الجرافيك والأنيميشن',
-    subtitle: 'صلاحيات التصميم ومعاينة المؤثرات (تخضع لتخويل المبرمج)',
-    badge: 'DESIGNER 🎨',
-    icon: '🎨',
-    color: 'text-pink-300',
-    bgGradient: 'from-pink-950/90 via-fuchsia-950/80 to-slate-950/90',
-    borderColor: 'border-pink-400/60',
-    permissions: [
-      'معاينة دخوليات الهدايا الحية',
-      'الاستماع للمؤثرات الصوتية',
-      'طلب تخويل التعديل من المبرمج'
+      'مساعدة مالك الروم في ضبط النظام والهدوء'
     ]
   },
   {
     id: 'guest',
-    title: 'مستخدم عادي / زائر (Guest)',
-    subtitle: 'تجربة المستخدم القياسية للمشاهدة والاستماع وإرسال الهدايا',
+    title: 'مستخدم عادي (Regular User)',
+    subtitle: 'تجربة المستخدم العادي للمشاهدة والاستماع وإرسال الهدايا والمشاركة',
     badge: 'USER 👤',
     icon: '👤',
     color: 'text-slate-300',
@@ -145,9 +115,7 @@ export function setActiveAppRole(role: AppRole): void {
     const cmsMap: Record<AppRole, string> = {
       developer: 'Developer',
       owner: 'Developer',
-      host: 'Admin',
       moderator: 'Admin',
-      designer: 'Designer',
       guest: 'User'
     };
     localStorage.setItem('super_legend_cms_active_role', cmsMap[role] || 'Developer');

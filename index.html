@@ -1,21 +1,52 @@
 <!doctype html>
 <!--
-  تطبيق ترف شات (Taraf Chat)
-  Copyright (c) 2026 Taraf Chat. All Rights Reserved.
-  جميع حقوق الملكية الفكرية مسجلة ومحفوظة بالكامل للمالك والمطور. وتعتبر كافة الأكواد والتصاميم والهياكل والعلامة التجارية "ترف شات (Taraf Chat)" ملكية خاصة وحصرية له.
+  تطبيق النجم (Al-Najm Voice Chat)
+  Copyright (c) 2026 Al-Najm. All Rights Reserved.
+  جميع حقوق الملكية الفكرية مسجلة ومحفوظة بالكامل للمالك والمطور. وتعتبر كافة الأكواد والتصاميم والهياكل والشعار والعلامة التجارية "النجم (Al-Najm)" ملكية خاصة وحصرية له.
 -->
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
-    <meta name="copyright" content="تطبيق ترف شات (Taraf Chat) - جميع حقوق الملكية الفكرية مسجلة ومحفوظة" />
+    <meta name="description" content="تطبيق النجم (Al-Najm) - المنصة الشاملة للغرف الصوتية والبث المباشر والفعاليات الملكية." />
+    <meta property="og:title" content="النجم" />
+    <meta property="og:description" content="تطبيق النجم (Al-Najm) - المنصة الشاملة للغرف الصوتية والبث المباشر." />
+    <meta property="og:image" content="/al_najm_logo.png" />
+    <meta name="copyright" content="تطبيق النجم (Al-Najm) - جميع حقوق الملكية الفكرية مسجلة ومحفوظة" />
+    <meta name="theme-color" content="#0B0F19" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="النجم" />
+    <meta name="application-name" content="النجم" />
+    <meta name="msapplication-starturl" content="/?mode=standalone" />
+    <link rel="icon" type="image/png" href="/al_najm_logo.png" />
+    <link rel="shortcut icon" href="/favicon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png" />
+    <link rel="manifest" href="/manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-    <title>ترف شات | Taraf Chat</title>
+    <title>النجم</title>
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        const regSW = () => {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then((r) => console.log('SW active:', r.scope))
+            .catch((err) => console.error('SW error:', err));
+        };
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+          regSW();
+        } else {
+          window.addEventListener('DOMContentLoaded', regSW);
+        }
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

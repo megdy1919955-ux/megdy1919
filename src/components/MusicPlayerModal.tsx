@@ -982,7 +982,7 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
 
               {/* Hover Quick Action Controls Overlay */}
               <div 
-                className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-1 z-20 backdrop-blur-[2px]"
+                className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-1 z-20"
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 {/* Play / Pause Toggle */}
@@ -1042,7 +1042,7 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               style={{ touchAction: 'none', willChange: 'transform' }}
-              className="pointer-events-auto w-full max-w-[290px] bg-[#0D1322]/98 text-white rounded-2xl shadow-[0_0_35px_rgba(245,158,11,0.35)] border-2 border-amber-500/40 overflow-hidden flex flex-col backdrop-blur-md select-none transform-gpu cursor-grab active:cursor-grabbing"
+              className="pointer-events-auto w-full max-w-[290px] bg-[#0D1322] text-white rounded-2xl shadow-[0_0_35px_rgba(245,158,11,0.35)] border-2 border-amber-500/40 overflow-hidden flex flex-col select-none transform-gpu cursor-grab active:cursor-grabbing"
             >
             {/* Header Bar: Simplified with Drag handle, Music Note button, AGC badge, Popover Gear, Minimize & Close */}
             <div 
@@ -1153,7 +1153,7 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
                       exit={{ opacity: 0, y: -10, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
                       onPointerDown={(e) => e.stopPropagation()}
-                      className="absolute inset-x-1.5 top-1.5 z-40 bg-[#0E1526]/98 border-2 border-amber-500/50 rounded-xl p-2.5 shadow-2xl backdrop-blur-2xl space-y-2 dir-rtl"
+                      className="absolute inset-x-1.5 top-1.5 z-40 bg-[#0E1526] border-2 border-amber-500/50 rounded-xl p-2.5 shadow-2xl space-y-2 dir-rtl"
                     >
                       {/* Popover Header */}
                       <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
@@ -1565,7 +1565,7 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
         <AnimatePresence>
           {showPlaylist && (
             <div 
-              className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md dir-rtl select-none pointer-events-auto"
+              className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-transparent dir-rtl select-none pointer-events-auto"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.preventDefault();
@@ -1859,7 +1859,7 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
               initial={{ opacity: 0, y: 50, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 50, scale: 0.95 }}
-              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000] bg-[#0E1526]/98 border-2 border-amber-500/80 text-white rounded-2xl p-4 shadow-[0_0_50px_rgba(245,158,11,0.5)] flex flex-col gap-2.5 min-w-[300px] max-w-sm backdrop-blur-xl pointer-events-auto dir-rtl"
+              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000] bg-[#0E1526] border-2 border-amber-500/80 text-white rounded-2xl p-4 shadow-[0_0_50px_rgba(245,158,11,0.5)] flex flex-col gap-2.5 min-w-[300px] max-w-sm pointer-events-auto dir-rtl"
             >
               <div className="flex items-center justify-between text-xs font-black text-amber-300">
                 <span className="flex items-center gap-2">

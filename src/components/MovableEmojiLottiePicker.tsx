@@ -41,7 +41,7 @@ interface MovableEmojiLottiePickerProps {
   onSendEmojiReaction: (emoji: string, customAssetPath?: string, glowColor?: string) => void;
 }
 
-// Reaction Item Definition matching YoHo Voice Room
+// Reaction Item Definition for Najm Voice Room
 interface ReactionItem {
   id: string;
   emoji: string;
@@ -553,7 +553,7 @@ export const MovableEmojiLottiePicker: React.FC<MovableEmojiLottiePickerProps> =
             <div className="w-10 h-1 bg-slate-300 rounded-full" />
           </div>
 
-          {/* Top Tabs Bar - Exact YoHo Order */}
+          {/* Top Tabs Bar */}
           <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
             <div className="flex items-center gap-4 text-xs font-black">
               {CATEGORY_TABS.map((tab) => {

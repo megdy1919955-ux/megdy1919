@@ -31,7 +31,15 @@ import {
   Settings,
   Plus,
   Trash2,
-  Info
+  Info,
+  BarChart3,
+  Gem,
+  Ban,
+  ShieldAlert,
+  AlertTriangle,
+  UserX,
+  ShieldX,
+  Filter
 } from 'lucide-react';
 
 interface OfficialAgencyManagerModalProps {
@@ -51,9 +59,13 @@ export const OfficialAgencyManagerModal: React.FC<OfficialAgencyManagerModalProp
   managerAvatar = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
   isSuperAdmin = true
 }) => {
-  const [activeTab, setActiveTab] = useState<'representatives' | 'agencies' | 'pending_invites' | 'invite_agency' | 'financials'>('representatives');
+  const [activeTab, setActiveTab] = useState<'stats' | 'representatives' | 'banned_accounts' | 'agencies' | 'pending_invites' | 'invite_agency' | 'financials'>('stats');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Banned Accounts Search & Filters
+  const [bannedSearchId, setBannedSearchId] = useState('');
+  const [bannedFilter, setBannedFilter] = useState<'all' | 'mine' | 'external' | 'banned' | 'unbanned'>('all');
 
   // Form State for Direct Agency Recruitment by Manager
   const [newAgencyName, setNewAgencyName] = useState('');
@@ -185,11 +197,138 @@ export const OfficialAgencyManagerModal: React.FC<OfficialAgencyManagerModalProp
     }
   ]);
 
+  // Banned Accounts State (الحسابات المبندة مع حصر صلاحية فك البند على وكالات المدير ومندوبيه فقط)
+  const [bannedAccounts, setBannedAccounts] = useState([
+    {
+      id: 'BAN-101',
+      userId: '88721094',
+      userName: 'فيصل القحطاني',
+      role: 'مذيع معتمد',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+      agencyId: 'AG-9011',
+      agencyName: 'وكالة الصقور الملكية',
+      invitedByRepName: 'أحمد السعدون (مندوب معتمد)',
+      isManagedByMe: true, // تابعة لوكالة المدير/مندوبه ✓
+      banReason: 'تكرار فتح مواضيع مخالفة للائحة البث الصوتي',
+      banDate: '2026-08-31 16:40',
+      bannedBy: 'لجنة المراقبة الآلية',
+      isBanned: true,
+      unbannedAt: undefined as string | undefined
+    },
+    {
+      id: 'BAN-102',
+      userId: '91004822',
+      userName: 'سعود الهاجري',
+      role: 'مذيع نشط',
+      avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop&q=80',
+      agencyId: 'AG-8510',
+      agencyName: 'وكالة قصر النجوم',
+      invitedByRepName: 'مشعل الشمري (مندوب معتمد)',
+      isManagedByMe: true, // تابعة لوكالة المدير/مندوبه ✓
+      banReason: 'تجاوز حد الإنذارات الأسبوعية للبث',
+      banDate: '2026-09-01 22:15',
+      bannedBy: 'نظام الحماية والأمان',
+      isBanned: true,
+      unbannedAt: undefined as string | undefined
+    },
+    {
+      id: 'BAN-103',
+      userId: '83109455',
+      userName: 'خالد المطيري',
+      role: 'صاحب وكالة رسمية',
+      avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=150&auto=format&fit=crop&q=80',
+      agencyId: 'AG-8205',
+      agencyName: 'وكالة النور الذهبية',
+      invitedByRepName: 'استدعاء مباشر من رئيس الوكالات 👑',
+      isManagedByMe: true, // استدعاء مباشر من المدير ✓
+      banReason: 'تأخر في تأكيد شروط البث الرسمي والتراخيص',
+      banDate: '2026-08-25 11:30',
+      bannedBy: 'الإدارة العليا',
+      isBanned: true,
+      unbannedAt: undefined as string | undefined
+    },
+    {
+      id: 'BAN-104',
+      userId: '77215903',
+      userName: 'عبدالرحمن الدوسري',
+      role: 'مذيع برونزي',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+      agencyId: 'AG-8842',
+      agencyName: 'وكالة أساطير الخليج',
+      invitedByRepName: 'أحمد السعدون (مندوب معتمد)',
+      isManagedByMe: true, // تابعة لوكالة المدير/مندوبه ✓
+      banReason: 'مخالفة قواعد البث والتحذيرات الإدارية',
+      banDate: '2026-08-29 19:10',
+      bannedBy: 'المشرف العام',
+      isBanned: true,
+      unbannedAt: undefined as string | undefined
+    },
+    {
+      id: 'BAN-201',
+      userId: '55401122',
+      userName: 'ماجد الشريف',
+      role: 'مذيع مستقل',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      agencyId: 'AG-EXT-77',
+      agencyName: 'وكالة الأفق الدولية (وكالة خارجية)',
+      invitedByRepName: 'خارج نطاق وكالاتك ومندوبيك',
+      isManagedByMe: false, // خارجي - محظور فك البند ❌
+      banReason: 'مخالفة سياسة النشر والتواصل العامة بالمنصة',
+      banDate: '2026-08-28 14:00',
+      bannedBy: 'لجنة الأمان العامة',
+      isBanned: true,
+      unbannedAt: undefined as string | undefined
+    },
+    {
+      id: 'BAN-202',
+      userId: '66109933',
+      userName: 'فهد العازمي',
+      role: 'مستخدم عام',
+      avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150&auto=format&fit=crop&q=80',
+      agencyId: 'NON-AGENCY',
+      agencyName: 'حساب عام مستقل (بدون وكالة)',
+      invitedByRepName: 'غير مسجل ضمن وكالاتك',
+      isManagedByMe: false, // خارجي - محظور فك البند ❌
+      banReason: 'سلوك مسيء وتكرار البلاغات العامة',
+      banDate: '2026-08-27 18:20',
+      bannedBy: 'النظام الآلي',
+      isBanned: true,
+      unbannedAt: undefined as string | undefined
+    }
+  ]);
+
   if (!isOpen) return null;
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3000);
+    setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  // Unban Account Handler (Strict authorization: Only manager's agencies/delegates)
+  const handleUnbanAccount = (account: typeof bannedAccounts[0]) => {
+    if (!account.isManagedByMe) {
+      showToast(`⛔ غير مصرح! لا يحق لك فك البند عن هذا الحساب (${account.userId}). الحساب يتبع لوكالة خارجية أو غير مسجل ضمن وكالاتك ومندوبيك.`);
+      return;
+    }
+
+    setBannedAccounts(prev => prev.map(a => {
+      if (a.id === account.id) {
+        return { 
+          ...a, 
+          isBanned: false, 
+          unbannedAt: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }) 
+        };
+      }
+      return a;
+    }));
+
+    showToast(`✅ تم رفع البند وفك الحظر بنجاح عن (${account.userName} - ID: ${account.userId}) لأنه مسجل ضمن وكالتك المعتمدة (${account.agencyName}).`);
+  };
+
+  // Re-ban Account Handler (for testing/safety)
+  const handleRebanAccount = (accountId: string) => {
+    setBannedAccounts(prev => prev.map(a => a.id === accountId ? { ...a, isBanned: true } : a));
+    showToast(`🔒 تم إعادة فرض البند على الحساب.`);
   };
 
   // Toggle Representative's Authority to Recruit Agencies
@@ -394,37 +533,56 @@ export const OfficialAgencyManagerModal: React.FC<OfficialAgencyManagerModalProp
           </div>
 
           {/* Quick Metrics Bar in Gold styling */}
-          <div className="grid grid-cols-3 gap-2 mt-4 pt-3.5 border-t border-[#E8DFC8]/60 text-center">
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-2 mt-4 pt-3.5 border-t border-[#E8DFC8]/60 text-center">
             <div 
               onClick={() => setActiveTab('representatives')}
               className="bg-[#FAF6EC]/80 rounded-2xl p-2 border border-[#EAE0CD]/80 cursor-pointer hover:bg-white transition-colors"
             >
-              <span className="text-[10px] font-bold text-[#8C6B38] block">المندوبين المعتمدين</span>
-              <span className="text-sm font-black text-[#5C3F13] font-mono mt-0.5 block">{representatives.length} مندوب</span>
+              <span className="text-[9px] sm:text-[10px] font-bold text-[#8C6B38] block">المندوبين المعتمدين</span>
+              <span className="text-xs sm:text-sm font-black text-[#5C3F13] font-mono mt-0.5 block">{representatives.length} مندوب</span>
             </div>
             <div 
               onClick={() => setActiveTab('agencies')}
               className="bg-[#FAF6EC]/80 rounded-2xl p-2 border border-[#EAE0CD]/80 cursor-pointer hover:bg-white transition-colors"
             >
-              <span className="text-[10px] font-bold text-[#8C6B38] block">إجمالي الوكالات</span>
-              <span className="text-sm font-black text-[#5C3F13] font-mono mt-0.5 block">{agenciesList.length} وكالة</span>
+              <span className="text-[9px] sm:text-[10px] font-bold text-[#8C6B38] block">إجمالي الوكالات</span>
+              <span className="text-xs sm:text-sm font-black text-[#5C3F13] font-mono mt-0.5 block">{agenciesList.length} وكالة</span>
             </div>
             <div 
               onClick={() => setActiveTab('pending_invites')}
               className="bg-[#FAF6EC]/80 rounded-2xl p-2 border border-[#EAE0CD]/80 cursor-pointer hover:bg-white transition-colors"
             >
-              <span className="text-[10px] font-bold text-[#8C6B38] block">طلبات الاعتماد المعلقة</span>
-              <span className="text-sm font-black text-amber-700 font-mono mt-0.5 block">{pendingRequests.length} طلب</span>
+              <span className="text-[9px] sm:text-[10px] font-bold text-[#8C6B38] block">طلبات التوثيق</span>
+              <span className="text-xs sm:text-sm font-black text-amber-700 font-mono mt-0.5 block">{pendingRequests.length} طلب</span>
+            </div>
+            <div 
+              onClick={() => setActiveTab('banned_accounts')}
+              className="bg-rose-50/80 rounded-2xl p-2 border border-rose-200/90 cursor-pointer hover:bg-rose-100/70 transition-colors group"
+            >
+              <div className="flex items-center justify-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                <span className="text-[9px] sm:text-[10px] font-black text-rose-700 block">الحسابات المبندة</span>
+              </div>
+              <span className="text-xs sm:text-sm font-black text-rose-700 font-mono mt-0.5 block">
+                {bannedAccounts.filter(a => a.isBanned).length} مبند 🚫
+              </span>
             </div>
           </div>
         </div>
 
         {/* ========================================================= */}
-        {/* 2. NAVIGATION TABS (Golden Frosted Style) */}
+        {/* 2. NAVIGATION TABS (Golden Frosted Style with Red Banned Indicator) */}
         {/* ========================================================= */}
         <div className="flex items-center gap-1.5 p-1 bg-white/70 backdrop-blur-md rounded-2xl border border-[#EAE0CD] overflow-x-auto no-scrollbar shadow-2xs">
           {[
+            { id: 'stats', label: 'إحصائيات الوكالات', icon: BarChart3 },
             { id: 'representatives', label: 'المندوبين والصلاحيات', icon: Users },
+            { 
+              id: 'banned_accounts', 
+              label: `الحسابات المبندة (${bannedAccounts.filter(a => a.isBanned).length})`, 
+              icon: Ban,
+              isRed: true
+            },
             { id: 'pending_invites', label: `طلبات التوثيق (${pendingRequests.length})`, icon: Clock },
             { id: 'agencies', label: 'الوكالات الرسمية', icon: Building2 },
             { id: 'invite_agency', label: 'استدعاء وكالة مباشرة', icon: UserPlus },
@@ -432,22 +590,136 @@ export const OfficialAgencyManagerModal: React.FC<OfficialAgencyManagerModalProp
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
+            const isRed = (tab as any).isRed;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
                   isActive
-                    ? 'bg-gradient-to-r from-[#B38022] to-[#7A5210] text-white shadow-sm'
-                    : 'text-[#7A5210] hover:bg-[#FAF5E8] opacity-80'
+                    ? isRed
+                      ? 'bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white shadow-md ring-2 ring-rose-300/60'
+                      : 'bg-gradient-to-r from-[#B38022] to-[#7A5210] text-white shadow-sm'
+                    : isRed
+                      ? 'text-rose-700 bg-rose-50/70 border border-rose-200/80 hover:bg-rose-100/80 shadow-2xs'
+                      : 'text-[#7A5210] hover:bg-[#FAF5E8] opacity-80'
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
+                <Icon className={`w-3.5 h-3.5 ${isRed && !isActive ? 'text-rose-600' : ''}`} />
                 <span>{tab.label}</span>
+                {isRed && (
+                  <span className="w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white animate-ping ml-0.5"></span>
+                )}
               </button>
             );
           })}
         </div>
+
+        {/* ========================================================= */}
+        {/* TAB 0: AGENCY STATS (إحصائيات الوكالات كاملة لمدير الوكالات) */}
+        {/* ========================================================= */}
+        {activeTab === 'stats' && (
+          <div className="space-y-4">
+            {/* بطاقة إحصائيات الوكالات كاملة */}
+            <div className="p-5 rounded-[28px] bg-white/95 backdrop-blur-xl border border-[#EAE0CD] shadow-[0_10px_30px_rgba(180,160,130,0.1)] space-y-4" dir="rtl">
+              <div className="flex items-center justify-between pb-2 border-b border-[#EAE0CD]">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-[#FAF5E8] border border-[#E2B755]/50 flex items-center justify-center text-[#7A5210] shadow-xs">
+                    <BarChart3 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-black text-[#5C3F13]">
+                      إحصائيات الوكالات كاملة
+                    </h3>
+                    <span className="text-[10px] text-[#8C6B38] font-bold">
+                      لوحة مؤشرات وإنتاج الوكالات الرسمية
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[10px] bg-gradient-to-r from-[#B38022] to-[#7A5210] text-white px-2.5 py-0.5 rounded-full font-black">
+                  محدث فوري ⚡
+                </span>
+              </div>
+
+              {/* تفاصيل الإحصائيات الستة المطلوبة */}
+              <div className="divide-y divide-[#F2EADA] text-xs sm:text-sm font-bold">
+                {/* 1. إجمالي الماسات لهذا الشهر */}
+                <div className="py-3 flex items-center justify-between">
+                  <span className="font-mono font-black text-sm sm:text-base text-[#5C3F13]" dir="ltr">
+                    18,450,000 💎
+                  </span>
+                  <span className="text-[#7A5210] font-medium">
+                    إجمالي الماسات لهذا الشهر
+                  </span>
+                </div>
+
+                {/* 2. حصة مدير الوكالات */}
+                <div className="py-3 flex items-center justify-between">
+                  <span className="font-mono font-black text-sm sm:text-base text-[#5C3F13]" dir="ltr">
+                    25%
+                  </span>
+                  <span className="text-[#7A5210] font-medium">
+                    حصة مدير الوكالات
+                  </span>
+                </div>
+
+                {/* 3. الماسات لنفس هذا الشهر */}
+                <div className="py-3 flex items-center justify-between">
+                  <span className="font-mono font-black text-sm sm:text-base text-[#5C3F13]" dir="ltr">
+                    18,450,000 💎
+                  </span>
+                  <span className="text-[#7A5210] font-medium">
+                    الماسات لنفس هذا الشهر
+                  </span>
+                </div>
+
+                {/* 4. إجمالي الماسات الشهر الماضي */}
+                <div className="py-3 flex items-center justify-between">
+                  <span className="font-mono font-black text-sm sm:text-base text-[#5C3F13]" dir="ltr">
+                    12,300,000 💎
+                  </span>
+                  <span className="text-[#7A5210] font-medium">
+                    إجمالي الماسات الشهر الماضي
+                  </span>
+                </div>
+
+                {/* 5. مقابل نفس فترة من الشهر الماضي */}
+                <div className="py-3 flex items-center justify-between">
+                  <span className="font-mono font-black text-xs sm:text-sm text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200" dir="ltr">
+                    +150.00%
+                  </span>
+                  <span className="text-[#7A5210] font-medium">
+                    مقابل نفس فترة من الشهر الماضي
+                  </span>
+                </div>
+
+                {/* 6. مقابل الشهر الماضي */}
+                <div className="py-3 flex items-center justify-between">
+                  <span className="font-mono font-black text-xs sm:text-sm text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200" dir="ltr">
+                    +150.00%
+                  </span>
+                  <span className="text-[#7A5210] font-medium">
+                    مقابل الشهر الماضي
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* ملخص إضافي سريع للمدير */}
+            <div className="grid grid-cols-2 gap-3 text-center text-xs font-bold">
+              <div className="p-3.5 rounded-2xl bg-white/90 border border-[#EAE0CD] shadow-2xs space-y-1">
+                <span className="text-[10px] text-[#8C6B38] block">إجمالي أرباح المدير المتوقعة</span>
+                <span className="font-mono font-black text-base text-[#B38022] block" dir="ltr">$ 46,125.00</span>
+                <span className="text-[9px] text-[#7A5210]">حصة 25% من إجمالي الإنتاج</span>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-white/90 border border-[#EAE0CD] shadow-2xs space-y-1">
+                <span className="text-[10px] text-[#8C6B38] block">معدل نمو الوكالات</span>
+                <span className="font-mono font-black text-base text-emerald-600 block" dir="ltr">+50.0% 📈</span>
+                <span className="text-[9px] text-emerald-700">مقارنة بأداء الشهر الماضي</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ========================================================= */}
         {/* TAB 1: إدارة المندوبين وفتح الصلاحيات والعمولات (القلب النابض) */}
@@ -619,8 +891,285 @@ export const OfficialAgencyManagerModal: React.FC<OfficialAgencyManagerModalProp
         )}
 
         {/* ========================================================= */}
-        {/* TAB 2: طلبات توثيق واعتماد الوكالات من المندوبين */}
+        {/* TAB: BANNED ACCOUNTS (الحسابات المبندة والصلاحيات الصارمة) */}
         {/* ========================================================= */}
+        {activeTab === 'banned_accounts' && (
+          <div className="space-y-4">
+            {/* 1. Header Banner & Policy Warning */}
+            <div className="p-4 sm:p-5 rounded-[28px] bg-white/95 backdrop-blur-xl border border-rose-200/90 shadow-[0_10px_30px_rgba(225,29,72,0.06)] space-y-3" dir="rtl">
+              <div className="flex items-center justify-between pb-2.5 border-b border-rose-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shadow-xs">
+                    <Ban className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-black text-rose-950 flex items-center gap-1.5">
+                      <span>إدارة وفحص الحسابات المبندة</span>
+                      <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping"></span>
+                    </h3>
+                    <span className="text-[10px] text-rose-700 font-bold">
+                      صلاحية فك البند مشروطة بالتبعية لوكالاتك أو مندوبيك فقط
+                    </span>
+                  </div>
+                </div>
+
+                <span className="text-[10px] bg-rose-600 text-white px-3 py-1 rounded-full font-black shadow-xs font-mono">
+                  {bannedAccounts.filter(a => a.isBanned).length} حساب مبند 🚫
+                </span>
+              </div>
+
+              {/* Strict Jurisdiction Rules Alert */}
+              <div className="p-3 rounded-2xl bg-rose-50/80 border border-rose-200/80 text-[11px] space-y-1.5 text-rose-900">
+                <div className="flex items-center gap-1.5 font-black text-rose-800">
+                  <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>قانون وسياسة صلاحيات فك البند لمدير الوكالات:</span>
+                </div>
+                <p className="text-[10.5px] leading-relaxed text-rose-800/90 font-medium">
+                  • يحق لمدير الوكالات (<strong className="font-black text-rose-950">{managerName}</strong>) فك البند <strong className="underline text-emerald-800">حصرياً</strong> عن المذيعين وأصحاب الوكالات المسجلة والمستدعاة من قبله مباشرة أو عبر المندوبين المعتمدين التابعين له.
+                  <br />
+                  • <strong className="text-rose-900">يمنع منعاً باتاً</strong> فك بند أي حساب خارجي أو عام لا ينتمي لوكالاتك لحماية أمان المنصة.
+                </p>
+              </div>
+
+              {/* Search by ID and Filters */}
+              <div className="space-y-2.5 pt-1">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="ابحث برقم المعرف (User ID) مثل: 88721094 أو الاسم أو الوكالة..."
+                    value={bannedSearchId}
+                    onChange={(e) => setBannedSearchId(e.target.value)}
+                    className="w-full p-3 pr-10 pl-9 rounded-2xl bg-[#FAF8F5] border border-rose-200/80 text-xs text-slate-900 font-bold placeholder:text-slate-400 focus:outline-none focus:border-rose-500 focus:bg-white transition-all shadow-inner font-mono"
+                    dir="rtl"
+                  />
+                  <Search className="w-4 h-4 text-rose-600 absolute right-3.5 top-3.5" />
+                  {bannedSearchId && (
+                    <button
+                      onClick={() => setBannedSearchId('')}
+                      className="absolute left-3 top-3 text-slate-400 hover:text-slate-600 text-xs font-black cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter Chips */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
+                  {[
+                    { id: 'all', label: `الكل (${bannedAccounts.length})` },
+                    { id: 'mine', label: `وكالاتي ومندوبي (${bannedAccounts.filter(a => a.isManagedByMe).length}) 🟢` },
+                    { id: 'external', label: `حسابات خارجية (${bannedAccounts.filter(a => !a.isManagedByMe).length}) 🔴` },
+                    { id: 'banned', label: `المبندين حالياً (${bannedAccounts.filter(a => a.isBanned).length})` },
+                    { id: 'unbanned', label: `تم فك البند (${bannedAccounts.filter(a => !a.isBanned).length})` }
+                  ].map(chip => (
+                    <button
+                      key={chip.id}
+                      onClick={() => setBannedFilter(chip.id as any)}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-black whitespace-nowrap transition-all cursor-pointer ${
+                        bannedFilter === chip.id
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Banned Accounts List */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1 text-xs">
+                <span className="font-black text-[#5C3F13] flex items-center gap-1.5">
+                  <span>قائمة الحسابات المفحوصة</span>
+                  <span className="font-mono text-[11px] text-[#8C6B38]">
+                    ({bannedAccounts.filter(a => {
+                      const matchSearch = a.userId.includes(bannedSearchId.trim()) || 
+                                          a.userName.toLowerCase().includes(bannedSearchId.toLowerCase()) || 
+                                          a.agencyName.toLowerCase().includes(bannedSearchId.toLowerCase());
+                      if (!matchSearch) return false;
+                      if (bannedFilter === 'mine') return a.isManagedByMe;
+                      if (bannedFilter === 'external') return !a.isManagedByMe;
+                      if (bannedFilter === 'banned') return a.isBanned;
+                      if (bannedFilter === 'unbanned') return !a.isBanned;
+                      return true;
+                    }).length} نتيجة)
+                  </span>
+                </span>
+                <span className="text-[10px] text-slate-500 font-bold">فحص الصلاحية فوري ⚡</span>
+              </div>
+
+              {bannedAccounts
+                .filter(account => {
+                  const matchSearch = account.userId.includes(bannedSearchId.trim()) || 
+                                      account.userName.toLowerCase().includes(bannedSearchId.toLowerCase()) || 
+                                      account.agencyName.toLowerCase().includes(bannedSearchId.toLowerCase());
+                  if (!matchSearch) return false;
+                  if (bannedFilter === 'mine') return account.isManagedByMe;
+                  if (bannedFilter === 'external') return !account.isManagedByMe;
+                  if (bannedFilter === 'banned') return account.isBanned;
+                  if (bannedFilter === 'unbanned') return !account.isBanned;
+                  return true;
+                })
+                .map((account) => (
+                  <div 
+                    key={account.id}
+                    className={`p-4 rounded-2xl bg-white border transition-all shadow-2xs space-y-3 ${
+                      account.isManagedByMe
+                        ? 'border-emerald-200/90 hover:border-emerald-400'
+                        : 'border-rose-200/90 bg-rose-50/20 hover:border-rose-300'
+                    }`}
+                    dir="rtl"
+                  >
+                    {/* Header: User Info & Status Badge */}
+                    <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <img 
+                            src={account.avatar} 
+                            alt={account.userName} 
+                            className={`w-12 h-12 rounded-2xl object-cover border-2 ${
+                              account.isBanned ? 'border-rose-400' : 'border-emerald-400'
+                            }`}
+                          />
+                          <span className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white font-bold shadow-xs ${
+                            account.isBanned ? 'bg-rose-600' : 'bg-emerald-600'
+                          }`}>
+                            {account.isBanned ? '🚫' : '✓'}
+                          </span>
+                        </div>
+
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="text-xs sm:text-sm font-black text-slate-900">{account.userName}</h4>
+                            <span className="text-[9px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-bold">
+                              {account.role}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-mono">
+                            <span>ID: <strong className="text-slate-800 font-black">{account.userId}</strong></span>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard?.writeText(account.userId);
+                                showToast(`تم نسخ المعرف: ${account.userId}`);
+                              }}
+                              className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+                              title="نسخ المعرف"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Agency Ownership Eligibility Badge */}
+                      <div className="text-left shrink-0">
+                        {account.isManagedByMe ? (
+                          <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-300 font-black px-2 py-1 rounded-xl shadow-2xs">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>تابعة لوكالتك (مصرح)</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] bg-rose-50 text-rose-800 border border-rose-300 font-black px-2 py-1 rounded-xl shadow-2xs">
+                            <Lock className="w-3 h-3 text-rose-600" />
+                            <span>خارج نطاقك (محظور)</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Agency & Invitation Info */}
+                    <div className="grid grid-cols-2 gap-2 text-xs bg-[#FAF9F5] p-2.5 rounded-xl border border-slate-200/80">
+                      <div>
+                        <span className="text-[10px] text-slate-500 block">الوكالة المسجل بها:</span>
+                        <span className="font-black text-slate-800">{account.agencyName}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 block">جهة الاستدعاء / المندوب:</span>
+                        <span className="font-bold text-[#8C6B38]">{account.invitedByRepName}</span>
+                      </div>
+                    </div>
+
+                    {/* Ban Reason & Details */}
+                    <div className="text-xs space-y-1 text-slate-700 bg-rose-50/50 p-2.5 rounded-xl border border-rose-100">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-rose-900 flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                          <span>سبب التبنيد: {account.banReason}</span>
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-mono">{account.banDate}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        الجهة المنفذة للبند: <strong className="text-slate-700">{account.bannedBy}</strong>
+                      </div>
+                    </div>
+
+                    {/* Action Button: Authorized Unban vs Unauthorized Lock */}
+                    <div className="pt-1">
+                      {account.isManagedByMe ? (
+                        account.isBanned ? (
+                          <button
+                            onClick={() => handleUnbanAccount(account)}
+                            className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white font-black text-xs shadow-sm hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <Unlock className="w-4 h-4 text-emerald-200" />
+                            <span>رفع البند وفك الحظر الآن (مصرح لك) 🔓</span>
+                          </button>
+                        ) : (
+                          <div className="flex items-center justify-between p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs">
+                            <span className="font-black text-emerald-800 flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                              <span>تم رفع البند بنجاح • الحساب نشط حالياً</span>
+                            </span>
+                            <button
+                              onClick={() => handleRebanAccount(account.id)}
+                              className="px-2.5 py-1 rounded-lg bg-white border border-rose-300 text-rose-700 text-[10px] font-bold hover:bg-rose-50 cursor-pointer"
+                            >
+                              إعادة البند 🔒
+                            </button>
+                          </div>
+                        )
+                      ) : (
+                        <button
+                          onClick={() => handleUnbanAccount(account)}
+                          className="w-full py-2.5 px-4 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 font-bold text-xs hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 transition-all cursor-not-allowed flex items-center justify-center gap-1.5"
+                          title="غير مصرح: هذا الحساب يتبع لوكالة أخرى خارج إدارتك"
+                        >
+                          <Lock className="w-4 h-4 text-rose-500" />
+                          <span>🔒 غير مصرح: لا يحق لك فك بند هذا الحساب (خارج وكالاتك ومندوبيك)</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+              {bannedAccounts.filter(account => {
+                const matchSearch = account.userId.includes(bannedSearchId.trim()) || 
+                                    account.userName.toLowerCase().includes(bannedSearchId.toLowerCase()) || 
+                                    account.agencyName.toLowerCase().includes(bannedSearchId.toLowerCase());
+                if (!matchSearch) return false;
+                if (bannedFilter === 'mine') return account.isManagedByMe;
+                if (bannedFilter === 'external') return !account.isManagedByMe;
+                if (bannedFilter === 'banned') return account.isBanned;
+                if (bannedFilter === 'unbanned') return !account.isBanned;
+                return true;
+              }).length === 0 && (
+                <div className="p-8 bg-white rounded-2xl border border-[#EAE0CD] text-center space-y-2">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                    <Search className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-xs font-black text-slate-700">لم يتم العثور على أي حساب مطابق</h4>
+                  <p className="text-[10px] text-slate-500">
+                    تأكد من كتابة الـ ID أو اسم الحساب بشكل صحيح، أو قم بتغيير فلتر التصفية.
+                  </p>
+                </div>
+              )}
+            </div>
+
+          </div>
+        )}
         {activeTab === 'pending_invites' && (
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">

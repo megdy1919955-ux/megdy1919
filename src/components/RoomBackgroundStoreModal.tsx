@@ -174,7 +174,7 @@ export const RoomBackgroundStoreModal: React.FC<RoomBackgroundStoreModalProps> =
   // Purchased items store persistence
   const [purchasedStoreIds, setPurchasedStoreIds] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('yoho_purchased_wallpapers');
+      const saved = localStorage.getItem('najm_purchased_wallpapers') || localStorage.getItem('yoho_purchased_wallpapers');
       if (saved) return JSON.parse(saved);
     } catch (e) {}
     return [];
@@ -183,7 +183,7 @@ export const RoomBackgroundStoreModal: React.FC<RoomBackgroundStoreModalProps> =
   // Custom user-uploaded wallpapers
   const [customWallpapers, setCustomWallpapers] = useState<RoomWallpaperItem[]>(() => {
     try {
-      const saved = localStorage.getItem('yoho_custom_user_wallpapers');
+      const saved = localStorage.getItem('najm_custom_user_wallpapers') || localStorage.getItem('yoho_custom_user_wallpapers');
       if (saved) return JSON.parse(saved);
     } catch (e) {}
     return [];
@@ -275,7 +275,7 @@ export const RoomBackgroundStoreModal: React.FC<RoomBackgroundStoreModalProps> =
     const updatedPurchased = [...purchasedStoreIds, item.id];
     setPurchasedStoreIds(updatedPurchased);
     try {
-      localStorage.setItem('yoho_purchased_wallpapers', JSON.stringify(updatedPurchased));
+      localStorage.setItem('najm_purchased_wallpapers', JSON.stringify(updatedPurchased));
     } catch (e) {}
 
     // Equip immediately
@@ -300,7 +300,7 @@ export const RoomBackgroundStoreModal: React.FC<RoomBackgroundStoreModalProps> =
         const updated = [newCustomItem, ...customWallpapers];
         setCustomWallpapers(updated);
         try {
-          localStorage.setItem('yoho_custom_user_wallpapers', JSON.stringify(updated));
+          localStorage.setItem('najm_custom_user_wallpapers', JSON.stringify(updated));
         } catch (err) {}
         handleSelectWallpaper(newCustomItem);
       }
@@ -312,14 +312,14 @@ export const RoomBackgroundStoreModal: React.FC<RoomBackgroundStoreModalProps> =
     <AnimatePresence>
       <div
         id="room-background-store-overlay"
-        className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex flex-col justify-end pointer-events-auto select-none dir-rtl"
+        className="fixed inset-0 z-50 bg-transparent flex flex-col justify-end pointer-events-auto select-none dir-rtl"
         onClick={onClose}
       >
         <motion.div
           initial={{ y: '100%', opacity: 0.5 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
-          transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           onClick={(e) => e.stopPropagation()}
           className="w-full max-w-lg mx-auto bg-white rounded-t-[32px] overflow-hidden shadow-2xl flex flex-col max-h-[82vh] text-slate-900 relative"
         >

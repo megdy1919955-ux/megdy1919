@@ -131,7 +131,7 @@ export const AppearanceModal: React.FC<AppearanceModalProps> = ({
     },
     {
       id: 'veh_yacht',
-      name: 'يخت ترف الملكي فائق الفخامة',
+      name: 'يخت النجم الملكي فائق الفخامة',
       deadlineDate: '15:30:00 2026/10/15',
       icon: '🛥️',
       color: 'from-sky-500 to-blue-600'

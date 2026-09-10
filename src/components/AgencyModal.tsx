@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SalarySlipModal } from './SalarySlipModal';
 import { AgencyInfoModal } from './AgencyInfoModal';
-import { BroadcasterCenterModal } from './BroadcasterCenterModal';
+import { AgencyHostCenterModal } from './AgencyHostCenterModal';
 import { BrokerCenterModal } from './BrokerCenterModal';
 import { TransferRecordModal } from './TransferRecordModal';
 import { HostStatisticsModal } from './HostStatisticsModal';
@@ -107,8 +107,8 @@ const AVAILABLE_ICONS: { [key: string]: React.ElementType } = {
 
 const DEFAULT_TOOLS: ToolItem[] = [
   { id: 'agency_info', title: 'معلومات الوكالة', iconName: 'Users', visible: true },
-  { id: 'broadcasters_center', title: 'مركز المذيعين', iconName: 'Mic', visible: true },
-  { id: 'agents_center', title: 'مركز الوسطاء', iconName: 'UserCheck', visible: true },
+  { id: 'broadcasters_center', title: 'المذيعين', iconName: 'Mic', visible: true },
+  { id: 'agents_center', title: 'وسطائي', iconName: 'UserCheck', visible: true },
   { id: 'wallet', title: 'محفظتي', iconName: 'Wallet', visible: true },
   { id: 'transfer_logs', title: 'سجل التحويل', iconName: 'RefreshCw', visible: true },
   { id: 'download_invoice', title: 'Download the invoice', iconName: 'FileDown', visible: true },
@@ -1067,7 +1067,7 @@ export const AgencyModal: React.FC<AgencyModalProps> = ({
         direction={direction}
       />
 
-      {/* إحصائيات المضيفين المطابقة تماماً لتطبيق YoHo */}
+      {/* إحصائيات المضيفين الرسمية لتطبيق النجم */}
       <HostStatisticsModal
         isOpen={showHostStatsModal}
         onClose={() => setShowHostStatsModal(false)}
@@ -1350,20 +1350,23 @@ export const AgencyModal: React.FC<AgencyModalProps> = ({
         agencyName={userName}
       />
 
-      {/* 2. مركز المذيعين */}
-      <BroadcasterCenterModal
+      {/* 2. مركز المذيعين الخاص بالوكيل (مطابق للأصل مع قائمة المذيعين، دعوة مذيع، سجل الدعوات، نقل مضيف) */}
+      <AgencyHostCenterModal
         isOpen={activeToolModal === 'broadcasters_center'}
         onClose={() => setActiveToolModal(null)}
         direction={direction}
-        userName={userName}
-        userAvatar={userAvatar}
+        agencyGid={agencyGid}
+        agencyName={userName}
       />
 
-      {/* 3. مركز الوسطاء */}
+      {/* 3. مركز الوسطاء (مطابق للصورة الأصلية مع وسطائي 6/10، دعوة الوسطاء، إزالة الوسيط، التوجيه) */}
       <BrokerCenterModal
         isOpen={activeToolModal === 'agents_center'}
         onClose={() => setActiveToolModal(null)}
         direction={direction}
+        agencyGid={agencyGid}
+        agencyName={userName}
+        isAgencyOwner={true}
       />
 
       {/* 4. سجل التحويل */}

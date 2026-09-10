@@ -311,16 +311,16 @@ export const CinemaYouTubePickerModal: React.FC<CinemaYouTubePickerModalProps> =
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-60 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 select-none cursor-default"
+        className="fixed inset-0 z-60 bg-transparent flex items-end sm:items-center justify-center p-0 sm:p-4 select-none cursor-default"
         onClick={onClose}
       >
         <motion.div
           initial={{ y: '100%', opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
-          transition={{ type: 'spring', damping: 26, stiffness: 300 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-lg bg-[#0F1423] border-t sm:border border-emerald-500/30 rounded-t-[32px] sm:rounded-3xl shadow-2xl flex flex-col max-h-[88vh] text-slate-100 overflow-hidden"
+          className="w-full max-w-lg bg-[#0F1423] border-t sm:border border-emerald-500/30 rounded-t-[32px] sm:rounded-3xl shadow-2xl flex flex-col max-h-[85vh] text-slate-100 overflow-hidden"
           dir="rtl"
         >
           {/* Header */}

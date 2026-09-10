@@ -67,14 +67,14 @@ import {
   Broker3DIcon,
   Moderator3DIcon,
   TCoin3DIcon,
-  Diamond3DIcon
+  Diamond3DIcon,
+  BroadcasterCenter3DIcon
 } from './profile/RealisticIcons';
 import { RechargeModal } from './RechargeModal';
 import { SuperLegendModal } from './SuperLegendModal';
 import { SettingsModal } from './SettingsModal';
-import { TarafLogo } from './common/TarafLogo';
+import { NajmLogo } from './common/NajmLogo';
 import { CustomerServiceModal } from './CustomerServiceModal';
-import { DevPanelModal } from './DevPanelModal';
 import { UserProfileModal } from './UserProfileModal';
 import { VipCenterModal } from './VipCenterModal';
 import { AgencyModal } from './AgencyModal';
@@ -87,15 +87,23 @@ import { OfficialAgencyManagerModal } from './OfficialAgencyManagerModal';
 import { AgencyRepresentativeModal } from './AgencyRepresentativeModal';
 import { ModeratorDashboardModal } from './ModeratorDashboardModal';
 import { BroadcasterCenterModal } from './BroadcasterCenterModal';
-import { GeniusYoHoModal } from './GeniusYoHoModal';
+import { GeniusNajmModal } from './GeniusNajmModal';
 import { FriendlyPointsModal } from './FriendlyPointsModal';
 import { MallCenterModal } from './MallCenterModal';
-import { HomeScreen } from './HomeScreen';
+import { HomeScreen, RoomData } from './HomeScreen';
 import { ExploreScreen } from './ExploreScreen';
 import { GamesScreen } from './GamesScreen';
 import { MessagesScreen } from './MessagesScreen';
+import { VoiceRoomScreen } from './VoiceRoomScreen';
 import { FloatingRoomWidget } from './FloatingRoomWidget';
-import { subscribeToRoomSession, maximizeRoomSession, ActiveRoomSession } from '../lib/roomSessionService';
+import { 
+  subscribeToRoomSession, 
+  maximizeRoomSession, 
+  minimizeRoomSession, 
+  exitRoomSession, 
+  setActiveRoomSession, 
+  ActiveRoomSession 
+} from '../lib/roomSessionService';
 import { 
   getAdminRoleForUser, 
   isOwnerOrSuperAdmin, 
@@ -180,7 +188,7 @@ export const ProfileScreen: React.FC = () => {
   const [activeStatModal, setActiveStatModal] = useState<StatItem['id'] | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<BadgeInfo | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'home' | 'explore' | 'games' | 'messages' | 'profile'>('profile');
+  const [activeTab, setActiveTab] = useState<'home' | 'explore' | 'games' | 'messages' | 'profile'>('home');
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
   const [coinsBalance, setCoinsBalance] = useState<number>(() => {
     try {
@@ -218,8 +226,7 @@ export const ProfileScreen: React.FC = () => {
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isCustomerServiceModalOpen, setIsCustomerServiceModalOpen] = useState(false);
-  const [isDevPanelModalOpen, setIsDevPanelModalOpen] = useState(false);
-  const [isSuperAdminModalOpen, setIsSuperAdminModalOpen] = useState(true);
+  const [isSuperAdminModalOpen, setIsSuperAdminModalOpen] = useState(false);
   const [isAgencyAdminModalOpen, setIsAgencyAdminModalOpen] = useState(false);
   const [isThemeAdminModalOpen, setIsThemeAdminModalOpen] = useState(false);
   const [isOfficialAgencyManagerModalOpen, setIsOfficialAgencyManagerModalOpen] = useState(false);
@@ -238,6 +245,34 @@ export const ProfileScreen: React.FC = () => {
   const [isFriendlyPointsModalOpen, setIsFriendlyPointsModalOpen] = useState(false);
   const [isMallModalOpen, setIsMallModalOpen] = useState(false);
   const [minimizedRoomSession, setMinimizedRoomSession] = useState<ActiveRoomSession | null>(null);
+  const [activeVoiceRoom, setActiveVoiceRoom] = useState<RoomData | null>(null);
+  const [isRoomMinimized, setIsRoomMinimized] = useState<boolean>(false);
+
+  useEffect(() => {
+    const unsub = subscribeToRoomSession((session) => {
+      setMinimizedRoomSession(session && session.isMinimized ? session : null);
+      if (!session) {
+        setActiveVoiceRoom(null);
+        setIsRoomMinimized(false);
+      } else {
+        setIsRoomMinimized(Boolean(session.isMinimized));
+      }
+    });
+    return unsub;
+  }, []);
+
+  const handleOpenRoom = (room: RoomData) => {
+    setActiveVoiceRoom(room);
+    setIsRoomMinimized(false);
+    setActiveRoomSession({
+      roomId: room.id,
+      roomTitle: room.title,
+      hostName: room.host,
+      roomAvatar: room.image,
+      isOwner: Boolean(room.isOwner || room.ownerId === profile.userId),
+      isMinimized: false,
+    });
+  };
   
   // Royal Theme State: Click 1 -> White (الأبيض اللؤلؤي) | Click 2 -> Night (الليلي الملكي) | Click 3 -> Gold (الملكي الذهبي)
   type RoyalThemeMode = 'gold' | 'white' | 'dark';
@@ -377,7 +412,10 @@ export const ProfileScreen: React.FC = () => {
 
       {/* Screen Routing Content */}
       {activeTab === 'home' && (
-        <HomeScreen onOpenRecharge={() => setIsRechargeModalOpen(true)} />
+        <HomeScreen 
+          onOpenRecharge={() => setIsRechargeModalOpen(true)} 
+          onOpenRoom={handleOpenRoom}
+        />
       )}
       {activeTab === 'explore' && <ExploreScreen />}
       {activeTab === 'games' && <GamesScreen />}
@@ -837,34 +875,42 @@ export const ProfileScreen: React.FC = () => {
           {/* 1. إداري الوكالات (Agency Admin) */}
           {adminRole === 'agency_admin' && (
             <motion.div 
-              whileHover={{ scale: 1.01 }}
+              whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsAgencyAdminModalOpen(true)}
-              className={`relative my-2 p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} cursor-pointer group text-right transition-all duration-300`}
+              className="relative my-3 p-[2px] rounded-2xl bg-gradient-to-r from-sky-600 via-indigo-600 to-blue-700 shadow-[0_4px_18px_rgba(2,132,199,0.25)] cursor-pointer group text-right transition-all duration-300"
             >
-              <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300`}>
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+              <div className="absolute -top-2.5 right-4 z-20">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-sky-700 via-blue-600 to-indigo-700 text-white border border-sky-300/80 shadow-[0_2px_8px_rgba(2,132,199,0.4)] font-sans tracking-wide">
+                  <Sparkles className="w-3 h-3 text-cyan-200 fill-cyan-200 animate-pulse" />
+                  <span>لوحة إدارة الوكالات</span>
+                </span>
+              </div>
+
+              <div className="bg-gradient-to-br from-sky-950 via-slate-900 to-slate-950 text-white rounded-[14px] p-3 sm:p-3.5 flex items-center justify-between border border-sky-400/40 group-hover:border-sky-300 transition-all duration-300 relative overflow-hidden">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1 relative z-10">
                   {/* 3D Inner Embossed Plinth */}
-                  <div className={`relative w-11 h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                  <div className="relative w-12 h-12 rounded-xl bg-gradient-to-b from-sky-900/90 to-slate-950 border border-sky-400/60 shadow-[0_2px_10px_rgba(0,0,0,0.4),inset_0_1px_2px_rgba(255,255,255,0.2)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <AgencyAdmin3DIcon className="w-8 h-8" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
+                      <h4 className="text-sm font-black text-white group-hover:text-sky-300 transition-colors truncate">
                         لوحة إدارة الوكالات
                       </h4>
-                      <span className={`text-[9px] font-black ${curRoyal.roleBadge} px-1.5 py-0.2 rounded-md shadow-2xs`}>
+                      <span className="text-[9.5px] font-black bg-sky-500/20 text-sky-200 border border-sky-400/40 px-2 py-0.5 rounded-full shadow-2xs">
                         إداري وكالات 🏛️
                       </span>
                     </div>
-                    <span className={`text-[10px] ${curRoyal.subText} font-bold block mt-0.5 truncate`}>
+                    <span className="text-[10.5px] text-sky-100/85 font-bold block mt-0.5 truncate">
                       متابعة واعتماد الوكالات، مراقبة التارغت والوسطاء
                     </span>
                   </div>
                 </div>
-                <div className={`flex items-center gap-1.5 text-xs font-black ${curRoyal.roleButton} px-2.5 py-1 rounded-xl shadow-2xs transition-all`}>
+                <div className="flex items-center gap-1.5 text-xs font-black text-slate-950 bg-gradient-to-r from-sky-300 to-cyan-200 border border-sky-200 px-3 py-1.5 rounded-xl shadow-2xs group-hover:scale-105 active:scale-95 transition-all shrink-0 mr-2 relative z-10">
                   <span>دخول</span>
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-4 h-4 text-slate-950" />
                 </div>
               </div>
             </motion.div>
@@ -873,106 +919,88 @@ export const ProfileScreen: React.FC = () => {
           {/* 2. إداري الثيمات والمتجر (Theme Admin) */}
           {adminRole === 'theme_admin' && (
             <motion.div 
-              whileHover={{ scale: 1.01 }}
+              whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsThemeAdminModalOpen(true)}
-              className={`relative my-2 p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} cursor-pointer group text-right transition-all duration-300`}
+              className="relative my-3 p-[2px] rounded-2xl bg-gradient-to-r from-[#7E22CE] via-[#D946EF] to-[#6366F1] shadow-[0_4px_18px_rgba(147,51,234,0.28)] cursor-pointer group text-right transition-all duration-300"
             >
-              <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300`}>
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+              <div className="absolute -top-2.5 right-4 z-20">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-purple-700 via-fuchsia-600 to-indigo-700 text-white border border-purple-300/80 shadow-[0_2px_8px_rgba(147,51,234,0.4)] font-sans tracking-wide">
+                  <Sparkles className="w-3 h-3 text-amber-300 fill-amber-300 animate-pulse" />
+                  <span>لوحة الثيمات والمتجر</span>
+                </span>
+              </div>
+
+              <div className="bg-gradient-to-br from-purple-950 via-slate-900 to-slate-950 text-white rounded-[14px] p-3 sm:p-3.5 flex items-center justify-between border border-purple-400/40 group-hover:border-purple-300 transition-all duration-300 relative overflow-hidden">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1 relative z-10">
                   {/* 3D Inner Embossed Plinth */}
-                  <div className={`relative w-11 h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                  <div className="relative w-12 h-12 rounded-xl bg-gradient-to-b from-purple-900/90 to-slate-950 border border-purple-400/60 shadow-[0_2px_10px_rgba(0,0,0,0.4),inset_0_1px_2px_rgba(255,255,255,0.2)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <ThemeAdmin3DIcon className="w-8 h-8" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
+                      <h4 className="text-sm font-black text-white group-hover:text-purple-300 transition-colors truncate">
                         لوحة إدارة الثيمات والمتجر
                       </h4>
-                      <span className={`text-[9px] font-black ${curRoyal.roleBadge} px-1.5 py-0.2 rounded-md shadow-2xs`}>
+                      <span className="text-[9.5px] font-black bg-purple-500/20 text-purple-200 border border-purple-400/40 px-2 py-0.5 rounded-full shadow-2xs">
                         إداري ثيمات 🎨
                       </span>
                     </div>
-                    <span className={`text-[10px] ${curRoyal.subText} font-bold block mt-0.5 truncate`}>
+                    <span className="text-[10.5px] text-purple-100/85 font-bold block mt-0.5 truncate">
                       تصاميم الغرف الصوتية، لوحات الشرف، وعناصر المتجر
                     </span>
                   </div>
                 </div>
-                <div className={`flex items-center gap-1.5 text-xs font-black ${curRoyal.roleButton} px-2.5 py-1 rounded-xl shadow-2xs transition-all`}>
+                <div className="flex items-center gap-1.5 text-xs font-black text-slate-950 bg-gradient-to-r from-purple-300 to-fuchsia-200 border border-purple-200 px-3 py-1.5 rounded-xl shadow-2xs group-hover:scale-105 active:scale-95 transition-all shrink-0 mr-2 relative z-10">
                   <span>دخول</span>
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-4 h-4 text-slate-950" />
                 </div>
               </div>
             </motion.div>
           )}
 
-          {/* 3. الوكيل الرسمي (Official Agent) أو السوبر أدمن - وكالتي */}
-          {(adminRole === 'official_agent' || adminRole === 'super_admin') && (
-            <motion.div 
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setIsAgencyModalOpen(true)}
-              className={`relative my-2 p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} cursor-pointer group text-right transition-all duration-300`}
-            >
-              <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300`}>
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  {/* 3D Inner Embossed Plinth بنفس لون وشكل الأيقونات الموحدة */}
-                  <div className={`relative w-11 h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
-                    <OfficialAgency3DIcon className="w-8 h-8" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
-                        وكالتي
-                      </h4>
-                      <span className={`text-[9px] font-black ${curRoyal.roleBadge} px-1.5 py-0.2 rounded-md shadow-2xs font-mono`}>
-                        وكيل معتمد 💼
-                      </span>
-                    </div>
-                    <span className={`text-[10px] ${curRoyal.subText} font-bold block mt-0.5 truncate`}>
-                      إدارة المذيعين، الوسطاء، العقود والرواتب
-                    </span>
-                  </div>
-                </div>
-                <div className={`flex items-center gap-1.5 text-xs font-black ${curRoyal.roleButton} px-2.5 py-1 rounded-xl shadow-2xs transition-all`}>
-                  <span>دخول</span>
-                  <ChevronLeft className="w-4 h-4" />
-                </div>
-              </div>
-            </motion.div>
-          )}
+
 
           {/* 4. الوسيط المعتمد (Broker) */}
           {adminRole === 'broker' && (
             <motion.div 
-              whileHover={{ scale: 1.01 }}
+              whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsBrokerCenterModalOpen(true)}
-              className={`relative my-2 p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} cursor-pointer group text-right transition-all duration-300`}
+              className="relative my-3 p-[2px] rounded-2xl bg-gradient-to-r from-teal-600 via-emerald-600 to-cyan-700 shadow-[0_4px_18px_rgba(13,148,136,0.25)] cursor-pointer group text-right transition-all duration-300"
             >
-              <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300`}>
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+              <div className="absolute -top-2.5 right-4 z-20">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-teal-800 via-teal-700 to-cyan-800 text-white border border-teal-300/80 shadow-[0_2px_8px_rgba(13,148,136,0.4)] font-sans tracking-wide">
+                  <Sparkles className="w-3 h-3 text-teal-200 fill-teal-200 animate-pulse" />
+                  <span>لوحة الوسيط المعتمد</span>
+                </span>
+              </div>
+
+              <div className="bg-gradient-to-br from-teal-950 via-slate-900 to-slate-950 text-white rounded-[14px] p-3 sm:p-3.5 flex items-center justify-between border border-teal-400/40 group-hover:border-teal-300 transition-all duration-300 relative overflow-hidden">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1 relative z-10">
                   {/* 3D Inner Embossed Plinth */}
-                  <div className={`relative w-11 h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                  <div className="relative w-12 h-12 rounded-xl bg-gradient-to-b from-teal-900/90 to-slate-950 border border-teal-400/60 shadow-[0_2px_10px_rgba(0,0,0,0.4),inset_0_1px_2px_rgba(255,255,255,0.2)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Broker3DIcon className="w-8 h-8" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
+                      <h4 className="text-sm font-black text-white group-hover:text-teal-300 transition-colors truncate">
                         مركز الوساطة والتوظيف
                       </h4>
-                      <span className={`text-[9px] font-black ${curRoyal.roleBadge} px-1.5 py-0.2 rounded-md shadow-2xs`}>
+                      <span className="text-[9.5px] font-black bg-teal-500/20 text-teal-200 border border-teal-400/40 px-2 py-0.5 rounded-full shadow-2xs">
                         وسيط معتمد 🤝
                       </span>
                     </div>
-                    <span className={`text-[10px] ${curRoyal.subText} font-bold block mt-0.5 truncate`}>
+                    <span className="text-[10.5px] text-teal-100/85 font-bold block mt-0.5 truncate">
                       استقطاب المذيعين، متابعة ساعات البث والعمولات
                     </span>
                   </div>
                 </div>
-                <div className={`flex items-center gap-1.5 text-xs font-black ${curRoyal.roleButton} px-2.5 py-1 rounded-xl shadow-2xs transition-all`}>
+                <div className="flex items-center gap-1.5 text-xs font-black text-slate-950 bg-gradient-to-r from-teal-300 to-emerald-200 border border-teal-200 px-3 py-1.5 rounded-xl shadow-2xs group-hover:scale-105 active:scale-95 transition-all shrink-0 mr-2 relative z-10">
                   <span>دخول</span>
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-4 h-4 text-slate-950" />
                 </div>
               </div>
             </motion.div>
@@ -981,34 +1009,42 @@ export const ProfileScreen: React.FC = () => {
           {/* 5. المراقب العام والدعم الفني (Moderator) */}
           {adminRole === 'moderator' && (
             <motion.div 
-              whileHover={{ scale: 1.01 }}
+              whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsModeratorModalOpen(true)}
-              className={`relative my-2 p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} cursor-pointer group text-right transition-all duration-300`}
+              className="relative my-3 p-[2px] rounded-2xl bg-gradient-to-r from-amber-600 via-orange-600 to-rose-700 shadow-[0_4px_18px_rgba(217,119,6,0.25)] cursor-pointer group text-right transition-all duration-300"
             >
-              <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300`}>
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+              <div className="absolute -top-2.5 right-4 z-20">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-amber-700 via-orange-600 to-rose-700 text-white border border-amber-300/80 shadow-[0_2px_8px_rgba(217,119,6,0.4)] font-sans tracking-wide">
+                  <Sparkles className="w-3 h-3 text-amber-200 fill-amber-200 animate-pulse" />
+                  <span>لوحة الرقابة والدعم العام</span>
+                </span>
+              </div>
+
+              <div className="bg-gradient-to-br from-amber-950 via-slate-900 to-slate-950 text-white rounded-[14px] p-3 sm:p-3.5 flex items-center justify-between border border-amber-400/40 group-hover:border-amber-300 transition-all duration-300 relative overflow-hidden">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1 relative z-10">
                   {/* 3D Inner Embossed Plinth */}
-                  <div className={`relative w-11 h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
+                  <div className="relative w-12 h-12 rounded-xl bg-gradient-to-b from-amber-900/90 to-slate-950 border border-amber-400/60 shadow-[0_2px_10px_rgba(0,0,0,0.4),inset_0_1px_2px_rgba(255,255,255,0.2)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Moderator3DIcon className="w-8 h-8" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
+                      <h4 className="text-sm font-black text-white group-hover:text-amber-300 transition-colors truncate">
                         لوحة المراقب العام والدعم
                       </h4>
-                      <span className={`text-[9px] font-black ${curRoyal.roleBadge} px-1.5 py-0.2 rounded-md shadow-2xs`}>
+                      <span className="text-[9.5px] font-black bg-amber-500/20 text-amber-200 border border-amber-400/40 px-2 py-0.5 rounded-full shadow-2xs">
                         مراقب عام 🛡️
                       </span>
                     </div>
-                    <span className={`text-[10px] ${curRoyal.subText} font-bold block mt-0.5 truncate`}>
+                    <span className="text-[10.5px] text-amber-100/85 font-bold block mt-0.5 truncate">
                       متابعة البلاغات، إدارة الحظر، والمراقبة الحية للغرف
                     </span>
                   </div>
                 </div>
-                <div className={`flex items-center gap-1.5 text-xs font-black ${curRoyal.roleButton} px-2.5 py-1 rounded-xl shadow-2xs transition-all`}>
+                <div className="flex items-center gap-1.5 text-xs font-black text-slate-950 bg-gradient-to-r from-amber-300 to-yellow-200 border border-amber-200 px-3 py-1.5 rounded-xl shadow-2xs group-hover:scale-105 active:scale-95 transition-all shrink-0 mr-2 relative z-10">
                   <span>دخول</span>
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-4 h-4 text-slate-950" />
                 </div>
               </div>
             </motion.div>
@@ -1211,15 +1247,25 @@ export const ProfileScreen: React.FC = () => {
             </motion.button>
           </div>
 
-          {/* 6.5 إدارة المتجر وثيمات التطبيق (المستطيل البنفسجي الياقوتي الفاخر للمتجر والثيمات) */}
+          {/* 6.5 إدارة المتجر وثيمات التطبيق (المستطيل البنفسجي الياقوتي الفاخر مع الشارة البارزة للأعلى) */}
           {(adminRole === 'theme_admin' || adminRole === 'super_admin' || isOwner) && (
-            <div 
+            <motion.div 
+              whileHover={{ scale: 1.015 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setIsThemeAdminModalOpen(true)}
-              className="relative my-2 p-[2px] rounded-2xl bg-gradient-to-r from-[#7E22CE] via-[#D946EF] to-[#6366F1] shadow-[0_4px_16px_rgba(147,51,234,0.22)] cursor-pointer group transition-all"
+              className="relative my-3 p-[2px] rounded-2xl bg-gradient-to-r from-[#7E22CE] via-[#D946EF] to-[#6366F1] shadow-[0_4px_18px_rgba(147,51,234,0.28)] cursor-pointer group transition-all duration-300"
             >
-              <div className="bg-gradient-to-r from-[#FAF5FF] via-[#FDF4FF] to-[#F5F3FF] rounded-[14px] p-3 flex items-center justify-between border border-[#E9D5FF]/90 group-hover:bg-white transition-all">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#6B21A8] via-[#A855F7] to-[#F472B6] flex items-center justify-center text-white shadow-[0_2px_8px_rgba(147,51,234,0.35)] text-lg border border-white/80">
+              {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+              <div className="absolute -top-2.5 right-4 z-20">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-purple-700 via-fuchsia-600 to-indigo-700 text-white border border-purple-300/80 shadow-[0_2px_8px_rgba(147,51,234,0.4)] font-sans tracking-wide">
+                  <Sparkles className="w-3 h-3 text-amber-300 fill-amber-300 animate-pulse" />
+                  <span>إداري الثيمات والمتجر</span>
+                </span>
+              </div>
+
+              <div className="bg-gradient-to-r from-[#FAF5FF] via-[#FDF4FF] to-[#F5F3FF] rounded-[14px] p-3 flex items-center justify-between border border-[#E9D5FF]/90 group-hover:bg-white transition-all relative overflow-hidden">
+                <div className="flex items-center gap-3 relative z-10">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#6B21A8] via-[#A855F7] to-[#F472B6] flex items-center justify-center text-white shadow-[0_2px_8px_rgba(147,51,234,0.35)] text-lg border border-white/80 shrink-0 group-hover:scale-105 transition-transform">
                     🎨
                   </div>
                   <div>
@@ -1229,25 +1275,35 @@ export const ProfileScreen: React.FC = () => {
                         إداري ثيمات 🎨
                       </span>
                     </div>
-                    <span className="text-[10px] text-[#7E22CE] font-bold">رفع صور VIP، إدارة عناصر المتجر، وثيمات الغرف</span>
+                    <span className="text-[10px] text-[#7E22CE] font-bold block mt-0.5">رفع صور VIP، إدارة عناصر المتجر، وثيمات الغرف</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs font-black text-[#6B21A8] bg-white/95 border border-[#D8B4FE]/60 px-2.5 py-1 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-[#7E22CE] group-hover:to-[#6366F1] group-hover:text-white group-hover:border-transparent transition-all">
-                  <span>دخول</span>
+                <div className="flex items-center gap-1.5 text-xs font-black text-[#6B21A8] bg-white/95 border border-[#D8B4FE]/60 px-3 py-1.5 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-[#7E22CE] group-hover:to-[#6366F1] group-hover:text-white group-hover:border-transparent transition-all shrink-0 relative z-10">
+                  <span>إدارة</span>
                   <ChevronLeft className="w-4 h-4" />
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
 
-          {/* 6.7 مدير الوكالات الرسمية والمندوبين (المستطيل الماسي السيان الملكي الفاخر لرئيس الوكالات) */}
-          <div 
+          {/* 6.7 مدير الوكالات الرسمية والمندوبين (المستطيل الماسي السيان الملكي الفاخر مع الشارة البارزة للأعلى) */}
+          <motion.div 
+            whileHover={{ scale: 1.015 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => setIsOfficialAgencyManagerModalOpen(true)}
-            className="relative my-2 p-[2px] rounded-2xl bg-gradient-to-r from-[#0369A1] via-[#0284C7] to-[#0D9488] shadow-[0_4px_18px_rgba(2,132,199,0.28)] cursor-pointer group transition-all"
+            className="relative my-3 p-[2px] rounded-2xl bg-gradient-to-r from-[#0369A1] via-[#0284C7] to-[#0D9488] shadow-[0_4px_20px_rgba(2,132,199,0.3)] cursor-pointer group transition-all duration-300"
           >
-            <div className="bg-gradient-to-r from-[#F0F9FF] via-[#E0F2FE] to-[#F0FDFA] rounded-[14px] p-3 flex items-center justify-between border border-[#BAE6FD]/90 group-hover:bg-white transition-all">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0369A1] via-[#0284C7] to-[#38BDF8] flex items-center justify-center text-white shadow-[0_2px_8px_rgba(2,132,199,0.35)] text-lg border border-white/80">
+            {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+            <div className="absolute -top-2.5 right-4 z-20">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-sky-700 via-cyan-600 to-teal-700 text-white border border-cyan-300/80 shadow-[0_2px_8px_rgba(2,132,199,0.4)] font-sans tracking-wide">
+                <Sparkles className="w-3 h-3 text-cyan-200 fill-cyan-200 animate-pulse" />
+                <span>الرئاسة الرسمية للوكالات</span>
+              </span>
+            </div>
+
+            <div className="bg-gradient-to-r from-[#F0F9FF] via-[#E0F2FE] to-[#F0FDFA] rounded-[14px] p-3 flex items-center justify-between border border-[#BAE6FD]/90 group-hover:bg-white transition-all relative overflow-hidden">
+              <div className="flex items-center gap-3 relative z-10">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#0369A1] via-[#0284C7] to-[#38BDF8] flex items-center justify-center text-white shadow-[0_2px_8px_rgba(2,132,199,0.35)] text-lg border border-white/80 shrink-0 group-hover:scale-105 transition-transform">
                   👑
                 </div>
                 <div>
@@ -1257,24 +1313,34 @@ export const ProfileScreen: React.FC = () => {
                       رئيس الوكالات 💎
                     </span>
                   </div>
-                  <span className="text-[10px] text-[#0369A1] font-bold">استدعاء وكالات رسمية، تعيين المندوبين، وفتح وإغلاق الصلاحيات</span>
+                  <span className="text-[10px] text-[#0369A1] font-bold block mt-0.5">استدعاء وكالات رسمية، تعيين المندوبين، وفتح وإغلاق الصلاحيات</span>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-xs font-black text-[#0369A1] bg-white/95 border border-[#7DD3FC]/60 px-2.5 py-1 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-[#0284C7] group-hover:to-[#0D9488] group-hover:text-white group-hover:border-transparent transition-all">
-                <span>دخول</span>
+              <div className="flex items-center gap-1.5 text-xs font-black text-[#0369A1] bg-white/95 border border-[#7DD3FC]/60 px-3 py-1.5 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-[#0284C7] group-hover:to-[#0D9488] group-hover:text-white group-hover:border-transparent transition-all shrink-0 relative z-10">
+                <span>إدارة</span>
                 <ChevronLeft className="w-4 h-4" />
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          {/* 6.8 مندوب وكالات (المستطيل الفضي البلاتيني الفاخر للمندوب) */}
-          <div 
+          {/* 6.8 مندوب وكالات (المستطيل الفضي البلاتيني الفاخر مع الشارة البارزة للأعلى) */}
+          <motion.div 
+            whileHover={{ scale: 1.015 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => setIsAgencyRepModalOpen(true)}
-            className="relative my-2 p-[2px] rounded-2xl bg-gradient-to-r from-[#334155] via-[#64748B] to-[#94A3B8] shadow-[0_4px_16px_rgba(71,85,105,0.25)] cursor-pointer group transition-all"
+            className="relative my-3 p-[2px] rounded-2xl bg-gradient-to-r from-[#334155] via-[#64748B] to-[#94A3B8] shadow-[0_4px_18px_rgba(71,85,105,0.28)] cursor-pointer group transition-all duration-300"
           >
-            <div className="bg-gradient-to-r from-[#F8FAFC] via-[#F1F5F9] to-[#E2E8F0] rounded-[14px] p-3 flex items-center justify-between border border-[#CBD5E1]/90 group-hover:bg-white transition-all">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#334155] via-[#64748B] to-[#94A3B8] flex items-center justify-center text-white shadow-[0_2px_8px_rgba(71,85,105,0.35)] text-lg border border-white/80">
+            {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+            <div className="absolute -top-2.5 right-4 z-20">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-slate-700 via-slate-800 to-zinc-800 text-white border border-slate-400/80 shadow-[0_2px_8px_rgba(71,85,105,0.4)] font-sans tracking-wide">
+                <Sparkles className="w-3 h-3 text-amber-300 fill-amber-300 animate-pulse" />
+                <span>لوحة المندوب المعتمد</span>
+              </span>
+            </div>
+
+            <div className="bg-gradient-to-r from-[#F8FAFC] via-[#F1F5F9] to-[#E2E8F0] rounded-[14px] p-3 flex items-center justify-between border border-[#CBD5E1]/90 group-hover:bg-white transition-all relative overflow-hidden">
+              <div className="flex items-center gap-3 relative z-10">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#334155] via-[#64748B] to-[#94A3B8] flex items-center justify-center text-white shadow-[0_2px_8px_rgba(71,85,105,0.35)] text-lg border border-white/80 shrink-0 group-hover:scale-105 transition-transform">
                   🏛️
                 </div>
                 <div>
@@ -1284,69 +1350,154 @@ export const ProfileScreen: React.FC = () => {
                       استدعاء وكلاء 🔱
                     </span>
                   </div>
-                  <span className="text-[10px] text-[#475569] font-bold">صلاحية استدعاء وكلاء رسميين ومتابعة الأرباح والعمولات</span>
+                  <span className="text-[10px] text-[#475569] font-bold block mt-0.5">صلاحية استدعاء وكلاء رسميين ومتابعة الأرباح والعمولات</span>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-xs font-black text-[#334155] bg-white/95 border border-[#94A3B8]/60 px-2.5 py-1 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-[#475569] group-hover:to-[#334155] group-hover:text-white group-hover:border-transparent transition-all">
-                <span>دخول</span>
+              <div className="flex items-center gap-1.5 text-xs font-black text-[#334155] bg-white/95 border border-[#94A3B8]/60 px-3 py-1.5 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-[#475569] group-hover:to-[#334155] group-hover:text-white group-hover:border-transparent transition-all shrink-0 relative z-10">
+                <span>إدارة</span>
                 <ChevronLeft className="w-4 h-4" />
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          {/* 7. مركز الإدارة - الداشبورد (مركز الوسطاء بالشكل المخصص الجديد) */}
-          <div 
-            onClick={() => setIsBrokerCenterModalOpen(true)}
-            className="relative my-2 p-[2px] rounded-2xl bg-gradient-to-r from-[#0D404C] via-[#104D5B] to-[#165F6F] shadow-md cursor-pointer group transition-all"
-          >
-            <div className="bg-gradient-to-r from-teal-50/90 via-sky-50/80 to-slate-50/90 rounded-[14px] p-3 flex items-center justify-between border border-teal-200/80 group-hover:bg-white transition-all">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0D404C] via-[#104D5B] to-[#165F6F] flex items-center justify-center text-white shadow-md text-lg">
-                  📊
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black text-slate-900 tracking-wide">مركز الإدارة - الداشبورد</span>
-                    <span className="text-[9px] bg-[#104D5B] text-white font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
-                      مركز الوسطاء ✨
+          {/* وكالتي (الوكيل الرسمي أو السوبر أدمن) - إدارة المذيعين والوسطاء والعقود - تم نقله ليكون فوق مركز الوسطاء */}
+          {(adminRole === 'official_agent' || adminRole === 'super_admin') && (
+            <motion.div 
+              whileHover={{ scale: 1.015 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsAgencyModalOpen(true)}
+              className="relative my-2.5 p-[2px] rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#10B981] via-[#F59E0B] to-[#D4AF37] bg-[length:200%_auto] animate-[gradient_4s_linear_infinite] shadow-[0_4px_20px_rgba(16,185,129,0.25),0_0_12px_rgba(212,175,55,0.35)] cursor-pointer group text-right transition-all duration-300"
+            >
+              {/* شارة تمييز أعلى زاوية المستطيل */}
+              <div className="absolute -top-2.5 right-4 z-20">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white border border-emerald-300/80 shadow-[0_2px_8px_rgba(16,185,129,0.4)] font-sans tracking-wide">
+                  <Sparkles className="w-3 h-3 text-amber-300 fill-amber-300 animate-pulse" />
+                  <span>لوحة الوكالة الرسمية</span>
+                </span>
+              </div>
+
+              <div className="bg-gradient-to-br from-[#064E3B]/95 via-[#065F46] to-[#042F2C] text-white rounded-[14px] p-3 sm:p-3.5 flex items-center justify-between border border-emerald-400/40 group-hover:border-emerald-300 group-hover:from-[#065F46] group-hover:to-[#022c22] transition-all duration-300 relative overflow-hidden">
+                {/* خلفية جمالية خافتة بتدرج لوني */}
+                <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-emerald-400/10 rounded-full blur-xl pointer-events-none" />
+                <div className="absolute -left-6 -top-6 w-24 h-24 bg-amber-400/10 rounded-full blur-xl pointer-events-none" />
+
+                <div className="flex items-center gap-3 min-w-0 flex-1 relative z-10">
+                  {/* 3D Inner Embossed Plinth مع حواف زمردية وذهبية فاخرة */}
+                  <div className="relative w-12 h-12 rounded-xl bg-gradient-to-b from-emerald-900/90 to-slate-950 border border-emerald-400/60 shadow-[0_2px_10px_rgba(0,0,0,0.4),inset_0_1px_2px_rgba(255,255,255,0.2)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <OfficialAgency3DIcon className="w-8 h-8" />
+                    <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-amber-400 rounded-full border border-emerald-950 shadow-xs flex items-center justify-center text-[7px] font-black text-slate-950">
+                      ★
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-500 font-bold">دعوة المذيعين، تحليلات الأداء، وإدارة المهام</span>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-black text-white group-hover:text-amber-300 transition-colors truncate tracking-wide drop-shadow-xs">
+                        وكالتي
+                      </h4>
+                      <span className="text-[9.5px] font-black bg-gradient-to-r from-amber-400/25 to-amber-500/30 text-amber-200 border border-amber-400/50 px-2 py-0.5 rounded-full shadow-2xs font-mono">
+                        وكيل معتمد 💼
+                      </span>
+                    </div>
+                    <span className="text-[10.5px] text-emerald-100/85 font-bold block mt-0.5 truncate">
+                      إدارة المذيعين، الوسطاء، العقود والرواتب
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-xs font-black text-slate-950 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 border border-amber-200 px-3 py-1.5 rounded-xl shadow-[0_2px_8px_rgba(245,158,11,0.3)] group-hover:scale-105 active:scale-95 transition-all shrink-0 mr-2 relative z-10">
+                  <span>إدارة</span>
+                  <ChevronLeft className="w-4 h-4 text-slate-950" />
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-xs font-black text-[#104D5B] bg-white/90 border border-teal-200 px-2.5 py-1 rounded-xl shadow-2xs group-hover:bg-[#104D5B] group-hover:text-white transition-all">
-                <span>دخول</span>
-                <ChevronLeft className="w-4 h-4" />
-              </div>
-            </div>
-          </div>
+            </motion.div>
+          )}
 
-          {/* 8. مركز المذيعين (محتوى داخل إطار مستطيل مميز وجذاب للغاية) */}
-          <div 
-            onClick={() => setIsBroadcasterCenterModalOpen(true)}
-            className="relative my-2 p-[2px] rounded-2xl bg-gradient-to-r from-rose-500 via-purple-500 to-indigo-500 shadow-md cursor-pointer group transition-all"
+          {/* 7. مركز الوسطاء (صلاحية وسيط معتمد ممنوحة من وكالتي لحساب ومتابعة المذيعين وعمولات الوساطة) */}
+          <motion.div 
+            whileHover={{ scale: 1.015 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setIsBrokerCenterModalOpen(true)}
+            className="relative my-3 p-[2px] rounded-2xl bg-gradient-to-r from-[#0D404C] via-[#104D5B] to-[#165F6F] shadow-[0_4px_18px_rgba(16,77,91,0.28)] cursor-pointer group transition-all duration-300"
           >
-            <div className="bg-gradient-to-r from-rose-50/90 via-purple-50/80 to-indigo-50/90 rounded-[14px] p-3 flex items-center justify-between border border-rose-200/80 group-hover:bg-white transition-all">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 via-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md text-lg">
-                  🎤
+            {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+            <div className="absolute -top-2.5 right-4 z-20">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-teal-800 via-teal-700 to-cyan-800 text-white border border-teal-300/80 shadow-[0_2px_8px_rgba(16,77,91,0.4)] font-sans tracking-wide">
+                <Sparkles className="w-3 h-3 text-teal-300 fill-teal-300 animate-pulse" />
+                <span>لوحة الوسيط المعتمد (من وكالتي)</span>
+              </span>
+            </div>
+
+            <div className="bg-gradient-to-r from-teal-50/90 via-sky-50/80 to-slate-50/90 rounded-[14px] p-3 flex items-center justify-between border border-teal-200/80 group-hover:bg-white transition-all relative overflow-hidden">
+              <div className="flex items-center gap-3 relative z-10">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#0D404C] via-[#104D5B] to-[#165F6F] flex items-center justify-center text-white shadow-md text-lg shrink-0 group-hover:scale-105 transition-transform">
+                  🤝
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black text-slate-900 tracking-wide">مركز المذيعين</span>
-                    <span className="text-[9px] bg-rose-600 text-white font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
+                    <span className="text-xs font-black text-slate-900 tracking-wide">مركز الوسطاء</span>
+                    <span className="text-[9px] bg-[#104D5B] text-white font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
+                      صلاحية وسيط 💎
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-[#104D5B] font-bold block mt-0.5">صلاحية ممنوحة من وكالتي لمتابعة المذيعين التابعين لي، ساعات البث، والعمولات المحسوبة</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs font-black text-[#104D5B] bg-white/90 border border-teal-200 px-3 py-1.5 rounded-xl shadow-2xs group-hover:bg-[#104D5B] group-hover:text-white transition-all shrink-0 relative z-10">
+                <span>إدارة</span>
+                <ChevronLeft className="w-4 h-4" />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* 8. مركز المذيعين (بتصميم فاخر وألوان جذابة خفيفة تجمع بين الوردي الناعم واللافندر الهادئ) */}
+          <motion.div 
+            whileHover={{ scale: 1.015 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setIsBroadcasterCenterModalOpen(true)}
+            className="relative my-3 p-[2px] rounded-2xl bg-gradient-to-r from-rose-300/85 via-fuchsia-200/80 to-purple-300/85 shadow-[0_4px_18px_rgba(244,63,94,0.12),0_1px_3px_rgba(0,0,0,0.04)] cursor-pointer group transition-all duration-300"
+          >
+            {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+            <div className="absolute -top-2.5 right-4 z-20">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-rose-500 via-pink-500 to-purple-600 text-white border border-rose-200/60 shadow-[0_2px_8px_rgba(244,63,94,0.25)] font-sans tracking-wide">
+                <Sparkles className="w-3 h-3 text-amber-200 fill-amber-200 animate-pulse" />
+                <span>لوحة مركز المذيعين</span>
+              </span>
+            </div>
+
+            <div className="bg-gradient-to-r from-[#FFF5F7] via-[#FAF5FF] to-[#F5F3FF] rounded-[14px] p-3 flex items-center justify-between border border-rose-200/70 group-hover:border-rose-300/90 group-hover:from-white group-hover:to-[#FFF5F7] transition-all relative overflow-hidden">
+              {/* لمسات إضاءة خلفية ناعمة وخفيفة */}
+              <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-rose-300/15 rounded-full blur-xl pointer-events-none" />
+              <div className="absolute -left-6 -top-6 w-24 h-24 bg-purple-300/15 rounded-full blur-xl pointer-events-none" />
+
+              <div className="flex items-center gap-3 relative z-10">
+                {/* 3D Realistic Icon Container بتدرج خفيف ومتناسق وألوان فاخرة ناعمة */}
+                <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white via-rose-50/70 to-purple-50/90 border border-rose-200/80 shadow-[0_2px_10px_rgba(244,63,94,0.10),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <BroadcasterCenter3DIcon className="w-7 h-7 sm:w-8 sm:h-8" />
+                  <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-gradient-to-tr from-amber-400 via-amber-300 to-yellow-200 rounded-full border border-white shadow-2xs flex items-center justify-center text-[7.5px] font-black text-amber-950">
+                    ★
+                  </span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-slate-900 group-hover:text-rose-950 transition-colors tracking-wide">
+                      مركز المذيعين
+                    </span>
+                    <span className="text-[9px] bg-gradient-to-r from-rose-100 to-pink-100 text-rose-700 border border-rose-200/80 font-extrabold px-2 py-0.5 rounded-full shadow-2xs font-mono">
                       مُميّز ✨
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-500 font-bold">إحصائيات البث، الأرباح، والعقود</span>
+                  <span className="text-[10px] text-slate-600 font-bold block mt-0.5 group-hover:text-slate-700">
+                    إحصائيات البث، الأرباح، والعقود
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-xs font-black text-rose-600 bg-white/90 border border-rose-200 px-2.5 py-1 rounded-xl shadow-2xs group-hover:bg-rose-600 group-hover:text-white transition-all">
-                <span>دخول</span>
+              <div className="flex items-center gap-1.5 text-xs font-black text-rose-700 bg-white/95 border border-rose-200/90 px-3 py-1.5 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-rose-500 group-hover:to-pink-600 group-hover:text-white group-hover:border-transparent group-hover:shadow-[0_2px_8px_rgba(244,63,94,0.3)] transition-all shrink-0 relative z-10">
+                <span>إدارة</span>
                 <ChevronLeft className="w-4 h-4" />
               </div>
             </div>
-          </div>
+          </motion.div>
 
 
 
@@ -1355,8 +1506,8 @@ export const ProfileScreen: React.FC = () => {
         {/* Copyright Notice */}
         <div className="text-center py-4 text-[10px] text-slate-400 font-medium flex flex-col items-center justify-center gap-1.5 border-t border-slate-200/50 mt-2">
           <div className="flex items-center gap-2">
-            <TarafLogo size="sm" className="scale-75" />
-            <span className="font-extrabold text-[#5C3F13] text-xs">تطبيق ترف شات (Taraf Chat)</span>
+            <NajmLogo size="sm" className="scale-75" />
+            <span className="font-extrabold text-[#5C3F13] text-xs">تطبيق النجم (Al-Najm)</span>
           </div>
           <span className="text-[10px] text-slate-400">
             جميع حقوق الملكية الفكرية والعلامة التجارية مسجلة ومحفوظة © 2026 للمالك والمطور
@@ -1365,16 +1516,6 @@ export const ProfileScreen: React.FC = () => {
 
       </div>
       </>
-      )}
-
-      {/* Floating Room Capsule across other tabs when active & minimized */}
-      {activeTab !== 'home' && minimizedRoomSession && (
-        <FloatingRoomWidget
-          onExpand={() => {
-            setActiveTab('home');
-            maximizeRoomSession();
-          }}
-        />
       )}
 
       {/* Fixed Bottom Navigation Bar (RTL Order from Right to Left) */}
@@ -1507,16 +1648,6 @@ export const ProfileScreen: React.FC = () => {
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         onOpenCustomerService={() => setIsCustomerServiceModalOpen(true)}
-        onOpenDevPanel={() => setIsDevPanelModalOpen(true)}
-        userId={profile.userId}
-        devId="YE1330000"
-      />
-
-      <DevPanelModal
-        isOpen={isDevPanelModalOpen}
-        onClose={() => setIsDevPanelModalOpen(false)}
-        userId={profile.userId}
-        devId="YE1330000"
       />
 
       <CustomerServiceModal
@@ -1647,8 +1778,8 @@ export const ProfileScreen: React.FC = () => {
         userId={profile.userId}
       />
 
-      {/* جينيس YoHo - الذكاء والتحليلات ولوحة الشرف */}
-      <GeniusYoHoModal
+      {/* تميز النجم - الذكاء والتحليلات ولوحة الشرف */}
+      <GeniusNajmModal
         isOpen={isGeniusModalOpen || activeServiceModal === 'genius'}
         onClose={() => {
           setIsGeniusModalOpen(false);
@@ -1690,6 +1821,53 @@ export const ProfileScreen: React.FC = () => {
         activeService={activeServiceModal}
         onClose={() => setActiveServiceModal(null)}
       />
+
+      {/* GLOBAL PERSISTENT VOICE ROOM (يبقى محملاً بالخلفية عند اختيار "احتفاظ" لضمان استمرار الصوت والميكروفون والتفاعل دون انقطاع) */}
+      {activeVoiceRoom && (
+        <div
+          id="global-voice-room-container"
+          className={
+            isRoomMinimized
+              ? 'opacity-0 pointer-events-none invisible fixed inset-0 -z-50'
+              : 'opacity-100 pointer-events-auto visible fixed inset-0 z-50'
+          }
+        >
+          <VoiceRoomScreen
+            roomTitle={activeVoiceRoom.title}
+            hostName={activeVoiceRoom.host}
+            roomId={activeVoiceRoom.id}
+            isOwner={Boolean(activeVoiceRoom.isOwner || activeVoiceRoom.ownerId === profile.userId)}
+            currentUserName={profile.name}
+            currentUserAvatar={profile.avatarUrl}
+            currentUserVip={profile.vipTier || 'VIP6'}
+            onClose={() => {
+              setActiveVoiceRoom(null);
+              setIsRoomMinimized(false);
+              exitRoomSession();
+            }}
+            onMinimize={() => {
+              setIsRoomMinimized(true);
+              minimizeRoomSession();
+            }}
+            onOpenRecharge={() => setIsRechargeModalOpen(true)}
+          />
+        </div>
+      )}
+
+      {/* GLOBAL FLOATING CIRCULAR ROOM BUBBLE (تطفو فوق كل القوائم والشاشات بدون استثناء وعند النقر ترجع المستخدم فوراً للروم) */}
+      {activeVoiceRoom && isRoomMinimized && (
+        <FloatingRoomWidget
+          onExpand={() => {
+            setIsRoomMinimized(false);
+            maximizeRoomSession();
+          }}
+          onExit={() => {
+            setActiveVoiceRoom(null);
+            setIsRoomMinimized(false);
+            exitRoomSession();
+          }}
+        />
+      )}
     </div>
   );
 };

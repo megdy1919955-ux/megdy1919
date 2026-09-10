@@ -1,12 +1,11 @@
 /**
- * نافذة مغادرة الغرفة الصوتية الخفيفة والسريعة (YoHo Lightweight Room Exit Menu)
- * مطابقة لتصميم YoHo السريع والمريح:
+ * نافذة مغادرة الغرفة الصوتية الخفيفة والسريعة - تطبيق النجم
  * - خلفية معتمة خفيفة
  * - 3 أزرار دائرية بيضاء مركزية مع أيقونات وعناوين واضحة:
  *   1. احتفظ (Keep / Background floating)
  *   2. خروج (Exit / Leave room)
  *   3. حل الغرفة (Dissolve / Close room for owner)
- * Super Legend App (c) 2026
+ * Najm Live App (c) 2026
  */
 
 import React from 'react';
@@ -51,8 +50,8 @@ export const RoomExitModal: React.FC<RoomExitModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        id="yoho-room-exit-backdrop"
-        className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/75 backdrop-blur-[3px] select-none pointer-events-auto cursor-pointer"
+        id="najm-room-exit-backdrop"
+        className="fixed inset-0 z-[99999] flex items-center justify-center bg-transparent select-none pointer-events-auto cursor-pointer"
         onClick={onClose}
         dir="rtl"
       >
@@ -81,7 +80,7 @@ export const RoomExitModal: React.FC<RoomExitModalProps> = ({
               className="w-[76px] h-[76px] sm:w-[84px] sm:h-[84px] rounded-full bg-white hover:bg-slate-100 active:scale-90 transition-transform shadow-[0_10px_30px_rgba(0,0,0,0.6)] flex items-center justify-center text-slate-900 cursor-pointer"
               title="احتفظ"
             >
-              {/* Plus icon with framing ticks matching YoHo */}
+              {/* Plus icon with framing ticks */}
               <svg
                 className="w-9 h-9 sm:w-10 sm:h-10 text-slate-900"
                 viewBox="0 0 24 24"
@@ -129,38 +128,40 @@ export const RoomExitModal: React.FC<RoomExitModalProps> = ({
             </span>
           </motion.div>
 
-          {/* 3. حل الغرفة (Dissolve / Close Room) */}
-          <motion.div
-            initial={{ opacity: 0, y: 0 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, delay: 0.1 }}
-            className="flex flex-col items-center"
-          >
-            <button
-              id="room-exit-dissolve-btn"
-              onClick={handleDissolveClick}
-              className="w-[76px] h-[76px] sm:w-[84px] sm:h-[84px] rounded-full bg-white hover:bg-slate-100 active:scale-90 transition-transform shadow-[0_10px_30px_rgba(0,0,0,0.6)] flex items-center justify-center text-slate-900 cursor-pointer"
-              title="حل الغرفة"
+          {/* 3. إحالة الغرفة (Dissolve / Delegate Room - للمالك فقط) */}
+          {isOwner && (
+            <motion.div
+              initial={{ opacity: 0, y: 0 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: 0.1 }}
+              className="flex flex-col items-center"
             >
-              {/* House with X icon matching YoHo */}
-              <svg
-                className="w-9 h-9 sm:w-10 sm:h-10 text-slate-900"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+              <button
+                id="room-exit-dissolve-btn"
+                onClick={handleDissolveClick}
+                className="w-[76px] h-[76px] sm:w-[84px] sm:h-[84px] rounded-full bg-white hover:bg-slate-100 active:scale-90 transition-transform shadow-[0_10px_30px_rgba(0,0,0,0.6)] flex items-center justify-center text-slate-900 cursor-pointer"
+                title="إحالة الغرفة"
               >
-                <path d="M3 10.5L12 3.5l9 7V20a1.5 1.5 0 0 1-1.5 1.5H4.5A1.5 1.5 0 0 1 3 20V10.5z" />
-                <line x1="9.5" y1="12" x2="14.5" y2="17" />
-                <line x1="14.5" y1="12" x2="9.5" y2="17" />
-              </svg>
-            </button>
-            <span className="text-white text-base sm:text-lg font-bold tracking-wide mt-2.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-              حل الغرفة
-            </span>
-          </motion.div>
+                {/* House with X icon */}
+                <svg
+                  className="w-9 h-9 sm:w-10 sm:h-10 text-slate-900"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M3 10.5L12 3.5l9 7V20a1.5 1.5 0 0 1-1.5 1.5H4.5A1.5 1.5 0 0 1 3 20V10.5z" />
+                  <line x1="9.5" y1="12" x2="14.5" y2="17" />
+                  <line x1="14.5" y1="12" x2="9.5" y2="17" />
+                </svg>
+              </button>
+              <span className="text-white text-base sm:text-lg font-bold tracking-wide mt-2.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                إحالة الغرفة
+              </span>
+            </motion.div>
+          )}
         </motion.div>
       </div>
     </AnimatePresence>

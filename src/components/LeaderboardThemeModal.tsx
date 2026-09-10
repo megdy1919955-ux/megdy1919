@@ -145,7 +145,7 @@ export const LeaderboardThemeModal: React.FC<LeaderboardThemeModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 pointer-events-auto cursor-default select-none animate-fadeIn"
+      className="fixed inset-0 z-50 bg-transparent flex items-center justify-center p-3 sm:p-4 pointer-events-auto cursor-default select-none animate-fadeIn"
       onClick={onClose}
     >
       <motion.div

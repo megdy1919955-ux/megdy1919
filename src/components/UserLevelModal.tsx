@@ -60,7 +60,7 @@ export const UserLevelModal: React.FC<UserLevelModalProps> = ({
       component: <Badge180Shield className="w-14 h-14" />,
       unlockText: 'فتح المستوى 180',
       duration: 'الحصول بشكل دائم',
-      desc: 'وسام الياقوت الإمبراطوري المتوهج لأعلى رتب الترف.'
+      desc: 'وسام الياقوت الإمبراطوري المتوهج لأعلى رتب النجم.'
     }
   ];
 

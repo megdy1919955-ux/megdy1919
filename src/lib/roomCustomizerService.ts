@@ -142,9 +142,9 @@ export const ROOM_PRESET_THEMES: MainRoomCustomizerConfig[] = [
     bottomButtonsColor: '#38bdf8',
     bottomGiftGlowColor: '#06b6d4',
     bottomGiftGlowIntensity: 30,
-    roomOverlayDarkness: 45,
+    roomOverlayDarkness: 0,
     roomAmbientGlowColor: '#06b6d4',
-    roomAmbientGlowIntensity: 50
+    roomAmbientGlowIntensity: 0
   },
   {
     ...DEFAULT_MAIN_ROOM_CONFIG,
@@ -176,9 +176,9 @@ export const ROOM_PRESET_THEMES: MainRoomCustomizerConfig[] = [
     bottomButtonsColor: '#fde047',
     bottomGiftGlowColor: '#f59e0b',
     bottomGiftGlowIntensity: 35,
-    roomOverlayDarkness: 50,
+    roomOverlayDarkness: 0,
     roomAmbientGlowColor: '#d97706',
-    roomAmbientGlowIntensity: 45
+    roomAmbientGlowIntensity: 0
   },
   {
     ...DEFAULT_MAIN_ROOM_CONFIG,
@@ -210,9 +210,9 @@ export const ROOM_PRESET_THEMES: MainRoomCustomizerConfig[] = [
     bottomButtonsColor: '#fda4af',
     bottomGiftGlowColor: '#f43f5e',
     bottomGiftGlowIntensity: 32,
-    roomOverlayDarkness: 40,
+    roomOverlayDarkness: 0,
     roomAmbientGlowColor: '#e11d48',
-    roomAmbientGlowIntensity: 45
+    roomAmbientGlowIntensity: 0
   },
   {
     ...DEFAULT_MAIN_ROOM_CONFIG,
@@ -244,9 +244,9 @@ export const ROOM_PRESET_THEMES: MainRoomCustomizerConfig[] = [
     bottomButtonsColor: '#a7f3d0',
     bottomGiftGlowColor: '#10b981',
     bottomGiftGlowIntensity: 30,
-    roomOverlayDarkness: 45,
+    roomOverlayDarkness: 0,
     roomAmbientGlowColor: '#059669',
-    roomAmbientGlowIntensity: 45
+    roomAmbientGlowIntensity: 0
   }
 ];
 
@@ -256,7 +256,23 @@ export function getMainRoomCustomizerConfig(): MainRoomCustomizerConfig {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      return { ...DEFAULT_MAIN_ROOM_CONFIG, ...parsed };
+      const resolved: MainRoomCustomizerConfig = {
+        ...DEFAULT_MAIN_ROOM_CONFIG,
+        ...parsed,
+        // دائماً عند فتح البرنامج تكون الصيغة الافتراضية: ألوان طبيعية 100% (إلغاء التظليل والتعتيم تماماً)
+        roomOverlayDarkness: 0,
+        activeWallpaperDimming: 0,
+        activeWallpaperBrightness: 100,
+        roomAmbientGlowIntensity: 0,
+        roomBackdropBlur: 0
+      };
+      // حفظ الصيغة الافتراضية في التخزين المحلي لضمان عدم عودة التظليل القديم أبداً
+      if (parsed.roomOverlayDarkness !== 0 || parsed.activeWallpaperDimming !== 0) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(resolved));
+        } catch {}
+      }
+      return resolved;
     }
   } catch (e) {
     console.warn('Error reading main room customizer config:', e);

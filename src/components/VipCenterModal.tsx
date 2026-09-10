@@ -349,19 +349,19 @@ export const VipCenterModal: React.FC<VipCenterModalProps> = ({
     },
     {
       id: 'anti_kick',
-      name: 'منع التعرض للطرد',
-      minVip: 4,
+      name: 'منع التعرض للطرد (VIP 5+)',
+      minVip: 5,
       icon: (
         <div className="w-9 h-9 rounded-full bg-slate-900 border border-slate-700/80 flex items-center justify-center text-slate-200">
           <ShieldAlert className="w-4 h-4" />
         </div>
       ),
-      description: 'حصانة ملكية تمنع أي شخص من طردك من الغرف العامة.'
+      description: 'حصانة ملكية تمنع أي شخص من طردك من الغرف (مخصصة لرتب VIP 5 فما فوق).'
     },
     {
       id: 'ban_protection',
-      name: 'حماية من الحظر',
-      minVip: 4,
+      name: 'حماية من الحظر (VIP 5+)',
+      minVip: 5,
       icon: (
         <div className="w-9 h-9 rounded-full bg-slate-900 border border-slate-700/80 flex items-center justify-center text-slate-200">
           <ShieldCheck className="w-4 h-4" />

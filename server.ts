@@ -32,6 +32,22 @@ async function startServer() {
     });
   });
 
+  // Explicit PWA Service Worker & Manifest routes for 100% Android & iOS standalone compliance
+  app.get('/sw.js', (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
+    res.setHeader('Service-Worker-Allowed', '/');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    const swPath = path.join(process.cwd(), process.env.NODE_ENV === 'production' ? 'dist' : 'public', 'sw.js');
+    res.sendFile(swPath);
+  });
+
+  app.get('/manifest.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/manifest+json; charset=UTF-8');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    const manifestPath = path.join(process.cwd(), process.env.NODE_ENV === 'production' ? 'dist' : 'public', 'manifest.json');
+    res.sendFile(manifestPath);
+  });
+
   // WebSocket signaling & real-time broadcast engine
   wss.on('connection', (ws: WebSocket) => {
     const clientData: ClientConnection = { ws };

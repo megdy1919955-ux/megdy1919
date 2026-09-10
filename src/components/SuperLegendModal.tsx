@@ -51,13 +51,14 @@ export const SuperLegendModal: React.FC<SuperLegendModalProps> = ({ isOpen, onCl
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-transparent pointer-events-auto cursor-default select-none" dir="rtl" onClick={onClose}>
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-transparent pointer-events-auto cursor-default select-none" dir="rtl" onClick={onClose}>
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0, scale: 0.95, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          exit={{ opacity: 0, scale: 0.95, y: 30 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-md h-full sm:h-[90vh] bg-[#0A1618]/95 backdrop-blur-xl text-white sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-amber-500/30 relative pointer-events-auto"
+          className="w-full max-w-md max-h-[85vh] h-[85vh] bg-[#0A1618]/95 backdrop-blur-xl text-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-amber-500/30 relative pointer-events-auto"
         >
           {/* Cosmic Background Effect */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-900/30 via-[#0A1618] to-slate-950 pointer-events-none" />

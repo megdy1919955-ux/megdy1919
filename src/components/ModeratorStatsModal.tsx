@@ -137,7 +137,7 @@ export const ModeratorStatsModal: React.FC<ModeratorStatsModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 pointer-events-auto select-none dir-rtl"
+        className="fixed inset-0 z-[70] bg-transparent flex items-center justify-center p-3 sm:p-4 pointer-events-auto select-none dir-rtl"
         onClick={onClose}
       >
         <motion.div

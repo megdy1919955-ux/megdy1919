@@ -1,0 +1,56 @@
+{
+  "id": "/",
+  "name": "النجم | غرف صوتية وبث مباشر",
+  "short_name": "النجم",
+  "description": "تطبيق النجم - المنصة الشاملة للغرف الصوتية والبث المباشر والفعاليات الملكية",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait",
+  "background_color": "#0B0F19",
+  "theme_color": "#0B0F19",
+  "categories": [
+    "social",
+    "entertainment"
+  ],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "شاشة تطبيق النجم للغرف الصوتية"
+    }
+  ]
+}

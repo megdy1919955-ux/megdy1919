@@ -56,7 +56,7 @@ export const CASTLE_TIERS: CastleTierInfo[] = [
     tier: 5,
     name: 'القلعة الملكية الأسطورية الخالدة',
     levelRange: 'Lv.20+',
-    description: 'أعلى وأعظم رتبة قلاع في ترف شات، مرصعة بالياقوت والذهب الخالص',
+    description: 'أعلى وأعظم رتبة قلاع في تطبيق النجم، مرصعة بالياقوت والذهب الخالص',
     minLevel: 20,
     maxMembers: 2500,
     maxRooms: 20,

@@ -29,6 +29,7 @@ interface TopOptionsMenuModalProps {
   onClose: () => void;
   currentUserRole?: 'owner' | 'host' | 'moderator' | 'guest';
   currentAppRole?: string;
+  isOwner?: boolean;
   isVIP?: boolean;
   userVipLevel?: number;
   isRoomLocked?: boolean;
@@ -57,6 +58,8 @@ export const TopOptionsMenuModal: React.FC<TopOptionsMenuModalProps> = ({
   isOpen,
   onClose,
   currentUserRole = 'owner',
+  currentAppRole,
+  isOwner: isOwnerProp = false,
   isVIP = true,
   userVipLevel = 8,
   isRoomLocked = false,
@@ -83,10 +86,13 @@ export const TopOptionsMenuModal: React.FC<TopOptionsMenuModalProps> = ({
   const [showPasscodeDialog, setShowPasscodeDialog] = useState(false);
   const [passcode, setPasscode] = useState('');
 
-  if (!isOpen || currentUserRole === 'host') return null;
+  const isDev = currentAppRole === 'developer';
+  const isRoomOwner = isDev || (currentAppRole !== 'guest' && currentAppRole !== 'moderator' && (isOwnerProp || currentAppRole === 'owner' || currentUserRole === 'owner'));
+  const isModerator = !isDev && !isRoomOwner && (currentAppRole === 'moderator' || currentUserRole === 'moderator');
+  const isRegularUser = !isDev && !isRoomOwner && !isModerator;
 
-  const isOwner = currentUserRole === 'owner';
-  const isAdmin = currentUserRole === 'owner' || currentUserRole === 'moderator';
+  // إخفاء القائمة كلياً للمستخدم العادي (تظهر فقط للمشرف وصاحب الروم والمبرمج)
+  if (!isOpen || currentUserRole === 'host' || isRegularUser) return null;
 
   const handlePasscodeSubmit = () => {
     if (!passcode || passcode.length !== 6) {
@@ -106,23 +112,27 @@ export const TopOptionsMenuModal: React.FC<TopOptionsMenuModalProps> = ({
     deniedMessage: string;
   }) => {
     let hasAccess = false;
-    switch (item.permissionRole) {
-      case 'owner':
-        hasAccess = isOwner;
-        break;
-      case 'admin':
-        hasAccess = isAdmin;
-        break;
-      case 'vip':
-        hasAccess = isVIP || isOwner;
-        break;
-      case 'speaker':
-        hasAccess = currentUserRole !== 'guest';
-        break;
-      case 'all':
-      default:
-        hasAccess = true;
-        break;
+    if (isDev) {
+      hasAccess = true;
+    } else {
+      switch (item.permissionRole) {
+        case 'owner':
+          hasAccess = isRoomOwner;
+          break;
+        case 'admin':
+          hasAccess = isRoomOwner || isModerator;
+          break;
+        case 'vip':
+          hasAccess = isVIP || isRoomOwner;
+          break;
+        case 'speaker':
+          hasAccess = !isRegularUser;
+          break;
+        case 'all':
+        default:
+          hasAccess = true;
+          break;
+      }
     }
 
     if (!hasAccess) {
@@ -329,7 +339,7 @@ export const TopOptionsMenuModal: React.FC<TopOptionsMenuModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 pointer-events-auto cursor-default select-none"
+        className="fixed inset-0 z-50 bg-transparent flex items-center justify-center p-4 pointer-events-auto cursor-default select-none"
         onClick={onClose}
       >
         <motion.div
@@ -404,9 +414,17 @@ export const TopOptionsMenuModal: React.FC<TopOptionsMenuModalProps> = ({
             <div className="grid grid-cols-4 gap-y-5 gap-x-2 pt-9 pb-1">
               {menuItems
                 .filter((item) => {
-                  // شرط إظهار أيقونة الخلفيات، الثيم الخاص، إخفاء العدادات، ووضع المايكات لصاحب الروم (isOwner) حصرياً
+                  // المبرمج لا توجد أمامه أي حواجز
+                  if (isDev) return true;
+
+                  // المشرف تظهر له فقط: مسح الدردشة، قفل الدردشة، الموسيقى، التأثيرات الصوتية
+                  if (isModerator) {
+                    return ['clear_chat', 'lock_chat', 'music', 'sound_effects'].includes(item.id);
+                  }
+
+                  // شرط إظهار أيقونة الخلفيات، الثيم الخاص، إخفاء العدادات، ووضع المايكات لصاحب الروم حصرياً
                   if (item.id === 'wallpapers' || item.id === 'custom_theme' || item.id === 'mic_mode' || item.id === 'leaderboard') {
-                    return isOwner;
+                    return isRoomOwner;
                   }
                   return true;
                 })

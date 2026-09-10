@@ -9,6 +9,7 @@ interface SeatActionModalProps {
   seatUserName?: string;
   isSeatLocked?: boolean;
   isSeatMuted?: boolean;
+  isInvitationPending?: boolean;
   isCurrentAdmin?: boolean;
   isRoomOwner?: boolean;
   currentUserSeatId?: number | null;
@@ -19,6 +20,8 @@ interface SeatActionModalProps {
   onInviteAudience?: (seatId: number) => void;
   onRemoveFromMic?: (seatId: number) => void;
   onViewProfile?: (seatId: number) => void;
+  onAcceptInvitation?: (seatId: number) => void;
+  onCancelInvitation?: (seatId: number) => void;
 }
 
 export const SeatActionModal: React.FC<SeatActionModalProps> = ({
@@ -28,6 +31,7 @@ export const SeatActionModal: React.FC<SeatActionModalProps> = ({
   seatUserName,
   isSeatLocked = false,
   isSeatMuted = false,
+  isInvitationPending = false,
   isCurrentAdmin = true,
   isRoomOwner = false,
   currentUserSeatId,
@@ -37,7 +41,9 @@ export const SeatActionModal: React.FC<SeatActionModalProps> = ({
   onRequestMic,
   onInviteAudience,
   onRemoveFromMic,
-  onViewProfile
+  onViewProfile,
+  onAcceptInvitation,
+  onCancelInvitation
 }) => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -54,7 +60,7 @@ export const SeatActionModal: React.FC<SeatActionModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:p-4 bg-transparent transition-all pointer-events-auto"
+        className="fixed inset-0 z-[80] flex items-end justify-center p-0 sm:p-4 bg-transparent transition-all pointer-events-auto select-none"
         onClick={onClose}
       >
         <motion.div
@@ -80,7 +86,11 @@ export const SeatActionModal: React.FC<SeatActionModalProps> = ({
               <div className="text-right">
                 <h3 className="text-sm font-black text-white">التحكم بالمقعد رقم ({seatId})</h3>
                 <p className="text-[10px] text-amber-300 font-bold">
-                  {isOccupied ? `المستخدم الحالي: ${seatUserName}` : 'المقعد فارغ حالياً'}
+                  {isInvitationPending
+                    ? `دعوة صعود المايك: ${seatUserName} ⏳`
+                    : isOccupied
+                    ? `المستخدم الحالي: ${seatUserName}`
+                    : 'المقعد فارغ حالياً'}
                 </p>
               </div>
             </div>
@@ -95,8 +105,67 @@ export const SeatActionModal: React.FC<SeatActionModalProps> = ({
 
           {/* Action Items List */}
           <div className="p-4 space-y-2.5">
-            {/* OCCUPIED SEAT MANAGEMENT OPTIONS */}
-            {isOccupied ? (
+            {/* PENDING INVITATION MANAGEMENT OPTIONS */}
+            {isInvitationPending ? (
+              <>
+                <div className="p-3 bg-amber-500/15 border border-amber-500/40 rounded-2xl flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-500/20 border border-amber-400 flex items-center justify-center shrink-0">
+                    <Mic className="w-5 h-5 text-amber-300" />
+                  </div>
+                  <div className="text-right flex-1 min-w-0">
+                    <span className="text-[11px] font-black text-amber-300 block">دعوة صعود المايك معلقة ⏳</span>
+                    <span className="text-xs text-white font-bold truncate block">{seatUserName}</span>
+                  </div>
+                </div>
+
+                {/* Accept & Open Mic (موافقة وفتح المايك) */}
+                <button
+                  onClick={() => {
+                    triggerToast('تمت الموافقة وفتح المايك بنجاح! 🎙️');
+                    onAcceptInvitation?.(seatId);
+                    setTimeout(onClose, 400);
+                  }}
+                  className="w-full p-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-white font-black rounded-2xl flex items-center justify-between shadow-lg shadow-emerald-500/20 cursor-pointer transition-all active:scale-95"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Mic className="w-5 h-5" />
+                    <span className="text-sm">موافقة وفتح المايك (فتح الصوت)</span>
+                  </div>
+                  <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-lg">موافقة ✓</span>
+                </button>
+
+                {/* Cancel Invitation (إلغاء الدعوة وتفريغ المقعد) */}
+                <button
+                  onClick={() => {
+                    triggerToast('تم إلغاء الدعوة وتفريغ المقعد ❌');
+                    onCancelInvitation?.(seatId);
+                    setTimeout(onClose, 400);
+                  }}
+                  className="w-full p-3 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-bold rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-95"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <X className="w-5 h-5 text-rose-400" />
+                    <span className="text-sm">إلغاء الدعوة وتفريغ المقعد</span>
+                  </div>
+                  <span className="text-[10px] text-rose-400">إلغاء</span>
+                </button>
+
+                {/* View Profile */}
+                <button
+                  onClick={() => {
+                    onViewProfile?.(seatId);
+                    onClose();
+                  }}
+                  className="w-full p-3 bg-[#1D273D] hover:bg-[#263452] border border-white/10 text-cyan-300 font-bold rounded-2xl flex items-center justify-between cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Eye className="w-5 h-5 text-cyan-400" />
+                    <span className="text-sm">عرض البطاقة الشخصية (البروفايل)</span>
+                  </div>
+                  <span className="text-[10px] text-cyan-400">الملف الشخصي</span>
+                </button>
+              </>
+            ) : isOccupied ? (
               <>
                 {/* 1. Mute/Unmute Mic (كتم المايك / فتح المايك - متاح فقط للإداريين والمالك) */}
                 {(isCurrentAdmin || isRoomOwner) && (() => {
@@ -329,21 +398,19 @@ export const SeatActionModal: React.FC<SeatActionModalProps> = ({
                   </button>
                 )}
 
-                {/* 4. Invite Audience (دعوة شخص للصعود) */}
+                {/* 4. Invite Audience (دعوة شخص للصعود على هذا المايك) */}
                 {isCurrentAdmin && (
                   <button
                     onClick={() => {
-                      triggerToast('تم إرسال دعوة عامة للجمهور للصعود على المايك! 📣');
                       onInviteAudience?.(seatId);
-                      setTimeout(onClose, 800);
                     }}
-                    className="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-700 hover:brightness-110 text-white font-bold rounded-2xl flex items-center justify-between shadow-md cursor-pointer transition-all"
+                    className="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-700 hover:brightness-110 text-white font-bold rounded-2xl flex items-center justify-between shadow-md cursor-pointer transition-all active:scale-95"
                   >
                     <div className="flex items-center gap-2.5">
                       <Users className="w-5 h-5 text-purple-200" />
-                      <span className="text-sm">دعوة شخص من الجمهور للصعود</span>
+                      <span className="text-sm">دعوة شخص من الجمهور للصعود (مايك #{seatId})</span>
                     </div>
-                    <CheckCircle2 className="w-4 h-4 text-purple-300" />
+                    <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-lg text-purple-100">قائمة المتواجدين</span>
                   </button>
                 )}
               </>

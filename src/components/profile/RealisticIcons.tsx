@@ -667,4 +667,72 @@ export const Diamond3DIcon: React.FC<{ className?: string }> = ({ className = "w
   </svg>
 );
 
+// 22. مركز المذيعين (Broadcaster Center 3D Icon - Studio Metallic Platinum & Royal Gold Microphone with Live Indicator)
+export const BroadcasterCenter3DIcon: React.FC<{ className?: string }> = ({ className = "w-8 h-8" }) => (
+  <svg className={`${className} drop-shadow-[0_4px_8px_rgba(15,23,42,0.18)]`} viewBox="0 0 48 48" fill="none">
+    <defs>
+      <linearGradient id="brdGold" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#FFF9D6" />
+        <stop offset="35%" stopColor="#F5D061" />
+        <stop offset="70%" stopColor="#C89228" />
+        <stop offset="100%" stopColor="#7E4F0B" />
+      </linearGradient>
+      <linearGradient id="brdChrome" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#FFFFFF" />
+        <stop offset="30%" stopColor="#E2E8F0" />
+        <stop offset="70%" stopColor="#94A3B8" />
+        <stop offset="100%" stopColor="#475569" />
+      </linearGradient>
+      <linearGradient id="brdDarkSlate" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#334155" />
+        <stop offset="50%" stopColor="#1E293B" />
+        <stop offset="100%" stopColor="#0F172A" />
+      </linearGradient>
+      <radialGradient id="brdRedGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stopColor="#FF4D6D" />
+        <stop offset="70%" stopColor="#E11D48" />
+        <stop offset="100%" stopColor="#881337" />
+      </radialGradient>
+    </defs>
+    
+    {/* Soundwave Arcs */}
+    <path d="M10 20C10 14 14 9 20 8" stroke="url(#brdGold)" strokeWidth="1.8" strokeLinecap="round" opacity="0.85" />
+    <path d="M7 23C7 13 13 6 22 5" stroke="url(#brdChrome)" strokeWidth="1.4" strokeLinecap="round" opacity="0.6" strokeDasharray="2 3" />
+    <path d="M38 20C38 14 34 9 28 8" stroke="url(#brdGold)" strokeWidth="1.8" strokeLinecap="round" opacity="0.85" />
+    <path d="M41 23C41 13 35 6 26 5" stroke="url(#brdChrome)" strokeWidth="1.4" strokeLinecap="round" opacity="0.6" strokeDasharray="2 3" />
+
+    {/* Studio Suspension U-Cradle */}
+    <path d="M15 22V25C15 30 19 34 24 34C29 34 33 30 33 25V22" stroke="url(#brdChrome)" strokeWidth="2.4" strokeLinecap="round" />
+    
+    {/* Stem & Heavy Base */}
+    <path d="M24 34V41" stroke="url(#brdChrome)" strokeWidth="2.5" strokeLinecap="round" />
+    <ellipse cx="24" cy="42" rx="7" ry="2.2" fill="url(#brdDarkSlate)" stroke="url(#brdChrome)" strokeWidth="1" />
+    <ellipse cx="24" cy="41.5" rx="5" ry="1.4" fill="url(#brdGold)" opacity="0.8" />
+
+    {/* Microphone Capsule Body */}
+    <rect x="18" y="11" width="12" height="17" rx="6" fill="url(#brdDarkSlate)" stroke="url(#brdChrome)" strokeWidth="1.2" />
+
+    {/* Grille Mesh Top Half */}
+    <rect x="18" y="11" width="12" height="9" rx="6" fill="url(#brdChrome)" />
+    {/* Grille Pattern */}
+    <line x1="19" y1="14" x2="29" y2="14" stroke="#475569" strokeWidth="0.7" opacity="0.6" />
+    <line x1="18.5" y1="16.5" x2="29.5" y2="16.5" stroke="#475569" strokeWidth="0.7" opacity="0.6" />
+    <line x1="19" y1="19" x2="29" y2="19" stroke="#475569" strokeWidth="0.7" opacity="0.6" />
+    <line x1="24" y1="11" x2="24" y2="20" stroke="#FFFFFF" strokeWidth="0.8" opacity="0.8" />
+
+    {/* Golden Middle Acoustic Collar */}
+    <rect x="17.5" y="19.5" width="13" height="2" rx="0.5" fill="url(#brdGold)" stroke="#FFF8E0" strokeWidth="0.4" />
+
+    {/* Lower Body Highlight Glint */}
+    <path d="M20 22.5V26" stroke="#FFFFFF" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
+
+    {/* Red Live On Air Indicator */}
+    <circle cx="24" cy="24" r="1.8" fill="url(#brdRedGlow)" stroke="#FFF" strokeWidth="0.5" />
+    <circle cx="23.5" cy="23.5" r="0.5" fill="#FFF" />
+
+    {/* Sparkle Glint */}
+    <path d="M12 12L13 10L14 12L16 13L14 14L13 16L12 14L10 13L12 12Z" fill="url(#brdGold)" opacity="0.9" />
+  </svg>
+);
+
 

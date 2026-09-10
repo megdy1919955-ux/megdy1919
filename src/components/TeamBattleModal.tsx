@@ -46,7 +46,7 @@ export const TeamBattleModal: React.FC<TeamBattleModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto select-none"
+        className="fixed inset-0 z-50 bg-transparent flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto select-none"
         onClick={onClose}
       >
         <motion.div

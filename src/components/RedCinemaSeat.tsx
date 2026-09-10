@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Lock, Plus, MicOff, Crown } from 'lucide-react';
+import { Lock, Plus, MicOff, Crown, Mic } from 'lucide-react';
 
 interface RedCinemaSeatProps {
   seatNumber: number;
@@ -13,6 +13,7 @@ interface RedCinemaSeatProps {
     isMuted?: boolean;
     isLocked?: boolean;
     isSpeaking?: boolean;
+    isInvitationPending?: boolean;
     gender?: 'male' | 'female';
   };
   onClick: () => void;
@@ -28,6 +29,7 @@ export const RedCinemaSeat: React.FC<RedCinemaSeatProps> = ({
   const isSpeaking = (seatData?.isSpeaking ?? false) && !seatData?.isMuted;
   const isMuted = seatData?.isMuted ?? false;
   const isHost = seatData?.isHost ?? false;
+  const isInvitationPending = seatData?.isInvitationPending ?? false;
 
   return (
     <div
@@ -133,6 +135,15 @@ export const RedCinemaSeat: React.FC<RedCinemaSeatProps> = ({
                 />
               )}
 
+              {/* Invitation Pending Pulsing Ring */}
+              {isInvitationPending && (
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1], opacity: [0.9, 0.4, 0.9] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                  className="absolute -inset-1 rounded-full bg-amber-400/40 border-2 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.85)] z-0"
+                />
+              )}
+
               {/* User Avatar */}
               <img
                 src={seatData?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
@@ -140,6 +151,8 @@ export const RedCinemaSeat: React.FC<RedCinemaSeatProps> = ({
                 className={`w-full h-full rounded-full object-cover border-2 shadow-lg relative z-10 ${
                   isSpeaking
                     ? 'border-emerald-400 ring-2 ring-emerald-500/50'
+                    : isInvitationPending
+                    ? 'border-amber-400 ring-2 ring-amber-400/80'
                     : isHost
                     ? 'border-amber-400 ring-2 ring-amber-500/40'
                     : 'border-red-400/80 ring-1 ring-red-500/30'
@@ -153,26 +166,32 @@ export const RedCinemaSeat: React.FC<RedCinemaSeatProps> = ({
                 </div>
               )}
 
-              {/* Mute Mic Badge */}
-              {isMuted && (
-                <div className="absolute -bottom-1 -right-1 z-20 bg-red-600 border border-white/80 rounded-full p-0.5 shadow-md">
-                  <MicOff className="w-2.5 h-2.5 text-white" />
+              {/* Mute Mic Badge / Yellow Mic Indicator */}
+              {isInvitationPending ? (
+                <div className="absolute -bottom-1 -right-1 z-20 rounded-full p-0.5 shadow-md border border-white/80 bg-amber-400 text-slate-950 ring-1 ring-amber-300">
+                  <Mic className="w-2.5 h-2.5" />
                 </div>
-              )}
+              ) : isMuted ? (
+                <div className="absolute -bottom-1 -right-1 z-20 rounded-full p-0.5 shadow-md border border-white/80 bg-red-600 text-white">
+                  <MicOff className="w-2.5 h-2.5" />
+                </div>
+              ) : null}
             </div>
           )}
         </div>
       </div>
 
-      {/* Seat Number in clean white font (matching screenshot 1, 2, 3, 4, etc.) or User Name if occupied */}
-      <div className="mt-0.5 text-center max-w-[68px]">
+      {/* Seat Number or User Name */}
+      <div className="mt-0.5 text-center max-w-[80px]">
         {isEmpty ? (
           <span className="text-xs sm:text-sm font-black text-slate-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] font-mono">
             {seatNumber}
           </span>
         ) : (
           <div className="flex flex-col items-center">
-            <span className="text-[10px] font-black text-amber-200 truncate w-full leading-tight drop-shadow-sm">
+            <span className={`text-[10px] font-black truncate w-full leading-tight drop-shadow-sm ${
+              isInvitationPending ? 'text-amber-300' : 'text-amber-200'
+            }`}>
               {seatData?.userName}
             </span>
             <span className="text-[8.5px] font-mono text-slate-300/80 leading-none">

@@ -64,7 +64,7 @@ export const DigitalCounterControlModal: React.FC<DigitalCounterControlModalProp
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 pointer-events-auto cursor-default select-none dir-rtl"
+        className="fixed inset-0 z-50 bg-transparent flex items-center justify-center p-4 pointer-events-auto cursor-default select-none dir-rtl"
         onClick={onClose}
       >
         <motion.div

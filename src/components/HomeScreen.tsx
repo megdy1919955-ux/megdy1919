@@ -5,6 +5,7 @@ import { FloatingRoomWidget } from './FloatingRoomWidget';
 import { subscribeToRoomSession } from '../lib/roomSessionService';
 import { LuckyChestConfig } from './LuckyChestModal';
 import { ThreeDLuckyChest } from './ThreeDLuckyChest';
+import { PWAInstallBanner } from './PWAInstallBanner';
 import {
   Search,
   Crown,
@@ -20,6 +21,8 @@ import {
   Disc,
   Volume2,
   Radio,
+  Maximize2,
+  Minimize2,
   Globe,
   SlidersHorizontal,
   Check,
@@ -32,7 +35,7 @@ import {
   KeyRound
 } from 'lucide-react';
 
-interface RoomData {
+export interface RoomData {
   id: string;
   title: string;
   host: string;
@@ -69,8 +72,9 @@ interface BannerItem {
   icon: React.ReactNode;
 }
 
-interface HomeScreenProps {
+export interface HomeScreenProps {
   onOpenRecharge?: () => void;
+  onOpenRoom?: (room: RoomData) => void;
 }
 
 const DEFAULT_INITIAL_ROOM: RoomData = {
@@ -97,10 +101,19 @@ const DEFAULT_INITIAL_ROOM: RoomData = {
   ]
 };
 
-export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
+export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRoom }) => {
   const [selectedRoomModal, setSelectedRoomModal] = useState<RoomData | null>(null);
   const [activeVoiceRoom, setActiveVoiceRoom] = useState<RoomData | null>(null);
   const [isRoomMinimized, setIsRoomMinimized] = useState<boolean>(false);
+
+  const openRoom = (room: RoomData) => {
+    if (onOpenRoom) {
+      onOpenRoom(room);
+    } else {
+      setActiveVoiceRoom(room);
+      setIsRoomMinimized(false);
+    }
+  };
 
   useEffect(() => {
     const unsub = subscribeToRoomSession((session) => {
@@ -113,6 +126,42 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
     });
     return unsub;
   }, []);
+
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+    };
+  }, []);
+
+  const toggleFullscreen = () => {
+    try {
+      if (!document.fullscreenElement) {
+        const elem = document.documentElement as any;
+        if (elem.requestFullscreen) {
+          elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+          elem.webkitRequestFullscreen();
+        }
+      } else {
+        const doc = document as any;
+        if (doc.exitFullscreen) {
+          doc.exitFullscreen();
+        } else if (doc.webkitExitFullscreen) {
+          doc.webkitExitFullscreen();
+        }
+      }
+    } catch (e) {
+      console.warn('Fullscreen toggle failed:', e);
+    }
+  };
 
   // Smooth Auto-Play Carousel state (3.5s interval with easeInOut animation)
   const [currentBannerIndex, setCurrentBannerIndex] = useState<number>(0);
@@ -370,7 +419,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
   const handleAttemptJoinRoom = (room: RoomData) => {
     // 1. إذا كان المستخدم الحالي هو مالك الروم الخاص به، اسمح له بالدخول فوراً بصلاحيات المالك
     if (room.ownerId === currentUserId || room.isOwner) {
-      setActiveVoiceRoom(room);
+      openRoom(room);
       return;
     }
 
@@ -382,7 +431,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
       setEnteredPin('');
       setPinError('');
     } else {
-      setActiveVoiceRoom(room);
+      openRoom(room);
     }
   };
 
@@ -398,7 +447,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
       setPinError('');
       setSelectedRoomModal(null);
       if (roomToJoinPending) {
-        setActiveVoiceRoom(roomToJoinPending);
+        openRoom(roomToJoinPending);
       }
     } else {
       setPinError('الرمز السري غير صحيح! ❌ يرجى التأكد من الرقم والمحاولة مجدداً');
@@ -598,7 +647,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
           {/* 1st ON RIGHT (RTL): أيقونة البث المباشر (رومك) */}
           <button
             onClick={() => {
-              setActiveVoiceRoom(MY_ROOM_DATA);
+              openRoom(MY_ROOM_DATA);
             }}
             className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 text-white shadow-sm hover:shadow-md active:scale-95 transition-all cursor-pointer border border-emerald-400/30"
             title="دخول البث المباشر الخاص بك (رومك المالك 👑)"
@@ -621,6 +670,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
             title="البحث عن روم أو مذيع"
           >
             <Search className="w-4 h-4 stroke-[2.5]" />
+          </button>
+
+          {/* 3rd ON LEFT: زر إخفاء المتصفح والشاشة الكاملة */}
+          <button
+            onClick={toggleFullscreen}
+            className="ms-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-gradient-to-r from-amber-500/20 to-amber-600/20 border border-amber-500/40 text-amber-950 text-[11px] font-black hover:bg-amber-500/30 active:scale-95 transition-all cursor-pointer shadow-2xs"
+            title={isFullscreen ? 'الخروج من الشاشة الكاملة' : 'إخفاء شريط المتصفح وجعل التطبيق شاشة كاملة'}
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize2 className="w-3.5 h-3.5 text-amber-700" />
+                <span>تصغير</span>
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-3.5 h-3.5 text-amber-700" />
+                <span>شاشة كاملة</span>
+              </>
+            )}
           </button>
         </div>
 
@@ -656,6 +724,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Standalone Native App Install Banner */}
+      <PWAInstallBanner />
 
       <div className="px-3 space-y-3 pt-2">
         {/* 2. TOP CAROUSEL BANNER (SMOOTH AUTO-PLAY CAROUSEL WITH INDICATOR DOTS) */}
@@ -1224,8 +1295,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
         )}
       </AnimatePresence>
 
-      {/* FLOATING ROOM MINI WIDGET (عند تفعيل "احتفاظ" لوضع الروم بالخلفية) */}
-      {isRoomMinimized && activeVoiceRoom && (
+      {/* FLOATING ROOM MINI WIDGET (الوضع الاحتياطي فقط إذا لم يُمرر onOpenRoom) */}
+      {!onOpenRoom && isRoomMinimized && activeVoiceRoom && (
         <FloatingRoomWidget
           onExpand={() => setIsRoomMinimized(false)}
           onExit={() => {
@@ -1235,20 +1306,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge }) => {
         />
       )}
 
-      {/* FULL SCREEN VOICE ROOM INTERIOR */}
-      {activeVoiceRoom && !isRoomMinimized && (
-        <VoiceRoomScreen
-          roomTitle={activeVoiceRoom.title}
-          hostName={activeVoiceRoom.host}
-          roomId={activeVoiceRoom.id}
-          isOwner={Boolean(activeVoiceRoom.isOwner || activeVoiceRoom.ownerId === currentUserId)}
-          onClose={() => {
-            setActiveVoiceRoom(null);
-            setIsRoomMinimized(false);
-          }}
-          onMinimize={() => setIsRoomMinimized(true)}
-          onOpenRecharge={onOpenRecharge}
-        />
+      {/* FULL SCREEN VOICE ROOM INTERIOR (الوضع الاحتياطي - يبقى محملاً بالخلفية عند الاحتفاظ) */}
+      {!onOpenRoom && activeVoiceRoom && (
+        <div className={isRoomMinimized ? 'opacity-0 pointer-events-none invisible fixed inset-0 -z-50' : 'opacity-100 pointer-events-auto visible fixed inset-0 z-50'}>
+          <VoiceRoomScreen
+            roomTitle={activeVoiceRoom.title}
+            hostName={activeVoiceRoom.host}
+            roomId={activeVoiceRoom.id}
+            isOwner={Boolean(activeVoiceRoom.isOwner || activeVoiceRoom.ownerId === currentUserId)}
+            onClose={() => {
+              setActiveVoiceRoom(null);
+              setIsRoomMinimized(false);
+            }}
+            onMinimize={() => setIsRoomMinimized(true)}
+            onOpenRecharge={onOpenRecharge}
+          />
+        </div>
       )}
     </div>
   );

@@ -104,16 +104,16 @@ export const LuckyChestModal: React.FC<LuckyChestModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto select-none dir-rtl"
+        className="fixed inset-0 z-60 bg-transparent flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto select-none dir-rtl"
         onClick={onClose}
       >
         <motion.div
           initial={{ y: '100%', opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
-          transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-md bg-gradient-to-b from-[#8C0C46] via-[#740738] to-[#4F0425] border-t-2 sm:border-2 border-pink-400/40 rounded-t-[36px] sm:rounded-3xl shadow-2xl text-white flex flex-col max-h-[92vh] overflow-hidden"
+          className="w-full max-w-md bg-gradient-to-b from-[#8C0C46] via-[#740738] to-[#4F0425] border-t-2 sm:border-2 border-pink-400/40 rounded-t-[36px] sm:rounded-3xl shadow-2xl text-white flex flex-col max-h-[85vh] overflow-hidden"
         >
           {/* Header Bar with X button and Title */}
           <div className="relative px-5 pt-4 pb-2 flex items-center justify-between shrink-0">

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, MicOff, Mic, Eye, BarChart2, Gift, Sparkles } from 'lucide-react';
+import { X, MicOff, Mic, Eye, BarChart2, Gift, Sparkles, User } from 'lucide-react';
 
 interface QuickMicOptionsModalProps {
   isOpen: boolean;
@@ -45,7 +45,7 @@ export const QuickMicOptionsModal: React.FC<QuickMicOptionsModalProps> = ({
     <AnimatePresence>
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto cursor-default select-none"
+          className="fixed inset-0 z-[80] bg-transparent flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto cursor-default select-none"
           onClick={onClose}
         >
           <motion.div
@@ -54,7 +54,7 @@ export const QuickMicOptionsModal: React.FC<QuickMicOptionsModalProps> = ({
             exit={{ y: 80, opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm bg-[#121929]/95 backdrop-blur-xl border border-amber-500/30 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden text-white relative flex flex-col dir-rtl pointer-events-auto"
+            className="w-full max-w-sm bg-[#121929] border border-amber-500/30 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden text-white relative flex flex-col dir-rtl pointer-events-auto"
             dir="rtl"
           >
             {/* Modal Header */}
@@ -114,17 +114,16 @@ export const QuickMicOptionsModal: React.FC<QuickMicOptionsModalProps> = ({
                   <span className="text-[10px] font-bold text-center leading-tight">الوقوف ومشاهدة</span>
                 </button>
 
-                {/* 3. البيانات (Data / My Profile Card) */}
+                {/* 3. البيانات والبروفايل (Data / Profile Card) */}
                 <button
                   onClick={() => {
-                    triggerToast('تم فتح بطاقة البيانات والبروفايل 👤');
+                    onClose();
                     onOpenDataStats?.();
-                    setTimeout(onClose, 400);
                   }}
                   className="p-3 bg-[#1D273D] border border-white/10 text-slate-200 hover:bg-[#25324D] rounded-2xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all"
                 >
-                  <BarChart2 className="w-5 h-5 text-purple-400" />
-                  <span className="text-[11px] font-bold">بيانات</span>
+                  <User className="w-5 h-5 text-purple-400" />
+                  <span className="text-[11px] font-bold">البروفايل</span>
                 </button>
 
                 {/* 4. هدية (Send Gift) */}

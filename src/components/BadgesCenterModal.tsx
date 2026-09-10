@@ -95,7 +95,7 @@ export const BadgesCenterModal: React.FC<BadgesCenterModalProps> = ({
       name: 'Anniversary Celebration rece...',
       category: 'honorary',
       component: <AnniversaryBadge className="w-14 h-14" />,
-      desc: 'وسام الاحتفال بالذكرى السنوية الخاصة بتطبيق ترف شات.',
+      desc: 'وسام الاحتفال بالذكرى السنوية الخاصة بتطبيق النجم.',
       points: '+10 نقاط إنجاز',
       unlocked: true,
       obtainedDate: '2026/07/28'
@@ -135,7 +135,7 @@ export const BadgesCenterModal: React.FC<BadgesCenterModalProps> = ({
       name: 'شارة المستوى 100',
       category: 'achievements',
       component: <Badge100Shield className="w-14 h-14" />,
-      desc: 'شارة بلوغ المستوى 100 في ترف شات.',
+      desc: 'شارة بلوغ المستوى 100 في تطبيق النجم.',
       points: '+20 نقطة إنجاز',
       unlocked: true,
       obtainedDate: '2026/08/26'

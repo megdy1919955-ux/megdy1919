@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
   Edit3, 
@@ -210,63 +211,73 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   ];
 
   return (
-    <div 
-      className="fixed inset-0 z-50 w-full h-full min-h-screen bg-white flex flex-col text-right overflow-y-auto select-none" 
-      dir="rtl"
-    >
-      {/* Toast Notification for ID copy */}
-      {copiedId && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2 rounded-full text-xs font-bold shadow-2xl flex items-center gap-2 border border-slate-700 animate-bounce">
-          <Check className="w-4 h-4 text-emerald-400" />
-          <span>تم نسخ المعرف (ID: {user.id}) بنجاح!</span>
-        </div>
-      )}
-
-      {/* Full-Screen Profile Container */}
-      <div className="w-full max-w-2xl mx-auto flex-1 flex flex-col bg-white">
-        
-        {/* Header / Cover Image Banner */}
-        <div className="relative h-60 sm:h-72 w-full bg-gradient-to-b from-sky-400 via-indigo-500 to-slate-900 overflow-hidden shrink-0">
-          <div 
-            className="absolute inset-0 bg-cover bg-center" 
-            style={{ backgroundImage: `url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1000&auto=format&fit=crop&q=80')` }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/30" />
-
-          {/* Top Bar Navigation (Back Button on Right in RTL, Edit and Close on Left) */}
-          <div className="absolute top-4 right-4 left-4 flex items-center justify-between z-20">
-            {/* Back / Close button */}
-            <button 
-              onClick={onClose}
-              className="p-2.5 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white transition-all cursor-pointer shadow-lg active:scale-95 flex items-center gap-1"
-              title="رجوع"
-            >
-              <ChevronRight className="w-5 h-5 stroke-[2.5]" />
-            </button>
-
-            {/* Top Right Action Tools */}
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setIsEditOpen(true)}
-                className="p-2.5 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white transition-all cursor-pointer shadow-lg active:scale-95 flex items-center gap-1.5 text-xs font-bold"
-                title="تعديل الملف الشخصي"
-              >
-                <Edit3 className="w-4 h-4" />
-                <span className="hidden sm:inline">تعديل</span>
-              </button>
-              <button 
-                onClick={onClose}
-                className="p-2.5 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white transition-all cursor-pointer shadow-lg active:scale-95"
-                title="إغلاق"
-              >
-                <X className="w-5 h-5 stroke-[2.5]" />
-              </button>
-            </div>
+    <AnimatePresence>
+      <div 
+        className="fixed inset-0 z-50 bg-transparent flex items-end sm:items-center justify-center p-0 sm:p-4 select-none pointer-events-auto cursor-default" 
+        dir="rtl"
+        onClick={onClose}
+      >
+        {/* Toast Notification for ID copy */}
+        {copiedId && (
+          <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[70] bg-slate-900 text-white px-4 py-2 rounded-full text-xs font-bold shadow-2xl flex items-center gap-2 border border-slate-700 animate-bounce">
+            <Check className="w-4 h-4 text-emerald-400" />
+            <span>تم نسخ المعرف (ID: {user.id}) بنجاح!</span>
           </div>
+        )}
 
-          {/* Profile User Info Overlay */}
-          <div className="absolute bottom-4 right-4 left-4 flex items-end justify-between z-10">
-            <div className="flex items-end gap-3.5">
+        {/* Floating Modal / Bottom Sheet Profile Container */}
+        <motion.div
+          initial={{ y: 80, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 80, opacity: 0 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          onClick={(e) => e.stopPropagation()}
+          className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl max-h-[86vh] h-[86vh] flex flex-col overflow-hidden shadow-[0_-12px_45px_rgba(0,0,0,0.35)] border border-slate-200 pointer-events-auto text-right"
+        >
+          {/* Scrollable Content inside Sheet */}
+          <div className="w-full flex-1 flex flex-col overflow-y-auto custom-scrollbar">
+            {/* Header / Cover Image Banner */}
+            <div className="relative h-48 sm:h-56 w-full bg-gradient-to-b from-sky-400 via-indigo-500 to-slate-900 overflow-hidden shrink-0">
+              <div 
+                className="absolute inset-0 bg-cover bg-center" 
+                style={{ backgroundImage: `url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1000&auto=format&fit=crop&q=80')` }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/30" />
+
+              {/* Top Bar Navigation (Back Button on Right in RTL, Edit and Close on Left) */}
+              <div className="absolute top-3.5 right-3.5 left-3.5 flex items-center justify-between z-20">
+                {/* Back / Close button */}
+                <button 
+                  onClick={onClose}
+                  className="p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white transition-all cursor-pointer shadow-lg active:scale-95 flex items-center gap-1"
+                  title="رجوع"
+                >
+                  <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+                </button>
+
+                {/* Top Right Action Tools */}
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setIsEditOpen(true)}
+                    className="p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white transition-all cursor-pointer shadow-lg active:scale-95 flex items-center gap-1.5 text-xs font-bold"
+                    title="تعديل الملف الشخصي"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">تعديل</span>
+                  </button>
+                  <button 
+                    onClick={onClose}
+                    className="p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white transition-all cursor-pointer shadow-lg active:scale-95"
+                    title="إغلاق"
+                  >
+                    <X className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Profile User Info Overlay */}
+              <div className="absolute bottom-3 right-3 left-3 flex items-end justify-between z-10">
+                <div className="flex items-end gap-3">
               {/* User Avatar with Ring */}
               <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full p-1 bg-gradient-to-tr from-amber-400 via-rose-500 to-indigo-500 shadow-2xl shrink-0">
                 <img 
@@ -605,6 +616,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
       </div>
 
+      </motion.div>
+
       {/* نافذة التعديل للملف الشخصي */}
       <EditProfileModal 
         isOpen={isEditOpen} 
@@ -613,6 +626,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         onSave={handleSaveProfile}
       />
     </div>
+    </AnimatePresence>
   );
 };
 

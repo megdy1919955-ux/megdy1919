@@ -203,7 +203,7 @@ export const MainRoomCustomizerModal: React.FC<MainRoomCustomizerModalProps> = (
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 cursor-default select-none"
+        className="fixed inset-0 z-50 bg-transparent flex items-end sm:items-center justify-center p-0 sm:p-4 cursor-default select-none"
         onClick={onClose}
       >
         <motion.div

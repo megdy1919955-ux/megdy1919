@@ -36,6 +36,10 @@ import {
   User,
   ChevronLeft
 } from 'lucide-react';
+import { FriendlyPointsModal } from './FriendlyPointsModal';
+import { isUserFriend } from '../lib/friendService';
+import { FriendRequestModal } from './FriendRequestModal';
+import { isUserImmuneFromKick, getModeratorKickPermission } from '../lib/roomKickService';
 
 export interface BadgeItem {
   id: string;
@@ -51,6 +55,9 @@ export interface UserProfileData {
   userId: string;
   country: string;
   countryFlag: string;
+  vip?: string;
+  vipLevel?: number;
+  friendlyPoints?: number;
   badges?: BadgeItem[];
   isHost?: boolean;
   isAdmin?: boolean;
@@ -80,6 +87,7 @@ interface AdvancedUserProfileModalProps {
   onOpenAdminControls?: (user: UserProfileData) => void;
   onOpenPrivateChat?: (user: UserProfileData) => void;
   onOpenFullProfile?: (user: UserProfileData) => void;
+  onOpenFriendlyPoints?: (user: UserProfileData) => void;
 }
 
 export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> = ({
@@ -96,7 +104,8 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
   onKickFromRoom,
   onOpenAdminControls,
   onOpenPrivateChat,
-  onOpenFullProfile
+  onOpenFullProfile,
+  onOpenFriendlyPoints
 }) => {
   const [isFollowing, setIsFollowing] = useState(true);
   const [copiedId, setCopiedId] = useState(false);
@@ -104,6 +113,8 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
   const [isTextChatMuted, setIsTextChatMuted] = useState(false);
   const [isAdminRank, setIsAdminRank] = useState(user?.isAdmin || false);
   const [showAdminPermissionsModal, setShowAdminPermissionsModal] = useState(false);
+  const [showFriendlyPointsModal, setShowFriendlyPointsModal] = useState(false);
+  const [showFriendRequestModal, setShowFriendRequestModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Sync isMuted state with user prop changes
@@ -127,10 +138,81 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
   };
 
   const handleCopyId = () => {
-    navigator.clipboard.writeText(user.userId || user.id);
+    try {
+      if (typeof window !== 'undefined' && navigator && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(user.userId || user.id).catch(() => {});
+      }
+    } catch (_) {}
     setCopiedId(true);
     triggerToast('تم نسخ الـ ID بنجاح 📋');
     setTimeout(() => setCopiedId(false), 2000);
+  };
+
+  // 1. الدردشة: إن كان صديق يدخل للمحادثة، إن لم يكن صديق يدخل لطلب الصداقة
+  const handleChatClick = () => {
+    if (!user) return;
+    const isFriend = isUserFriend(user.userId || user.id, user.name);
+    if (isFriend) {
+      onClose();
+      onOpenPrivateChat?.(user);
+    } else {
+      setShowFriendRequestModal(true);
+    }
+  };
+
+  // 2. المقعد: إنزال العضو من المقعد مباشرة بدون فتح أي نافذة أو أيقونة للمشرف/المالك
+  const handleDropFromSeatClick = () => {
+    if (!user) return;
+    const isTargetRoomOwner = Boolean(
+      user.isHost || user.seatId === 1 || user.name?.includes('المضيف') || user.name?.includes('مالك الغرفة')
+    );
+    if (isTargetRoomOwner && !isRoomOwner) {
+      triggerToast('لا يمكن إنزال مالك الغرفة من المقعد 👑');
+      return;
+    }
+
+    if (user.seatId) {
+      triggerToast(`تم إنزال ${user.name} من المقعد بنجاح 🪑`);
+      onManageSeat?.(user);
+      setTimeout(() => {
+        onClose();
+      }, 350);
+    } else {
+      triggerToast('المستخدم ليس جالساً على مقعد حالياً 🪑');
+    }
+  };
+
+  // 3. غرفة: طرد المستخدم من داخل الروم مباشرة
+  const handleKickRoomClick = () => {
+    if (!user) return;
+    const isTargetRoomOwner = Boolean(
+      user.isHost || user.seatId === 1 || user.name?.includes('المضيف') || user.name?.includes('مالك الغرفة')
+    );
+    if (isTargetRoomOwner) {
+      triggerToast('لا يمكن طرد مالك الغرفة من الروم 👑');
+      return;
+    }
+    // Check Moderator permission: only allowed if granted by Room Owner
+    if (currentAppRole === 'moderator' && !getModeratorKickPermission()) {
+      triggerToast('🔒 غير مصرح: يحق للمشرف الطرد فقط إذا كان يملك صلاحية الطرد الممنوحة من مالك الروم 👑');
+      return;
+    }
+    // Check VIP Immunity: VIP 5 and above cannot be kicked
+    const immunity = isUserImmuneFromKick(user);
+    if (immunity.immune) {
+      triggerToast(immunity.reason || `👑 محمي من الطرد: لا يمكن طرد الأعضاء ذوي رتبة VIP 5 فما فوق! الحماية مفعلة 🛡️`);
+      return;
+    }
+    onKickFromRoom?.(user);
+    onClose();
+  };
+
+  // 4. تذكير: إشارة تذكير مباشرة على الشات
+  const handleReminderClick = () => {
+    if (!user) return;
+    triggerToast(`تم إرسال إشارة تذكير لـ ${user.name} على الشات 🔔`);
+    onClose();
+    onMentionUser?.(user);
   };
 
   const cpList = user.cpRelations || [
@@ -147,21 +229,23 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
   ];
 
   return (
-    <AnimatePresence>
+    <>
       <div
-        className="fixed inset-0 z-50 bg-transparent flex items-end justify-center p-0 pointer-events-auto cursor-default"
+        className="fixed inset-0 z-[80] bg-transparent flex items-end justify-center p-0 pointer-events-auto cursor-default select-none"
         onClick={onClose}
       >
-        {showAdminPermissionsModal ? (
-          <motion.div
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 50, opacity: 0 }}
-            transition={{ duration: 0.16, ease: 'easeOut' }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-full sm:max-w-md bg-white text-slate-900 rounded-t-xl rounded-b-none shadow-[0_-10px_35px_rgba(0,0,0,0.15)] p-3.5 flex flex-col dir-rtl select-none border-t border-slate-200 relative z-50 max-h-[60vh] overflow-y-auto"
-            dir="rtl"
-          >
+        <AnimatePresence mode="wait">
+          {showAdminPermissionsModal ? (
+            <motion.div
+              key="admin-permissions-modal"
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 50, opacity: 0 }}
+              transition={{ duration: 0.16, ease: 'easeOut' }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-full sm:max-w-md bg-white text-slate-900 rounded-t-xl rounded-b-none shadow-[0_-10px_35px_rgba(0,0,0,0.15)] p-3.5 flex flex-col dir-rtl select-none border-t border-slate-200 relative z-50 max-h-[60vh] overflow-y-auto"
+              dir="rtl"
+            >
             {/* 1. ADMIN PERMISSIONS HEADER WITH USER INFO & BADGES */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent p-2 rounded-lg border border-amber-200/60">
               <div className="flex items-center gap-2">
@@ -346,15 +430,11 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
                 </button>
 
                 <button
-                  onClick={() => {
-                    triggerToast('تم طرد المستخدم من الغرفة 🚪');
-                    onKickFromRoom?.(user);
-                    onClose();
-                  }}
+                  onClick={handleKickRoomClick}
                   className="flex items-center justify-center gap-1 p-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-black transition-all cursor-pointer"
                 >
                   <Ban className="w-3.5 h-3.5 text-rose-600" />
-                  <span>حظر / طرد</span>
+                  <span>طرد / حظر 24 ساعة</span>
                 </button>
               </div>
             </div>
@@ -372,6 +452,7 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
           </motion.div>
         ) : (
           <motion.div
+            key="user-profile-modal"
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 50, opacity: 0 }}
@@ -393,12 +474,9 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
                 </button>
 
                 <button
-                  onClick={() => {
-                    onClose();
-                    onOpenPrivateChat?.(user);
-                  }}
+                  onClick={handleChatClick}
                   className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all cursor-pointer shadow-2xs"
-                  title="محادثة صوتية / رسالة"
+                  title="الدردشة الخاصة"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                 </button>
@@ -426,12 +504,43 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
                 </div>
               </div>
 
-              {/* Top Right Gold Crest Rank Badge */}
-              <div className="flex flex-col items-center">
-                <div className="w-7 h-7 bg-gradient-to-tr from-amber-400 via-yellow-400 to-amber-500 rounded-md p-0.5 shadow-2xs flex items-center justify-center text-white relative">
-                  <Crown className="w-4 h-4 fill-white stroke-amber-600" />
-                </div>
-                <span className="text-[9px] font-black text-amber-600 font-mono -mt-0.5">2936</span>
+              {/* Top Right Actions: Friendly Points Heart Badge + Close Button */}
+              <div className="flex items-center gap-1.5">
+                {/* Top Side Friendly Points Heart Rank Badge (النقاط الودية - رصيد التفاعل) */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onOpenFriendlyPoints && user) {
+                      onOpenFriendlyPoints(user);
+                    } else {
+                      setShowFriendlyPointsModal(true);
+                    }
+                  }}
+                  className="flex flex-col items-center group cursor-pointer transition-transform active:scale-95 focus:outline-none"
+                  title="النقاط الودية ورصيد التفاعل (اضغط لعرض الإحصائيات الكاملة)"
+                >
+                  <div className="w-7 h-7 bg-gradient-to-tr from-rose-500 via-pink-500 to-amber-400 rounded-lg p-0.5 shadow-sm flex items-center justify-center text-white relative ring-1 ring-rose-300 group-hover:ring-rose-400 transition-all">
+                    <Heart className="w-4 h-4 fill-white text-white drop-shadow-xs" />
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400 border border-white" />
+                  </div>
+                  <span className="text-[9px] font-black text-rose-600 font-mono -mt-0.5 group-hover:text-rose-700 transition-colors">
+                    {user?.friendlyPoints || 2963}
+                  </span>
+                </button>
+
+                {/* Direct Close Button (X) */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClose();
+                  }}
+                  className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-all cursor-pointer shadow-2xs"
+                  title="إغلاق"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
 
@@ -628,35 +737,29 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
 
                     {/* 3. Private Chat */}
                     <button
-                      onClick={() => {
-                        onClose();
-                        onOpenPrivateChat?.(user);
-                      }}
+                      onClick={handleChatClick}
                       className="flex flex-col items-center justify-center p-1 rounded-lg hover:bg-slate-100 transition-colors text-slate-700 cursor-pointer"
+                      title="الدردشة الخاصة"
                     >
                       <MessageCircle className="w-4 h-4 text-slate-600" />
                       <span className="text-[9px] font-bold mt-0.5 text-slate-600">دردشة</span>
                     </button>
 
-                    {/* 4. Seat Management */}
+                    {/* 4. Seat Management (إنزال فوري من المقعد بدون أي أيقونة أو نافذة) */}
                     <button
-                      onClick={() => {
-                        triggerToast('تحكم المقعد 🪑');
-                        onManageSeat?.(user);
-                      }}
+                      onClick={handleDropFromSeatClick}
                       className="flex flex-col items-center justify-center p-1 rounded-lg hover:bg-slate-100 transition-colors text-slate-700 cursor-pointer"
+                      title="إنزال من المقعد فوراً بدون فتح أيقونة"
                     >
                       <Armchair className="w-4 h-4 text-slate-600" />
                       <span className="text-[9px] font-bold mt-0.5 text-slate-600">مقعد</span>
                     </button>
 
-                    {/* 5. Room Management */}
+                    {/* 5. Room Management (طرد من الغرفة) */}
                     <button
-                      onClick={() => {
-                        triggerToast('تحكم الغرفة 🚪');
-                        onKickFromRoom?.(user);
-                      }}
+                      onClick={handleKickRoomClick}
                       className="flex flex-col items-center justify-center p-1 rounded-lg hover:bg-slate-100 transition-colors text-slate-700 cursor-pointer"
+                      title="طرد من داخل الروم"
                     >
                       <LogOut className="w-4 h-4 text-slate-600" />
                       <span className="text-[9px] font-bold mt-0.5 text-slate-600">غرفة</span>
@@ -700,13 +803,11 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
                   <span>إرسال هدايا</span>
                 </button>
 
-                {/* Mention / Reminder Button */}
+                {/* Mention / Reminder Button (إشارة تذكير على الشات) */}
                 <button
-                  onClick={() => {
-                    onClose();
-                    onMentionUser?.(user);
-                  }}
+                  onClick={handleReminderClick}
                   className="py-1.5 flex items-center justify-center gap-0.5 text-blue-600 font-black text-[11px] hover:bg-blue-50 transition-colors cursor-pointer"
+                  title="إرسال إشارة تذكير على الشات"
                 >
                   <Bell className="w-3.5 h-3.5 text-blue-500" />
                   <span>تذكير</span>
@@ -722,8 +823,34 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
             )}
           </motion.div>
         )}
+        </AnimatePresence>
       </div>
-    </AnimatePresence>
+
+      {/* FRIENDLY POINTS / INTERACTION BALANCE MODAL (النقاط الودية - رصيد التفاعل) */}
+      {showFriendlyPointsModal && (
+        <FriendlyPointsModal
+          isOpen={showFriendlyPointsModal}
+          onClose={() => setShowFriendlyPointsModal(false)}
+          userName={user?.name || 'مستخدم'}
+          userAvatar={user?.avatar}
+          points={user?.friendlyPoints || 2963}
+        />
+      )}
+
+      {/* FRIEND REQUEST MODAL (طلب الصداقة لتفعيل الدردشة الخاصة) */}
+      {showFriendRequestModal && (
+        <FriendRequestModal
+          isOpen={showFriendRequestModal}
+          onClose={() => setShowFriendRequestModal(false)}
+          user={user}
+          onFriendshipApproved={(approvedUser) => {
+            setShowFriendRequestModal(false);
+            onClose();
+            onOpenPrivateChat?.(approvedUser);
+          }}
+        />
+      )}
+    </>
   );
 };
 

@@ -31,7 +31,7 @@ export const TeamBattleResultModal: React.FC<TeamBattleResultModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto cursor-default select-none dir-rtl"
+        className="fixed inset-0 z-50 bg-transparent flex items-center justify-center p-4 pointer-events-auto cursor-default select-none dir-rtl"
         onClick={onClose}
         dir="rtl"
       >

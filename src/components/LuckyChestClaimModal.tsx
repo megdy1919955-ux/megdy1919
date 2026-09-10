@@ -91,7 +91,7 @@ export const LuckyChestClaimModal: React.FC<LuckyChestClaimModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-70 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto select-none dir-rtl"
+        className="fixed inset-0 z-70 bg-transparent flex items-center justify-center p-4 pointer-events-auto select-none dir-rtl"
         onClick={onClose}
       >
         <motion.div

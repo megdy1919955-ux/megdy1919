@@ -41,7 +41,7 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
         return { 
           title: 'قائمة الأصدقاء', 
           count: '385 صديق', 
-          subtitle: 'الأصدقاء المقربون والمشتركون في ترف شات',
+          subtitle: 'الأصدقاء المقربون والمشتركون في تطبيق النجم',
           icon: <Friends3DIcon className="w-8 h-8" />
         };
       case 'followers':
@@ -336,7 +336,7 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
 
           {/* Footer */}
           <div className="p-3.5 bg-[#FAF5E8] border-t border-[#DFC386]/60 flex items-center justify-between text-xs text-[#5C3F13] shrink-0">
-            <span className="font-bold">تطبيق ترف شات - الإحصائيات الملكية</span>
+            <span className="font-bold">تطبيق النجم - الإحصائيات الرسمية</span>
             <button
               onClick={onClose}
               className="px-6 py-2 bg-gradient-to-r from-[#755013] via-[#A8792A] to-[#755013] hover:opacity-95 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"

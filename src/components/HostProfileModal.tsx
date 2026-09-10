@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Crown, Gift, MessageCircle, AtSign, UserPlus, UserCheck, ShieldCheck, Sparkles, Mic, MicOff, User, ChevronLeft } from 'lucide-react';
-import { BadgeItem } from './VoiceRoomScreen';
+import { X, Crown, Gift, MessageCircle, AtSign, UserPlus, UserCheck, ShieldCheck, Sparkles, Mic, MicOff, User, ChevronLeft, Heart } from 'lucide-react';
+import { BadgeItem } from './room';
+import { FriendlyPointsModal } from './FriendlyPointsModal';
 
 interface HostProfileModalProps {
   isOpen: boolean;
@@ -13,10 +14,12 @@ interface HostProfileModalProps {
   currentAppRole?: string;
   isHostMuted?: boolean;
   canControlMic?: boolean;
+  friendlyPoints?: number;
   onToggleHostMute?: () => void;
   onSendGift?: () => void;
   onMentionHost?: () => void;
   onOpenFullProfile?: () => void;
+  onOpenFriendlyPoints?: () => void;
 }
 
 export const HostProfileModal: React.FC<HostProfileModalProps> = ({
@@ -34,13 +37,16 @@ export const HostProfileModal: React.FC<HostProfileModalProps> = ({
   ],
   isHostMuted = false,
   canControlMic = false,
+  friendlyPoints = 2963,
   onToggleHostMute,
   onSendGift,
   onMentionHost,
-  onOpenFullProfile
+  onOpenFullProfile,
+  onOpenFriendlyPoints
 }) => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [showToast, setShowToast] = useState<string | null>(null);
+  const [showFriendlyPointsModal, setShowFriendlyPointsModal] = useState(false);
   const [currentBadges, setCurrentBadges] = useState<BadgeItem[]>(badges);
 
   const triggerToast = (msg: string) => {
@@ -51,20 +57,22 @@ export const HostProfileModal: React.FC<HostProfileModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence>
+    <>
       <div
-        className="fixed inset-0 z-50 bg-transparent flex items-end justify-center p-0 pointer-events-auto cursor-default select-none"
+        className="fixed inset-0 z-[70] bg-transparent flex items-end justify-center p-0 pointer-events-auto cursor-default select-none"
         onClick={onClose}
       >
-        <motion.div
-          initial={{ y: 80, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 80, opacity: 0 }}
-          transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-          onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-full sm:max-w-md bg-white rounded-t-xl rounded-b-none shadow-[0_-10px_35px_rgba(0,0,0,0.15)] overflow-hidden text-slate-900 relative flex flex-col dir-rtl pointer-events-auto transition-all border-t border-slate-200"
-          dir="rtl"
-        >
+        <AnimatePresence>
+          <motion.div
+            key="host-profile-panel"
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-full sm:max-w-md bg-white rounded-t-xl rounded-b-none shadow-[0_-10px_35px_rgba(0,0,0,0.15)] overflow-hidden text-slate-900 relative flex flex-col dir-rtl pointer-events-auto transition-all border-t border-slate-200"
+            dir="rtl"
+          >
           {/* Header Banner */}
           <div className="h-20 bg-gradient-to-r from-amber-100 via-amber-50 to-orange-50 relative flex items-center justify-between px-4 pt-2 border-b border-amber-200/50">
             <span className="text-xs font-black text-amber-900 bg-amber-200/60 border border-amber-300 px-2.5 py-1 rounded-full flex items-center gap-1">
@@ -72,7 +80,24 @@ export const HostProfileModal: React.FC<HostProfileModalProps> = ({
               <span>معاينة بروفايل المضيف</span>
             </span>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
+              {/* Friendly Points Heart Badge */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenFriendlyPoints) {
+                    onOpenFriendlyPoints();
+                  } else {
+                    setShowFriendlyPointsModal(true);
+                  }
+                }}
+                className="flex items-center gap-1 bg-white/90 hover:bg-white border border-rose-200/80 px-2 py-1 rounded-full shadow-2xs cursor-pointer transition-all active:scale-95 group"
+                title="نقاط ودية ورصيد التفاعل"
+              >
+                <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-black text-rose-600 font-mono">{friendlyPoints}</span>
+              </button>
+
               {/* Close Button */}
               <button
                 onClick={onClose}
@@ -243,9 +268,21 @@ export const HostProfileModal: React.FC<HostProfileModalProps> = ({
               {showToast}
             </div>
           )}
-        </motion.div>
+          </motion.div>
+        </AnimatePresence>
       </div>
-    </AnimatePresence>
+
+      {/* FRIENDLY POINTS / INTERACTION BALANCE MODAL */}
+      {showFriendlyPointsModal && (
+        <FriendlyPointsModal
+          isOpen={showFriendlyPointsModal}
+          onClose={() => setShowFriendlyPointsModal(false)}
+          userName={hostName}
+          userAvatar={hostAvatar}
+          points={friendlyPoints}
+        />
+      )}
+    </>
   );
 };
 

@@ -256,7 +256,7 @@ export function sendNewInvitation(params: {
   // 1. Message from the Agency
   // 2. Message from the Broker (or Direct Manager)
   try {
-    const rawChats = localStorage.getItem('yoho_room_chats_list');
+    const rawChats = localStorage.getItem('najm_room_chats_list') || localStorage.getItem('yoho_room_chats_list');
     let chats = rawChats ? JSON.parse(rawChats) : [];
     const nowTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
@@ -331,7 +331,7 @@ export function sendNewInvitation(params: {
       invitationId: newInvite.id
     });
 
-    localStorage.setItem('yoho_room_chats_list', JSON.stringify(chats));
+    localStorage.setItem('najm_room_chats_list', JSON.stringify(chats));
     window.dispatchEvent(new CustomEvent('chat_messages_updated', { detail: chats }));
   } catch (err) {
     console.error('Failed to sync invitation messages to chats:', err);
