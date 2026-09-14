@@ -7,13 +7,16 @@
 import React from 'react';
 import { ProfileScreen } from './components/ProfileScreen';
 import { FullscreenToggle } from './components/FullscreenToggle';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 export default function App() {
   return (
-    <div className="w-full min-h-screen min-h-[100dvh] h-full bg-[#0F0F17] text-slate-100 flex flex-col select-none overflow-x-hidden relative">
-      <FullscreenToggle />
-      <ProfileScreen />
-    </div>
+    <ErrorBoundary>
+      <div className="w-full min-h-screen min-h-[100dvh] h-full bg-[#0F0F17] text-slate-100 flex flex-col select-none overflow-x-hidden relative">
+        <FullscreenToggle />
+        <ProfileScreen />
+      </div>
+    </ErrorBoundary>
   );
 }
 

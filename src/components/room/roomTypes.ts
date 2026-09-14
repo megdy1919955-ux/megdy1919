@@ -50,6 +50,11 @@ export interface ChatMessage {
   vipLevel?: string | number;
   nobleLevel?: string;
   isJoinMessage?: boolean;
+  isLuckyWinMessage?: boolean;
+  winAmount?: number;
+  multiplier?: number;
+  giftName?: string;
+  giftIcon?: string;
   badges?: BadgeItem[];
   bubbleSkin?: BubbleSkinType;
   replyTo?: {

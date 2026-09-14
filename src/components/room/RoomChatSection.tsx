@@ -8,7 +8,7 @@ import { HostYoHoBadges } from './HostYoHoBadges';
 // Helper function to return dynamic chat bubble skin styling based on equipped skin item
 export const getBubbleStyles = (skin: BubbleSkinType = 'default', isHost?: boolean, isGift?: boolean) => {
   const baseClasses =
-    'w-fit max-w-[75%] self-start break-words [overflow-wrap:anywhere] [word-break:break-word] rounded-2xl text-xs rounded-tr-xs shadow-xs transition-all duration-200 overflow-hidden';
+    'w-fit max-w-[98%] self-start break-words [overflow-wrap:anywhere] [word-break:break-word] rounded-2xl text-xs rounded-tr-xs shadow-xs transition-all duration-200 overflow-hidden';
 
   if (isGift) {
     return `${baseClasses} bg-gradient-to-r from-pink-950/90 via-purple-950/90 to-pink-950/90 border border-pink-500/50 text-pink-200 px-2.5 py-1 text-[10.5px]`;
@@ -90,14 +90,14 @@ export const RoomChatSection = React.memo(
 
     return (
       <div
-        className="flex-1 pr-1 pl-6 pt-1 pb-1 flex flex-col min-h-0 relative z-20 transition-all duration-300 overflow-hidden overflow-x-hidden w-full max-w-full isolate"
+        className="flex-1 pr-1 pl-[104px] pt-0 pb-1 flex flex-col min-h-0 relative z-20 transition-all duration-300 overflow-hidden overflow-x-hidden w-full max-w-full isolate"
         style={{ contain: 'layout paint' }}
       >
         <div
           ref={scrollContainerRef}
           className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pr-0.5 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-amber-500/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent w-full max-w-full"
         >
-          <div className="min-h-full flex flex-col justify-end space-y-1.5 py-1 w-full max-w-full overflow-x-hidden">
+          <div className="min-h-full flex flex-col justify-end space-y-1.5 pt-0.5 pb-1 w-full max-w-full overflow-x-hidden">
             {/* MOVING HOST ANNOUNCEMENT BOARD INSIDE CHAT STREAM */}
             <div className="bg-gradient-to-r from-amber-950/80 via-amber-900/90 to-amber-950/80 border border-amber-500/50 rounded-2xl p-2.5 mb-1 shadow-lg relative overflow-hidden shrink-0 w-full max-w-full">
               <div className="flex items-center justify-between gap-1 border-b border-amber-500/30 pb-1 mb-1">
@@ -129,13 +129,23 @@ export const RoomChatSection = React.memo(
             <AnimatePresence initial={false}>
               {chatMessages.map((msg, msgIndex) => {
                 if (msg.isJoinMessage) {
+                  // Format VIP text cleanly as 'VIP <number>'
+                  let vipText = 'VIP 6';
+                  if (typeof msg.vipLevel === 'number') {
+                    vipText = `VIP ${msg.vipLevel}`;
+                  } else if (typeof msg.vipLevel === 'string') {
+                    const match = msg.vipLevel.match(/\d+/);
+                    vipText = match ? `VIP ${match[0]}` : (msg.vipLevel.startsWith('VIP') ? msg.vipLevel : `VIP ${msg.vipLevel}`);
+                  }
+
                   return (
                     <motion.div
                       key={`${msg.id}-${msgIndex}`}
                       id={`chat-msg-${msg.id}`}
                       initial={{ opacity: 0, x: 30 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="my-1 py-1 px-2.5 rounded-full bg-gradient-to-r from-[#0E1526]/95 via-[#182033]/90 to-transparent border border-amber-400/50 flex items-center gap-1.5 w-fit max-w-[95%] shadow-[0_0_12px_rgba(245,158,11,0.25)] backdrop-blur-xs select-none"
+                      style={{ backgroundColor: '#000000', boxShadow: 'none' }}
+                      className="my-1 py-1 px-3 rounded-full bg-[#000000] border border-amber-400/50 flex items-center gap-2 w-fit max-w-[98%] backdrop-blur-xs select-none"
                     >
                       {/* Avatar */}
                       <div
@@ -153,7 +163,7 @@ export const RoomChatSection = React.memo(
                             isHost: msg.isHost
                           });
                         }}
-                        className="w-5 h-5 rounded-full ring-1 ring-amber-400/90 overflow-hidden shrink-0 cursor-pointer shadow-xs"
+                        className="w-5 h-5 rounded-full ring-1 ring-amber-400/90 overflow-hidden shrink-0 cursor-pointer"
                       >
                         <img
                           src={
@@ -165,19 +175,12 @@ export const RoomChatSection = React.memo(
                         />
                       </div>
 
-                      {/* Nobility Badge if available */}
-                      {msg.nobleLevel && (
-                        <span className="px-1.5 py-0.2 rounded-full bg-emerald-950/80 border border-emerald-400/60 text-emerald-300 text-[8.5px] font-mono font-black">
-                          {msg.nobleLevel}
-                        </span>
-                      )}
-
-                      {/* VIP Badge */}
-                      <span className="px-1.5 py-0.2 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 text-[9px] font-mono font-black shadow-xs">
-                        {typeof msg.vipLevel === 'number' ? `VIP${msg.vipLevel}` : (msg.vipLevel || 'VIP6')}
+                      {/* VIP Badge Only (تم إلغاء إشارة N6 / N2 نهائياً) */}
+                      <span className="px-1.5 py-0.2 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 text-[9px] font-mono font-black shrink-0">
+                        {vipText}
                       </span>
 
-                      {/* Name */}
+                      {/* Full Name Display (مع ظهور الاسم كامل دون اقتصاص) */}
                       <span
                         onClick={(e) => {
                           e.stopPropagation();
@@ -193,17 +196,75 @@ export const RoomChatSection = React.memo(
                             isHost: msg.isHost
                           });
                         }}
-                        className="font-black text-[11px] text-[#FDE047] hover:underline cursor-pointer truncate max-w-[120px]"
+                        className="font-black text-[11px] text-[#FDE047] hover:underline cursor-pointer whitespace-nowrap"
                       >
                         {msg.userName}
                       </span>
 
-                      {/* Action text */}
+                      {/* Action text ("انضم إلى الغرفة") */}
                       <span className="text-[10.5px] text-amber-100 font-bold whitespace-nowrap">
-                        {msg.text || 'انضم إلى الغرفة'}
+                        انضم إلى الغرفة
                       </span>
 
-                      <span className="text-[12px] animate-pulse">✨</span>
+                      <span className="text-[12px] animate-pulse shrink-0">✨</span>
+                    </motion.div>
+                  );
+                }
+
+                // LUCKY WIN ANNOUNCEMENT RECTANGLE IN CHAT (مستطيل ربح هدايا الحظ بالضعفين داخل الشات)
+                if (msg.isLuckyWinMessage) {
+                  return (
+                    <motion.div
+                      key={`${msg.id}-${msgIndex}`}
+                      id={`chat-msg-${msg.id}`}
+                      initial={{ opacity: 0, x: 25, scale: 0.95 }}
+                      animate={{ opacity: 1, x: 0, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      onClick={() => {
+                        onOpenUserProfile?.({
+                          id: msg.id,
+                          name: msg.userName,
+                          avatar: msg.avatar,
+                          userId: `884${msg.id.slice(-4)}`,
+                          country: 'السعودية',
+                          countryFlag: '🇸🇦'
+                        });
+                      }}
+                      className="my-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-950/90 via-slate-950/95 to-amber-950/90 border border-amber-400/80 flex items-center gap-2 w-fit max-w-[95%] shadow-[0_2px_12px_rgba(245,158,11,0.25)] select-none cursor-pointer backdrop-blur-md"
+                    >
+                      {/* Winner Avatar */}
+                      <div className="w-5 h-5 rounded-full ring-1 ring-amber-400 overflow-hidden shrink-0">
+                        <img
+                          src={
+                            msg.avatar ||
+                            'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'
+                          }
+                          alt={msg.userName}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+
+                      {/* Winner Name */}
+                      <span className="text-[10.5px] font-black text-amber-300 truncate max-w-[85px]">
+                        {msg.userName}
+                      </span>
+
+                      {/* Label & Amount */}
+                      <div className="flex items-center gap-1 shrink-0 font-mono">
+                        <span className="text-[9.5px] text-amber-100 font-bold">ربح</span>
+                        <span className="text-[11px] font-black text-emerald-300 drop-shadow-xs">
+                          +{msg.winAmount?.toLocaleString('en-US')} 🪙
+                        </span>
+                      </div>
+
+                      {/* Multiplier Badge */}
+                      {msg.multiplier && (
+                        <span className="px-1.5 py-0.2 rounded-md bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 text-[9px] font-mono font-black shadow-xs shrink-0">
+                          x{msg.multiplier}
+                        </span>
+                      )}
+
+                      <span className="text-xs animate-pulse shrink-0">🎯</span>
                     </motion.div>
                   );
                 }
@@ -310,36 +371,25 @@ export const RoomChatSection = React.memo(
                               });
                             }}
                             className={`font-black text-[11px] truncate cursor-pointer hover:underline ${
-                              msg.userColor || (msg.isHost ? 'text-amber-300' : 'text-slate-200')
+                              msg.isHost
+                                ? (typeof msg.vipLevel === 'number'
+                                    ? msg.vipLevel >= 8
+                                    : parseInt((msg.vipLevel || 'VIP6').toString().match(/\d+/)?.[0] || '6', 10) >= 8)
+                                  ? 'text-red-500 font-black drop-shadow-[0_1px_2px_rgba(239,68,68,0.6)]'
+                                  : 'text-white font-bold'
+                                : (msg.userColor || 'text-slate-200')
                             }`}
                             title="انقر لمعاينة بطاقة البروفايل"
                           >
                             {msg.userName}
                           </span>
 
-                          {/* CONDITIONAL BADGES / MEDALS: EXACT YOHO BADGES FOR HOST (39 Heart, 111 Crown, 29/24 Gender, VIP6) */}
+                          {/* CONDITIONAL BADGES / MEDALS: EXACT YOHO BADGES FOR HOST (VIP, Heart 39, Crown 111) */}
                           {msg.isHost ? (
                             <HostYoHoBadges
-                              gender={
-                                msg.userGender ||
-                                (msg.userName.includes('أميرة') ||
-                                msg.userName.includes('مضيفة') ||
-                                msg.userName.includes('سارة')
-                                  ? 'female'
-                                  : 'male')
-                              }
-                              age={
-                                msg.userAge ||
-                                (msg.userGender === 'female' ||
-                                msg.userName.includes('أميرة') ||
-                                msg.userName.includes('مضيفة')
-                                  ? 24
-                                  : 29)
-                              }
                               heartLevel={msg.heartLevel || 39}
                               crownLevel={msg.crownLevel || 111}
-                              vipLevel={typeof msg.vipLevel === 'string' ? msg.vipLevel : 'VIP6'}
-                              onToggleGender={() => onToggleHostGender?.(msg.id)}
+                              vipLevel={typeof msg.vipLevel === 'string' ? msg.vipLevel : (msg.vipLevel ? `VIP${msg.vipLevel}` : 'VIP6')}
                             />
                           ) : msg.badges && msg.badges.length > 0 ? (
                             <div className="flex items-center gap-1 flex-wrap">

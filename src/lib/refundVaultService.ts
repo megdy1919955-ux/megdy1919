@@ -255,18 +255,18 @@ export function processRefundGiftDraw(
 
   const multiplierRng = Math.random() * 100;
 
-  if (canAffordGrandMultiplier && multiplierRng < 1.0) {
-    // استرداد مضاعف أسطوري 5 أضعاف (5x) - نادر جداً (~1%)
+  if (canAffordGrandMultiplier && multiplierRng < 3.0) {
+    // استرداد مضاعف أسطوري 5 أضعاف (5x)
     multiplier = 5.0;
     winTier = 'mega_jackpot';
     tierLabel = '👑 استرداد مضاعف أسطوري (5 أضعاف 5x)';
-  } else if (canAffordGrandMultiplier && multiplierRng < 3.0) {
-    // استرداد مضاعف 3 أضعاف (3x) - نادر جداً (~2%)
+  } else if (canAffordGrandMultiplier && multiplierRng < 9.0) {
+    // استرداد مضاعف 3 أضعاف (3x)
     multiplier = 3.0;
     winTier = 'big';
     tierLabel = '🌟 استرداد مضاعف كبير (3 أضعاف 3x)';
-  } else if (canAffordMediumMultiplier && multiplierRng < 7.0) {
-    // استرداد مضاعف ضعفين (2x) - نادر (~4%)
+  } else if (canAffordMediumMultiplier && multiplierRng < 24.0) {
+    // استرداد مضاعف ضعفين (2x) - يظهر فوراً عند الضغط المتكرر
     multiplier = 2.0;
     winTier = 'medium';
     tierLabel = '✨ استرداد مضاعف مبارك (ضعف المبلغ 2x)';

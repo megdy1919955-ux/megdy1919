@@ -110,8 +110,8 @@ export const FloatingLuckyChestWidget: React.FC<FloatingLuckyChestWidgetProps> =
     <div
       className={
         isInsideRoom
-          ? 'absolute top-16 right-3 z-35 flex items-center pointer-events-auto select-none'
-          : 'fixed top-20 right-4 z-60 flex items-center pointer-events-auto select-none'
+          ? 'absolute top-[84px] sm:top-[88px] right-3 z-35 flex items-center pointer-events-auto select-none'
+          : 'fixed top-24 right-4 z-60 flex items-center pointer-events-auto select-none'
       }
     >
       <AnimatePresence mode="wait">

@@ -38,6 +38,14 @@ import {
 } from 'lucide-react';
 import { UserProfileData, StatItem, BadgeInfo } from '../types';
 import { INITIAL_USER_PROFILE, MOCK_VISITORS, MOCK_FRIENDS, MOCK_FOLLOWERS, MOCK_LIKES } from '../data/mockData';
+import { RoyalThemeMode, ROYAL_THEMES } from './profile/ProfileThemeConfig';
+import { ProfileHeader } from './profile/ProfileHeader';
+import { ProfileStats } from './profile/ProfileStats';
+import { ProfileWalletRow } from './profile/ProfileWalletRow';
+import { ProfileActivitiesGrid } from './profile/ProfileActivitiesGrid';
+import { ProfileMiniGamesStrip } from './profile/ProfileMiniGamesStrip';
+import { ProfileServicesList } from './profile/ProfileServicesList';
+import { ProfileBottomNav } from './profile/ProfileBottomNav';
 import { StatDetailModal } from './StatDetailModal';
 import { BadgeDetailModal } from './BadgeDetailModal';
 import { EditProfileModal } from './EditProfileModal';
@@ -164,13 +172,15 @@ export const ProfileScreen: React.FC = () => {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          setProfile((prev) => ({
-            ...prev,
-            name: parsed.name || prev.name,
-            bio: parsed.bio || prev.bio,
-            country: parsed.country || prev.country,
-            avatarUrl: parsed.avatar || parsed.avatarUrl || prev.avatarUrl,
-          }));
+          queueMicrotask(() => {
+            setProfile((prev) => ({
+              ...prev,
+              name: parsed.name || prev.name,
+              bio: parsed.bio || prev.bio,
+              country: parsed.country || prev.country,
+              avatarUrl: parsed.avatar || parsed.avatarUrl || prev.avatarUrl,
+            }));
+          });
         } catch (e) {
           console.error(e);
         }
@@ -207,18 +217,26 @@ export const ProfileScreen: React.FC = () => {
     const handleCoinsUpdate = (e: Event) => {
       const customEvent = e as CustomEvent;
       if (typeof customEvent.detail?.coins === 'number') {
-        setCoinsBalance(customEvent.detail.coins);
+        queueMicrotask(() => {
+          setCoinsBalance(customEvent.detail.coins);
+        });
+      }
+    };
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'user_wallet_coins' && e.newValue) {
+        const parsed = parseInt(e.newValue, 10);
+        if (!isNaN(parsed)) {
+          queueMicrotask(() => {
+            setCoinsBalance(parsed);
+          });
+        }
       }
     };
     window.addEventListener('user_coins_updated', handleCoinsUpdate);
-    window.addEventListener('storage', (e) => {
-      if (e.key === 'user_wallet_coins' && e.newValue) {
-        const parsed = parseInt(e.newValue, 10);
-        if (!isNaN(parsed)) setCoinsBalance(parsed);
-      }
-    });
+    window.addEventListener('storage', handleStorage);
     return () => {
       window.removeEventListener('user_coins_updated', handleCoinsUpdate);
+      window.removeEventListener('storage', handleStorage);
     };
   }, []);
 
@@ -250,13 +268,15 @@ export const ProfileScreen: React.FC = () => {
 
   useEffect(() => {
     const unsub = subscribeToRoomSession((session) => {
-      setMinimizedRoomSession(session && session.isMinimized ? session : null);
-      if (!session) {
-        setActiveVoiceRoom(null);
-        setIsRoomMinimized(false);
-      } else {
-        setIsRoomMinimized(Boolean(session.isMinimized));
-      }
+      queueMicrotask(() => {
+        setMinimizedRoomSession(session && session.isMinimized ? session : null);
+        if (!session) {
+          setActiveVoiceRoom(null);
+          setIsRoomMinimized(false);
+        } else {
+          setIsRoomMinimized(Boolean(session.isMinimized));
+        }
+      });
     });
     return unsub;
   }, []);
@@ -264,22 +284,23 @@ export const ProfileScreen: React.FC = () => {
   const handleOpenRoom = (room: RoomData) => {
     setActiveVoiceRoom(room);
     setIsRoomMinimized(false);
-    setActiveRoomSession({
-      roomId: room.id,
-      roomTitle: room.title,
-      hostName: room.host,
-      roomAvatar: room.image,
-      isOwner: Boolean(room.isOwner || room.ownerId === profile.userId),
-      isMinimized: false,
+    queueMicrotask(() => {
+      setActiveRoomSession({
+        roomId: room.id,
+        roomTitle: room.title,
+        hostName: room.host,
+        roomAvatar: room.image,
+        isOwner: Boolean(room.isOwner || room.ownerId === profile.userId),
+        isMinimized: false,
+      });
     });
   };
   
   // Royal Theme State: Click 1 -> White (الأبيض اللؤلؤي) | Click 2 -> Night (الليلي الملكي) | Click 3 -> Gold (الملكي الذهبي)
-  type RoyalThemeMode = 'gold' | 'white' | 'dark';
   const [royalTheme, setRoyalTheme] = useState<RoyalThemeMode>(() => {
     try {
       const saved = localStorage.getItem('app_royal_theme');
-      if (saved === 'white' || saved === 'dark' || saved === 'gold') return saved;
+      if (saved === 'white' || saved === 'dark' || saved === 'gold') return saved as RoyalThemeMode;
     } catch {}
     return 'gold';
   });
@@ -294,56 +315,7 @@ export const ProfileScreen: React.FC = () => {
     });
   };
 
-  const curRoyal = {
-    gold: {
-      outerBorder: 'bg-gradient-to-r from-[#BF953F] via-[#FCF6BA] via-[#B38728] via-[#FBF5B7] to-[#AA771C]',
-      innerBg: 'bg-gradient-to-b from-[#FFFDF9] via-[#FAF5E8] to-[#FFF9ED]',
-      innerBorder: 'border-[#FFF8E7]/90',
-      titleText: 'text-[#5C3F13] group-hover:text-[#B38022]',
-      subText: 'text-[#8C7355]',
-      plinthBg: 'bg-gradient-to-b from-white/95 to-[#FAF5E8] border border-[#DFC386]/80 shadow-[0_2px_6px_rgba(180,140,60,0.12),inset_0_1px_2px_rgba(255,255,255,1)]',
-      shadow: 'shadow-[0_4px_16px_rgba(180,140,50,0.18)] hover:shadow-[0_6px_20px_rgba(180,140,50,0.28)]',
-      chevron: 'text-[#C89228] group-hover:text-[#7A5210]',
-      coinsText: 'text-[#5C3F13] group-hover:text-[#B38022]',
-      diamondsText: 'text-[#0369A1] group-hover:text-[#0284C7]',
-      pillBadge: 'bg-gradient-to-r from-[#BF953F] via-[#FDE047] to-[#AA771C] text-[#3B2610] border-white shadow-[0_2px_6px_rgba(120,80,20,0.35)]',
-      roleBadge: 'bg-gradient-to-r from-[#F5D061]/30 to-[#C89228]/30 text-[#7E4F0B] border-[#E8DFC8]',
-      roleButton: 'text-[#7A5210] bg-white/95 border-[#E2B755]/50 group-hover:bg-gradient-to-r group-hover:from-[#B38022] group-hover:to-[#7A5210] group-hover:text-white',
-      listWrapper: 'bg-white border-slate-200'
-    },
-    white: {
-      outerBorder: 'bg-gradient-to-r from-slate-200 via-white via-slate-100 via-white to-slate-300',
-      innerBg: 'bg-gradient-to-b from-[#FFFFFF] via-[#F8FAFC] to-[#F1F5F9]',
-      innerBorder: 'border-white',
-      titleText: 'text-slate-800 group-hover:text-slate-950',
-      subText: 'text-slate-500',
-      plinthBg: 'bg-gradient-to-b from-white to-[#F8FAFC] border border-slate-200/90 shadow-[0_2px_6px_rgba(0,0,0,0.04),inset_0_1px_2px_rgba(255,255,255,1)]',
-      shadow: 'shadow-[0_4px_16px_rgba(148,163,184,0.2)] hover:shadow-[0_6px_20px_rgba(148,163,184,0.3)]',
-      chevron: 'text-slate-400 group-hover:text-slate-700',
-      coinsText: 'text-slate-800 group-hover:text-amber-600',
-      diamondsText: 'text-slate-800 group-hover:text-sky-600',
-      pillBadge: 'bg-gradient-to-r from-slate-700 to-slate-900 text-white border-white shadow-[0_2px_6px_rgba(0,0,0,0.12)]',
-      roleBadge: 'bg-slate-100 text-slate-700 border-slate-200',
-      roleButton: 'text-slate-700 bg-white border-slate-200 group-hover:bg-slate-800 group-hover:text-white',
-      listWrapper: 'bg-white border-slate-200'
-    },
-    dark: {
-      outerBorder: 'bg-gradient-to-r from-[#334155] via-[#64748B] via-[#1E293B] via-[#475569] to-[#0F172A]',
-      innerBg: 'bg-gradient-to-b from-[#1E293B] via-[#0F172A] to-[#0B1120]',
-      innerBorder: 'border-slate-700/80',
-      titleText: 'text-slate-100 group-hover:text-amber-300',
-      subText: 'text-slate-400',
-      plinthBg: 'bg-gradient-to-b from-[#334155] to-[#1E293B] border border-slate-600/70 shadow-[0_2px_6px_rgba(0,0,0,0.4),inset_0_1px_2px_rgba(255,255,255,0.05)]',
-      shadow: 'shadow-[0_4px_16px_rgba(0,0,0,0.4)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.55)]',
-      chevron: 'text-slate-400 group-hover:text-amber-300',
-      coinsText: 'text-amber-300 group-hover:text-amber-200',
-      diamondsText: 'text-sky-300 group-hover:text-sky-200',
-      pillBadge: 'bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600 text-slate-950 border-slate-800 shadow-[0_2px_6px_rgba(0,0,0,0.4)]',
-      roleBadge: 'bg-slate-800 text-amber-300 border-slate-700',
-      roleButton: 'text-amber-300 bg-slate-800/90 border-slate-700 group-hover:bg-amber-400 group-hover:text-slate-950',
-      listWrapper: 'bg-[#0f172a]/70 border-slate-800'
-    }
-  }[royalTheme];
+  const curRoyal = ROYAL_THEMES[royalTheme];
 
   // Dynamic Role State
   const [adminRole, setAdminRole] = useState<AdminRole>(() => getAdminRoleForUser(profile.userId));
@@ -351,10 +323,14 @@ export const ProfileScreen: React.FC = () => {
   useEffect(() => {
     setAdminRole(getAdminRoleForUser(profile.userId));
     const unsubscribe = subscribeToAdminRoles(() => {
-      setAdminRole(getAdminRoleForUser(profile.userId));
+      queueMicrotask(() => {
+        setAdminRole(getAdminRoleForUser(profile.userId));
+      });
     });
     const handlePersonaSwitched = () => {
-      setAdminRole(getAdminRoleForUser(profile.userId));
+      queueMicrotask(() => {
+        setAdminRole(getAdminRoleForUser(profile.userId));
+      });
     };
     window.addEventListener('testing_user_switched', handlePersonaSwitched);
     return () => {
@@ -364,13 +340,6 @@ export const ProfileScreen: React.FC = () => {
   }, [profile.userId]);
 
   const isOwner = isOwnerOrSuperAdmin(profile.userId);
-
-  useEffect(() => {
-    const unsub = subscribeToRoomSession((session) => {
-      setMinimizedRoomSession(session && session.isMinimized ? session : null);
-    });
-    return unsub;
-  }, []);
   const [activeServiceModal, setActiveServiceModal] = useState<ServiceType | null>(null);
 
   // Copy ID functionality
@@ -1353,10 +1322,16 @@ export const ProfileScreen: React.FC = () => {
                   <span className="text-[10px] text-[#475569] font-bold block mt-0.5">صلاحية استدعاء وكلاء رسميين ومتابعة الأرباح والعمولات</span>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-xs font-black text-[#334155] bg-white/95 border border-[#94A3B8]/60 px-3 py-1.5 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-[#475569] group-hover:to-[#334155] group-hover:text-white group-hover:border-transparent transition-all shrink-0 relative z-10">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsAgencyRepModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 text-xs font-black text-[#334155] bg-white/95 border border-[#94A3B8]/60 px-3 py-1.5 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-[#475569] group-hover:to-[#334155] group-hover:text-white group-hover:border-transparent transition-all shrink-0 relative z-10 cursor-pointer active:scale-95"
+              >
                 <span>إدارة</span>
                 <ChevronLeft className="w-4 h-4" />
-              </div>
+              </button>
             </div>
           </motion.div>
 
@@ -1841,15 +1816,23 @@ export const ProfileScreen: React.FC = () => {
             currentUserAvatar={profile.avatarUrl}
             currentUserVip={profile.vipTier || 'VIP6'}
             onClose={() => {
-              setActiveVoiceRoom(null);
-              setIsRoomMinimized(false);
-              exitRoomSession();
+              queueMicrotask(() => {
+                setActiveVoiceRoom(null);
+                setIsRoomMinimized(false);
+                exitRoomSession();
+              });
             }}
             onMinimize={() => {
-              setIsRoomMinimized(true);
-              minimizeRoomSession();
+              queueMicrotask(() => {
+                setIsRoomMinimized(true);
+                minimizeRoomSession();
+              });
             }}
-            onOpenRecharge={() => setIsRechargeModalOpen(true)}
+            onOpenRecharge={() => {
+              queueMicrotask(() => {
+                setIsRechargeModalOpen(true);
+              });
+            }}
           />
         </div>
       )}

@@ -37,6 +37,7 @@ export interface NajmRoomToolsAndGamesModalProps {
   onOpenCinemaWatchParty?: () => void;
   onTriggerToast?: (msg: string) => void;
   onTestEntrance?: (vipLevel: number | string, userName?: string) => void;
+  onTestBatchEntrance?: (count?: number) => void;
   currentUserRole?: 'owner' | 'host' | 'moderator' | 'guest';
   currentAppRole?: string;
   isOwner?: boolean;
@@ -59,6 +60,7 @@ export const NajmRoomToolsAndGamesModal: React.FC<NajmRoomToolsAndGamesModalProp
   onOpenCinemaWatchParty,
   onTriggerToast,
   onTestEntrance,
+  onTestBatchEntrance,
   currentUserRole = 'guest',
   currentAppRole,
   isOwner = false,
@@ -967,6 +969,26 @@ export const NajmRoomToolsAndGamesModal: React.FC<NajmRoomToolsAndGamesModalProp
               </p>
 
               <div className="space-y-2">
+                {/* زر محاكاة طابور دخول جماعي 10 أشخاص متتابعين بدون توقف */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onTestBatchEntrance?.(10);
+                    setActiveSubModal(null);
+                    onClose();
+                  }}
+                  className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-cyan-500/25 via-indigo-500/25 to-purple-500/25 border border-cyan-400/80 hover:border-cyan-300 flex items-center justify-between text-xs font-black transition-colors shadow-lg shadow-cyan-500/10"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">👥</span>
+                    <div className="text-right">
+                      <div className="text-cyan-200 font-black">محاكاة طابور دخول جماعي (10 أشخاص)</div>
+                      <div className="text-[10px] text-cyan-300/80 font-normal">يمرون بالتتابع بنظام طابور مستمر بدون توقف في المنتصف</div>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-cyan-400 text-slate-950 text-[10px] font-mono font-black">طابور 10</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {

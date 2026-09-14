@@ -60,11 +60,11 @@ export const DEFAULT_MAIN_ROOM_CONFIG: MainRoomCustomizerConfig = {
   topPowerBtnBg: '#1a2132',
   topPowerBtnColor: '#e2e8f0',
 
-  // 4. الشريط السفلي
-  bottomBarBgColor: '#0d121f',
-  bottomBarOpacity: 90,
-  bottomBarBorderColor: 'rgba(255,255,255,0.15)',
-  bottomBarBackdropBlur: 20,
+  // 4. الشريط السفلي (خلفية شفافة بالكامل لإظهار خلفية الروم بدون أي لون داكن)
+  bottomBarBgColor: 'transparent',
+  bottomBarOpacity: 0,
+  bottomBarBorderColor: 'transparent',
+  bottomBarBackdropBlur: 0,
 
   bottomButtonsBg: '#1a2234',
   bottomButtonsColor: '#cbd5e1',
@@ -264,10 +264,15 @@ export function getMainRoomCustomizerConfig(): MainRoomCustomizerConfig {
         activeWallpaperDimming: 0,
         activeWallpaperBrightness: 100,
         roomAmbientGlowIntensity: 0,
-        roomBackdropBlur: 0
+        roomBackdropBlur: 0,
+        // الشريط السفلي شفاف بالكامل لإظهار خلفية الروم بشكل أنيق وبدون أي لون داكن
+        bottomBarBgColor: 'transparent',
+        bottomBarOpacity: 0,
+        bottomBarBorderColor: 'transparent',
+        bottomBarBackdropBlur: 0
       };
       // حفظ الصيغة الافتراضية في التخزين المحلي لضمان عدم عودة التظليل القديم أبداً
-      if (parsed.roomOverlayDarkness !== 0 || parsed.activeWallpaperDimming !== 0) {
+      if (parsed.roomOverlayDarkness !== 0 || parsed.activeWallpaperDimming !== 0 || parsed.bottomBarOpacity !== 0) {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(resolved));
         } catch {}

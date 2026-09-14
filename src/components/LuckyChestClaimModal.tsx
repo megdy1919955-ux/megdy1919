@@ -85,7 +85,12 @@ export const LuckyChestClaimModal: React.FC<LuckyChestClaimModalProps> = ({
       window.dispatchEvent(new Event('lucky_chest_updated'));
       onClaimPrize?.(chest.id, calculatedWin);
       onTriggerToast?.(`تهانينا! لقد انقضضت على صندوق الحظ وفزت بـ +${calculatedWin.toLocaleString()} كوينز! 🎉🪙`);
-    }, 800);
+
+      // إظهار المبلغ المكتسب واختفاء الكرت تلقائياً بعد لحظة قراءة واضحة وسلسة
+      setTimeout(() => {
+        onClose();
+      }, 1300);
+    }, 650);
   };
 
   return (

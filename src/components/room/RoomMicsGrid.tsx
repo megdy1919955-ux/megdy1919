@@ -64,10 +64,10 @@ export const getTeamForSeat = (
 
 // Dynamic vertical spacing helper between mic rows:
 export const getMicRowSpacingClass = (count: number) => {
-  if (count === 20) return 'space-y-3 sm:space-y-3.5';
-  if (count >= 9) return 'space-y-[15px] sm:space-y-4';
-  if (count >= 5) return 'space-y-[22px] sm:space-y-6';
-  return 'space-y-2 sm:space-y-2.5';
+  if (count === 20) return 'space-y-1 sm:space-y-1.5';
+  if (count >= 12) return 'space-y-1.5 sm:space-y-2';
+  if (count >= 5) return 'space-y-2 sm:space-y-2.5';
+  return 'space-y-1';
 };
 
 // Dynamic Speaking Wave Aura Style Generator
@@ -148,6 +148,8 @@ export interface RoomMicsGridProps {
   isCurrentAdmin?: boolean;
   currentUserRole?: string;
   isSpeakerAudioMuted?: boolean;
+  sessionTimerNode?: React.ReactNode;
+  hostVipLevel?: number | string;
   onSeatClick: (seatId: number) => void;
   onOpenUserProfile?: (userData: any) => void;
 }
@@ -167,6 +169,8 @@ export const RoomMicsGrid: React.FC<RoomMicsGridProps> = ({
   isOwner = false,
   isCurrentAdmin = false,
   currentUserRole = 'guest',
+  sessionTimerNode,
+  hostVipLevel = 6,
   onSeatClick,
 }) => {
   const activeSeats = allMicSeats.slice(0, activeMicCount);
@@ -195,7 +199,7 @@ export const RoomMicsGrid: React.FC<RoomMicsGridProps> = ({
       : 'rounded-full';
 
   return (
-    <div className={`w-full max-w-full px-2 pt-1 pb-1 flex flex-col justify-center select-none ${getMicRowSpacingClass(activeMicCount)}`}>
+    <div className={`w-full max-w-full px-3 sm:px-6 pt-1 pb-0 flex flex-col justify-center select-none overflow-visible ${getMicRowSpacingClass(activeMicCount)}`}>
       {seatRows.map((rowSeats, rowIndex) => {
         const colCount = rowSeats.length;
         const gridColsClass =
@@ -225,9 +229,12 @@ export const RoomMicsGrid: React.FC<RoomMicsGridProps> = ({
         const iconSizeClass = colCount <= 2 ? 'w-6.5 h-6.5' : colCount <= 4 ? 'w-5.5 h-5.5' : 'w-4.5 h-4.5';
 
         return (
-          <div key={rowIndex} className={`grid ${gridColsClass} justify-center items-center relative z-10`}>
+          <div key={rowIndex} className={`grid ${gridColsClass} justify-center items-start relative z-10 overflow-visible py-0.5`}>
             {rowSeats.map((seat) => {
-              const isSeatHost = seat.isHost || (seat.id === 1 && !seat.isEmpty && seat.userName === 'أميرة الشرق');
+              const isSeatHost = seat.isHost || (seat.id === 1 && !seat.isEmpty && (seat.userName?.includes('أميرة') || seat.userName?.includes('المضيف')));
+              const rawVip = seat.vipLevel ?? (isSeatHost ? hostVipLevel : undefined);
+              const seatVipNum = typeof rawVip === 'number' ? rawVip : parseInt(rawVip?.toString().match(/\d+/)?.[0] || '0', 10);
+              const isVip8Plus = seatVipNum >= 8;
               const isSpeaking = seat.isSpeaking && !seat.isMuted;
               const auraStyle = getSpeakingAuraStyles(seat.speakingAura || 'default');
               const seatTeam = isTeamBattleActive ? getTeamForSeat(seat.id, activeMicCount, ownerJoinedTeam) : null;
@@ -246,9 +253,9 @@ export const RoomMicsGrid: React.FC<RoomMicsGridProps> = ({
                   key={seat.id}
                   id={`mic-seat-${seat.id}`}
                   onClick={() => onSeatClick(seat.id)}
-                  className="flex flex-col items-center space-y-0.5 cursor-pointer group my-0"
+                  className="flex flex-col items-center space-y-0.5 cursor-pointer group my-0 relative overflow-visible"
                 >
-                  <div className="relative">
+                  <div className="relative overflow-visible">
                     {/* Custom Chair Frame Integration */}
                     {config.customChairFrameUrl && (
                       <div
@@ -322,12 +329,12 @@ export const RoomMicsGrid: React.FC<RoomMicsGridProps> = ({
                         )}
                       </div>
                     ) : (
-                      <div className="relative flex items-center justify-center">
+                      <div className="relative flex items-center justify-center overflow-visible">
                         {seat.isInvitationPending && (
                           <motion.div
                             animate={{ scale: [1, 1.16, 1], opacity: [0.9, 0.4, 0.9] }}
                             transition={{ repeat: Infinity, duration: 1.3, ease: 'easeInOut' }}
-                            className={`absolute -inset-1.5 ${seatShapeRounded} rounded-full bg-amber-400/35 border-2 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.95)] pointer-events-none z-0`}
+                            className={`absolute -inset-1.5 ${seatShapeRounded} rounded-full bg-amber-400/35 border-2 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.95)] pointer-events-none z-0 overflow-visible`}
                           />
                         )}
 
@@ -336,7 +343,7 @@ export const RoomMicsGrid: React.FC<RoomMicsGridProps> = ({
                             <motion.div
                               animate={{ scale: [1, dynamicScaleTarget, 1], opacity: [0.35, 0.95, 0.35] }}
                               transition={{ repeat: Infinity, duration: dynamicPulseDuration, ease: 'easeInOut' }}
-                              className={`absolute -inset-1 ${seatShapeRounded} pointer-events-none z-0`}
+                              className={`absolute -inset-1 ${seatShapeRounded} pointer-events-none z-0 overflow-visible`}
                               style={{
                                 boxShadow: `0 0 ${dynamicGlowIntensity}px ${dynamicGlowColor}`,
                                 border: `${dynamicRingWidth}px solid ${dynamicRingColor}`
@@ -345,12 +352,12 @@ export const RoomMicsGrid: React.FC<RoomMicsGridProps> = ({
                             <motion.div
                               animate={{ scale: auraStyle.scale2, opacity: auraStyle.opacity2 }}
                               transition={{ repeat: Infinity, duration: 1.6, ease: 'easeOut', delay: 0.2 }}
-                              className={`absolute -inset-2 ${seatShapeRounded} pointer-events-none z-0 ${auraStyle.ring2Class}`}
+                              className={`absolute -inset-2 ${seatShapeRounded} pointer-events-none z-0 overflow-visible ${auraStyle.ring2Class}`}
                             />
                             <motion.div
                               animate={{ rotate: 360 }}
                               transition={{ repeat: Infinity, duration: 5, ease: 'linear' }}
-                              className={`absolute -inset-1.5 ${seatShapeRounded} pointer-events-none z-0 ${auraStyle.ring3Class}`}
+                              className={`absolute -inset-1.5 ${seatShapeRounded} pointer-events-none z-0 overflow-visible ${auraStyle.ring3Class}`}
                             />
                           </>
                         )}
@@ -370,7 +377,7 @@ export const RoomMicsGrid: React.FC<RoomMicsGridProps> = ({
                               : isSeatHost
                               ? 'from-amber-400/90 via-emerald-400/90 to-cyan-400/90 shadow-sm'
                               : 'from-cyan-400/90 to-emerald-400/90 shadow-xs'
-                          } relative transition-transform group-hover:scale-105 z-10`}
+                          } relative transition-transform group-hover:scale-105 z-10 overflow-visible`}
                         >
                           <AnimatePresence>
                             {recentlyUpdatedSeatCounters[seat.id] && (
@@ -554,14 +561,29 @@ export const RoomMicsGrid: React.FC<RoomMicsGridProps> = ({
                       </span>
                     </div>
                   ) : (
-                    <div className="mt-0.5 px-1.5 py-0.2 bg-transparent text-center max-w-[76px] sm:max-w-[84px] truncate flex items-center justify-center gap-0.5">
-                      <span
-                        className={`text-[9.5px] font-bold truncate block leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] ${
-                          seat.isInvitationPending ? 'text-amber-300' : 'text-white'
-                        }`}
-                      >
-                        {seat.userName}
-                      </span>
+                    <div className="mt-0.5 px-0.5 py-0.2 bg-transparent text-center max-w-[76px] sm:max-w-[84px] flex flex-col items-center justify-center">
+                      <div className="max-w-full truncate flex items-center justify-center">
+                        <span
+                          className={`text-[9.5px] truncate block leading-tight ${
+                            isSeatHost
+                              ? isVip8Plus
+                                ? 'text-red-500 font-black drop-shadow-[0_1px_3px_rgba(239,68,68,0.8)]'
+                                : 'text-white font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]'
+                              : seat.isInvitationPending
+                              ? 'text-amber-300 font-bold'
+                              : 'text-white font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]'
+                          }`}
+                        >
+                          {seat.userName}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SESSION TIMER COMPONENT (عائم تماماً أسفل خانة المايك 20 في أقصى اليسار بدون أي تأثير على تدفق أو ارتفاع الشات) */}
+                  {(seat.id === 20 || (activeMicCount < 20 && seat.id === activeMicCount)) && sessionTimerNode && (
+                    <div className="absolute top-full mt-0.5 left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none select-none z-40 whitespace-nowrap">
+                      {sessionTimerNode}
                     </div>
                   )}
                 </div>
