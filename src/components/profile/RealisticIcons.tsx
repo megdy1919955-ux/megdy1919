@@ -735,4 +735,46 @@ export const BroadcasterCenter3DIcon: React.FC<{ className?: string }> = ({ clas
   </svg>
 );
 
+// 19. وكالة شحن (Recharge Agency 3D Icon - Royal Golden Lightning Vault & Energy Shield)
+export const RechargeAgency3DIcon: React.FC<{ className?: string }> = ({ className = "w-8 h-8" }) => (
+  <svg className={`${className} drop-shadow-[0_4px_8px_rgba(245,158,11,0.4)]`} viewBox="0 0 48 48" fill="none">
+    <defs>
+      <linearGradient id="rcgGold" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#FFFBE6" />
+        <stop offset="30%" stopColor="#FDE047" />
+        <stop offset="70%" stopColor="#D97706" />
+        <stop offset="100%" stopColor="#78350F" />
+      </linearGradient>
+      <linearGradient id="rcgAmberCore" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#FFEDD5" />
+        <stop offset="50%" stopColor="#F59E0B" />
+        <stop offset="100%" stopColor="#B45309" />
+      </linearGradient>
+      <linearGradient id="rcgLightning" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#FFFFFF" />
+        <stop offset="60%" stopColor="#FDE047" />
+        <stop offset="100%" stopColor="#EA580C" />
+      </linearGradient>
+    </defs>
+    {/* Outer Hexagon/Octagon Plinth Base */}
+    <circle cx="24" cy="24" r="17" fill="url(#rcgGold)" stroke="#FFFBE6" strokeWidth="1.2" />
+    <circle cx="24" cy="24" r="14" fill="#1C1208" stroke="#FDE047" strokeWidth="1" />
+    <circle cx="24" cy="24" r="11" fill="url(#rcgAmberCore)" opacity="0.3" />
+    
+    {/* 3D High-Voltage Lightning Bolt */}
+    <path 
+      d="M26 9L15 25H23L21 39L33 22H25L26 9Z" 
+      fill="url(#rcgLightning)" 
+      stroke="#FFFFFF" 
+      strokeWidth="1.2" 
+      strokeLinejoin="round"
+      className="filter drop-shadow-[0_2px_4px_rgba(234,88,12,0.6)]" 
+    />
+    
+    {/* Sparkles */}
+    <circle cx="34" cy="14" r="1.5" fill="#FFFBE6" />
+    <circle cx="14" cy="33" r="1.2" fill="#FFFBE6" />
+  </svg>
+);
+
 
