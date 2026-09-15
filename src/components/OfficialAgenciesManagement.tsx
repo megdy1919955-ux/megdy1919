@@ -79,60 +79,63 @@ export const OfficialAgenciesManagement: React.FC<OfficialAgenciesManagementProp
   const [showAddAgencyToRepModal, setShowAddAgencyToRepModal] = useState<string | null>(null);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
 
-  // Delegates list (المندوبين الخاصين بالمدير)
+  // Delegates list (المندوبين الخاصين بالمدير حسب الخريطة الهندسية المعمارية)
   const [delegatesList, setDelegatesList] = useState([
     {
       id: 'DEL-401',
-      name: 'عبدالله الشهري',
-      title: '(مندوب معتمد 🌟)',
+      primaryUserId: '1001004',
+      name: 'تركي بن خالد (مندوب الشرق الأوسط)',
+      title: '(مندوب معتمد 🌟 DEL-401)',
       status: 'مندوب نشط',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
       joinDate: '01-03-2026',
-      invitedBy: 'سالم الكعبي (مدير الوكالات)',
-      invitedAgenciesCount: 3,
+      invitedBy: 'أحمد المنصوري (MGR-9901 / #1001001)',
+      invitedAgenciesCount: 2,
       totalDiamonds: '18,500,000',
       commissionRate: '15.00%',
       agenciesIncome: '$24,500',
       isLocked: false,
       agencies: [
-        { name: 'وكالة النجوم الصاعدة', gid: '10442', hosts: 12, income: '$10,200', diamonds: '7,800,000' },
-        { name: 'وكالة صقور الخليج', gid: '10889', hosts: 9, income: '$8,100', diamonds: '6,200,000' },
-        { name: 'وكالة الإبداع العربي', gid: '11025', hosts: 7, income: '$6,200', diamonds: '4,500,000' }
+        { name: 'وكالة النخبة الملكية (AG-101)', gid: 'AG-101', agentId: '1001010', hosts: 18, income: '$14,200', diamonds: '10,800,000' },
+        { name: 'وكالة الأساطير الذهبية (AG-104)', gid: 'AG-104', agentId: '1001011', hosts: 14, income: '$10,300', diamonds: '7,700,000' }
       ]
     },
     {
       id: 'DEL-402',
-      name: 'سلطان القحطاني',
-      title: '(مندوب أول 👑)',
+      primaryUserId: '1001005',
+      name: 'عبدالله آل سعود (مندوب الخليج والمغرب)',
+      title: '(مندوب أول 👑 DEL-402)',
       status: 'مندوب نشط',
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
       joinDate: '15-03-2026',
-      invitedBy: 'سالم الكعبي (مدير الوكالات)',
-      invitedAgenciesCount: 2,
-      totalDiamonds: '12,200,000',
-      commissionRate: '12.00%',
-      agenciesIncome: '$16,800',
+      invitedBy: 'أحمد المنصوري (MGR-9901 / #1001001)',
+      invitedAgenciesCount: 3,
+      totalDiamonds: '21,200,000',
+      commissionRate: '14.00%',
+      agenciesIncome: '$26,800',
       isLocked: false,
       agencies: [
-        { name: 'وكالة فرسان الشرق', gid: '20114', hosts: 8, income: '$9,400', diamonds: '6,900,000' },
-        { name: 'وكالة صدى الأثير', gid: '20455', hosts: 6, income: '$7,400', diamonds: '5,300,000' }
+        { name: 'وكالة صدى الخليج (AG-102)', gid: 'AG-102', agentId: '1001012', hosts: 12, income: '$10,400', diamonds: '7,900,000' },
+        { name: 'وكالة الصقور الملكية (AG-105)', gid: 'AG-105', agentId: '1001014', hosts: 9, income: '$8,200', diamonds: '6,800,000' },
+        { name: 'وكالة المجد الفضائية (AG-106)', gid: 'AG-106', agentId: '1001015', hosts: 8, income: '$8,200', diamonds: '6,500,000' }
       ]
     },
     {
       id: 'DEL-403',
-      name: 'مشعل العتيبي',
-      title: '(مندوب استقطاب 🚀)',
+      primaryUserId: '1001006',
+      name: 'سلطان القحطاني (مندوب مصر وشمال أفريقيا)',
+      title: '(مندوب استقطاب 🚀 DEL-403)',
       status: 'مندوب نشط',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
       joinDate: '01-04-2026',
-      invitedBy: 'سالم الكعبي (مدير الوكالات)',
+      invitedBy: 'أحمد المنصوري (MGR-9901 / #1001001)',
       invitedAgenciesCount: 1,
-      totalDiamonds: '5,800,000',
-      commissionRate: '10.00%',
-      agenciesIncome: '$8,200',
+      totalDiamonds: '9,800,000',
+      commissionRate: '12.00%',
+      agenciesIncome: '$12,400',
       isLocked: false,
       agencies: [
-        { name: 'وكالة رواد المستقبل', gid: '30122', hosts: 5, income: '$8,200', diamonds: '5,800,000' }
+        { name: 'وكالة الأهرام للبث المباشر (AG-103)', gid: 'AG-103', agentId: '1001013', hosts: 11, income: '$12,400', diamonds: '9,800,000' }
       ]
     }
   ]);
@@ -620,8 +623,71 @@ export const OfficialAgenciesManagement: React.FC<OfficialAgenciesManagementProp
     totalBrokers: 11
   });
 
-  // Brokers list data (مطابقة تامة للصور: الصورة 2 والصورة 4 والصورة المرفقة)
+  // Brokers list data (مطابقة تامة للخريطة الهندسية المعمارية وتوزيع الوسطاء)
   const [brokersList, setBrokersList] = useState([
+    {
+      id: '1001016',
+      brokerCode: 'BRK-101-01',
+      name: 'تركي الشمري (BRK-101-01)',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      isClosed: false,
+      joinDate: '2026-02-15T10:00:00Z',
+      profitShare: 15.00,
+      invitedHostsCount: 3,
+      newHostsCount: 1,
+      monthlyDiamonds: '6,200,000',
+      invitedHosts: [
+        {
+          id: '1001022',
+          name: 'سارة الرياض 🌟 (HOST-1001022)',
+          avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+          joinDate: '2026-02-19T14:30:00Z',
+          monthlyDiamonds: '2,800,000'
+        },
+        {
+          id: '1001023',
+          name: 'صوت البادية 🎤 (HOST-1001023)',
+          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+          joinDate: '2026-02-20T18:00:00Z',
+          monthlyDiamonds: '2,100,000'
+        },
+        {
+          id: '1001024',
+          name: 'كروان النخبة 🎵 (HOST-1001024)',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          joinDate: '2026-02-22T12:00:00Z',
+          monthlyDiamonds: '1,300,000'
+        }
+      ]
+    },
+    {
+      id: '1001017',
+      brokerCode: 'BRK-101-02',
+      name: 'عبدالله القحطاني (BRK-101-02)',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      isClosed: false,
+      joinDate: '2026-02-18T11:20:00Z',
+      profitShare: 15.00,
+      invitedHostsCount: 2,
+      newHostsCount: 1,
+      monthlyDiamonds: '4,600,000',
+      invitedHosts: [
+        {
+          id: '1001025',
+          name: 'ليالي نجد 🌙 (HOST-1001025)',
+          avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
+          joinDate: '2026-02-21T16:00:00Z',
+          monthlyDiamonds: '2,400,000'
+        },
+        {
+          id: '1001026',
+          name: 'صقر الجزيرة 🦅 (HOST-1001026)',
+          avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+          joinDate: '2026-02-23T19:30:00Z',
+          monthlyDiamonds: '2,200,000'
+        }
+      ]
+    },
     {
       id: '83534797',
       name: '🔱ملك👑الدوله🔱(🇪🇬😉)',
@@ -1573,12 +1639,12 @@ export const OfficialAgenciesManagement: React.FC<OfficialAgenciesManagementProp
             <span>إضافة مدير وكالات جديد +</span>
           </button>
 
-          {/* 2. Dark Manager Dropdown Selector: "مدير الوكالات: 👑 (ID: AG9901) سالم الكعبي" */}
+          {/* 2. Dark Manager Dropdown Selector: "مدير الوكالات: 👑 (ID: 1001001 / MGR-9901) أحمد المنصوري" */}
           <div className="w-full bg-[#0d1527] border border-slate-800 rounded-2xl p-3 flex items-center justify-between text-xs font-bold text-slate-200">
             <div className="flex items-center gap-2">
-              <span className="text-slate-400 text-[11px]">مدير الوكالات:</span>
-              <span className="text-white font-black">سالم الكعبي (مدير الوكالات)</span>
-              <span className="font-mono text-amber-300" dir="ltr">(ID: AG9901)</span>
+              <span className="text-slate-400 text-[11px]">مدير عام الإدارة:</span>
+              <span className="text-white font-black">أحمد المنصوري (MGR-9901)</span>
+              <span className="font-mono text-amber-300" dir="ltr">(ID: 1001001)</span>
               <span className="text-amber-400">👑</span>
             </div>
             <ChevronDown className="w-4 h-4 text-slate-400" />
@@ -1591,7 +1657,7 @@ export const OfficialAgenciesManagement: React.FC<OfficialAgenciesManagementProp
                 type="text"
                 value={searchAdminId}
                 onChange={(e) => setSearchAdminId(e.target.value)}
-                placeholder="AG9901"
+                placeholder="1001001 أو MGR-9901"
                 className="w-full bg-white text-slate-900 py-2.5 pr-10 pl-4 rounded-2xl text-xs font-black font-mono shadow border border-slate-200 focus:outline-none text-right"
               />
               <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
@@ -1610,7 +1676,7 @@ export const OfficialAgenciesManagement: React.FC<OfficialAgenciesManagementProp
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="... (ID) ابحث بالاسم أو معرف الإداري"
+              placeholder="... (ID) ابحث بالاسم أو معرف الإداري (1001001 / MGR-9901)"
               className="w-full bg-white text-slate-900 py-3 pr-10 pl-4 rounded-2xl text-xs font-bold placeholder-slate-400 shadow border border-slate-200 focus:outline-none text-right"
             />
             <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
@@ -1627,7 +1693,7 @@ export const OfficialAgenciesManagement: React.FC<OfficialAgenciesManagementProp
                   نشط
                 </span>
                 <span className="text-[11px] font-mono font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200">
-                  ID: AG9901
+                  ID: 1001001 • MGR-9901
                 </span>
               </div>
 
@@ -1661,7 +1727,7 @@ export const OfficialAgenciesManagement: React.FC<OfficialAgenciesManagementProp
                     onClick={handleOpenManagerFullscreen}
                     className="text-base font-black text-slate-900 cursor-pointer hover:text-amber-600 transition-colors"
                   >
-                    سالم الكعبي (مدير الوكالات)
+                    أحمد المنصوري (MGR-9901)
                   </h2>
                   <Info 
                     onClick={handleOpenManagerFullscreen}
@@ -1669,9 +1735,9 @@ export const OfficialAgenciesManagement: React.FC<OfficialAgenciesManagementProp
                   />
                 </div>
                 <div className="text-xs font-bold text-slate-600 flex items-center gap-1 mt-0.5">
-                  <span>مدير وكالات معتمد</span>
+                  <span>مدير عام الوكالات والإدارة</span>
                   <span>🔱</span>
-                  <span>مدير وكالات</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-black">#1001001</span>
                 </div>
                 <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-1">
                   <span>🇸🇦 الرياض</span>
@@ -2128,9 +2194,14 @@ export const OfficialAgenciesManagement: React.FC<OfficialAgenciesManagementProp
                               <span className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black">
                                 {delegate.status}
                               </span>
-                              <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-[10px] font-mono font-bold">
-                                ID: {delegate.id}
+                              <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 text-[10px] font-mono font-black">
+                                كود: {delegate.id}
                               </span>
+                              {delegate.primaryUserId && (
+                                <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-[10px] font-mono font-bold">
+                                  UID: #{delegate.primaryUserId}
+                                </span>
+                              )}
                             </div>
                           </div>
 
@@ -2258,7 +2329,9 @@ export const OfficialAgenciesManagement: React.FC<OfficialAgenciesManagementProp
                                 >
                                   <div>
                                     <strong className="text-slate-900 block text-[11px] font-black">{agency.name}</strong>
-                                    <span className="text-[10px] text-slate-500 font-mono">GID: {agency.gid} • {agency.hosts} مضيف</span>
+                                    <span className="text-[10px] text-slate-500 font-mono">
+                                      كود الوكالة: {agency.gid} {agency.agentId ? `(المعرف: #${agency.agentId})` : ''} • {agency.hosts} مضيف
+                                    </span>
                                   </div>
                                   <div className="text-left" dir="ltr">
                                     <span className="text-emerald-600 font-mono font-black text-xs block">{agency.income}</span>
@@ -2374,10 +2447,15 @@ export const OfficialAgenciesManagement: React.FC<OfficialAgenciesManagementProp
                 <div className="space-y-2 text-xs font-bold">
                   {/* معرف المدير (ID) */}
                   <div className="bg-white border border-slate-200 rounded-2xl p-3 flex items-center justify-between shadow-sm">
-                    <span className="text-slate-600">معرف المدير (ID):</span>
-                    <span className="px-3 py-1 bg-slate-100 text-slate-800 rounded-xl font-mono font-black text-xs">
-                      AG9901
-                    </span>
+                    <span className="text-slate-600">معرف المدير والكود الوظيفي:</span>
+                    <div className="flex items-center gap-1.5" dir="ltr">
+                      <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 rounded-lg font-mono font-black text-xs">
+                        MGR-9901
+                      </span>
+                      <span className="px-2.5 py-0.5 bg-slate-100 text-slate-800 rounded-lg font-mono font-black text-xs">
+                        #1001001
+                      </span>
+                    </div>
                   </div>
 
                   {/* رقم الهاتف */}
@@ -2489,14 +2567,14 @@ export const OfficialAgenciesManagement: React.FC<OfficialAgenciesManagementProp
               </div>
               <div>
                 <label className="block text-slate-600 mb-1">المشرف المعتمد:</label>
-                <input type="text" disabled value="سالم الكعبي (مدير الوكالات - AG9901)" className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-500" />
+                <input type="text" disabled value="أحمد المنصوري (MGR-9901 - المعرف: 1001001)" className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-700 font-bold" />
               </div>
             </div>
 
             <div className="flex items-center gap-2 pt-2">
               <button
                 onClick={() => {
-                  showToast('✅ تم إضافة المندوب بنجاح واعتماده تحت إدارة سالم الكعبي');
+                  showToast('✅ تم إضافة المندوب بنجاح واعتماده تحت إدارة أحمد المنصوري (MGR-9901)');
                   setShowAddDelegateModal(false);
                 }}
                 className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs rounded-xl shadow"
@@ -2593,7 +2671,7 @@ export const OfficialAgenciesManagement: React.FC<OfficialAgenciesManagementProp
             <div className="space-y-3 text-xs font-bold">
               <div>
                 <label className="block text-slate-600 mb-1">الاسم الكامل:</label>
-                <input type="text" defaultValue="سالم الكعبي (مدير الوكالات)" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl" />
+                <input type="text" defaultValue="أحمد المنصوري (MGR-9901)" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl" />
               </div>
               <div>
                 <label className="block text-slate-600 mb-1">رقم الهاتف:</label>

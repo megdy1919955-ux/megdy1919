@@ -15,6 +15,7 @@ import {
   Coins,
   ChevronDown
 } from 'lucide-react';
+import { getHierarchyEntityById } from '../lib/hierarchyService';
 
 interface RechargeAgencyModalProps {
   isOpen: boolean;
@@ -147,6 +148,17 @@ export const RechargeAgencyModal: React.FC<RechargeAgencyModalProps> = ({
   const handleVerifyId = () => {
     const id = recipientId.trim();
     if (!id) return;
+    
+    // Check in the official ID and role hierarchy
+    const entity = getHierarchyEntityById(id);
+    if (entity) {
+      setVerifiedUser({ 
+        id: entity.userId, 
+        name: `${entity.name} (${entity.roleCode})` 
+      });
+      return;
+    }
+
     if (id === '9845231') {
       setVerifiedUser({ id: '9845231', name: 'شحن لحسابي' });
     } else {

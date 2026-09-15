@@ -127,24 +127,241 @@ export interface ModerationReport {
 }
 
 export const OWNER_DEV_ID = 'YE1330000';
+export const OFFICIAL_SUPER_ADMIN_IDS = [OWNER_DEV_ID, '1001001', 'MGR-9901'];
 
-const ADMIN_ROLES_STORAGE_KEY = 'super_legend_assigned_admins_v3';
+const ADMIN_ROLES_STORAGE_KEY = 'super_legend_assigned_admins_v4';
 const AGENCY_REQUESTS_KEY = 'super_legend_agency_requests_v3';
 const STORE_ITEMS_KEY = 'super_legend_store_items_v3';
 const AUDIT_LOGS_KEY = 'super_legend_audit_logs_v3';
 const MODERATION_REPORTS_KEY = 'super_legend_moderation_reports_v3';
 const CURRENT_ACTIVE_USER_ID_KEY = 'super_legend_current_active_user_id';
 
-// Default initial seeded staff for immediate testing
+// قائمة الكوادر الإدارية المعتمدة وفق الخريطة الهندسية المعمارية
 const DEFAULT_ASSIGNED_ADMINS: AssignedAdmin[] = [
   {
-    id: OWNER_DEV_ID,
-    name: 'المبرمج والمالك العام',
+    id: '1001001',
+    name: 'المبرمج والمالك العام (MGR-9901)',
     avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=400',
     role: 'super_admin',
     assignedAt: '2026-01-01',
     assignedBy: 'النظام الجذري (Root)',
-    notes: 'صلاحيات السوبر أدمن والمالك الشاملة والسيادية',
+    notes: 'المعرف الموحد 1001001 - الكود الوظيفي MGR-9901 - صلاحيات السوبر أدمن والمالك الشاملة والسيادية',
+    status: 'active'
+  },
+  {
+    id: OWNER_DEV_ID,
+    name: 'المبرمج والمطور الحصري (YE1330000)',
+    avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=400',
+    role: 'super_admin',
+    assignedAt: '2026-01-01',
+    assignedBy: 'النظام الجذري (Root)',
+    notes: 'معرف التطوير المباشر YE1330000',
+    status: 'active'
+  },
+  {
+    id: 'MGR-9901',
+    name: 'مدير الإدارة العام (MGR-9901)',
+    avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=400',
+    role: 'super_admin',
+    assignedAt: '2026-01-01',
+    assignedBy: 'النظام الجذري (Root)',
+    notes: 'رمز الصلاحيات MGR-9901 (الحساب 1001001)',
+    status: 'active'
+  },
+  {
+    id: '1001002',
+    name: 'فهد الكعبي (MGR-9902)',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
+    role: 'agency_admin',
+    assignedAt: '2026-02-10',
+    assignedBy: '1001001',
+    notes: 'المستوى 1: نائب المدير العام MGR-9902 - مراجعة وقبول/رفض الوكالات',
+    status: 'active'
+  },
+  {
+    id: 'MGR-9902',
+    name: 'فهد الكعبي (نائب المدير العام)',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
+    role: 'agency_admin',
+    assignedAt: '2026-02-10',
+    assignedBy: '1001001',
+    notes: 'كود الدور MGR-9902',
+    status: 'active'
+  },
+  {
+    id: '1001003',
+    name: 'سارة آل ثاني (MGR-9903)',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+    role: 'theme_admin',
+    assignedAt: '2026-02-15',
+    assignedBy: '1001001',
+    notes: 'المستوى 1: المشرف العام التقني MGR-9903 - إدارة المتجر والثيمات',
+    status: 'active'
+  },
+  {
+    id: 'MGR-9903',
+    name: 'سارة آل ثاني (المشرف العام)',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+    role: 'theme_admin',
+    assignedAt: '2026-02-15',
+    assignedBy: '1001001',
+    notes: 'كود الدور MGR-9903',
+    status: 'active'
+  },
+  {
+    id: '1001004',
+    name: 'تركي بن خالد (DEL-401)',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    role: 'agency_admin',
+    assignedAt: '2026-02-18',
+    assignedBy: '1001001',
+    notes: 'المستوى 2: مندوب الشرق الأوسط DEL-401 استقطاب الوكالات ومتابعة التراخيص',
+    status: 'active'
+  },
+  {
+    id: 'DEL-401',
+    name: 'تركي بن خالد (مندوب الشرق الأوسط)',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    role: 'agency_admin',
+    assignedAt: '2026-02-18',
+    assignedBy: '1001001',
+    notes: 'كود الدور DEL-401 (الحساب 1001004)',
+    status: 'active'
+  },
+  {
+    id: '1001005',
+    name: 'عبدالله آل سعود (DEL-402)',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    role: 'agency_admin',
+    assignedAt: '2026-02-20',
+    assignedBy: '1001001',
+    notes: 'المستوى 2: مندوب الخليج والمغرب العربي DEL-402',
+    status: 'active'
+  },
+  {
+    id: 'DEL-402',
+    name: 'عبدالله آل سعود (مندوب الخليج والمغرب)',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    role: 'agency_admin',
+    assignedAt: '2026-02-20',
+    assignedBy: '1001001',
+    notes: 'كود الدور DEL-402 (الحساب 1001005)',
+    status: 'active'
+  },
+  {
+    id: '1001006',
+    name: 'سلطان القحطاني (DEL-403)',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+    role: 'agency_admin',
+    assignedAt: '2026-02-22',
+    assignedBy: '1001001',
+    notes: 'المستوى 2: مندوب مصر وشمال أفريقيا DEL-403',
+    status: 'active'
+  },
+  {
+    id: 'DEL-403',
+    name: 'سلطان القحطاني (مندوب مصر وشمال أفريقيا)',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+    role: 'agency_admin',
+    assignedAt: '2026-02-22',
+    assignedBy: '1001001',
+    notes: 'كود الدور DEL-403 (الحساب 1001006)',
+    status: 'active'
+  },
+  {
+    id: '1001010',
+    name: 'سلطان الدوسري (AG-101)',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
+    role: 'official_agent',
+    agencyGid: 'AG-101',
+    agencyName: 'وكالة النخبة الملكية',
+    assignedAt: '2026-02-23',
+    assignedBy: '1001004',
+    notes: 'المستوى 3: وكيل رسمي AG-101 تابع للمندوب DEL-401',
+    status: 'active'
+  },
+  {
+    id: 'AG-101',
+    name: 'وكالة النخبة الملكية (AG-101)',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
+    role: 'official_agent',
+    agencyGid: 'AG-101',
+    agencyName: 'وكالة النخبة الملكية',
+    assignedAt: '2026-02-23',
+    assignedBy: 'DEL-401',
+    notes: 'كود الوكالة AG-101 (الحساب 1001010)',
+    status: 'active'
+  },
+  {
+    id: '1001011',
+    name: 'فهد بني (AG-104)',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+    role: 'official_agent',
+    agencyGid: 'AG-104',
+    agencyName: 'وكالة الأساطير الذهبية',
+    assignedAt: '2026-02-24',
+    assignedBy: '1001004',
+    notes: 'المستوى 3: وكيل رسمي AG-104 تابع للمندوب DEL-401',
+    status: 'active'
+  },
+  {
+    id: 'AG-104',
+    name: 'وكالة الأساطير الذهبية (AG-104)',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+    role: 'official_agent',
+    agencyGid: 'AG-104',
+    agencyName: 'وكالة الأساطير الذهبية',
+    assignedAt: '2026-02-24',
+    assignedBy: 'DEL-401',
+    notes: 'كود الوكالة AG-104 (الحساب 1001011)',
+    status: 'active'
+  },
+  {
+    id: '1001016',
+    name: 'تركي الشمري (BRK-101-01)',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    role: 'broker',
+    agencyGid: 'AG-101',
+    agencyName: 'وكالة النخبة الملكية',
+    assignedAt: '2026-02-25',
+    assignedBy: '1001010',
+    notes: 'المستوى 4: وسيط معتمد BRK-101-01 تحت وكالة النخبة AG-101',
+    status: 'active'
+  },
+  {
+    id: 'BRK-101-01',
+    name: 'تركي الشمري (وسيط BRK-101-01)',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    role: 'broker',
+    agencyGid: 'AG-101',
+    agencyName: 'وكالة النخبة الملكية',
+    assignedAt: '2026-02-25',
+    assignedBy: 'AG-101',
+    notes: 'كود الوسيط BRK-101-01 (الحساب 1001016)',
+    status: 'active'
+  },
+  {
+    id: '1001017',
+    name: 'عبدالله القحطاني (BRK-101-02)',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    role: 'broker',
+    agencyGid: 'AG-101',
+    agencyName: 'وكالة النخبة الملكية',
+    assignedAt: '2026-02-25',
+    assignedBy: '1001010',
+    notes: 'المستوى 4: وسيط معتمد BRK-101-02 تحت وكالة النخبة AG-101',
+    status: 'active'
+  },
+  {
+    id: 'BRK-101-02',
+    name: 'عبدالله القحطاني (وسيط BRK-101-02)',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    role: 'broker',
+    agencyGid: 'AG-101',
+    agencyName: 'وكالة النخبة الملكية',
+    assignedAt: '2026-02-25',
+    assignedBy: 'AG-101',
+    notes: 'كود الوسيط BRK-101-02 (الحساب 1001017)',
     status: 'active'
   },
   {
@@ -158,26 +375,6 @@ const DEFAULT_ASSIGNED_ADMINS: AssignedAdmin[] = [
     status: 'active'
   },
   {
-    id: 'TH7700',
-    name: 'ليلى المصممة (مديرة الثيمات والمتجر)',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
-    role: 'theme_admin',
-    assignedAt: '2026-02-15',
-    assignedBy: OWNER_DEV_ID,
-    notes: 'إدارة وتحديث ثيمات الغرف، الإطارات، ودخوليات السيارات',
-    status: 'active'
-  },
-  {
-    id: 'MOD330',
-    name: 'عبدالرحمن الدعم (المراقب العام)',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-    role: 'moderator',
-    assignedAt: '2026-02-18',
-    assignedBy: OWNER_DEV_ID,
-    notes: 'مراقبة البلاغات، حظر الحسابات المخالفة، والدعم الفني',
-    status: 'active'
-  },
-  {
     id: '30032',
     name: 'فهد العتيبي (وكيل رسمي)',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
@@ -187,18 +384,6 @@ const DEFAULT_ASSIGNED_ADMINS: AssignedAdmin[] = [
     assignedAt: '2026-02-20',
     assignedBy: OWNER_DEV_ID,
     notes: 'وكيل معتمد لديه وسطاء ومذيعين وعقود بث',
-    status: 'active'
-  },
-  {
-    id: '994012',
-    name: 'ماجد بن خالد (وسيط معتمد)',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-    role: 'broker',
-    agencyGid: '30032',
-    agencyName: 'وكالة الأساطير الذهبية',
-    assignedAt: '2026-02-22',
-    assignedBy: '30032',
-    notes: 'وسيط توظيف واستقطاب مذيعين تحت وكالة الأساطير',
     status: 'active'
   }
 ];
@@ -413,14 +598,15 @@ export function getAuditLogs(): AuditLogEntry[] {
 export function getAdminRoleForUser(userId: string): AdminRole {
   if (!userId) return 'regular_user';
   
-  // شرط المالك والمبرمج الحصري
-  if (userId.trim().toUpperCase() === OWNER_DEV_ID) {
+  const cleanId = userId.trim().toUpperCase();
+  // شرط المالك والمبرمج الحصري وكود MGR-9901 ومعرف 1001001
+  if (OFFICIAL_SUPER_ADMIN_IDS.map(id => id.toUpperCase()).includes(cleanId)) {
     return 'super_admin';
   }
 
   const allAdmins = getAllAssignedAdmins();
   const matched = allAdmins.find(
-    (a) => a.id.trim().toUpperCase() === userId.trim().toUpperCase() && a.status === 'active'
+    (a) => a.id.trim().toUpperCase() === cleanId && a.status === 'active'
   );
 
   if (matched) {
@@ -435,7 +621,8 @@ export function getAdminRoleForUser(userId: string): AdminRole {
  */
 export function isOwnerOrSuperAdmin(userId: string): boolean {
   if (!userId) return false;
-  return userId.trim().toUpperCase() === OWNER_DEV_ID;
+  const cleanId = userId.trim().toUpperCase();
+  return OFFICIAL_SUPER_ADMIN_IDS.map(id => id.toUpperCase()).includes(cleanId);
 }
 
 /**
@@ -720,9 +907,144 @@ export function setTestingUserId(userId: string): void {
   window.dispatchEvent(new Event('user_profile_updated'));
 }
 
-const HIERARCHICAL_AGENTS_STORAGE_KEY = 'super_legend_hierarchical_agents_v3';
+const HIERARCHICAL_AGENTS_STORAGE_KEY = 'super_legend_hierarchical_agents_v4';
 
 export const DEFAULT_OFFICIAL_AGENTS: OfficialAgentItem[] = [
+  {
+    id: '1001010',
+    name: 'سلطان الدوسري (وكالة النخبة)',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=200',
+    agencyGid: 'AG-101',
+    agencyName: 'وكالة النخبة الملكية',
+    country: 'المملكة العربية السعودية 🇸🇦',
+    adminSupervisorId: 'DEL-401',
+    totalBroadcasters: 32,
+    monthlyRevenueUsd: 54000,
+    totalDiamondsGenerated: 10800000,
+    monthlyTargetDiamonds: 12000000,
+    agentCommissionRate: 25,
+    status: 'active',
+    joinedDate: '2026-02-10',
+    brokersList: [
+      {
+        id: '1001016',
+        name: 'تركي الشمري (BRK-101-01)',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+        agencyGid: 'AG-101',
+        agencyName: 'وكالة النخبة الملكية',
+        recruitedBroadcastersCount: 18,
+        totalAgencyContribution: 6200000,
+        brokerEarnings: 9300,
+        commissionRate: 15,
+        joinedDate: '2026-02-15',
+        status: 'active',
+        broadcastersList: [
+          {
+            id: '1001022',
+            name: 'سارة الرياض 🌟',
+            avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
+            diamondsEarned: 2800000,
+            streamHours: 130,
+            status: 'live',
+            joinedDate: '2026-02-19'
+          },
+          {
+            id: '1001023',
+            name: 'صوت البادية 🎤',
+            avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
+            diamondsEarned: 2100000,
+            streamHours: 105,
+            status: 'offline',
+            joinedDate: '2026-02-20'
+          },
+          {
+            id: '1001024',
+            name: 'كروان النخبة 🎵',
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+            diamondsEarned: 1300000,
+            streamHours: 78,
+            status: 'live',
+            joinedDate: '2026-02-22'
+          }
+        ]
+      },
+      {
+        id: '1001017',
+        name: 'عبدالله القحطاني (BRK-101-02)',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
+        agencyGid: 'AG-101',
+        agencyName: 'وكالة النخبة الملكية',
+        recruitedBroadcastersCount: 14,
+        totalAgencyContribution: 4600000,
+        brokerEarnings: 6900,
+        commissionRate: 15,
+        joinedDate: '2026-02-18',
+        status: 'active',
+        broadcastersList: [
+          {
+            id: '1001025',
+            name: 'ليالي نجد 🌙',
+            avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=200',
+            diamondsEarned: 2400000,
+            streamHours: 115,
+            status: 'offline',
+            joinedDate: '2026-02-21'
+          },
+          {
+            id: '1001026',
+            name: 'صقر الجزيرة 🦅',
+            avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
+            diamondsEarned: 2200000,
+            streamHours: 102,
+            status: 'live',
+            joinedDate: '2026-02-23'
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: '1001011',
+    name: 'فهد بني (وكالة الأساطير)',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+    agencyGid: 'AG-104',
+    agencyName: 'وكالة الأساطير الذهبية',
+    country: 'المملكة العربية السعودية 🇸🇦',
+    adminSupervisorId: 'DEL-401',
+    totalBroadcasters: 28,
+    monthlyRevenueUsd: 48500,
+    totalDiamondsGenerated: 9700000,
+    monthlyTargetDiamonds: 10000000,
+    agentCommissionRate: 25,
+    status: 'active',
+    joinedDate: '2026-02-15',
+    brokersList: [
+      {
+        id: '994012',
+        name: 'ماجد بن خالد',
+        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+        agencyGid: 'AG-104',
+        agencyName: 'وكالة الأساطير الذهبية',
+        recruitedBroadcastersCount: 16,
+        totalAgencyContribution: 5800000,
+        brokerEarnings: 8700,
+        commissionRate: 15,
+        joinedDate: '2026-02-18',
+        status: 'active',
+        broadcastersList: [
+          {
+            id: 'BR_101',
+            name: 'نغم الطرب 🎵',
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+            diamondsEarned: 2400000,
+            streamHours: 124,
+            status: 'live',
+            joinedDate: '2026-02-19'
+          }
+        ]
+      }
+    ]
+  },
   {
     id: '30032',
     name: 'فهد العتيبي (الوكيل الذهبي)',
