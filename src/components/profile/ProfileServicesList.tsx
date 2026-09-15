@@ -584,50 +584,54 @@ export const ProfileServicesList: React.FC<ProfileServicesListProps> = ({
         </motion.div>
       )}
 
-      {/* وكالة شحن (وكيل شحن معتمد - نفس الطول والعرض والمميزات) */}
+      {/* وكالة شحن (وكيل شحن معتمد - هوية ذهبية برتقالية فاخرة تميز الشحن والكوينزات) */}
       {(adminRole === 'official_agent' || adminRole === 'super_admin') && (
         <motion.div 
           whileHover={{ scale: 1.015 }}
           whileTap={{ scale: 0.98 }}
           onClick={onOpenRechargeAgency}
-          className="relative my-2.5 p-[2px] rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#10B981] via-[#F59E0B] to-[#D4AF37] bg-[length:200%_auto] animate-[gradient_4s_linear_infinite] shadow-[0_4px_20px_rgba(16,185,129,0.25),0_0_12px_rgba(212,175,55,0.35)] cursor-pointer group text-right transition-all duration-300"
+          className="relative my-2.5 p-[2px] rounded-2xl bg-gradient-to-r from-[#FFF0B3] via-[#F59E0B] via-[#D97706] to-[#FFF0B3] bg-[length:200%_auto] animate-[gradient_4s_linear_infinite] shadow-[0_4px_22px_rgba(245,158,11,0.38),0_0_15px_rgba(217,119,6,0.25)] cursor-pointer group text-right transition-all duration-300"
         >
-          {/* شارة تمييز أعلى زاوية المستطيل */}
+          {/* شارة تمييز أعلى زاوية المستطيل بلون ذهبي متألق */}
           <div className="absolute -top-2.5 right-4 z-20">
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white border border-emerald-300/80 shadow-[0_2px_8px_rgba(16,185,129,0.4)] font-sans tracking-wide">
-              <Sparkles className="w-3 h-3 text-amber-300 fill-amber-300 animate-pulse" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-amber-600 via-yellow-500 to-orange-600 text-slate-950 border border-yellow-200/90 shadow-[0_2px_10px_rgba(245,158,11,0.5)] font-sans tracking-wide">
+              <Sparkles className="w-3 h-3 text-white fill-white animate-pulse" />
               <span>لوحة وكالة الشحن المعتمدة</span>
+              <span>🪙</span>
             </span>
           </div>
 
-          <div className="bg-gradient-to-br from-[#064E3B]/95 via-[#065F46] to-[#042F2C] text-white rounded-[14px] p-3 sm:p-3.5 flex items-center justify-between border border-emerald-400/40 group-hover:border-emerald-300 group-hover:from-[#065F46] group-hover:to-[#022c22] transition-all duration-300 relative overflow-hidden">
-            <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-emerald-400/10 rounded-full blur-xl pointer-events-none" />
-            <div className="absolute -left-6 -top-6 w-24 h-24 bg-amber-400/10 rounded-full blur-xl pointer-events-none" />
+          <div className="bg-gradient-to-br from-[#2D1602]/95 via-[#451A03] to-[#1F0C01] text-white rounded-[14px] p-3 sm:p-3.5 flex items-center justify-between border border-amber-400/50 group-hover:border-amber-300 group-hover:from-[#3D1E03] group-hover:to-[#260E02] transition-all duration-300 relative overflow-hidden">
+            {/* توهجات خلفية ذهبية برتقالية تعكس بريق الذهب */}
+            <div className="absolute -right-6 -bottom-6 w-28 h-28 bg-amber-500/20 rounded-full blur-xl pointer-events-none" />
+            <div className="absolute -left-6 -top-6 w-28 h-28 bg-yellow-400/20 rounded-full blur-xl pointer-events-none" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(251,191,36,0.15),transparent_70%)] pointer-events-none" />
 
             <div className="flex items-center gap-3 min-w-0 flex-1 relative z-10">
-              <div className="relative w-12 h-12 rounded-xl bg-gradient-to-b from-emerald-900/90 to-slate-950 border border-emerald-400/60 shadow-[0_2px_10px_rgba(0,0,0,0.4),inset_0_1px_2px_rgba(255,255,255,0.2)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              {/* 3D Realistic Icon Container بخلفية ذهبية ملكية */}
+              <div className="relative w-12 h-12 rounded-xl bg-gradient-to-b from-amber-950 to-stone-950 border border-amber-400/70 shadow-[0_2px_12px_rgba(245,158,11,0.35),inset_0_1px_2px_rgba(255,255,255,0.3)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                 <RechargeAgency3DIcon className="w-8 h-8" />
-                <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-amber-400 rounded-full border border-emerald-950 shadow-xs flex items-center justify-center text-[7px] font-black text-slate-950">
+                <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-gradient-to-tr from-amber-400 to-yellow-300 rounded-full border border-amber-950 shadow-xs flex items-center justify-center text-[8px] font-black text-slate-950">
                   ⚡
                 </span>
               </div>
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-black text-white group-hover:text-amber-300 transition-colors truncate tracking-wide drop-shadow-xs">
+                  <h4 className="text-sm font-black text-amber-100 group-hover:text-amber-300 transition-colors truncate tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                     وكالة شحن
                   </h4>
-                  <span className="text-[9.5px] font-black bg-gradient-to-r from-amber-400/25 to-amber-500/30 text-amber-200 border border-amber-400/50 px-2 py-0.5 rounded-full shadow-2xs font-mono">
+                  <span className="text-[9.5px] font-black bg-gradient-to-r from-amber-500/30 to-yellow-500/30 text-amber-300 border border-amber-400/60 px-2 py-0.5 rounded-full shadow-2xs font-mono">
                     وكيل شحن معتمد ⚡
                   </span>
                 </div>
-                <span className="text-[10.5px] text-emerald-100/85 font-bold block mt-0.5 truncate">
-                  إعادة شحن الكوينزات، سجل التعبئة، والعمليات
+                <span className="text-[10.5px] text-amber-200/90 font-bold block mt-0.5 truncate">
+                  إعادة شحن الكوينزات، خزينة الرصيد، والعمليات
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 text-xs font-black text-slate-950 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 border border-amber-200 px-3 py-1.5 rounded-xl shadow-[0_2px_8px_rgba(245,158,11,0.3)] group-hover:scale-105 active:scale-95 transition-all shrink-0 mr-2 relative z-10">
+            <div className="flex items-center gap-1.5 text-xs font-black text-slate-950 bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-400 border border-yellow-200 px-3 py-1.5 rounded-xl shadow-[0_2px_10px_rgba(245,158,11,0.45)] group-hover:scale-105 active:scale-95 transition-all shrink-0 mr-2 relative z-10">
               <span>إدارة</span>
               <ChevronLeft className="w-4 h-4 text-slate-950" />
             </div>
