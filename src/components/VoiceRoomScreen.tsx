@@ -54,7 +54,8 @@ import {
   Lightbulb,
   Play,
   Sun,
-  Moon
+  Moon,
+  Cloud
 } from 'lucide-react';
 import { RedCinemaSeat } from './RedCinemaSeat';
 import { CinemaYouTubePickerModal, CinemaVideoItem, VideoSuggestion } from './CinemaYouTubePickerModal';
@@ -153,6 +154,8 @@ import {
   RoomBottomBar,
   RoomEntranceBanner,
   RoomEntranceEvent,
+  VipAnnouncementFlyer,
+  VipAnnouncementItem,
   getRowLayoutForCount,
   getTeamForSeat,
   getSpeakingAuraStyles,
@@ -836,6 +839,20 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
 
   const [inputMessage, setInputMessage] = useState('');
   const [showChatInputModal, setShowChatInputModal] = useState(false);
+
+  // VIP Cloud Announcement Broadcast Feature (إعلان VIP المتحرك - سحابة بحرف N)
+  const [isVipBroadcastActive, setIsVipBroadcastActive] = useState(false);
+  const [vipBroadcastRemaining, setVipBroadcastRemaining] = useState(50);
+  const [currentVipAnnouncement, setCurrentVipAnnouncement] = useState<VipAnnouncementItem | null>(null);
+  const [vipAnnouncementQueue, setVipAnnouncementQueue] = useState<VipAnnouncementItem[]>([]);
+
+  useEffect(() => {
+    if (!currentVipAnnouncement && vipAnnouncementQueue.length > 0) {
+      const nextItem = vipAnnouncementQueue[0];
+      setCurrentVipAnnouncement(nextItem);
+      setVipAnnouncementQueue((prev) => prev.slice(1));
+    }
+  }, [currentVipAnnouncement, vipAnnouncementQueue]);
 
   // Dynamic Visual Viewport Metrics for Chat Input Flush Alignment to Keyboard
   const [chatInputViewport, setChatInputViewport] = useState<{
@@ -3128,6 +3145,31 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     setReplyingToMessage(null);
     setShowChatInputModal(false);
 
+    // Trigger VIP Cloud N Moving Marquee Announcement if active
+    if (isVipBroadcastActive) {
+      if (vipBroadcastRemaining <= 0) {
+        setToastNotification('⚠️ استنفدت رصيد رسائل إعلان VIP اليومية!');
+        setTimeout(() => setToastNotification(null), 3000);
+      } else {
+        const nextRemaining = vipBroadcastRemaining - 1;
+        setVipBroadcastRemaining(nextRemaining);
+        const vipItem: VipAnnouncementItem = {
+          id: `vip-ann-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          senderName: currentSenderName,
+          senderAvatar: isUserHost
+            ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'
+            : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+          text: currentSentText,
+          vipLevel: isUserHost ? (hostVipLevel >= 8 ? `VIP${hostVipLevel}` : 'VIP6') : 'VIP6',
+          level: 94,
+          nobleLevel: 'N5'
+        };
+        setVipAnnouncementQueue((prev) => [...prev, vipItem]);
+        setToastNotification(`📢 تم إرسال إعلان VIP المتحرك بنجاح! (متبقي: ${nextRemaining})`);
+        setTimeout(() => setToastNotification(null), 3000);
+      }
+    }
+
     // 4. محاكي الردود في الشات: عندما يقوم المستخدم بالكتابة، يقوم أحد الأشخاص بالرد عليه تلقائياً
     setTimeout(() => {
       const lower = currentSentText.trim().toLowerCase();
@@ -4963,6 +5005,12 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
 
         {/* 4. ISOLATED LIVE CHAT MESSAGES FEED WITH FLOATING ENTRANCE BANNER */}
         <div className="relative flex-1 min-h-0 flex flex-col w-full overflow-visible">
+          {/* LUXURY VIP MOVING ANNOUNCEMENT MARQUEE BANNER (شريط إعلان VIP المتحرك وسط الشاشة) */}
+          <VipAnnouncementFlyer
+            currentAnnouncement={currentVipAnnouncement}
+            onDismiss={() => setCurrentVipAnnouncement(null)}
+          />
+
           {/* LUXURY VIP ROOM ENTRANCE BANNER (شريط دخول الغرفة الفاخر عند رأس المحادثة بنظام طابور متواصل) */}
           <RoomEntranceBanner
             entranceQueue={entranceQueue}
@@ -5128,6 +5176,46 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                 }}
                 className="flex items-center gap-2"
               >
+                {/* VIP Cloud with letter 'N' toggle button (زر سحابة بحرف N لإرسال إعلان VIP) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsVipBroadcastActive((prev) => !prev);
+                  }}
+                  className={`relative px-2.5 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
+                    isVipBroadcastActive
+                      ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.8)] ring-2 ring-cyan-300 scale-105'
+                      : 'bg-[#1A2132] hover:bg-white/10 text-slate-300 border border-white/10'
+                  }`}
+                  title={
+                    isVipBroadcastActive
+                      ? `إعلان VIP مفعل (إشارة زرقاء 🔵) - متبقي ${vipBroadcastRemaining} رسالة`
+                      : `تفعيل إعلان VIP المتحرك بالسحابة N (متبقي ${vipBroadcastRemaining})`
+                  }
+                >
+                  <div className="relative flex items-center justify-center">
+                    <Cloud className={`w-5 h-5 ${isVipBroadcastActive ? 'text-cyan-200 fill-cyan-400/40' : 'text-slate-300'}`} />
+                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black font-mono tracking-tighter text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+                      N
+                    </span>
+                  </div>
+
+                  {/* Remaining VIP quota count */}
+                  <span className={`text-[10px] font-mono font-black ${
+                    isVipBroadcastActive ? 'text-cyan-100 font-bold' : 'text-amber-300'
+                  }`}>
+                    {vipBroadcastRemaining}
+                  </span>
+
+                  {/* Blue Active Signal Indicator when active ("عند الضغط عليه تظهر اشاره زرقاء") */}
+                  {isVipBroadcastActive && (
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500 border border-white shadow-[0_0_8px_#38bdf8]"></span>
+                    </span>
+                  )}
+                </button>
+
                 {/* Input Box on the right side in RTL */}
                 <input
                   type="text"
@@ -5135,11 +5223,13 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                   disabled={!canUserTypeInChat()}
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder={canUserTypeInChat() ? "إرسال رسالة للشات..." : "الدردشة مقفلة، اطلب المايك للكتابة 🔒"}
-                  className={`flex-1 border rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none ${
-                    canUserTypeInChat()
-                      ? 'bg-[#1A2132] border-white/10 focus:border-amber-400'
-                      : 'bg-slate-900 border-rose-500/30 text-slate-500 cursor-not-allowed'
+                  placeholder={canUserTypeInChat() ? (isVipBroadcastActive ? "اكتب رسالة الإعلان المتحرك VIP..." : "إرسال رسالة للشات...") : "الدردشة مقفلة، اطلب المايك للكتابة 🔒"}
+                  className={`flex-1 border rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none transition-colors ${
+                    isVipBroadcastActive
+                      ? 'bg-[#151d30] border-cyan-500/70 focus:border-cyan-300 ring-1 ring-cyan-500/40'
+                      : canUserTypeInChat()
+                        ? 'bg-[#1A2132] border-white/10 focus:border-amber-400'
+                        : 'bg-slate-900 border-rose-500/30 text-slate-500 cursor-not-allowed'
                   }`}
                 />
 

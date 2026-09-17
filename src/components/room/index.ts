@@ -8,3 +8,4 @@ export * from './SingleMicSeat';
 export * from './RoomHeader';
 export * from './RoomBottomBar';
 export * from './RoomEntranceBanner';
+export * from './VipAnnouncementFlyer';
