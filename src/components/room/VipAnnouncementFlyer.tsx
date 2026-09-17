@@ -114,15 +114,11 @@ export const VipAnnouncementFlyer: React.FC<VipAnnouncementFlyerProps> = React.m
                 </span>
               </div>
 
-              {/* Bottom Row: Ultra-Slim Moving Marquee Announcement Message */}
-              <div className="relative overflow-hidden w-full h-3.5 sm:h-4 flex items-center">
-                <motion.div
-                  animate={{ x: ['100%', '-100%'] }}
-                  transition={{ repeat: Infinity, duration: 11, ease: 'linear' }}
-                  className="whitespace-nowrap text-[10px] sm:text-[11px] font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] flex items-center gap-1.5 absolute tracking-wide leading-none"
-                >
-                  <span>{currentAnnouncement.text}</span>
-                </motion.div>
+              {/* Bottom Row: Fully Visible Static Announcement Message (كتابة كاملة ثابتة غير متحركة داخل الشريط) */}
+              <div className="relative w-full h-3.5 sm:h-4 flex items-center overflow-hidden">
+                <span className="text-[10px] sm:text-[11.5px] font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] tracking-wide leading-none truncate w-full text-right">
+                  {currentAnnouncement.text}
+                </span>
               </div>
 
             </div>
