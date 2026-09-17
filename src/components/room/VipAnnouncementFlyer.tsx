@@ -26,7 +26,7 @@ export const VipAnnouncementFlyer: React.FC<VipAnnouncementFlyerProps> = React.m
     if (!currentAnnouncement) return;
     const timer = setTimeout(() => {
       onDismiss(currentAnnouncement.id);
-    }, 8000); // Display & travel duration: 8 seconds
+    }, 7600); // Display & travel duration: 7.6 seconds
     return () => clearTimeout(timer);
   }, [currentAnnouncement, onDismiss]);
 
@@ -39,21 +39,21 @@ export const VipAnnouncementFlyer: React.FC<VipAnnouncementFlyerProps> = React.m
   const vipLabel = `VIP${vipNum}`;
 
   return (
-    /* Positioned lowered to mic #15 row (عند مايك رقم 15) */
-    <div className="fixed top-[315px] sm:top-[340px] inset-x-0 z-50 pointer-events-none flex flex-col items-center justify-center px-2 overflow-visible">
+    /* Positioned lowered by ~0.5cm to align perfectly at mic #15 row */
+    <div className="fixed top-[335px] sm:top-[360px] inset-x-0 z-50 pointer-events-none flex flex-col items-center justify-center px-2 overflow-visible">
       <AnimatePresence>
         <motion.div
           key={currentAnnouncement.id}
-          /* Flexible movement: enters room from the left (الشمال) and ends at the right (اليمين) */
+          /* Smooth, graceful glide into center, then accelerated departure to the right */
           initial={{ x: '-110vw', opacity: 0 }}
           animate={{
-            x: ['-110vw', '-25vw', '0vw', '25vw', '110vw'],
+            x: ['-110vw', '-35vw', '0vw', '0vw', '120vw'],
             opacity: [0, 1, 1, 1, 0]
           }}
           transition={{
-            duration: 8,
-            times: [0, 0.22, 0.5, 0.78, 1],
-            ease: 'easeInOut'
+            duration: 7.5,
+            times: [0, 0.22, 0.55, 0.7, 1],
+            ease: ['easeOut', 'linear', 'linear', 'easeIn']
           }}
           className="relative w-full max-w-lg select-none"
         >
