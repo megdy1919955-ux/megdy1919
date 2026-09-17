@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -73,7 +73,10 @@ import { UserProfileModal } from './UserProfileModal';
 import { SeatActionModal } from './SeatActionModal';
 import { QuickMicOptionsModal } from './QuickMicOptionsModal';
 import { MicRequestQueueModal, MicRequestItem } from './MicRequestQueueModal';
-import { ProfessionalGiftPanel, GiftItem } from './ProfessionalGiftPanel';
+import type { GiftItem } from './ProfessionalGiftPanel';
+const ProfessionalGiftPanel = React.lazy(() =>
+  import('./ProfessionalGiftPanel').then((m) => ({ default: m.ProfessionalGiftPanel }))
+);
 import { MusicPlayerModal } from './MusicPlayerModal';
 import { EffectsAndSoundModal } from './EffectsAndSoundModal';
 import { MovableEmojiLottiePicker } from './MovableEmojiLottiePicker';
@@ -5175,31 +5178,35 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         onSendEmojiReaction={handleSendEmojiReaction}
       />
 
-      {/* PROFESSIONAL GIFTS PANEL */}
-      <ProfessionalGiftPanel
-        isOpen={showGiftDrawer}
-        onClose={() => {
-          setSelectedGiftTargetSeatIds([]);
-          setShowGiftDrawer(false);
-        }}
-        userCoins={userCoinsBalance}
-        initialSelectedSeatIds={selectedGiftTargetSeatIds}
-        onOpenRecharge={onOpenRecharge}
-        onSendGift={(gift, quantity, targetName, targetSeatIds) => {
-          const totalVal = gift.price * quantity;
-          handleSendGift(
-            `${gift.name} (x${quantity}) [إلى: ${targetName}]`,
-            gift.icon,
-            totalVal,
-            gift.name,
-            targetName,
-            targetSeatIds,
-            gift.videoUrl,
-            gift
-          );
-        }}
-        seats={activeSeats}
-      />
+      {/* PROFESSIONAL GIFTS PANEL (تحميل كسول عند الضغط للحاجة فقط لتخفيف الغرفة) */}
+      {showGiftDrawer && (
+        <Suspense fallback={null}>
+          <ProfessionalGiftPanel
+            isOpen={showGiftDrawer}
+            onClose={() => {
+              setSelectedGiftTargetSeatIds([]);
+              setShowGiftDrawer(false);
+            }}
+            userCoins={userCoinsBalance}
+            initialSelectedSeatIds={selectedGiftTargetSeatIds}
+            onOpenRecharge={onOpenRecharge}
+            onSendGift={(gift, quantity, targetName, targetSeatIds) => {
+              const totalVal = gift.price * quantity;
+              handleSendGift(
+                `${gift.name} (x${quantity}) [إلى: ${targetName}]`,
+                gift.icon,
+                totalVal,
+                gift.name,
+                targetName,
+                targetSeatIds,
+                gift.videoUrl,
+                gift
+              );
+            }}
+            seats={activeSeats}
+          />
+        </Suspense>
+      )}
 
       {/* ELECTRIC REFUND ENERGY SPHERE (كرة طاقة كهربائية في وسط الشاشة مع التضخم والانفجار عند النقر السريع) */}
       <ElectricRefundEnergySphere
