@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Crown, Sparkles, User, Shield } from 'lucide-react';
 
@@ -22,13 +22,17 @@ export const VipAnnouncementFlyer: React.FC<VipAnnouncementFlyerProps> = React.m
   currentAnnouncement,
   onDismiss
 }) => {
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+
   useEffect(() => {
-    if (!currentAnnouncement) return;
+    if (!currentAnnouncement?.id) return;
+    const annId = currentAnnouncement.id;
     const timer = setTimeout(() => {
-      onDismiss(currentAnnouncement.id);
+      onDismissRef.current(annId);
     }, 7600); // Display & travel duration: 7.6 seconds
     return () => clearTimeout(timer);
-  }, [currentAnnouncement, onDismiss]);
+  }, [currentAnnouncement?.id]);
 
   if (!currentAnnouncement) return null;
 
