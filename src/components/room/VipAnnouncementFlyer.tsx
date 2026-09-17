@@ -61,24 +61,31 @@ export const VipAnnouncementFlyer: React.FC<VipAnnouncementFlyerProps> = React.m
           }}
           className="relative w-full max-w-lg select-none"
         >
-          {/* Main Gold-Trimmed Crimson Capsule Banner - Reduced height by >50% (نحيف ومضغوط) */}
-          <div className="relative flex items-center bg-gradient-to-r from-[#800000] via-[#990000] to-[#660000] border-[1.5px] border-[#FCD34D] rounded-full py-0.5 sm:py-1 px-2 shadow-[0_0_15px_rgba(239,68,68,0.7),0_0_10px_rgba(245,158,11,0.4)] overflow-hidden h-8 sm:h-9">
+          {/* Main Gold-Trimmed Crimson Capsule Banner - Expanded slightly downwards for luxury and comfort (توسعة الشريط للأسفل) */}
+          <div className="relative flex items-center bg-gradient-to-r from-[#800000] via-[#990000] to-[#660000] border-[1.5px] border-[#FCD34D] rounded-full py-1 sm:py-1.5 px-2.5 shadow-[0_0_18px_rgba(239,68,68,0.7),0_0_12px_rgba(245,158,11,0.5)] overflow-hidden h-10 sm:h-11">
             
-            {/* Left Wing Embellishment: Golden Ornamental Wing on the left (الجناح على الجانب الأيسر) */}
-            <div className="absolute -left-1 sm:-left-1.5 top-1/2 -translate-y-1/2 z-20 pointer-events-none flex items-center">
-              <div className="w-6 h-7 sm:w-7 sm:h-8 bg-gradient-to-tr from-amber-500 via-yellow-300 to-amber-600 rounded-r-full shadow-[0_0_8px_rgba(245,158,11,0.9)] flex items-center justify-center border-y border-r border-yellow-200">
-                <Sparkles className="w-3.5 h-3.5 text-amber-950 animate-spin" style={{ animationDuration: '6s' }} />
+            {/* Left Side: Circular User Avatar at the BEGINNING of the flyer (صورة البروفايل في بداية الشريط في الجنب الآخر) */}
+            <div className="relative shrink-0 ml-0.5 mr-2 z-20 flex items-center">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full p-0.5 bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.9)] ring-1.5 ring-amber-300">
+                <img
+                  src={
+                    currentAnnouncement.senderAvatar ||
+                    'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200'
+                  }
+                  alt={currentAnnouncement.senderName}
+                  className="w-full h-full object-cover rounded-full"
+                />
               </div>
             </div>
 
-            {/* Inner Content Area - Ultra Slim 2-row layout with padding for the left wing */}
-            <div className="flex flex-col justify-center w-full min-w-0 pl-6 sm:pl-7 pr-1.5 overflow-hidden">
+            {/* Inner Content Area - Roomy 2-row layout */}
+            <div className="flex flex-col justify-center flex-1 min-w-0 pr-6 sm:pr-7 pl-1 overflow-hidden">
               
               {/* Top Row: User Name & Micro Badges Row */}
               <div className="flex items-center gap-1 sm:gap-1.5 flex-nowrap overflow-x-hidden leading-none mb-0.5">
                 
                 {/* Sender Name */}
-                <span className="font-black text-amber-200 text-[10px] sm:text-[11px] drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] whitespace-nowrap">
+                <span className="font-black text-amber-200 text-[10.5px] sm:text-[11.5px] drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] whitespace-nowrap">
                   {currentAnnouncement.senderName}
                 </span>
 
@@ -88,52 +95,45 @@ export const VipAnnouncementFlyer: React.FC<VipAnnouncementFlyerProps> = React.m
                 </div>
 
                 {/* Level Badge with Crown: e.g. 94 👑 */}
-                <div className="flex items-center gap-0.5 px-1 py-0 rounded-full bg-gradient-to-r from-rose-500 via-orange-400 to-amber-400 text-slate-950 font-black text-[8px] font-mono shadow-2xs border border-amber-200 shrink-0 h-3">
+                <div className="flex items-center gap-0.5 px-1.5 py-0 rounded-full bg-gradient-to-r from-rose-500 via-orange-400 to-amber-400 text-slate-950 font-black text-[8px] font-mono shadow-2xs border border-amber-200 shrink-0 h-3.5">
                   <span>{currentAnnouncement.level || 94}</span>
                   <Crown className="w-2 h-2 fill-amber-950 text-amber-950" />
                 </div>
 
                 {/* VIP Badge: e.g. VIP6 */}
-                <div className="flex items-center px-1 py-0 rounded-full bg-[#1A1817] border border-amber-300 text-amber-300 font-mono font-black text-[8px] tracking-wider shadow-2xs shrink-0 h-3">
+                <div className="flex items-center px-1.5 py-0 rounded-full bg-[#1A1817] border border-amber-300 text-amber-300 font-mono font-black text-[8px] tracking-wider shadow-2xs shrink-0 h-3.5">
                   <span>{vipLabel}</span>
                 </div>
 
                 {/* Wolf / Beast Noble Badge: N5 */}
-                <div className="flex items-center gap-0.5 px-1 py-0 rounded-full bg-gradient-to-r from-emerald-800 via-green-600 to-emerald-900 border border-emerald-300 text-emerald-100 font-black text-[8px] font-mono shadow-2xs shrink-0 h-3">
+                <div className="flex items-center gap-0.5 px-1.5 py-0 rounded-full bg-gradient-to-r from-emerald-800 via-green-600 to-emerald-900 border border-emerald-300 text-emerald-100 font-black text-[8px] font-mono shadow-2xs shrink-0 h-3.5">
                   <span className="text-[9px]">🐺</span>
                   <span>{currentAnnouncement.nobleLevel || 'N5'}</span>
                 </div>
 
                 {/* Turquoise Online / Profile Badge */}
-                <div className="w-3 h-3 rounded-full bg-cyan-400 border border-cyan-100 flex items-center justify-center text-slate-950 shadow-2xs shrink-0">
-                  <User className="w-2 h-2 text-slate-950 fill-slate-950" />
+                <div className="w-3.5 h-3.5 rounded-full bg-cyan-400 border border-cyan-100 flex items-center justify-center text-slate-950 shadow-2xs shrink-0">
+                  <User className="w-2.5 h-2.5 text-slate-950 fill-slate-950" />
                 </div>
 
-                <span className="text-[8px] font-black text-amber-300 mr-auto bg-black/40 px-1.5 py-0 rounded-full border border-amber-400/40 shrink-0 h-3 flex items-center">
+                <span className="text-[8px] font-black text-amber-300 mr-auto bg-black/40 px-1.5 py-0 rounded-full border border-amber-400/40 shrink-0 h-3.5 flex items-center">
                   📢 VIP
                 </span>
               </div>
 
-              {/* Bottom Row: Fully Visible Static Announcement Message (كتابة كاملة ثابتة غير متحركة داخل الشريط) */}
-              <div className="relative w-full h-3.5 sm:h-4 flex items-center overflow-hidden">
-                <span className="text-[10px] sm:text-[11.5px] font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] tracking-wide leading-none truncate w-full text-right">
+              {/* Bottom Row: Fully Visible Static Announcement Message */}
+              <div className="relative w-full h-4 sm:h-4.5 flex items-center overflow-hidden">
+                <span className="text-[11px] sm:text-[12px] font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] tracking-wide leading-none truncate w-full text-right">
                   {currentAnnouncement.text}
                 </span>
               </div>
 
             </div>
 
-            {/* Right Side: Circular User Avatar with Golden Border Ring (وضع الصورة في الجانب اليمين المقابل) */}
-            <div className="relative shrink-0 mr-0.5 ml-1.5">
-              <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-full p-0.5 bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.9)] ring-1 ring-amber-300">
-                <img
-                  src={
-                    currentAnnouncement.senderAvatar ||
-                    'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200'
-                  }
-                  alt={currentAnnouncement.senderName}
-                  className="w-full h-full object-cover rounded-full"
-                />
+            {/* Right Wing Embellishment: Golden Ornamental Wing on the opposite side (الجناح على الجانب الآخر المقابل) */}
+            <div className="absolute -right-1 sm:-right-1.5 top-1/2 -translate-y-1/2 z-20 pointer-events-none flex items-center">
+              <div className="w-6.5 h-8 sm:w-7.5 sm:h-9 bg-gradient-to-tl from-amber-500 via-yellow-300 to-amber-600 rounded-l-full shadow-[0_0_10px_rgba(245,158,11,0.9)] flex items-center justify-center border-y border-l border-yellow-200">
+                <Sparkles className="w-3.5 h-3.5 text-amber-950 animate-spin" style={{ animationDuration: '6s' }} />
               </div>
             </div>
 
