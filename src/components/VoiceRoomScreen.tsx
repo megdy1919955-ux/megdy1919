@@ -5128,30 +5128,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                 }}
                 className="flex items-center gap-2"
               >
-                {/* Right side: Close (X) button & Yellow Send button */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (document.activeElement instanceof HTMLElement) {
-                        document.activeElement.blur();
-                      }
-                      setShowChatInputModal(false);
-                    }}
-                    className="p-2 text-slate-400 hover:text-white rounded-xl bg-[#1A2132] hover:bg-red-950/40 transition-colors cursor-pointer"
-                    title="إغلاق"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs cursor-pointer shadow-md hover:brightness-105 active:scale-95 transition-transform"
-                  >
-                    إرسال
-                  </button>
-                </div>
-
-                {/* Left side: Message Input Box */}
+                {/* Input Box on the right side in RTL */}
                 <input
                   type="text"
                   autoFocus
@@ -5165,6 +5142,14 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                       : 'bg-slate-900 border-rose-500/30 text-slate-500 cursor-not-allowed'
                   }`}
                 />
+
+                {/* Send button on the left side (الجهة الشمال) in RTL */}
+                <button
+                  type="submit"
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs cursor-pointer shadow-md hover:brightness-105 active:scale-95 transition-transform shrink-0"
+                >
+                  إرسال
+                </button>
               </form>
             </div>
           </div>
