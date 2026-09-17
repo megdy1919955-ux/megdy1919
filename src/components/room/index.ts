@@ -9,3 +9,4 @@ export * from './RoomHeader';
 export * from './RoomBottomBar';
 export * from './RoomEntranceBanner';
 export * from './VipAnnouncementFlyer';
+export * from './VipBroadcastChatInput';

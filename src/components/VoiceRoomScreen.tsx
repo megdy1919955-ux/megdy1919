@@ -156,6 +156,9 @@ import {
   RoomEntranceEvent,
   VipAnnouncementFlyer,
   VipAnnouncementItem,
+  VipBroadcastChatInput,
+  getSavedVipBroadcastQuota,
+  saveVipBroadcastQuota,
   getRowLayoutForCount,
   getTeamForSeat,
   getSpeakingAuraStyles,
@@ -842,9 +845,18 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
 
   // VIP Cloud Announcement Broadcast Feature (إعلان VIP المتحرك - سحابة بحرف N)
   const [isVipBroadcastActive, setIsVipBroadcastActive] = useState(false);
-  const [vipBroadcastRemaining, setVipBroadcastRemaining] = useState(50);
+  const [vipBroadcastRemaining, setVipBroadcastRemaining] = useState<number>(() => getSavedVipBroadcastQuota(50));
   const [currentVipAnnouncement, setCurrentVipAnnouncement] = useState<VipAnnouncementItem | null>(null);
   const [vipAnnouncementQueue, setVipAnnouncementQueue] = useState<VipAnnouncementItem[]>([]);
+
+  // إلغاء ضغطة الزر تلقائياً عند تغيير الغرفة أو الخروج منها مع استمرار اعتماد الرصيد المستخدم
+  useEffect(() => {
+    setIsVipBroadcastActive(false);
+    setVipBroadcastRemaining(getSavedVipBroadcastQuota(50));
+    return () => {
+      setIsVipBroadcastActive(false);
+    };
+  }, [roomId]);
 
   const handleDismissVipAnnouncement = useCallback(() => {
     setCurrentVipAnnouncement(null);
@@ -1115,6 +1127,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
 
   // Handle Individual Exit (خروج)
   const handleSoloExit = () => {
+    setIsVipBroadcastActive(false);
     exitRoomSession();
     setIsRoomActive(false);
     setRoomUptimeSeconds(0);
@@ -3155,8 +3168,9 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         setToastNotification('⚠️ استنفدت رصيد رسائل إعلان VIP اليومية!');
         setTimeout(() => setToastNotification(null), 3000);
       } else {
-        const nextRemaining = vipBroadcastRemaining - 1;
+        const nextRemaining = Math.max(0, vipBroadcastRemaining - 1);
         setVipBroadcastRemaining(nextRemaining);
+        saveVipBroadcastQuota(nextRemaining);
         const vipItem: VipAnnouncementItem = {
           id: `vip-ann-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
           senderName: currentSenderName,
@@ -5176,92 +5190,16 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                 </div>
               )}
 
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (document.activeElement instanceof HTMLElement) {
-                    document.activeElement.blur();
-                  }
-                  handleSendMessage(e);
-                }}
-                className="flex items-center gap-2"
-              >
-                {/* Chat input box rectangle (المستطيل الخاص بالرسائل وبداخله زر N الصغير على اليسار) */}
-                <div
-                  className={`relative flex-1 flex items-center border rounded-xl transition-all ${
-                    isVipBroadcastActive
-                      ? 'bg-[#131b2e] border-cyan-500/70 ring-1 ring-cyan-500/40'
-                      : canUserTypeInChat()
-                        ? 'bg-[#1A2132] border-white/10 focus-within:border-amber-400'
-                        : 'bg-slate-900 border-rose-500/30 text-slate-500'
-                  }`}
-                >
-                  {/* Micro VIP Cloud with 'N' button - Positioned on the LEFT side inside the rectangle (الجهة اليسرى داخل المستطيل بشكل صغير جداً) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsVipBroadcastActive((prev) => !prev);
-                    }}
-                    className={`absolute left-1.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer select-none shrink-0 ${
-                      isVipBroadcastActive
-                        ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-[0_0_10px_rgba(59,130,246,0.8)] ring-1.5 ring-cyan-300'
-                        : 'bg-white/5 hover:bg-white/10 text-slate-400 border border-white/10'
-                    }`}
-                    title={
-                      isVipBroadcastActive
-                        ? `إعلان VIP مفعل (إشارة زرقاء 🔵) - متبقي ${vipBroadcastRemaining} رسالة`
-                        : `تفعيل إعلان VIP المتحرك بالسحابة N (متبقي ${vipBroadcastRemaining})`
-                    }
-                  >
-                    <div className="relative flex items-center justify-center">
-                      <Cloud className={`w-3.5 h-3.5 ${isVipBroadcastActive ? 'text-cyan-200 fill-cyan-400/50' : 'text-slate-300'}`} />
-                      <span className="absolute inset-0 flex items-center justify-center text-[8px] font-black font-mono tracking-tighter text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]">
-                        N
-                      </span>
-                    </div>
-
-                    {/* Small remaining VIP quota count */}
-                    <span className={`text-[8.5px] font-mono font-black ${
-                      isVipBroadcastActive ? 'text-cyan-100' : 'text-amber-300'
-                    }`}>
-                      {vipBroadcastRemaining}
-                    </span>
-
-                    {/* Blue Active Signal Indicator when active ("عند الضغط عليه تظهر اشاره زرقاء") */}
-                    {isVipBroadcastActive && (
-                      <span className="absolute -top-1 -right-0.5 flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500 border border-white shadow-[0_0_6px_#38bdf8]"></span>
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Input Box - pl-14 to give room for the micro N button on the left, pr-3 for RTL text */}
-                  <input
-                    type="text"
-                    autoFocus
-                    disabled={!canUserTypeInChat()}
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    placeholder={
-                      canUserTypeInChat()
-                        ? isVipBroadcastActive
-                          ? "اكتب رسالة الإعلان المتحرك VIP..."
-                          : "إرسال رسالة للشات..."
-                        : "الدردشة مقفلة، اطلب المايك للكتابة 🔒"
-                    }
-                    className="w-full bg-transparent pl-14 pr-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none"
-                  />
-                </div>
-
-                {/* Send button on the left side (الجهة الشمال) in RTL */}
-                <button
-                  type="submit"
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs cursor-pointer shadow-md hover:brightness-105 active:scale-95 transition-transform shrink-0"
-                >
-                  إرسال
-                </button>
-              </form>
+              {/* MODULAR VIP BROADCAST CHAT INPUT BAR (مستقل ومفصول تماماً عن كود الغرفة) */}
+              <VipBroadcastChatInput
+                inputMessage={inputMessage}
+                setInputMessage={setInputMessage}
+                canUserType={canUserTypeInChat()}
+                isVipBroadcastActive={isVipBroadcastActive}
+                onToggleVipBroadcast={() => setIsVipBroadcastActive((prev) => !prev)}
+                vipBroadcastRemaining={vipBroadcastRemaining}
+                onSendMessage={handleSendMessage}
+              />
             </div>
           </div>
         )}
