@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Crown, Sparkles, User, Shield } from 'lucide-react';
 
@@ -26,7 +26,7 @@ export const VipAnnouncementFlyer: React.FC<VipAnnouncementFlyerProps> = React.m
     if (!currentAnnouncement) return;
     const timer = setTimeout(() => {
       onDismiss(currentAnnouncement.id);
-    }, 8500); // Display for 8.5 seconds
+    }, 8000); // Display & travel duration: 8 seconds
     return () => clearTimeout(timer);
   }, [currentAnnouncement, onDismiss]);
 
@@ -39,28 +39,36 @@ export const VipAnnouncementFlyer: React.FC<VipAnnouncementFlyerProps> = React.m
   const vipLabel = `VIP${vipNum}`;
 
   return (
-    <div className="fixed top-24 sm:top-32 inset-x-0 z-50 pointer-events-none flex flex-col items-center justify-center px-2">
+    /* Positioned lowered to mic #15 row (عند مايك رقم 15) */
+    <div className="fixed top-[315px] sm:top-[340px] inset-x-0 z-50 pointer-events-none flex flex-col items-center justify-center px-2 overflow-visible">
       <AnimatePresence>
         <motion.div
           key={currentAnnouncement.id}
-          initial={{ opacity: 0, x: -240, scale: 0.9 }}
-          animate={{ opacity: 1, x: 0, scale: 1 }}
-          exit={{ opacity: 0, x: 240, scale: 0.85 }}
-          transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-          className="relative w-full max-w-xl select-none"
+          /* Flexible movement: enters room from the left (الشمال) and ends at the right (اليمين) */
+          initial={{ x: '-110vw', opacity: 0 }}
+          animate={{
+            x: ['-110vw', '-25vw', '0vw', '25vw', '110vw'],
+            opacity: [0, 1, 1, 1, 0]
+          }}
+          transition={{
+            duration: 8,
+            times: [0, 0.22, 0.5, 0.78, 1],
+            ease: 'easeInOut'
+          }}
+          className="relative w-full max-w-lg select-none"
         >
-          {/* Main Gold-Trimmed Crimson Capsule Banner - Reduced height by >50% (نحيف ومضغوط وبتوجيه عكسي) */}
-          <div className="relative flex items-center bg-gradient-to-l from-[#800000] via-[#990000] to-[#660000] border-[1.5px] border-[#FCD34D] rounded-full py-0.5 sm:py-1 px-2 shadow-[0_0_15px_rgba(239,68,68,0.7),0_0_10px_rgba(245,158,11,0.4)] overflow-hidden h-8 sm:h-9">
+          {/* Main Gold-Trimmed Crimson Capsule Banner - Reduced height by >50% (نحيف ومضغوط) */}
+          <div className="relative flex items-center bg-gradient-to-r from-[#800000] via-[#990000] to-[#660000] border-[1.5px] border-[#FCD34D] rounded-full py-0.5 sm:py-1 px-2 shadow-[0_0_15px_rgba(239,68,68,0.7),0_0_10px_rgba(245,158,11,0.4)] overflow-hidden h-8 sm:h-9">
             
-            {/* Reversed: Golden Ornamental Right Wing/Crest Embellishment (توجيه الجناح الذهبي لليمين) */}
-            <div className="absolute -right-1 sm:-right-1.5 top-1/2 -translate-y-1/2 z-20 pointer-events-none flex items-center">
-              <div className="w-6 h-7 sm:w-7 sm:h-8 bg-gradient-to-tl from-amber-500 via-yellow-300 to-amber-600 rounded-l-full shadow-[0_0_8px_rgba(245,158,11,0.9)] flex items-center justify-center border-y border-l border-yellow-200">
+            {/* Left Wing Embellishment: Golden Ornamental Wing on the left (الجناح على الجانب الأيسر) */}
+            <div className="absolute -left-1 sm:-left-1.5 top-1/2 -translate-y-1/2 z-20 pointer-events-none flex items-center">
+              <div className="w-6 h-7 sm:w-7 sm:h-8 bg-gradient-to-tr from-amber-500 via-yellow-300 to-amber-600 rounded-r-full shadow-[0_0_8px_rgba(245,158,11,0.9)] flex items-center justify-center border-y border-r border-yellow-200">
                 <Sparkles className="w-3.5 h-3.5 text-amber-950 animate-spin" style={{ animationDuration: '6s' }} />
               </div>
             </div>
 
-            {/* Inner Content Area - Ultra Slim 2-row layout */}
-            <div className="flex flex-col justify-center w-full min-w-0 pr-6 sm:pr-7 pl-1.5 overflow-hidden">
+            {/* Inner Content Area - Ultra Slim 2-row layout with padding for the left wing */}
+            <div className="flex flex-col justify-center w-full min-w-0 pl-6 sm:pl-7 pr-1.5 overflow-hidden">
               
               {/* Top Row: User Name & Micro Badges Row */}
               <div className="flex items-center gap-1 sm:gap-1.5 flex-nowrap overflow-x-hidden leading-none mb-0.5">
@@ -105,7 +113,7 @@ export const VipAnnouncementFlyer: React.FC<VipAnnouncementFlyerProps> = React.m
               {/* Bottom Row: Ultra-Slim Moving Marquee Announcement Message */}
               <div className="relative overflow-hidden w-full h-3.5 sm:h-4 flex items-center">
                 <motion.div
-                  animate={{ x: ['-100%', '100%'] }}
+                  animate={{ x: ['100%', '-100%'] }}
                   transition={{ repeat: Infinity, duration: 11, ease: 'linear' }}
                   className="whitespace-nowrap text-[10px] sm:text-[11px] font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] flex items-center gap-1.5 absolute tracking-wide leading-none"
                 >
@@ -115,8 +123,8 @@ export const VipAnnouncementFlyer: React.FC<VipAnnouncementFlyerProps> = React.m
 
             </div>
 
-            {/* Reversed: Far Left Circular User Avatar (وضع الصورة على الجهة المقابلة) */}
-            <div className="relative shrink-0 ml-0.5 mr-0">
+            {/* Right Side: Circular User Avatar with Golden Border Ring (وضع الصورة في الجانب اليمين المقابل) */}
+            <div className="relative shrink-0 mr-0.5 ml-1.5">
               <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-full p-0.5 bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.9)] ring-1 ring-amber-300">
                 <img
                   src={
