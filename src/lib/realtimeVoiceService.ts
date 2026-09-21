@@ -257,11 +257,9 @@ export class RealtimeVoiceEngine {
   // Initialize Microphone & Local Audio Stream with Client-side Noise Suppression DSP
   public async enableMicrophone(): Promise<boolean> {
     try {
+      this.isMuted = false;
       if (this.localStream) {
-        // Only unmute if not explicitly muted by user
-        if (!this.isMuted) {
-          this.setMute(false);
-        }
+        this.setMute(false);
         return true;
       }
 

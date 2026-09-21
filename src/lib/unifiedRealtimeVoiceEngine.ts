@@ -242,10 +242,11 @@ export class UnifiedRealtimeVoiceEngine {
   }
 
   public async enableMicrophone(): Promise<boolean> {
+    this.isMuted = false;
+    this.setMute(false);
     if (this.activeDriver === 'zegocloud' && this.zegoEngine) {
       const success = await this.zegoEngine.publishMicrophone(true);
       if (success) {
-        this.isMuted = false;
         return true;
       }
     }
@@ -253,14 +254,12 @@ export class UnifiedRealtimeVoiceEngine {
     if (this.activeDriver === 'agora' && this.agoraEngine) {
       const success = await this.agoraEngine.enableMicrophone();
       if (success) {
-        this.isMuted = false;
         return true;
       }
     }
 
     // Native WebRTC fallback
     const res = await this.webrtcEngine.enableMicrophone();
-    if (res) this.isMuted = false;
     return res;
   }
 

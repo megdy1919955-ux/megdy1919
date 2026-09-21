@@ -389,20 +389,33 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   const isCurrentAdmin = isOwner || isModerator;
 
   const [userMuteStates, setUserMuteStates] = useState<Record<string, boolean>>({
-    [CURRENT_USER_PROFILE_ID]: true
+    [CURRENT_USER_PROFILE_ID]: false,
+    [myUserId]: false
   });
 
-  // Current User Mic Mute State derived directly from user profile account state
-  const isMyMicMuted = Boolean(userMuteStates[CURRENT_USER_PROFILE_ID]);
+  // Helper to check if a seat belongs to the current user
+  const isSeatMine = (s: MicSeat): boolean => {
+    if (s.isEmpty) return false;
+    if (s.userId && (s.userId === myUserId || s.userId === CURRENT_USER_PROFILE_ID || (Boolean(authUser?.id) && s.userId === authUser?.id))) {
+      return true;
+    }
+    if (s.userName && (s.userName === myUserName || s.userName.includes('أنا') || s.userName === 'أنا (الزائر)')) {
+      return true;
+    }
+    if (isOwner && s.isHost && s.id === 1) {
+      return true;
+    }
+    return false;
+  };
 
   // Derived current user occupied seat and admin mute status
-  const myOccupiedSeat = allMicSeats.find(
-    (s) =>
-      !s.isEmpty &&
-      (s.userId === CURRENT_USER_PROFILE_ID ||
-        (isOwner && s.isHost && s.id === 1))
-  );
+  const myOccupiedSeat = allMicSeats.find(isSeatMine);
   const isMySeatMutedByAdmin = Boolean(myOccupiedSeat?.isMuted && myOccupiedSeat?.isMutedByAdmin);
+
+  // Current User Mic Mute State derived directly from occupied seat or user state
+  const isMyMicMuted = myOccupiedSeat
+    ? Boolean(myOccupiedSeat.isMuted)
+    : Boolean(userMuteStates[myUserId] ?? userMuteStates[CURRENT_USER_PROFILE_ID] ?? false);
   // Supporter Coins Balance with real-time automatic persistence
   const getInitialUserCoins = (): number => {
     try {
@@ -695,13 +708,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   const [isChatLocked, setIsChatLocked] = useState(false);
 
   // Derived state: check if current user is currently seated on any mic
-  const isUserOnMic = allMicSeats.some(
-    (s) =>
-      !s.isEmpty &&
-      (s.userId === CURRENT_USER_PROFILE_ID ||
-        s.userName.includes('أنا') ||
-        s.userName === 'أنا (الزائر)')
-  );
+  const isUserOnMic = allMicSeats.some(isSeatMine);
 
   // Helper check: is user allowed to type in chat when chat is locked
   const canUserTypeInChat = () => {
@@ -1410,7 +1417,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       setAllMicSeats((prev) => {
         return prev.map((seat) => {
           // If local user occupies this seat, keep local user
-          if (!seat.isEmpty && (seat.userId === CURRENT_USER_PROFILE_ID || (isOwner && seat.id === 1 && seat.isHost))) {
+          if (isSeatMine(seat)) {
             return seat;
           }
 
@@ -1456,9 +1463,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     };
 
     engine.getCurrentSeatId = () => {
-      const mySeat = allMicSeatsRef.current.find(
-        (s) => !s.isEmpty && (s.userId === CURRENT_USER_PROFILE_ID || (isOwner && s.isHost && s.id === 1))
-      );
+      const mySeat = allMicSeatsRef.current.find(isSeatMine);
       return mySeat ? mySeat.id : null;
     };
 
@@ -2564,28 +2569,27 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
 
     const nextMuted = !isMyMicMuted;
     
-    // Enable real device mic capture if unmuting
+    // Enable real device mic capture or mute instantly
     if (!nextMuted && voiceEngineRef.current) {
+      voiceEngineRef.current.setMute(false);
       const ok = await voiceEngineRef.current.enableMicrophone();
       if (!ok) {
         setToastNotification('يرجى السماح بصلاحية الميكروفون في المتصفح لبدء التحدث 🎙️');
         setTimeout(() => setToastNotification(null), 3000);
       }
     } else if (voiceEngineRef.current) {
-      voiceEngineRef.current.disableMicrophone();
       voiceEngineRef.current.setMute(true);
     }
 
     setUserMuteStates((prev) => ({
       ...prev,
-      [CURRENT_USER_PROFILE_ID]: nextMuted
+      [CURRENT_USER_PROFILE_ID]: nextMuted,
+      [myUserId]: nextMuted,
+      ...(authUser?.id ? { [authUser.id]: nextMuted } : {})
     }));
     setAllMicSeats((prev) =>
       prev.map((seat) => {
-        const isMySeat =
-          seat.userId === CURRENT_USER_PROFILE_ID ||
-          seat.userName.includes('أنا');
-        if (isMySeat && !seat.isEmpty) {
+        if (isSeatMine(seat)) {
           return {
             ...seat,
             isMuted: nextMuted,
@@ -2625,35 +2629,30 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     const isTargetSlotAdminMuted = Boolean(targetSeat.isMutedByAdmin);
 
     // Check if current user is ALREADY sitting on another mic seat in the room
-    const currentSeat = allMicSeats.find(
-      (s) =>
-        !s.isEmpty &&
-        (s.userId === CURRENT_USER_PROFILE_ID ||
-          s.userName.includes('أنا'))
-    );
+    const currentSeat = allMicSeats.find(isSeatMine);
 
     // Strict User Intent Mute Rule:
-    // When the user is muted via the bottom bar or previously muted on a seat,
-    // switching seats MUST NEVER unmute the microphone!
-    // The mic remains strictly muted until the user presses the bottom bar mic button to unmute.
-    const isCurrentlyMuted = isMyMicMuted || (currentSeat ? Boolean(currentSeat.isMuted) : false);
-    const joinMuted = isTargetSlotAdminMuted || isCurrentlyMuted;
+    // If moving between seats, preserve the current mic state.
+    // If taking a fresh seat from the audience, microphone opens immediately to speak!
+    const joinMuted = isTargetSlotAdminMuted || (currentSeat ? Boolean(currentSeat.isMuted) : false);
     const joinMutedByAdmin = isTargetSlotAdminMuted;
 
     setUserMuteStates((prev) => ({
       ...prev,
-      [CURRENT_USER_PROFILE_ID]: joinMuted
+      [CURRENT_USER_PROFILE_ID]: joinMuted,
+      [myUserId]: joinMuted,
+      ...(authUser?.id ? { [authUser.id]: joinMuted } : {})
     }));
 
-    // Update real-time voice engine seat and mute state
+    // Update real-time voice engine seat and mute state immediately
     if (voiceEngineRef.current) {
       voiceEngineRef.current.updateSeat(targetSeatId);
       if (joinMuted) {
-        voiceEngineRef.current.disableMicrophone();
         voiceEngineRef.current.setMute(true);
+        voiceEngineRef.current.disableMicrophone();
       } else {
-        voiceEngineRef.current.enableMicrophone();
         voiceEngineRef.current.setMute(false);
+        voiceEngineRef.current.enableMicrophone();
       }
     }
 
@@ -2684,7 +2683,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             return {
               ...seat,
               isEmpty: false,
-              userId: CURRENT_USER_PROFILE_ID,
+              userId: myUserId,
               userName: myUserName,
               avatar: myUserAvatar,
               vipLevel: myVipLevel,
@@ -2713,14 +2712,14 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       setTimeout(() => setToastNotification(null), 3200);
     } else if (!currentSeat) {
       // --- FRESH JOIN FROM AUDIENCE ---
-      // User takes the mic seat with their persistent mute state preserved, or slot admin-mute enforced
+      // User takes the mic seat with instant microphone response
       setAllMicSeats((prev) =>
         prev.map((seat) => {
           if (seat.id === targetSeatId) {
             return {
               ...seat,
               isEmpty: false,
-              userId: CURRENT_USER_PROFILE_ID,
+              userId: myUserId,
               userName: myUserName,
               avatar: myUserAvatar,
               vipLevel: myVipLevel,
@@ -2857,10 +2856,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     }
 
     // Check if target seat belongs to the current user (Self-Mute)
-    const isSelfSeat =
-      targetSeat.userId === CURRENT_USER_PROFILE_ID ||
-      targetSeat.userName.includes('أنا') ||
-      (currentUserRole === 'owner' && (targetSeat.isHost || targetSeat.id === 1));
+    const isSelfSeat = isSeatMine(targetSeat);
 
     // Strict Room Owner Authority Protection:
     // If target seat is Host/Room Owner and not self, a moderator or guest cannot mute or unmute the owner.
@@ -2879,7 +2875,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     }
 
     const targetUserId = isSelfSeat
-      ? CURRENT_USER_PROFILE_ID
+      ? (myUserId || CURRENT_USER_PROFILE_ID)
       : (targetSeat.userId || `user_seat_${targetSeat.id}`);
 
     const currentMuted = targetUserId in userMuteStates ? userMuteStates[targetUserId] : Boolean(targetSeat.isMuted);
@@ -2889,12 +2885,22 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     // Store mute status against the user's unique profile ID in the session state
     setUserMuteStates((prev) => ({
       ...prev,
-      [targetUserId]: nextMuted
+      [targetUserId]: nextMuted,
+      [CURRENT_USER_PROFILE_ID]: isSelfSeat ? nextMuted : prev[CURRENT_USER_PROFILE_ID],
+      [myUserId]: isSelfSeat ? nextMuted : prev[myUserId]
     }));
+
+    // Update real-time voice engine immediately if toggling self seat
+    if (isSelfSeat && voiceEngineRef.current) {
+      voiceEngineRef.current.setMute(nextMuted);
+      if (!nextMuted) {
+        voiceEngineRef.current.enableMicrophone();
+      }
+    }
 
     setAllMicSeats((prev) =>
       prev.map((seat) => {
-        if (seat.id === seatId) {
+        if (seat.id === seatId || (isSelfSeat && isSeatMine(seat))) {
           return {
             ...seat,
             isMuted: nextMuted,
@@ -4641,26 +4647,6 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                 )}
               </button>
             )}
-            {/* Real-time Voice Engine Status Pill */}
-            <div
-              className={`px-2 py-0.5 rounded-full flex items-center gap-1 text-[8px] font-black border transition-all shadow-xs cursor-default ${
-                isVoiceEngineConnected
-                  ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300 shadow-emerald-500/10'
-                  : 'bg-amber-950/80 border-amber-500/50 text-amber-300'
-              }`}
-              title={
-                isVoiceEngineConnected
-                  ? `بث الصوت اللحظي نشط ومستقر (${activeVoiceDriver === 'zegocloud' ? 'ZEGOCLOUD Ultra Latency' : activeVoiceDriver === 'agora' ? 'سيرفرات Agora العالمية' : 'WebRTC P2P فائقة السرعة'}) - البنج: ${voiceNetworkQuality?.pingMs ?? 28}ms`
-                  : 'جاري تهيئة الصوت اللحظي...'
-              }
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${isVoiceEngineConnected ? 'bg-emerald-400 animate-pulse shadow-[0_0_6px_#10b981]' : 'bg-amber-400'}`} />
-              <span>{isVoiceEngineConnected ? (activeVoiceDriver === 'zegocloud' ? 'ZEGOCLOUD' : activeVoiceDriver === 'agora' ? 'Agora RTC' : 'HD صوت حي') : 'صوت...'}</span>
-              {voiceNetworkQuality?.pingMs && (
-                <span className="text-[7px] text-emerald-400/80 font-mono tracking-tighter">{voiceNetworkQuality.pingMs}ms</span>
-              )}
-            </div>
-
             {/* Quick Room & Banners Simulator Trigger Pill */}
             <button
               id="quick-room-simulator-toggle-btn"
