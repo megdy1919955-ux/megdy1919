@@ -9,8 +9,6 @@ export interface ChatMessageActionsModalProps {
   anchorPosition?: { x: number; y: number } | null;
   onReport: (message: ChatMessage) => void;
   onToast: (msg: string) => void;
-  onReply?: (message: ChatMessage) => void;
-  onAddToBlacklist?: (userName: string) => void;
 }
 
 /**

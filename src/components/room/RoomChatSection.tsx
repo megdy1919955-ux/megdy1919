@@ -33,41 +33,16 @@ export const RoomChatSection = React.memo(
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
-    // Selected message for the 5-Action Menu (رد، استنساخ، ترجمة، تبليغ، قائمة سوداء)
+    // Selected message for the Actions Menu (نسخ، تبليغ، ترجمة)
     const [selectedActionMessage, setSelectedActionMessage] = useState<ChatMessage | null>(null);
     const [actionMenuPosition, setActionMenuPosition] = useState<{ x: number; y: number } | null>(null);
     const [reportingMessage, setReportingMessage] = useState<ChatMessage | null>(null);
     const [chatToast, setChatToast] = useState<string | null>(null);
 
-    // Blacklist management (القائمة السوداء لحظر رؤية رسائل المستخدم نهائياً)
-    const [blacklistedUsers, setBlacklistedUsers] = useState<string[]>(() => {
-      try {
-        const saved = localStorage.getItem('super_legend_room_chat_blacklist');
-        if (saved) return JSON.parse(saved);
-      } catch (e) {}
-      return [];
-    });
-
-    const handleAddToBlacklist = useCallback((userName: string) => {
-      setBlacklistedUsers((prev) => {
-        if (prev.includes(userName)) return prev;
-        const next = [...prev, userName];
-        try {
-          localStorage.setItem('super_legend_room_chat_blacklist', JSON.stringify(next));
-        } catch (e) {}
-        return next;
-      });
-    }, []);
-
     const showToast = useCallback((msg: string) => {
       setChatToast(msg);
       setTimeout(() => setChatToast(null), 2500);
     }, []);
-
-    // Filter messages: hide any message from blacklisted users
-    const visibleMessages = chatMessages.filter(
-      (m) => !blacklistedUsers.includes(m.userName)
-    );
 
     // Auto-scroll isolated strictly to this container only (No window.scrollIntoView to prevent room screen jitter)
     useEffect(() => {
@@ -77,7 +52,7 @@ export const RoomChatSection = React.memo(
           behavior: 'smooth'
         });
       }
-    }, [visibleMessages]);
+    }, [chatMessages]);
 
     const scrollToMessage = useCallback((messageId: string) => {
       const container = scrollContainerRef.current;
@@ -123,9 +98,9 @@ export const RoomChatSection = React.memo(
               isOwner={isOwner}
             />
 
-            {/* رسائل الدردشة الحقيقية فقط المفلترة من القائمة السوداء */}
+            {/* رسائل الدردشة الحقيقية */}
             <AnimatePresence initial={false}>
-              {visibleMessages.map((msg, msgIndex) => (
+              {chatMessages.map((msg, msgIndex) => (
                 <ChatMessageItem
                   key={`${msg.id}-${msgIndex}`}
                   msg={msg}
