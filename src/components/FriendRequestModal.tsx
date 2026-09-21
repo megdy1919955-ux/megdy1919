@@ -139,15 +139,6 @@ export const FriendRequestModal: React.FC<FriendRequestModalProps> = ({
                 <p className="text-[11px] text-amber-900 leading-relaxed font-medium">
                   طلب الصداقة قيد الانتظار لدى <b>{user.name}</b>. عند الموافقة سيتم تفعيل الدردشة فوراً.
                 </p>
-
-                {/* Instant Simulator Button */}
-                <button
-                  onClick={handleSimulateAccept}
-                  className="w-full py-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 text-xs font-black rounded-xl shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-98"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-slate-900" />
-                  <span>محاكاة موافقة المستخدم الآن ⚡</span>
-                </button>
               </div>
             ) : (
               <div className="w-full space-y-2.5 text-right">

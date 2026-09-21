@@ -288,7 +288,6 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
 
   // Dynamic Host VIP Level State (VIP 8+ -> Red host name 🔴, < 8 -> White host name ⚪)
   const [hostVipLevel, setHostVipLevel] = useState<number>(8);
-  const [showSimulatorBar, setShowSimulatorBar] = useState<boolean>(false);
 
   // Unified Flexible Mic Seats State (Seats 1 to 20 - Clean Real Seats without Fake Bots)
   const [allMicSeats, setAllMicSeats] = useState<MicSeat[]>(() => {
@@ -731,65 +730,14 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   // Chat Feed State with Avatars, Conditional Badges, and Dynamic Bubble Skins
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
-      id: 'm-host-1',
-      userName: 'أميرة الشرق (المضيفة)',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300',
-      text: 'أهلاً وسهلاً بجميع الحضور الكرام في روم السهرة! 🌟🎵',
-      userColor: 'text-red-500 font-black',
-      isHost: true,
-      heartLevel: 39,
-      crownLevel: 111,
-      vipLevel: 'VIP8',
-      bubbleSkin: 'red_gold', // 🔴 Red Ornate Gold Skin equipped for Host
+      id: 'sys-welcome',
+      userName: 'نظام الغرفة 🌟',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+      text: `مرحباً بك في ${roomName || 'الغرفة الصوتية'}! استمتع بأجمل الأوقات والتواصل اللحظي ✨🎙️`,
+      userColor: 'text-amber-400 font-bold',
+      isSystemMessage: true,
+      bubbleSkin: 'default',
     },
-    {
-      id: 'm-host-2',
-      userName: 'فهد الكايد (المضيف)',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=300',
-      text: 'نورتم الغرفة يا كرام! استمتعوا بأجمل الأجواء 🎙️✨',
-      userColor: 'text-red-500 font-black',
-      isHost: true,
-      heartLevel: 39,
-      crownLevel: 111,
-      vipLevel: 'VIP8',
-      bubbleSkin: 'royal_gold',
-    },
-    {
-      id: 'm1',
-      userName: 'مريم العتيبي',
-      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=200',
-      text: 'أحلى روم صوتية اليوم 🎵 الشات فخم بالفقاعات والشارات!',
-      userColor: 'text-cyan-300 font-bold',
-      bubbleSkin: 'royal_gold',
-      badges: [
-        { id: 'b4', label: 'VIP 5', icon: '💎', bgClass: 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 font-bold' }
-      ]
-    },
-    {
-      id: 'm2',
-      userName: 'أصيل العدني',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-      text: 'أهلاً بالجميع، سهرة ممتعة ✨',
-      userColor: 'text-emerald-300 font-bold',
-      bubbleSkin: 'default'
-      // NO badges: Space is completely hidden conditionally without gaps!
-    },
-    {
-      id: 'm3',
-      userName: 'صقر الشام',
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200',
-      text: 'منورين يا شباب الصوت ممتاز جداً 🎙️ وسعيد بالوجود معكم!',
-      userColor: 'text-amber-300 font-bold',
-      bubbleSkin: 'cyber_neon',
-      badges: [
-        { id: 'b5', label: 'داعم ماسي 🏆', icon: '🏆', bgClass: 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-black' }
-      ],
-      replyTo: {
-        id: 'm-host-1',
-        userName: 'أميرة الشرق (المضيفة)',
-        text: 'أهلاً وسهلاً بجميع الحضور الكرام في روم السهرة! 🌟🎵'
-      }
-    }
   ]);
 
   // Real-time VIP Room Entrance Ribbon Queue (طابور دخول الغرفة الملكي الفاخر عند ساعة العداد)
@@ -828,47 +776,9 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     setEntranceQueue((prev) => [...prev, newEvent]);
   };
 
-  // Trigger Batch Entrance Simulation (طابور جماعي 10 أو 15 أو 20 شخص)
-  const triggerBatchRoomEntrance = (count: number = 10) => {
-    const mockUsers = [
-      { name: 'تـTarfsرف ☕', vip: 6, avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150' },
-      { name: 'القيصر الأسطوري 🌌', vip: 10, avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150' },
-      { name: 'سلطانة الشرق 👑', vip: 7, avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150' },
-      { name: 'فارس الظلام ⚔️', vip: 8, avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=150' },
-      { name: 'أمير الزمرد 🌿', vip: 3, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150' },
-      { name: 'كوكب الشرق 🌟', vip: 5, avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=150' },
-      { name: 'إمبراطور الليل 💎', vip: 9, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150' },
-      { name: 'صقر قريش 🦅', vip: 6, avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150' },
-      { name: 'زهرة اللوتس 🌸', vip: 4, avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150' },
-      { name: 'برنس العرب 💫', vip: 8, avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=150' },
-    ];
-
-    const actualCount = Math.min(count, mockUsers.length);
-    const newQueueItems: RoomEntranceEvent[] = [];
-    const newChatItems: ChatMessage[] = [];
-
-    for (let i = 0; i < actualCount; i++) {
-      const u = mockUsers[i];
-      const entranceId = `ent-batch-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 5)}`;
-      newQueueItems.push({
-        id: entranceId,
-        userName: u.name,
-        avatar: u.avatar,
-        vipLevel: u.vip,
-        actionText: 'انضم إلى الغرفة',
-      });
-      newChatItems.push({
-        id: `join-batch-${Date.now()}-${i}`,
-        userName: u.name,
-        avatar: u.avatar,
-        text: 'انضم إلى الغرفة',
-        isJoinMessage: true,
-        vipLevel: u.vip,
-      });
-    }
-
-    setChatMessages((prev) => [...prev, ...newChatItems]);
-    setEntranceQueue((prev) => [...prev, ...newQueueItems]);
+  // Trigger Batch Entrance (No simulated fake users)
+  const triggerBatchRoomEntrance = (_count: number = 10) => {
+    // Disabled in production
   };
 
   // Trigger entrance banner and join notification when user opens the room
@@ -1894,59 +1804,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     };
 
     setActiveLuckyChestWinnerNotice(myWinnerNotice);
-
-    // 5 إلى 8 أشخاص محاكين أخذوا من هذا الصندوق لرؤية مسار وحركة الشريط ("خمسة أو ثمانية أشخاص أخذوا من هذا الصندوق")
-    const simulatedChestWinnersPool = [
-      { name: 'سارة الكويتية 🌸', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150', vip: 7, noble: 'N5', amount: 3500 },
-      { name: 'فهد التميمي 👑', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150', vip: 9, noble: 'N8', amount: 8200 },
-      { name: 'سلطان الغرام 💫', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150', vip: 8, noble: 'N6', amount: 5100 },
-      { name: 'ريما الصقر 🦅', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150', vip: 6, noble: 'N3', amount: 2400 },
-      { name: 'خالد الشمري ⚔️', avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=150', vip: 10, noble: 'N9', amount: 12000 },
-      { name: 'لؤلؤة الخليج 💎', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=150', vip: 6, noble: 'N2', amount: 1800 },
-      { name: 'عاشق الصمت 🌙', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=150', vip: 8, noble: 'N5', amount: 4300 },
-    ];
-
-    const otherNotices: LuckyChestWinnerNoticeData[] = simulatedChestWinnersPool.map((p, idx) => ({
-      id: `chest_win_sim_${Date.now()}_${idx}`,
-      userName: p.name,
-      avatar: p.avatar,
-      wonAmount: p.amount,
-      vipLevel: p.vip,
-      nobleLevel: p.noble,
-      isHost: false,
-      chestType: chestType,
-    }));
-
-    setLuckyChestWinnersQueue((prev) => [...prev, myWinnerNotice, ...otherNotices]);
-  };
-
-  // محاكي انقضاض 8 أشخاص على صندوق الحظ (لتجربة حركة ومسار الشريط)
-  const triggerBatchLuckyChestSimulation = () => {
-    const mockChestParticipants = [
-      { name: 'أميرة الشرق (المضيفة) 👑', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200', vip: hostVipLevel || 8, noble: 'N8', amount: 9500, isHost: true },
-      { name: 'سارة الكويتية 🌸', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150', vip: 7, noble: 'N5', amount: 3500, isHost: false },
-      { name: 'فهد التميمي 👑', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150', vip: 9, noble: 'N8', amount: 8200, isHost: false },
-      { name: 'سلطان الغرام 💫', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150', vip: 8, noble: 'N6', amount: 5100, isHost: false },
-      { name: 'ريما الصقر 🦅', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150', vip: 6, noble: 'N3', amount: 2400, isHost: false },
-      { name: 'خالد الشمري ⚔️', avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=150', vip: 10, noble: 'N9', amount: 12000, isHost: false },
-      { name: 'لؤلؤة الخليج 💎', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=150', vip: 6, noble: 'N2', amount: 1800, isHost: false },
-      { name: 'عاشق الصمت 🌙', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=150', vip: 8, noble: 'N5', amount: 4300, isHost: false },
-    ];
-
-    const newNotices: LuckyChestWinnerNoticeData[] = mockChestParticipants.map((p, idx) => ({
-      id: `chest_sim_${Date.now()}_${idx}`,
-      userName: p.name,
-      avatar: p.avatar,
-      wonAmount: p.amount,
-      vipLevel: p.vip,
-      nobleLevel: p.noble,
-      isHost: p.isHost,
-      chestType: 'super',
-    }));
-
-    setLuckyChestWinnersQueue((prev) => [...prev, ...newNotices]);
-    setToastNotification('🎁 تم تشغيل محاكاة انقضاض 8 أشخاص على الصندوق بنجاح!');
-    setTimeout(() => setToastNotification(null), 3000);
+    setLuckyChestWinnersQueue((prev) => [...prev, myWinnerNotice]);
   };
 
   // Finish / Stop Team Battle and Display Results
@@ -3654,88 +3512,21 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       }
     }
 
-    // 4. محاكي الردود في الشات: عندما يقوم المستخدم بالكتابة، يقوم أحد الأشخاص بالرد عليه تلقائياً
-    setTimeout(() => {
-      const lower = currentSentText.trim().toLowerCase();
-      let botReplyText = 'منور يا غالي الروم بطلتك الجميلة ✨🌹';
-
-      if (lower.includes('سلام') || lower.includes('السلام')) {
-        botReplyText = 'وعليكم السلام ورحمة الله وبركاته، يا هلا ومرحباً نورتنا 🌹✨';
-      } else if (lower.includes('مرحبا') || lower.includes('هلا') || lower.includes('مساء') || lower.includes('صباح')) {
-        botReplyText = 'يا هلا والله ومسهلا فيك يا أصيل، حياك الله ونورت الروم 💫';
-      } else if (lower.includes('صندوق') || lower.includes('حظ')) {
-        botReplyText = 'صندوق الحظ فيه جوائز فخمة، ألف مبروك لجميع الفائزين 🎁🔥';
-      } else if (lower.includes('مايك') || lower.includes('صوت')) {
-        botReplyText = 'الصوت نقي والمايكات مضبوطة 100%، تسلم يا غالي 🎙️👌';
-      } else if (lower.includes('اميرة') || lower.includes('أميرة') || lower.includes('مضيف')) {
-        botReplyText = 'المضيفة أميرة منورة الروم والحضور كلهم على راسي والله 👑🌹';
-      } else {
-        const randomPool = [
-          'صح لسانك يا ذوق، يسعد قلبك وأجمل سهرة معكم 💎',
-          'منورين جميعاً يا كرام، أحلى روم وأروع حضور 🌹✨',
-          'حياك الله معنا يا الأمير، نورت الروم والسهرة 🎵💫',
-          'أجمل كلام وأحلى حضور ربي يسعدك 🤍',
-          'يسعد مساك وطلتك الجميلة يا عسل 🌹',
-        ];
-        botReplyText = randomPool[Math.floor(Math.random() * randomPool.length)];
-      }
-
-      const botResponders = [
-        {
-          name: 'سارة الكويتية 🌸',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-          vip: 'VIP7',
-          badges: [
-            { id: 'b-vip', label: 'VIP 7', icon: '👑', bgClass: 'bg-gradient-to-r from-amber-600 to-amber-700 text-white font-bold' },
-          ]
-        },
-        {
-          name: 'فهد الرياض 👑',
-          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-          vip: 'VIP9',
-          badges: [
-            { id: 'b-vip9', label: 'VIP 9', icon: '👑', bgClass: 'bg-gradient-to-r from-red-600 via-rose-600 to-amber-500 text-white font-black' },
-          ]
-        },
-        {
-          name: 'نور الهدى ✨',
-          avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
-          vip: 'VIP6',
-          badges: [
-            { id: 'b-vip6', label: 'VIP 6', icon: '👑', bgClass: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-bold' },
-          ]
-        },
-        {
-          name: 'سلطان القلوب 💫',
-          avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
-          vip: 'VIP8',
-          badges: [
-            { id: 'b-vip8', label: 'VIP 8', icon: '👑', bgClass: 'bg-gradient-to-r from-red-600 to-amber-500 text-white font-black' },
-          ]
-        },
-      ];
-
-      const responder = botResponders[Math.floor(Math.random() * botResponders.length)];
-
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          id: `msg-reply-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          userName: responder.name,
-          avatar: responder.avatar,
-          text: botReplyText,
-          userColor: 'text-cyan-300 font-bold',
-          vipLevel: responder.vip,
-          badges: responder.badges,
-          bubbleSkin: 'royal_gold',
-          replyTo: {
-            id: newMsgId,
-            userName: currentSenderName,
-            text: currentSentText,
-          },
-        },
-      ]);
-    }, 1400);
+    // Broadcast real message to all connected peers in the room via WebSocket
+    voiceEngineRef.current?.sendChat(
+      currentSentText,
+      isUserHost
+        ? undefined
+        : [
+            {
+              id: 'ub-vip',
+              label: 'VIP 8',
+              icon: '👑',
+              bgClass: 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black',
+            },
+          ],
+      bubbleSkinToUse
+    );
   };
 
   const handleSendGift = (
@@ -4647,106 +4438,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                 )}
               </button>
             )}
-            {/* Quick Room & Banners Simulator Trigger Pill */}
-            <button
-              id="quick-room-simulator-toggle-btn"
-              type="button"
-              onClick={() => setShowSimulatorBar((prev) => !prev)}
-              className={`px-2 py-0.5 rounded-full flex items-center gap-1 text-[8.5px] font-black border transition-all cursor-pointer shadow-xs active:scale-95 ${
-                showSimulatorBar
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white border-pink-300 shadow-pink-500/30'
-                  : 'bg-[#151D2C] text-amber-300 border-amber-500/40 hover:border-amber-400'
-              }`}
-              title="أدوات محاكاة الغرفة والشرائط (دخول 10 أشخاص، انقضاض 8 على الصندوق، تبديل VIP المضيف)"
-            >
-              <span className="text-[10px]">🧪</span>
-              <span>المحاكي</span>
-            </button>
           </div>
-
-          {/* SIMULATOR DRAWER / TOOLBAR (محاكي الأشخاص والشرائط والتجارب) */}
-          <AnimatePresence>
-            {showSimulatorBar && (
-              <motion.div
-                initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                className="w-full bg-[#0E131F]/95 border border-amber-500/40 rounded-2xl p-2 shadow-2xl backdrop-blur-md z-40 text-white space-y-1.5 mt-1"
-                dir="rtl"
-              >
-                <div className="flex items-center justify-between px-1 pb-1 border-b border-white/10 text-[10px]">
-                  <span className="font-black text-amber-300 flex items-center gap-1">
-                    <span>🧪</span>
-                    <span>محاكي الغرفة والشرائط التفاعلية</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowSimulatorBar(false)}
-                    className="text-slate-400 hover:text-white text-xs px-1 font-bold cursor-pointer"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-3 gap-1.5 pt-0.5">
-                  {/* 1. دخول 10 أشخاص معاً */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerBatchRoomEntrance(10);
-                      setToastNotification('🚀 تم تشغيل محاكاة دخول 10 أشخاص دفعة واحدة!');
-                      setTimeout(() => setToastNotification(null), 3000);
-                    }}
-                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white p-1.5 rounded-xl text-center flex flex-col items-center justify-center gap-0.5 border border-blue-400/40 active:scale-95 transition-transform cursor-pointer shadow-xs"
-                    title="محاكاة دخول 10 أشخاص دفعة واحدة لرؤية حركة شريط الانضمام"
-                  >
-                    <span className="text-sm">🚀</span>
-                    <span className="text-[9px] font-black leading-tight">دخول 10 أشخاص</span>
-                    <span className="text-[7px] text-blue-200 opacity-80 leading-none">طابور الدخول</span>
-                  </button>
-
-                  {/* 2. انقضاض 8 على الصندوق */}
-                  <button
-                    type="button"
-                    onClick={triggerBatchLuckyChestSimulation}
-                    className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 p-1.5 rounded-xl text-center flex flex-col items-center justify-center gap-0.5 border border-amber-300 active:scale-95 transition-transform cursor-pointer font-black shadow-xs"
-                    title="محاكاة فوز وانقضاض 8 أشخاص على الصندوق لرؤية مسار الشريط الملاصق تحت شريط الانضمام"
-                  >
-                    <span className="text-sm">🎁</span>
-                    <span className="text-[9px] font-black leading-tight">انقضاض 8 بالصندوق</span>
-                    <span className="text-[7px] text-slate-900 opacity-90 leading-none">الشريط السفلي</span>
-                  </button>
-
-                  {/* 3. تبديل VIP المضيف */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextVip = hostVipLevel >= 8 ? 6 : 8;
-                      setHostVipLevel(nextVip);
-                      setToastNotification(
-                        nextVip >= 8
-                          ? '🔴 تم تفعيل VIP 8 للمضيف: الاسم باللون الأحمر في الشات والمايك'
-                          : '⚪ تم تفعيل VIP 6 للمضيف: الاسم باللون الأبيض المعتمد'
-                      );
-                      setTimeout(() => setToastNotification(null), 3000);
-                    }}
-                    className={`p-1.5 rounded-xl text-center flex flex-col items-center justify-center gap-0.5 border active:scale-95 transition-transform cursor-pointer shadow-xs ${
-                      hostVipLevel >= 8
-                        ? 'bg-gradient-to-r from-red-600 to-rose-700 text-white border-red-400 shadow-rose-900/30'
-                        : 'bg-gradient-to-r from-slate-800 to-slate-900 text-white border-slate-600'
-                    }`}
-                    title="تبديل رتبة VIP المضيف لاختبار شرط اللون (أحمر للـ VIP 8 وما فوق، أبيض لما دون ذلك)"
-                  >
-                    <span className="text-sm">{hostVipLevel >= 8 ? '🔴' : '⚪'}</span>
-                    <span className="text-[9px] font-black leading-tight">
-                      {hostVipLevel >= 8 ? 'VIP 8 (أحمر 🔴)' : 'VIP 6 (أبيض ⚪)'}
-                    </span>
-                    <span className="text-[7px] text-amber-200 opacity-80 leading-none">انقر للتبديل</span>
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </div>
 

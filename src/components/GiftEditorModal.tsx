@@ -739,7 +739,7 @@ export const GiftEditorModal: React.FC<GiftEditorModalProps> = ({
                   className="flex-1 sm:flex-none bg-gradient-to-r from-cyan-500 to-blue-500 hover:brightness-110 active:scale-98 text-slate-950 font-black text-xs py-2.5 px-3 rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>محاكاة في الصندوق</span>
+                  <span>معاينة في الصندوق</span>
                 </button>
 
                 {hasSound && (
