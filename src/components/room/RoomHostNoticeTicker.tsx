@@ -88,13 +88,19 @@ export const RoomHostNoticeTicker: React.FC<RoomHostNoticeTickerProps> = React.m
       {/* Notice Text Content: Yellow, No background */}
       {isEditing ? (
         <div className="mt-1 space-y-1.5">
-          <textarea
-            value={editText}
-            onChange={(e) => setEditText(e.target.value)}
-            rows={2}
-            className="w-full bg-slate-950/80 border border-yellow-400/60 rounded-xl p-2 text-xs text-yellow-300 font-bold focus:outline-hidden focus:border-yellow-300 resize-none"
-            placeholder="اكتب الترحيب الخاص برومك هنا..."
-          />
+          <div className="relative">
+            <textarea
+              value={editText}
+              maxLength={120}
+              onChange={(e) => setEditText(e.target.value.slice(0, 120))}
+              rows={2}
+              className="w-full bg-slate-950/80 border border-yellow-400/60 rounded-xl p-2 pb-5 text-xs text-yellow-300 font-bold focus:outline-hidden focus:border-yellow-300 resize-none"
+              placeholder="اكتب الترحيب الخاص برومك هنا (حد أقصى 120 حرف)..."
+            />
+            <span className="absolute bottom-1.5 left-2 text-[9px] font-mono text-yellow-400/70 select-none">
+              {editText.length}/120
+            </span>
+          </div>
           <div className="flex items-center justify-end gap-2">
             <button
               type="button"

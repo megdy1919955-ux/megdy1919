@@ -3399,7 +3399,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
 
     const isUserHost = currentUserRole === 'host' || isOwner;
     const newMsgId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    const currentSentText = inputMessage;
+    const currentSentText = inputMessage.trim().slice(0, 100);
     const currentSenderName = isUserHost ? 'أنا (المضيف)' : 'أنا (الزائر)';
 
     setChatMessages((prev) => [
@@ -4919,6 +4919,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         onSendMessage={handleSendMessage}
         replyingToMessage={replyingToMessage}
         onCancelReply={() => setReplyingToMessage(null)}
+        isHost={Boolean(currentUserRole === 'host' || isOwner)}
       />
 
       {/* MOVABLE & DYNAMIC EMOJI / LOTTIE REACTION PICKER (محمل عند الطلب فقط) */}

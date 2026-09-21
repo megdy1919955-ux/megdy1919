@@ -15,6 +15,7 @@ export interface RoomChatInputModalProps {
   onSendMessage: () => void;
   replyingToMessage?: { id: string; userName: string; text: string; avatar?: string } | null;
   onCancelReply: () => void;
+  isHost?: boolean;
 }
 
 /**
@@ -33,6 +34,7 @@ export const RoomChatInputModal: React.FC<RoomChatInputModalProps> = ({
   onSendMessage,
   replyingToMessage,
   onCancelReply,
+  isHost = true,
 }) => {
   const [viewportMetrics, setViewportMetrics] = useState<{
     height: number;
@@ -178,6 +180,7 @@ export const RoomChatInputModal: React.FC<RoomChatInputModalProps> = ({
               onToggleVipBroadcast={onToggleVipBroadcast}
               vipBroadcastRemaining={vipBroadcastRemaining}
               onSendMessage={onSendMessage}
+              isHost={isHost}
             />
           </div>
         </div>
