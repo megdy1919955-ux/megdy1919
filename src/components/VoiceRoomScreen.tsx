@@ -728,23 +728,13 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     avatar?: string;
   } | null>(null);
 
-  // Chat Feed State with Avatars, Conditional Badges, and Dynamic Bubble Skins
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      id: 'sys-welcome',
-      userName: 'نظام الغرفة 🌟',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-      text: `مرحباً بك في ${roomTitle || 'الغرفة الصوتية'}! استمتع بأجمل الأوقات والتواصل اللحظي ✨🎙️`,
-      userColor: 'text-amber-400 font-bold',
-      isSystemMessage: true,
-      bubbleSkin: 'default',
-    },
-  ]);
+  // Chat Feed State with Avatars, Conditional Badges, and Dynamic Bubble Skins (نظيفة تماماً بدون أي رسائل وهمية)
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   // Real-time VIP Room Entrance Ribbon Queue (طابور دخول الغرفة الملكي الفاخر عند ساعة العداد)
   const [entranceQueue, setEntranceQueue] = useState<RoomEntranceEvent[]>([]);
 
-  // Trigger Entrance Banner & Chat Join Notification
+  // Trigger Entrance Banner
   const triggerRoomEntrance = (user: {
     userName: string;
     avatar?: string;
@@ -753,18 +743,6 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     actionText?: string;
   }) => {
     const entranceId = `ent-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    const joinMsg: ChatMessage = {
-      id: `join-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      userName: user.userName,
-      avatar:
-        user.avatar ||
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-      text: 'انضم إلى الغرفة',
-      isJoinMessage: true,
-      vipLevel: user.vipLevel || 'VIP 6',
-    };
-
-    setChatMessages((prev) => [...prev, joinMsg]);
     const newEvent: RoomEntranceEvent = {
       id: entranceId,
       userName: user.userName,
@@ -781,26 +759,6 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   const triggerBatchRoomEntrance = (_count: number = 10) => {
     // Disabled in production
   };
-
-  // Trigger entrance banner and join notification when user opens the room
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const activeName = currentUserName || 'تـTarfsرف ☕';
-      const activeAvatar =
-        currentUserAvatar ||
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200';
-      const activeVip = currentUserVip || 'VIP 6';
-
-      triggerRoomEntrance({
-        userName: activeName,
-        avatar: activeAvatar,
-        vipLevel: activeVip,
-        actionText: 'انضم إلى الغرفة',
-      });
-    }, 700);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   const [inputMessage, setInputMessage] = useState('');
   const [showChatInputModal, setShowChatInputModal] = useState(false);
@@ -4870,6 +4828,9 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           <div className={`flex-1 flex flex-col min-h-0 w-full transition-opacity duration-300 ${isChatReady ? 'opacity-100' : 'opacity-0'}`}>
             <RoomChatFeed
               chatMessages={chatMessages}
+              roomId={roomId || roomTitle || 'default'}
+              hostName={hostName || (isOwner ? (myUserName || 'أبو أمجد (المالك 👑)') : 'صاحب الروم (المالك 👑)')}
+              isOwner={isOwner}
               onReplyTo={(reply) => setReplyingToMessage(reply)}
               onOpenChatInput={() => setShowChatInputModal(true)}
               onToggleHostGender={handleToggleHostGender}

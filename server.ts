@@ -229,6 +229,37 @@ async function startServer() {
     res.json({ success: true, stats });
   });
 
+  // Room Host Welcome Announcement Store
+  interface ServerRoomAnnouncement {
+    hostName: string;
+    noticeText: string;
+    updatedAt: number;
+  }
+
+  const roomAnnouncementMap = new Map<string, ServerRoomAnnouncement>();
+
+  app.get('/api/rooms/:roomId/announcement', (req, res) => {
+    const roomId = req.params.roomId;
+    const current = roomAnnouncementMap.get(roomId) || {
+      hostName: 'صاحب الروم',
+      noticeText: 'مرحباً في رومي الخاص، يسعدني تشريفكم وحضوركم جميعاً!',
+      updatedAt: Date.now()
+    };
+    res.json(current);
+  });
+
+  app.post('/api/rooms/:roomId/announcement', (req, res) => {
+    const roomId = req.params.roomId;
+    const { hostName, noticeText } = req.body;
+    const entry: ServerRoomAnnouncement = {
+      hostName: hostName || 'صاحب الروم',
+      noticeText: noticeText || 'مرحباً في رومي الخاص',
+      updatedAt: Date.now()
+    };
+    roomAnnouncementMap.set(roomId, entry);
+    res.json({ success: true, announcement: entry });
+  });
+
   // ZEGOCLOUD Configuration and Token Generation Endpoints
   app.get('/api/zego/config', (req, res) => {
     const isConfigured = Boolean(process.env.ZEGO_SERVER_SECRET && process.env.ZEGO_APP_ID);

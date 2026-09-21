@@ -9,6 +9,9 @@ export { getBubbleStyles };
 
 export interface RoomChatSectionProps {
   chatMessages: ChatMessage[];
+  roomId?: string;
+  hostName?: string;
+  isOwner?: boolean;
   onReplyTo: (reply: { id: string; userName: string; text: string; avatar?: string }) => void;
   onOpenChatInput: () => void;
   onOpenUserProfile?: (userData: UserProfileData) => void;
@@ -18,6 +21,9 @@ export interface RoomChatSectionProps {
 export const RoomChatSection = React.memo(
   ({
     chatMessages,
+    roomId = 'default',
+    hostName,
+    isOwner = false,
     onReplyTo,
     onOpenChatInput,
     onOpenUserProfile,
@@ -62,13 +68,17 @@ export const RoomChatSection = React.memo(
       >
         <div
           ref={scrollContainerRef}
-          className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pr-0.5 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-amber-500/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent w-full max-w-full"
+          className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pr-0.5 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-yellow-500/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent w-full max-w-full"
         >
           <div className="min-h-full flex flex-col justify-end space-y-1.5 pt-0.5 pb-1 w-full max-w-full overflow-x-hidden">
-            {/* MOVING HOST ANNOUNCEMENT BOARD INSIDE CHAT STREAM */}
-            <RoomHostNoticeTicker />
+            {/* لوحة الترحيب وإعلانات دخول المضيف - لون أصفر نقي وبدون خلفية وقابلة للتعديل للمالك */}
+            <RoomHostNoticeTicker
+              roomId={roomId}
+              hostName={hostName}
+              isOwner={isOwner}
+            />
 
-            {/* REGULAR CHAT MESSAGES WITH AVATARS, BADGES, AND MEMOIZED ITEMS */}
+            {/* رسائل الدردشة الحقيقية فقط */}
             <AnimatePresence initial={false}>
               {chatMessages.map((msg, msgIndex) => (
                 <ChatMessageItem
