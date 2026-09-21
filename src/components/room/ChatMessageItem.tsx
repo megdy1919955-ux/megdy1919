@@ -42,6 +42,7 @@ export interface ChatMessageItemProps {
   onOpenChatInput: () => void;
   onOpenUserProfile?: (userData: UserProfileData) => void;
   onScrollToMessage?: (messageId: string) => void;
+  onSelectMessage?: (msg: ChatMessage) => void;
 }
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
@@ -52,6 +53,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
   onOpenChatInput,
   onOpenUserProfile,
   onScrollToMessage,
+  onSelectMessage,
 }) => {
   // 1. JOIN MESSAGE
   if (msg.isJoinMessage) {
@@ -343,7 +345,14 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
           </div>
 
           {/* Dynamic Bubble */}
-          <div className={getBubbleStyles(msg.bubbleSkin, msg.isHost, msg.isGift)}>
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectMessage?.(msg);
+            }}
+            className={`${getBubbleStyles(msg.bubbleSkin, msg.isHost, msg.isGift)} cursor-pointer active:scale-[0.98] transition-transform`}
+            title="انقر لخيارات الرسالة (الرد، استنساخ، ترجمة، تبليغ، القائمة السوداء)"
+          >
             {/* Quoted Reply */}
             {msg.replyTo && (
               <div

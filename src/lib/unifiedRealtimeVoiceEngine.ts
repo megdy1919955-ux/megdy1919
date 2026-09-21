@@ -330,8 +330,8 @@ export class UnifiedRealtimeVoiceEngine {
     this.webrtcEngine.disableMicrophone();
   }
 
-  public sendChat(text: string, badges?: any[], bubbleSkin?: string): void {
-    this.webrtcEngine.sendChat(text, badges, bubbleSkin);
+  public sendChat(text: string, badges?: any[], bubbleSkin?: string, msgId?: string): void {
+    this.webrtcEngine.sendChat(text, badges, bubbleSkin, msgId);
   }
 
   public destroy(): void {

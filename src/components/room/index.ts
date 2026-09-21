@@ -15,6 +15,8 @@ export * from './RoomTopOptionsController';
 export * from './RoomFamilySection';
 export * from './RoomInfoModalContainer';
 export * from './RoomChatInputModal';
+export * from './ChatMessageActionsModal';
+export * from './RoomChatReportModal';
 export * from './WallpaperBackgroundCachePill';
 export * from './RoomLeaderboardStatsModal';
 export * from './RoomClubModal';

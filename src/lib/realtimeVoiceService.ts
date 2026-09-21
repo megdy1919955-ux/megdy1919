@@ -826,12 +826,13 @@ export class RealtimeVoiceEngine {
     });
   }
 
-  public sendChat(text: string, badges?: any[], bubbleSkin?: string) {
+  public sendChat(text: string, badges?: any[], bubbleSkin?: string, msgId?: string) {
     this.sendMessage({
       type: 'chat_message',
       roomId: this.roomId,
       payload: {
-        id: `chat-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        id: msgId || `chat-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        senderPeerId: this.myPeerId,
         userName: this.myUserName,
         avatar: this.myUserAvatar,
         text,

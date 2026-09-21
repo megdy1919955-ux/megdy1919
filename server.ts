@@ -404,7 +404,8 @@ async function startServer() {
           }
 
           case 'chat_message': {
-            broadcastToRoom(clientData.roomId, null, {
+            // Exclude the sender client (ws) to prevent duplicate echo in chat
+            broadcastToRoom(clientData.roomId, ws, {
               type: 'chat_broadcast',
               payload: payload
             });

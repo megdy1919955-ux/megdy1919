@@ -4,6 +4,8 @@ import { UserProfileData } from '../AdvancedUserProfileModal';
 import { ChatMessage } from './roomTypes';
 import { ChatMessageItem, getBubbleStyles } from './ChatMessageItem';
 import { RoomHostNoticeTicker } from './RoomHostNoticeTicker';
+import { ChatMessageActionsModal } from './ChatMessageActionsModal';
+import { RoomChatReportModal } from './RoomChatReportModal';
 
 export { getBubbleStyles };
 
@@ -31,6 +33,41 @@ export const RoomChatSection = React.memo(
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
+    // Selected message for the 5-Action Menu (رد، استنساخ، ترجمة، تبليغ، قائمة سوداء)
+    const [selectedActionMessage, setSelectedActionMessage] = useState<ChatMessage | null>(null);
+    const [reportingMessage, setReportingMessage] = useState<ChatMessage | null>(null);
+    const [chatToast, setChatToast] = useState<string | null>(null);
+
+    // Blacklist management (القائمة السوداء لحظر رؤية رسائل المستخدم نهائياً)
+    const [blacklistedUsers, setBlacklistedUsers] = useState<string[]>(() => {
+      try {
+        const saved = localStorage.getItem('super_legend_room_chat_blacklist');
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+      return [];
+    });
+
+    const handleAddToBlacklist = useCallback((userName: string) => {
+      setBlacklistedUsers((prev) => {
+        if (prev.includes(userName)) return prev;
+        const next = [...prev, userName];
+        try {
+          localStorage.setItem('super_legend_room_chat_blacklist', JSON.stringify(next));
+        } catch (e) {}
+        return next;
+      });
+    }, []);
+
+    const showToast = useCallback((msg: string) => {
+      setChatToast(msg);
+      setTimeout(() => setChatToast(null), 2500);
+    }, []);
+
+    // Filter messages: hide any message from blacklisted users
+    const visibleMessages = chatMessages.filter(
+      (m) => !blacklistedUsers.includes(m.userName)
+    );
+
     // Auto-scroll isolated strictly to this container only (No window.scrollIntoView to prevent room screen jitter)
     useEffect(() => {
       if (scrollContainerRef.current) {
@@ -39,7 +76,7 @@ export const RoomChatSection = React.memo(
           behavior: 'smooth'
         });
       }
-    }, [chatMessages]);
+    }, [visibleMessages]);
 
     const scrollToMessage = useCallback((messageId: string) => {
       const container = scrollContainerRef.current;
@@ -66,6 +103,13 @@ export const RoomChatSection = React.memo(
         className="flex-1 pr-1 pl-[104px] pt-0 pb-1 flex flex-col min-h-0 relative z-20 transition-all duration-300 overflow-hidden overflow-x-hidden w-full max-w-full isolate"
         style={{ contain: 'layout paint' }}
       >
+        {/* Floating Mini Toast Feedback */}
+        {chatToast && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 px-3 py-1.5 rounded-full bg-slate-900/95 border border-amber-400/50 text-amber-200 text-xs font-black shadow-lg animate-fadeIn select-none pointer-events-none whitespace-nowrap">
+            {chatToast}
+          </div>
+        )}
+
         <div
           ref={scrollContainerRef}
           className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pr-0.5 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-yellow-500/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent w-full max-w-full"
@@ -78,9 +122,9 @@ export const RoomChatSection = React.memo(
               isOwner={isOwner}
             />
 
-            {/* رسائل الدردشة الحقيقية فقط */}
+            {/* رسائل الدردشة الحقيقية فقط المفلترة من القائمة السوداء */}
             <AnimatePresence initial={false}>
-              {chatMessages.map((msg, msgIndex) => (
+              {visibleMessages.map((msg, msgIndex) => (
                 <ChatMessageItem
                   key={`${msg.id}-${msgIndex}`}
                   msg={msg}
@@ -90,11 +134,46 @@ export const RoomChatSection = React.memo(
                   onOpenChatInput={onOpenChatInput}
                   onOpenUserProfile={onOpenUserProfile}
                   onScrollToMessage={scrollToMessage}
+                  onSelectMessage={(targetMsg) => setSelectedActionMessage(targetMsg)}
                 />
               ))}
             </AnimatePresence>
           </div>
         </div>
+
+        {/* 1. قائمة الإجراءات الخمسة المحددة (رد، استنساخ، ترجمة، تبليغ، قائمة سوداء) */}
+        <ChatMessageActionsModal
+          isOpen={Boolean(selectedActionMessage)}
+          onClose={() => setSelectedActionMessage(null)}
+          message={selectedActionMessage}
+          onReply={(msg) => {
+            onReplyTo({
+              id: msg.id,
+              userName: msg.userName,
+              text: msg.text,
+              avatar: msg.avatar
+            });
+            onOpenChatInput();
+          }}
+          onReport={(msg) => {
+            setReportingMessage(msg);
+          }}
+          onAddToBlacklist={(userName) => {
+            handleAddToBlacklist(userName);
+          }}
+          onToast={showToast}
+        />
+
+        {/* 2. نافذة البلاغ الرسمية المطابقة للصورة رقم 3 بالخيارات السبعة */}
+        <RoomChatReportModal
+          isOpen={Boolean(reportingMessage)}
+          onClose={() => setReportingMessage(null)}
+          targetUserName={reportingMessage?.userName || 'المستخدم'}
+          targetMessageText={reportingMessage?.text}
+          onSubmitReport={(reason) => {
+            showToast(`تم إرسال البلاغ (${reason}) بنجاح وسيتم اتخاذ الإجراء فوراً 🛡️`);
+          }}
+        />
       </div>
     );
   }

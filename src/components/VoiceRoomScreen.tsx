@@ -1358,8 +1358,13 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     };
 
     engine.onChatMessage = (incomingMsg) => {
+      // Do not accept echo of our own sent messages
+      if (incomingMsg.senderPeerId && incomingMsg.senderPeerId === engine.myPeerId) return;
       setChatMessages((prev) => {
         if (prev.some((m) => m.id === incomingMsg.id)) return prev;
+        // Safety against immediate echo of self message with same text
+        const isEcho = prev.slice(-3).some((m) => m.text === incomingMsg.text && (m.isHost || m.userName.includes('أنا')));
+        if (isEcho) return prev;
         return [
           ...prev,
           {
@@ -3497,7 +3502,8 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
               bgClass: 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black',
             },
           ],
-      equippedBubbleSkin
+      equippedBubbleSkin,
+      newMsgId
     );
   };
 
