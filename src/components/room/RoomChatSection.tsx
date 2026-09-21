@@ -35,6 +35,7 @@ export const RoomChatSection = React.memo(
 
     // Selected message for the 5-Action Menu (رد، استنساخ، ترجمة، تبليغ، قائمة سوداء)
     const [selectedActionMessage, setSelectedActionMessage] = useState<ChatMessage | null>(null);
+    const [actionMenuPosition, setActionMenuPosition] = useState<{ x: number; y: number } | null>(null);
     const [reportingMessage, setReportingMessage] = useState<ChatMessage | null>(null);
     const [chatToast, setChatToast] = useState<string | null>(null);
 
@@ -134,18 +135,25 @@ export const RoomChatSection = React.memo(
                   onOpenChatInput={onOpenChatInput}
                   onOpenUserProfile={onOpenUserProfile}
                   onScrollToMessage={scrollToMessage}
-                  onSelectMessage={(targetMsg) => setSelectedActionMessage(targetMsg)}
+                  onSelectMessage={(targetMsg, pos) => {
+                    setSelectedActionMessage(targetMsg);
+                    setActionMenuPosition(pos || null);
+                  }}
                 />
               ))}
             </AnimatePresence>
           </div>
         </div>
 
-        {/* 1. قائمة الإجراءات الخمسة المحددة (رد، استنساخ، ترجمة، تبليغ، قائمة سوداء) */}
+        {/* 1. قائمة الإجراءات الخمسة المحددة (مستطيل عائم فوق كل شيء يظهر) */}
         <ChatMessageActionsModal
           isOpen={Boolean(selectedActionMessage)}
-          onClose={() => setSelectedActionMessage(null)}
+          onClose={() => {
+            setSelectedActionMessage(null);
+            setActionMenuPosition(null);
+          }}
           message={selectedActionMessage}
+          anchorPosition={actionMenuPosition}
           onReply={(msg) => {
             onReplyTo({
               id: msg.id,

@@ -42,7 +42,7 @@ export interface ChatMessageItemProps {
   onOpenChatInput: () => void;
   onOpenUserProfile?: (userData: UserProfileData) => void;
   onScrollToMessage?: (messageId: string) => void;
-  onSelectMessage?: (msg: ChatMessage) => void;
+  onSelectMessage?: (msg: ChatMessage, position?: { x: number; y: number }) => void;
 }
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
@@ -348,7 +348,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
           <div
             onClick={(e) => {
               e.stopPropagation();
-              onSelectMessage?.(msg);
+              onSelectMessage?.(msg, { x: e.clientX, y: e.clientY });
             }}
             className={`${getBubbleStyles(msg.bubbleSkin, msg.isHost, msg.isGift)} cursor-pointer active:scale-[0.98] transition-transform`}
             title="انقر لخيارات الرسالة (الرد، استنساخ، ترجمة، تبليغ، القائمة السوداء)"
