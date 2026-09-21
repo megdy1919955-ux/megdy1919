@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Crown, CornerUpLeft } from 'lucide-react';
+import { Crown, CornerUpLeft, MoreVertical } from 'lucide-react';
 import { UserProfileData } from '../AdvancedUserProfileModal';
 import { ChatMessage, BubbleSkinType } from './roomTypes';
 import { HostYoHoBadges } from './HostYoHoBadges';
@@ -345,32 +345,51 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
               </div>
             ) : null}
 
-            {/* Quick Reply Button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onReplyTo({
-                  id: msg.id,
-                  userName: msg.userName,
-                  text: msg.text,
-                  avatar: msg.avatar
-                });
-                onOpenChatInput();
-              }}
-              className="mr-auto opacity-40 hover:opacity-100 text-amber-300 p-0.5 hover:bg-white/10 rounded-full transition-all cursor-pointer"
-              title="رد على هذه الرسالة"
-            >
-              <CornerUpLeft className="w-3 h-3" />
-            </button>
+            {/* Actions: Quick Reply Button & Options Menu Button */}
+            <div className="mr-auto flex items-center gap-1">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectMessage?.(msg, { x: e.clientX, y: e.clientY });
+                }}
+                className="opacity-70 hover:opacity-100 text-amber-300 p-0.5 hover:bg-white/10 rounded-full transition-all cursor-pointer"
+                title="خيارات الرسالة (نسخ، تبليغ، ترجمة)"
+              >
+                <MoreVertical className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReplyTo({
+                    id: msg.id,
+                    userName: msg.userName,
+                    text: msg.text,
+                    avatar: msg.avatar
+                  });
+                  onOpenChatInput();
+                }}
+                className="opacity-50 hover:opacity-100 text-amber-300 p-0.5 hover:bg-white/10 rounded-full transition-all cursor-pointer"
+                title="رد على هذه الرسالة"
+              >
+                <CornerUpLeft className="w-3 h-3" />
+              </button>
+            </div>
           </div>
 
-          {/* Dynamic Bubble - يدعم الضغط المطول والنقر والزر الأيمن */}
+          {/* Dynamic Bubble - يدعم النقر المباشر والضغط المطول والزر الأيمن */}
           <div
             onPointerDown={(e) => startLongPress(e.clientX, e.clientY)}
             onPointerUp={cancelLongPress}
             onPointerLeave={cancelLongPress}
             onPointerCancel={cancelLongPress}
+            onTouchStart={(e) => {
+              if (e.touches && e.touches[0]) {
+                startLongPress(e.touches[0].clientX, e.touches[0].clientY);
+              }
+            }}
+            onTouchEnd={cancelLongPress}
             onContextMenu={(e) => {
               e.preventDefault();
               cancelLongPress();
@@ -378,12 +397,11 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
             }}
             onClick={(e) => {
               e.stopPropagation();
-              // إذا كان تم تشغيل الضغط المطول نتوقف حتى لا يتكرر
-              if (isLongPressRef.current) return;
+              cancelLongPress();
               onSelectMessage?.(msg, { x: e.clientX, y: e.clientY });
             }}
             className={`${getBubbleStyles(msg.bubbleSkin, msg.isHost, msg.isGift)} cursor-pointer active:scale-[0.98] transition-transform select-none`}
-            title="اضغط مطولاً للخيارات: نسخ، تبليغ، ترجمة"
+            title="انقر أو اضغط مطولاً للخيارات: نسخ، تبليغ، ترجمة"
           >
             {/* Quoted Reply */}
             {msg.replyTo && (

@@ -76,8 +76,7 @@ export const RoomChatSection = React.memo(
 
     return (
       <div
-        className="flex-1 pr-1 pl-[104px] pt-0 pb-1 flex flex-col min-h-0 relative z-20 transition-all duration-300 overflow-hidden overflow-x-hidden w-full max-w-full isolate"
-        style={{ contain: 'layout paint' }}
+        className="flex-1 pr-1 pl-[104px] pt-0 pb-1 flex flex-col min-h-0 relative z-20 transition-all duration-300 overflow-hidden overflow-x-hidden w-full max-w-full"
       >
         {/* Floating Mini Toast Feedback */}
         {chatToast && (

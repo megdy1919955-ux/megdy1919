@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, CheckCircle2 } from 'lucide-react';
 
 export interface RoomChatReportModalProps {
@@ -30,6 +31,7 @@ export const RoomChatReportModal: React.FC<RoomChatReportModalProps> = ({
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
 
   if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
   const handleSubmit = () => {
     onSubmitReport(selectedReason, targetMessageText);
@@ -40,9 +42,9 @@ export const RoomChatReportModal: React.FC<RoomChatReportModalProps> = ({
     }, 1200);
   };
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-xs p-0 sm:p-4 select-none animate-fadeIn"
+      className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-xs p-0 sm:p-4 select-none animate-fadeIn"
       dir="rtl"
       onClick={onClose}
     >
@@ -137,4 +139,6 @@ export const RoomChatReportModal: React.FC<RoomChatReportModalProps> = ({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
