@@ -14,6 +14,8 @@ export interface RoomLeaderboardStatsModalProps {
   onOpenFamilyModal: () => void;
   totalRoomSupportDiamonds?: number;
   initialTab?: 'diamonds' | 'club' | 'charm';
+  onResetStats?: () => void;
+  roomId?: string;
 }
 
 export const RoomLeaderboardStatsModal: React.FC<RoomLeaderboardStatsModalProps> = React.memo(({
@@ -23,18 +25,34 @@ export const RoomLeaderboardStatsModal: React.FC<RoomLeaderboardStatsModalProps>
   leaderboardTheme,
   onSelectUserProfile,
   onOpenFamilyModal,
-  initialTab = 'diamonds'
+  totalRoomSupportDiamonds = 0,
+  initialTab = 'diamonds',
+  onResetStats,
+  roomId
 }) => {
   const [statsMainTab, setStatsMainTab] = useState<'diamonds' | 'club' | 'charm'>(initialTab);
   const [statsTimeFilter, setStatsTimeFilter] = useState<'24h' | 'all' | 'weekly'>('24h');
+  const [realSupporters, setRealSupporters] = useState<any[]>([]);
 
-  // Reset tab and filter on open
+  // Reset tab and filter on open, and load real supporters
   useEffect(() => {
     if (isOpen) {
       setStatsMainTab(initialTab);
       setStatsTimeFilter('24h');
+      try {
+        const key = `room_supporters_leaderboard_${roomId || 'default'}`;
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            setRealSupporters(parsed);
+            return;
+          }
+        }
+      } catch (e) {}
+      setRealSupporters([]);
     }
-  }, [isOpen, initialTab]);
+  }, [isOpen, initialTab, roomId]);
 
   return (
     <AnimatePresence>
@@ -224,528 +242,244 @@ export const RoomLeaderboardStatsModal: React.FC<RoomLeaderboardStatsModalProps>
                 >
                   {/* 1. DIAMONDS LEADERBOARD LIST */}
                   {statsMainTab === 'diamonds' && (
-                    (statsTimeFilter === '24h' ? [
-                      { rank: 1, name: 'الأمير أسامة (الرئيس)', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '88', vip: 'VIP8', nLevel: 'N.15', val: '18,500,000 💎' },
-                      { rank: 2, name: 'سارة الكابيتانو', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=100', level: '75', vip: 'VIP6', nLevel: 'N.12', val: '12,200,000 💎' },
-                      { rank: 3, name: 'صقر الشام', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100', level: '64', vip: 'VIP5', nLevel: 'N.10', val: '9,300,000 💎' },
-                      { rank: 4, name: 'الملك الكويتي', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100', level: '52', vip: 'VIP4', nLevel: 'N.8', val: '5,100,000 💎' },
-                      { rank: 5, name: 'الدكتورة هناء', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100', level: '48', vip: 'VIP3', nLevel: 'N.6', val: '3,400,000 💎' }
-                    ] : [
-                      { rank: 1, name: 'السلطان قابوس', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100', level: '99', vip: 'VIP9', nLevel: 'N.20', val: '120,500,000 💎' },
-                      { rank: 2, name: 'الأمير أسامة (الرئيس)', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '88', vip: 'VIP8', nLevel: 'N.15', val: '95,000,000 💎' },
-                      { rank: 3, name: 'شيخ الشباب', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100', level: '82', vip: 'VIP7', nLevel: 'N.14', val: '68,200,000 💎' },
-                      { rank: 4, name: 'لورد بغداد', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100', level: '71', vip: 'VIP6', nLevel: 'N.11', val: '42,000,000 💎' }
-                    ]).map((item) => (
-                      <div
-                        key={`diamonds-${statsTimeFilter}-${item.rank}-${item.name}`}
-                        onClick={() => {
-                          onClose();
-                          onSelectUserProfile({
-                            id: `sup-dia-${item.rank}`,
-                            name: item.name,
-                            avatar: item.avatar,
-                            userId: `9920${item.rank}`,
-                            country: 'السعودية',
-                            countryFlag: '🇸🇦'
-                          });
-                        }}
-                        style={{
-                          backgroundColor: leaderboardTheme.cardBg,
-                          borderColor: leaderboardTheme.cardBorderColor
-                        }}
-                        className="p-2.5 border rounded-2xl flex items-center justify-between text-xs transition-all cursor-pointer hover:scale-[1.01] relative overflow-visible shadow-sm"
-                      >
-                        <div className="flex items-center gap-2 overflow-visible max-w-[72%] relative z-10">
-                          {/* Rank Badge (#1 Gold, #2 Silver, #3 Bronze) */}
-                          <div
-                            className={`w-7 h-7 shrink-0 rounded-xl flex items-center justify-center font-black text-xs shadow-md border ${
-                              item.rank === 1
-                                ? 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 border-amber-200 ring-2 ring-amber-400/50'
-                                : item.rank === 2
-                                ? 'bg-gradient-to-tr from-slate-300 to-slate-100 text-slate-950 border-slate-200 ring-1 ring-slate-300'
-                                : item.rank === 3
-                                ? 'bg-gradient-to-tr from-amber-700 to-amber-500 text-white border-amber-600'
-                                : 'bg-white/10 text-slate-300 border-white/5'
-                            }`}
-                          >
-                            {item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : item.rank}
-                          </div>
+                    realSupporters.length === 0 ? (
+                      <div className="py-14 flex flex-col items-center justify-center text-center space-y-2.5 text-slate-400">
+                        <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-2xl border border-white/10 shadow-inner">
+                          💎
+                        </div>
+                        <p className="text-xs font-black text-slate-200">
+                          لا يوجد داعمون مسجلون في المتصدرين حالياً
+                        </p>
+                        <p className="text-[10px] text-slate-400 max-w-xs leading-relaxed">
+                          يتم تسجيل الداعمين الحقيقيين فور إرسال الهدايا والدعم داخل الغرفة
+                        </p>
+                      </div>
+                    ) : (
+                      realSupporters.map((item) => (
+                        <div
+                          key={`diamonds-${item.rank}-${item.userId || item.name}`}
+                          onClick={() => {
+                            onClose();
+                            onSelectUserProfile({
+                              id: item.userId || `sup-dia-${item.rank}`,
+                              name: item.name,
+                              avatar: item.avatar,
+                              userId: item.userId || `9920${item.rank}`,
+                              country: 'السعودية',
+                              countryFlag: '🇸🇦'
+                            });
+                          }}
+                          style={{
+                            backgroundColor: leaderboardTheme.cardBg,
+                            borderColor: leaderboardTheme.cardBorderColor
+                          }}
+                          className="p-2.5 border rounded-2xl flex items-center justify-between text-xs transition-all cursor-pointer hover:scale-[1.01] relative overflow-visible shadow-sm"
+                        >
+                          <div className="flex items-center gap-2 overflow-visible max-w-[72%] relative z-10">
+                            {/* Rank Badge (#1 Gold, #2 Silver, #3 Bronze) */}
+                            <div
+                              className={`w-7 h-7 shrink-0 rounded-xl flex items-center justify-center font-black text-xs shadow-md border ${
+                                item.rank === 1
+                                  ? 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 border-amber-200 ring-2 ring-amber-400/50'
+                                  : item.rank === 2
+                                  ? 'bg-gradient-to-tr from-slate-300 to-slate-100 text-slate-950 border-slate-200 ring-1 ring-slate-300'
+                                  : item.rank === 3
+                                  ? 'bg-gradient-to-tr from-amber-700 to-amber-500 text-white border-amber-600'
+                                  : 'bg-white/10 text-slate-300 border-white/5'
+                              }`}
+                            >
+                              {item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : item.rank}
+                            </div>
 
-                          {/* Themed Avatar Frame (Top 1, 2, 3 with custom upload / preset support) */}
-                          {(() => {
-                            const frameConfig =
-                              item.rank === 1
-                                ? leaderboardTheme.rank1Frame
-                                : item.rank === 2
-                                ? leaderboardTheme.rank2Frame
-                                : item.rank === 3
-                                ? leaderboardTheme.rank3Frame
-                                : null;
+                            {/* Themed Avatar Frame (Top 1, 2, 3 with custom upload / preset support) */}
+                            {(() => {
+                              const frameConfig =
+                                item.rank === 1
+                                  ? leaderboardTheme.rank1Frame
+                                  : item.rank === 2
+                                  ? leaderboardTheme.rank2Frame
+                                  : item.rank === 3
+                                  ? leaderboardTheme.rank3Frame
+                                  : null;
 
-                            if (!frameConfig || item.rank > 3) {
-                              return (
-                                <img
-                                  src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                  alt={item.name}
-                                  className="w-8 h-8 rounded-full object-cover border border-white/20 shrink-0"
-                                />
-                              );
-                            }
-
-                            if (frameConfig.type === 'custom_upload' && frameConfig.customImageUrl) {
-                              return (
-                                <div className="relative shrink-0 flex items-center justify-center mr-1 z-20 overflow-visible w-9 h-9">
-                                  <img
-                                    src={frameConfig.customImageUrl}
-                                    alt="Custom Frame"
-                                    className="absolute inset-0 w-full h-full object-contain pointer-events-none z-30 scale-135"
-                                  />
+                              if (!frameConfig || item.rank > 3) {
+                                return (
                                   <img
                                     src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
                                     alt={item.name}
-                                    className="w-7 h-7 rounded-full object-cover relative z-10"
+                                    className="w-8 h-8 rounded-full object-cover border border-white/20 shrink-0"
                                   />
-                                </div>
-                              );
-                            }
+                                );
+                              }
 
-                            return (
-                              <div className="relative shrink-0 flex items-center justify-center mr-1 z-20 overflow-visible">
-                                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[13px] filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] z-30 select-none pointer-events-none">
-                                  {frameConfig.crownEmoji || (item.rank === 1 ? '👑' : item.rank === 2 ? '💎' : '✨')}
-                                </span>
-                                <div
-                                  className={`p-[2.5px] rounded-full bg-gradient-to-tr ${
-                                    frameConfig.borderGradient ||
-                                    (item.rank === 1
-                                      ? 'from-amber-600 via-yellow-300 to-amber-500'
-                                      : item.rank === 2
-                                      ? 'from-slate-400 via-white to-slate-300'
-                                      : 'from-amber-800 via-amber-500 to-yellow-600')
-                                  } relative z-20`}
-                                  style={{
-                                    boxShadow: `0 0 16px ${
-                                      frameConfig.glowColor ||
-                                      (item.rank === 1 ? 'rgba(251,191,36,0.85)' : item.rank === 2 ? 'rgba(226,232,240,0.8)' : 'rgba(217,119,6,0.8)')
-                                    }`
-                                  }}
-                                >
-                                  <div className="p-[1px] bg-[#121827] rounded-full">
+                              if (frameConfig.type === 'custom_upload' && frameConfig.customImageUrl) {
+                                return (
+                                  <div className="relative shrink-0 flex items-center justify-center mr-1 z-20 overflow-visible w-9 h-9">
+                                    <img
+                                      src={frameConfig.customImageUrl}
+                                      alt="Custom Frame"
+                                      className="absolute inset-0 w-full h-full object-contain pointer-events-none z-30 scale-135"
+                                    />
                                     <img
                                       src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
                                       alt={item.name}
-                                      className="w-8 h-8 rounded-full object-cover"
+                                      className="w-7 h-7 rounded-full object-cover relative z-10"
                                     />
                                   </div>
+                                );
+                              }
+
+                              return (
+                                <div className="relative shrink-0 flex items-center justify-center mr-1 z-20 overflow-visible">
+                                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[13px] filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] z-30 select-none pointer-events-none">
+                                    {frameConfig.crownEmoji || (item.rank === 1 ? '👑' : item.rank === 2 ? '💎' : '✨')}
+                                  </span>
+                                  <div
+                                    className={`p-[2.5px] rounded-full bg-gradient-to-tr ${
+                                      frameConfig.borderGradient ||
+                                      (item.rank === 1
+                                        ? 'from-amber-600 via-yellow-300 to-amber-500'
+                                        : item.rank === 2
+                                        ? 'from-slate-400 via-white to-slate-300'
+                                        : 'from-amber-800 via-amber-500 to-yellow-600')
+                                    } relative z-20`}
+                                    style={{
+                                      boxShadow: `0 0 16px ${
+                                        frameConfig.glowColor ||
+                                        (item.rank === 1 ? 'rgba(251,191,36,0.85)' : item.rank === 2 ? 'rgba(226,232,240,0.8)' : 'rgba(217,119,6,0.8)')
+                                      }`
+                                    }}
+                                  >
+                                    <div className="p-[1px] bg-[#121827] rounded-full">
+                                      <img
+                                        src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
+                                        alt={item.name}
+                                        className="w-8 h-8 rounded-full object-cover"
+                                      />
+                                    </div>
+                                  </div>
+                                  <span
+                                    className={`absolute -bottom-1 -right-0.5 text-[8px] rounded-full px-1 font-black shadow-md leading-tight z-30 pointer-events-none ${
+                                      frameConfig.badgeBg && frameConfig.badgeBg.startsWith('from-')
+                                        ? `bg-gradient-to-r ${frameConfig.badgeBg}`
+                                        : ''
+                                    }`}
+                                    style={{
+                                      background:
+                                        frameConfig.badgeBg && !frameConfig.badgeBg.startsWith('from-')
+                                          ? frameConfig.badgeBg
+                                          : undefined,
+                                      color:
+                                        frameConfig.badgeTextColor ||
+                                        (item.rank === 1 ? '#020617' : item.rank === 2 ? '#0f172a' : '#ffffff')
+                                    }}
+                                  >
+                                    {frameConfig.starBadgeEmoji || (item.rank === 1 ? '★' : '✦')}
+                                  </span>
                                 </div>
-                                <span
-                                  className={`absolute -bottom-1 -right-0.5 text-[8px] rounded-full px-1 font-black shadow-md leading-tight z-30 pointer-events-none ${
-                                    frameConfig.badgeBg && frameConfig.badgeBg.startsWith('from-')
-                                      ? `bg-gradient-to-r ${frameConfig.badgeBg}`
-                                      : ''
-                                  }`}
-                                  style={{
-                                    background:
-                                      frameConfig.badgeBg && !frameConfig.badgeBg.startsWith('from-')
-                                        ? frameConfig.badgeBg
-                                        : undefined,
-                                    color:
-                                      frameConfig.badgeTextColor ||
-                                      (item.rank === 1 ? '#020617' : item.rank === 2 ? '#0f172a' : '#ffffff')
-                                  }}
-                                >
-                                  {frameConfig.starBadgeEmoji || (item.rank === 1 ? '★' : '✦')}
-                                </span>
-                              </div>
-                            );
-                          })()}
+                              );
+                            })()}
 
-                          {/* Single Line User Metadata: Name, Level, VIP, N-Level */}
-                          <div className="flex items-center gap-1.5 truncate overflow-hidden min-w-0">
-                            <span
-                              className="font-black truncate text-[11px]"
-                              style={{ color: leaderboardTheme.cardNameColor }}
-                            >
-                              {item.name}
-                            </span>
-                            <span
-                              className="text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                              style={{ backgroundColor: leaderboardTheme.cardMetaLevelBg }}
-                            >
-                              Lv.{item.level}
-                            </span>
-                            <span
-                              className="text-slate-950 text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                              style={{ backgroundColor: leaderboardTheme.cardMetaVipBg }}
-                            >
-                              {item.vip}
-                            </span>
-                            <span
-                              className="text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                              style={{ backgroundColor: leaderboardTheme.cardMetaNLevelBg }}
-                            >
-                              {item.nLevel}
-                            </span>
+                            {/* Single Line User Metadata: Name, Level, VIP, N-Level */}
+                            <div className="flex items-center gap-1.5 truncate overflow-hidden min-w-0">
+                              <span
+                                className="font-black truncate text-[11px]"
+                                style={{ color: leaderboardTheme.cardNameColor }}
+                              >
+                                {item.name}
+                              </span>
+                              <span
+                                className="text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
+                                style={{ backgroundColor: leaderboardTheme.cardMetaLevelBg }}
+                              >
+                                Lv.{item.level}
+                              </span>
+                              <span
+                                className="text-slate-950 text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
+                                style={{ backgroundColor: leaderboardTheme.cardMetaVipBg }}
+                              >
+                                {item.vip}
+                              </span>
+                              <span
+                                className="text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
+                                style={{ backgroundColor: leaderboardTheme.cardMetaNLevelBg }}
+                              >
+                                {item.nLevel}
+                              </span>
+                            </div>
                           </div>
-                        </div>
 
-                        {/* Value */}
-                        <span
-                          className="font-mono font-black text-xs dir-ltr shrink-0 pr-1"
-                          style={{ color: leaderboardTheme.cardStatsNumberColor }}
-                        >
-                          {item.val}
-                        </span>
-                      </div>
-                    ))
+                          {/* Value */}
+                          <span
+                            className="font-mono font-black text-xs dir-ltr shrink-0 pr-1"
+                            style={{ color: leaderboardTheme.cardStatsNumberColor }}
+                          >
+                            {item.val}
+                          </span>
+                        </div>
+                      ))
+                    )
                   )}
 
                   {/* 2. CLUB RANKING LIST */}
                   {statsMainTab === 'club' && (
-                    (statsTimeFilter === '24h' ? [
-                      { rank: 1, name: 'نادي الفرسان الذهب', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '80', vip: 'VIP8', nLevel: 'N.16', val: '240,000 نقطة' },
-                      { rank: 2, name: 'نادي الملوك والعظماء', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100', level: '72', vip: 'VIP7', nLevel: 'N.14', val: '180,000 نقطة' },
-                      { rank: 3, name: 'نادي النجوم الأسطوري', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=100', level: '65', vip: 'VIP5', nLevel: 'N.11', val: '135,000 نقطة' }
-                    ] : [
-                      { rank: 1, name: 'نادي الصقور العالمية', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100', level: '90', vip: 'VIP9', nLevel: 'N.18', val: '1,250,000 نقطة' },
-                      { rank: 2, name: 'نادي الفرسان الذهب', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '80', vip: 'VIP8', nLevel: 'N.16', val: '980,000 نقطة' },
-                      { rank: 3, name: 'نادي عشاق الطرب', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100', level: '68', vip: 'VIP6', nLevel: 'N.12', val: '740,000 نقطة' }
-                    ]).map((item) => (
-                      <div
-                        key={`club-${statsTimeFilter}-${item.rank}-${item.name}`}
-                        style={{
-                          backgroundColor: leaderboardTheme.cardBg,
-                          borderColor: leaderboardTheme.cardBorderColor
-                        }}
-                        className="p-2.5 border rounded-2xl flex items-center justify-between text-xs transition-colors relative overflow-visible shadow-sm"
-                      >
-                        <div className="flex items-center gap-2 overflow-visible max-w-[72%] relative z-10">
-                          <div
-                            className={`w-7 h-7 shrink-0 rounded-xl flex items-center justify-center font-black text-xs shadow-md border ${
-                              item.rank === 1
-                                ? 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 border-amber-200'
-                                : item.rank === 2
-                                ? 'bg-gradient-to-tr from-slate-300 to-slate-100 text-slate-950 border-slate-200'
-                                : 'bg-gradient-to-tr from-amber-700 to-amber-500 text-white border-amber-600'
-                            }`}
-                          >
-                            {item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : '🥉'}
-                          </div>
-
-                          {/* Themed Avatar Frame */}
-                          {(() => {
-                            const frameConfig =
-                              item.rank === 1
-                                ? leaderboardTheme.rank1Frame
-                                : item.rank === 2
-                                ? leaderboardTheme.rank2Frame
-                                : item.rank === 3
-                                ? leaderboardTheme.rank3Frame
-                                : null;
-
-                            if (!frameConfig || item.rank > 3) {
-                              return (
-                                <img
-                                  src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                  alt={item.name}
-                                  className="w-8 h-8 rounded-full object-cover border border-white/20 shrink-0"
-                                />
-                              );
-                            }
-
-                            if (frameConfig.type === 'custom_upload' && frameConfig.customImageUrl) {
-                              return (
-                                <div className="relative shrink-0 flex items-center justify-center mr-1 z-20 overflow-visible w-9 h-9">
-                                  <img
-                                    src={frameConfig.customImageUrl}
-                                    alt="Custom Frame"
-                                    className="absolute inset-0 w-full h-full object-contain pointer-events-none z-30 scale-135"
-                                  />
-                                  <img
-                                    src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                    alt={item.name}
-                                    className="w-7 h-7 rounded-full object-cover relative z-10"
-                                  />
-                                </div>
-                              );
-                            }
-
-                            return (
-                              <div className="relative shrink-0 flex items-center justify-center mr-1 z-20 overflow-visible">
-                                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[13px] filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] z-30 select-none pointer-events-none">
-                                  {frameConfig.crownEmoji || (item.rank === 1 ? '👑' : item.rank === 2 ? '💎' : '✨')}
-                                </span>
-                                <div
-                                  className={`p-[2.5px] rounded-full bg-gradient-to-tr ${
-                                    frameConfig.borderGradient ||
-                                    (item.rank === 1
-                                      ? 'from-amber-600 via-yellow-300 to-amber-500'
-                                      : item.rank === 2
-                                      ? 'from-slate-400 via-white to-slate-300'
-                                      : 'from-amber-800 via-amber-500 to-yellow-600')
-                                  } relative z-20`}
-                                  style={{
-                                    boxShadow: `0 0 16px ${
-                                      frameConfig.glowColor ||
-                                      (item.rank === 1 ? 'rgba(251,191,36,0.85)' : item.rank === 2 ? 'rgba(226,232,240,0.8)' : 'rgba(217,119,6,0.8)')
-                                    }`
-                                  }}
-                                >
-                                  <div className="p-[1px] bg-[#121827] rounded-full">
-                                    <img
-                                      src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                      alt={item.name}
-                                      className="w-8 h-8 rounded-full object-cover"
-                                    />
-                                  </div>
-                                </div>
-                                <span
-                                  className={`absolute -bottom-1 -right-0.5 text-[8px] rounded-full px-1 font-black shadow-md leading-tight z-30 pointer-events-none ${
-                                    frameConfig.badgeBg && frameConfig.badgeBg.startsWith('from-')
-                                      ? `bg-gradient-to-r ${frameConfig.badgeBg}`
-                                      : ''
-                                  }`}
-                                  style={{
-                                    background:
-                                      frameConfig.badgeBg && !frameConfig.badgeBg.startsWith('from-')
-                                        ? frameConfig.badgeBg
-                                        : undefined,
-                                    color:
-                                      frameConfig.badgeTextColor ||
-                                      (item.rank === 1 ? '#020617' : item.rank === 2 ? '#0f172a' : '#ffffff')
-                                  }}
-                                >
-                                  {frameConfig.starBadgeEmoji || (item.rank === 1 ? '★' : '✦')}
-                                </span>
-                              </div>
-                            );
-                          })()}
-
-                          <div className="flex items-center gap-1.5 truncate overflow-hidden min-w-0">
-                            <span
-                              className="font-black truncate text-[11px]"
-                              style={{ color: leaderboardTheme.cardNameColor }}
-                            >
-                              {item.name}
-                            </span>
-                            <span
-                              className="text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                              style={{ backgroundColor: leaderboardTheme.cardMetaLevelBg }}
-                            >
-                              Lv.{item.level}
-                            </span>
-                            <span
-                              className="text-slate-950 text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                              style={{ backgroundColor: leaderboardTheme.cardMetaVipBg }}
-                            >
-                              {item.vip}
-                            </span>
-                            <span
-                              className="text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                              style={{ backgroundColor: leaderboardTheme.cardMetaNLevelBg }}
-                            >
-                              {item.nLevel}
-                            </span>
-                          </div>
-                        </div>
-
-                        <span
-                          className="font-mono font-black text-xs dir-ltr shrink-0 pr-1"
-                          style={{ color: leaderboardTheme.cardStatsNumberColor }}
-                        >
-                          {item.val}
-                        </span>
+                    <div className="py-14 flex flex-col items-center justify-center text-center space-y-2.5 text-slate-400">
+                      <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-2xl border border-white/10 shadow-inner">
+                        🛡️
                       </div>
-                    ))
+                      <p className="text-xs font-black text-slate-200">
+                        لا توجد أندية أو عائلات متصدرة حالياً
+                      </p>
+                      <p className="text-[10px] text-slate-400 max-w-xs leading-relaxed">
+                        تظهر إحصائيات الأندية والعائلات هنا فور مشاركتهم الفعالة في الغرفة
+                      </p>
+                    </div>
                   )}
 
                   {/* 3. CHARM RANKING LIST */}
                   {statsMainTab === 'charm' && (
-                    (statsTimeFilter === '24h' ? [
-                      { rank: 1, name: 'وردة الأمل', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=100', level: '70', vip: 'VIP7', nLevel: 'N.13', val: '2,850,000 ✨' },
-                      { rank: 2, name: 'ليلى الملكة', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '66', vip: 'VIP6', nLevel: 'N.11', val: '1,920,000 ✨' },
-                      { rank: 3, name: 'نغم السعادة', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100', level: '59', vip: 'VIP5', nLevel: 'N.9', val: '1,410,000 ✨' },
-                      { rank: 4, name: 'شمس الأصيل', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100', level: '45', vip: 'VIP3', nLevel: 'N.6', val: '890,000 ✨' }
-                    ] : [
-                      { rank: 1, name: 'أميرة القلوب', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=100', level: '92', vip: 'VIP9', nLevel: 'N.19', val: '28,500,000 ✨' },
-                      { rank: 2, name: 'وردة الأمل', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '70', vip: 'VIP7', nLevel: 'N.13', val: '19,200,000 ✨' },
-                      { rank: 3, name: 'ملكة الشرق', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100', level: '68', vip: 'VIP6', nLevel: 'N.12', val: '14,800,000 ✨' }
-                    ]).map((item) => (
-                      <div
-                        key={`charm-${statsTimeFilter}-${item.rank}-${item.name}`}
-                        onClick={() => {
-                          onClose();
-                          onSelectUserProfile({
-                            id: `sup-ch-${item.rank}`,
-                            name: item.name,
-                            avatar: item.avatar,
-                            userId: `9920${item.rank}`,
-                            country: 'السعودية',
-                            countryFlag: '🇸🇦'
-                          });
-                        }}
-                        style={{
-                          backgroundColor: leaderboardTheme.cardBg,
-                          borderColor: leaderboardTheme.cardBorderColor
-                        }}
-                        className="p-2.5 border rounded-2xl flex items-center justify-between text-xs transition-all cursor-pointer hover:scale-[1.01] relative overflow-visible shadow-sm"
-                      >
-                        <div className="flex items-center gap-2 overflow-visible max-w-[72%] relative z-10">
-                          <div
-                            className={`w-7 h-7 shrink-0 rounded-xl flex items-center justify-center font-black text-xs shadow-md border ${
-                              item.rank === 1
-                                ? 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 border-amber-200'
-                                : item.rank === 2
-                                ? 'bg-gradient-to-tr from-slate-300 to-slate-100 text-slate-950 border-slate-200'
-                                : item.rank === 3
-                                ? 'bg-gradient-to-tr from-amber-700 to-amber-500 text-white border-amber-600'
-                                : 'bg-white/10 text-slate-300 border-white/5'
-                            }`}
-                          >
-                            {item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : item.rank}
-                          </div>
-
-                          {/* Themed Avatar Frame */}
-                          {(() => {
-                            const frameConfig =
-                              item.rank === 1
-                                ? leaderboardTheme.rank1Frame
-                                : item.rank === 2
-                                ? leaderboardTheme.rank2Frame
-                                : item.rank === 3
-                                ? leaderboardTheme.rank3Frame
-                                : null;
-
-                            if (!frameConfig || item.rank > 3) {
-                              return (
-                                <img
-                                  src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                  alt={item.name}
-                                  className="w-8 h-8 rounded-full object-cover border border-white/20 shrink-0"
-                                />
-                              );
-                            }
-
-                            if (frameConfig.type === 'custom_upload' && frameConfig.customImageUrl) {
-                              return (
-                                <div className="relative shrink-0 flex items-center justify-center mr-1 z-20 overflow-visible w-9 h-9">
-                                  <img
-                                    src={frameConfig.customImageUrl}
-                                    alt="Custom Frame"
-                                    className="absolute inset-0 w-full h-full object-contain pointer-events-none z-30 scale-135"
-                                  />
-                                  <img
-                                    src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                    alt={item.name}
-                                    className="w-7 h-7 rounded-full object-cover relative z-10"
-                                  />
-                                </div>
-                              );
-                            }
-
-                            return (
-                              <div className="relative shrink-0 flex items-center justify-center mr-1 z-20 overflow-visible">
-                                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[13px] filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] z-30 select-none pointer-events-none">
-                                  {frameConfig.crownEmoji || (item.rank === 1 ? '👑' : item.rank === 2 ? '💎' : '✨')}
-                                </span>
-                                <div
-                                  className={`p-[2.5px] rounded-full bg-gradient-to-tr ${
-                                    frameConfig.borderGradient ||
-                                    (item.rank === 1
-                                      ? 'from-amber-600 via-yellow-300 to-amber-500'
-                                      : item.rank === 2
-                                      ? 'from-slate-400 via-white to-slate-300'
-                                      : 'from-amber-800 via-amber-500 to-yellow-600')
-                                  } relative z-20`}
-                                  style={{
-                                    boxShadow: `0 0 16px ${
-                                      frameConfig.glowColor ||
-                                      (item.rank === 1 ? 'rgba(251,191,36,0.85)' : item.rank === 2 ? 'rgba(226,232,240,0.8)' : 'rgba(217,119,6,0.8)')
-                                    }`
-                                  }}
-                                >
-                                  <div className="p-[1px] bg-[#121827] rounded-full">
-                                    <img
-                                      src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                      alt={item.name}
-                                      className="w-8 h-8 rounded-full object-cover"
-                                    />
-                                  </div>
-                                </div>
-                                <span
-                                  className={`absolute -bottom-1 -right-0.5 text-[8px] rounded-full px-1 font-black shadow-md leading-tight z-30 pointer-events-none ${
-                                    frameConfig.badgeBg && frameConfig.badgeBg.startsWith('from-')
-                                      ? `bg-gradient-to-r ${frameConfig.badgeBg}`
-                                      : ''
-                                  }`}
-                                  style={{
-                                    background:
-                                      frameConfig.badgeBg && !frameConfig.badgeBg.startsWith('from-')
-                                        ? frameConfig.badgeBg
-                                        : undefined,
-                                    color:
-                                      frameConfig.badgeTextColor ||
-                                      (item.rank === 1 ? '#020617' : item.rank === 2 ? '#0f172a' : '#ffffff')
-                                  }}
-                                >
-                                  {frameConfig.starBadgeEmoji || (item.rank === 1 ? '★' : '✦')}
-                                </span>
-                              </div>
-                            );
-                          })()}
-
-                          <div className="flex items-center gap-1.5 truncate overflow-hidden min-w-0">
-                            <span
-                              className="font-black truncate text-[11px]"
-                              style={{ color: leaderboardTheme.cardNameColor }}
-                            >
-                              {item.name}
-                            </span>
-                            <span
-                              className="text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                              style={{ backgroundColor: leaderboardTheme.cardMetaLevelBg }}
-                            >
-                              Lv.{item.level}
-                            </span>
-                            <span
-                              className="text-slate-950 text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                              style={{ backgroundColor: leaderboardTheme.cardMetaVipBg }}
-                            >
-                              {item.vip}
-                            </span>
-                            <span
-                              className="text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                              style={{ backgroundColor: leaderboardTheme.cardMetaNLevelBg }}
-                            >
-                              {item.nLevel}
-                            </span>
-                          </div>
-                        </div>
-
-                        <span
-                          className="font-mono font-black text-xs dir-ltr shrink-0 pr-1"
-                          style={{ color: leaderboardTheme.cardStatsNumberColor }}
-                        >
-                          {item.val}
-                        </span>
+                    <div className="py-14 flex flex-col items-center justify-center text-center space-y-2.5 text-slate-400">
+                      <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-2xl border border-white/10 shadow-inner">
+                        ✨
                       </div>
-                    ))
+                      <p className="text-xs font-black text-slate-200">
+                        لا توجد نقاط جاذبية مسجلة حالياً
+                      </p>
+                      <p className="text-[10px] text-slate-400 max-w-xs leading-relaxed">
+                        يتم احتساب نقاط الجاذبية لمستلمي الهدايا الحقيقيين على المايكات
+                      </p>
+                    </div>
                   )}
                 </motion.div>
               </AnimatePresence>
             </motion.div>
 
-            {/* Bottom Action / Footer Bar (Compact Minimalist Numbers & Indicators) */}
+            {/* Bottom Action / Footer Bar (Real Zeroed Out Clean Numbers) */}
             <div className="pt-2 border-t border-white/10 shrink-0">
               {statsMainTab === 'diamonds' && (
-                <div className="flex items-center justify-center gap-1.5 text-xs font-mono py-1">
-                  <span className="text-xs select-none">💎</span>
-                  <span
-                    className="font-black text-xs dir-ltr"
-                    style={{ color: leaderboardTheme.cardStatsNumberColor || '#38bdf8' }}
-                  >
-                    {statsTimeFilter === '24h' ? '40M' : '325.7M'}
-                  </span>
+                <div className="flex items-center justify-between px-2 py-1 text-xs">
+                  <div className="flex items-center gap-1.5 font-mono">
+                    <span className="text-xs select-none">💎</span>
+                    <span
+                      className="font-black text-xs dir-ltr"
+                      style={{ color: leaderboardTheme.cardStatsNumberColor || '#38bdf8' }}
+                    >
+                      {(totalRoomSupportDiamonds || 0).toLocaleString()} 💎
+                    </span>
+                  </div>
+                  {onResetStats && (totalRoomSupportDiamonds || 0) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm('هل أنت متأكد من رغبتك في تصفير إحصائيات الدعم في الغرفة؟')) {
+                          onResetStats();
+                        }
+                      }}
+                      className="text-[10px] text-rose-400 hover:text-rose-300 font-bold px-2 py-0.5 rounded-lg bg-rose-500/10 border border-rose-500/20 cursor-pointer transition-colors"
+                    >
+                      تصفير السجل 🧹
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -767,7 +501,7 @@ export const RoomLeaderboardStatsModal: React.FC<RoomLeaderboardStatsModalProps>
                       className="font-black text-xs dir-ltr"
                       style={{ color: leaderboardTheme.cardStatsNumberColor || '#38bdf8' }}
                     >
-                      {statsTimeFilter === '24h' ? '555K' : '2.97M'}
+                      0 نقطة
                     </span>
                   </div>
                 </div>
@@ -780,7 +514,7 @@ export const RoomLeaderboardStatsModal: React.FC<RoomLeaderboardStatsModalProps>
                     className="font-black text-xs dir-ltr"
                     style={{ color: leaderboardTheme.cardStatsNumberColor || '#38bdf8' }}
                   >
-                    {statsTimeFilter === '24h' ? '7.07M' : '62.5M'}
+                    0 نقطة جاذبية
                   </span>
                 </div>
               )}

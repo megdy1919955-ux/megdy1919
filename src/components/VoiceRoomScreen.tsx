@@ -1882,10 +1882,10 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       const saved = localStorage.getItem(`room_total_support_diamonds_${roomId}`);
       if (saved) {
         const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed) && parsed > 0) return parsed;
+        if (!isNaN(parsed) && parsed >= 0) return parsed;
       }
     } catch (e) {}
-    return 48500000; // القيمة التراكمية الأولية الشاملة لدعم الغرفة (48.5M 💎)
+    return 0; // تصفير كامل بدون أي محاكاة
   });
 
   const [leaderboardTheme, setLeaderboardTheme] = useState<LeaderboardThemeConfig>(() => getSavedLeaderboardTheme());
@@ -5208,6 +5208,17 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         }}
         onOpenFamilyModal={() => setShowFamilyModal(true)}
         totalRoomSupportDiamonds={totalRoomSupportDiamonds}
+        onResetStats={() => {
+          setTotalRoomSupportDiamonds(0);
+          try {
+            localStorage.setItem(`room_total_support_diamonds_${roomId}`, '0');
+            localStorage.removeItem(`room_supporters_leaderboard_${roomTitle || 'default'}`);
+            localStorage.removeItem(`room_supporters_leaderboard_${roomId || 'default'}`);
+          } catch (e) {}
+          setToastNotification('🧹 تم تصفير إحصائيات الدعم في الغرفة بنجاح');
+          setTimeout(() => setToastNotification(null), 2500);
+        }}
+        roomId={roomId || roomTitle}
       />
 
       {/* FAMILY MODAL (محمل عند الطلب فقط) */}
