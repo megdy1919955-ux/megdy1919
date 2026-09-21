@@ -17,6 +17,7 @@ export interface MicSeat {
   isInvitationPending?: boolean;
   inviterName?: string;
   speakingAura?: SpeakingAuraType;
+  vipLevel?: string;
 }
 
 export type SpeakingAuraType = 'default' | 'gold_fire' | 'neon_purple' | 'cyan_plasma' | 'royal_ruby';

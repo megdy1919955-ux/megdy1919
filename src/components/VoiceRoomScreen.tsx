@@ -215,6 +215,7 @@ import {
   isWallpaperInCache
 } from '../lib/roomCacheService';
 import { useRoomProgressiveHydration } from '../hooks/useRoomProgressiveHydration';
+import { getCurrentAuthUser, OWNER_DEV_ID } from '../lib/authService';
 
 export type { BadgeItem, MicSeat, ChatMessage, RoomEntranceEvent };
 
@@ -224,6 +225,7 @@ interface VoiceRoomScreenProps {
   hostName?: string;
   roomId?: string;
   isOwner?: boolean;
+  currentUserId?: string;
   currentUserName?: string;
   currentUserAvatar?: string;
   currentUserVip?: string | number;
@@ -239,6 +241,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   hostName = 'أميرة الشرق',
   roomId = '7798my-r',
   isOwner: isOwnerProp = true,
+  currentUserId,
   currentUserName,
   currentUserAvatar,
   currentUserVip,
@@ -247,6 +250,15 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   onOpenRecharge,
   onNavigateToRoom
 }) => {
+  // Current Authenticated User Information
+  const authUser = getCurrentAuthUser();
+  const myUserId = currentUserId || authUser?.id || '88492011';
+  const myUserName = currentUserName || authUser?.name || 'مستخدم النجم';
+  const myUserAvatar = currentUserAvatar || authUser?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200';
+  const myVipLevel = currentUserVip ? (typeof currentUserVip === 'number' ? `VIP${currentUserVip}` : currentUserVip) : (authUser?.vipTier || 'VIP1');
+  const isOwnerInitial = Boolean(isOwnerProp || authUser?.isOwner || authUser?.id === OWNER_DEV_ID);
+  const CURRENT_USER_PROFILE_ID = myUserId;
+
   // Current active room title state (allows seamless redirection & custom rename by Owner)
   const [currentRoomTitle, setCurrentRoomTitle] = useState<string>(() => {
     try {
@@ -278,59 +290,40 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   const [hostVipLevel, setHostVipLevel] = useState<number>(8);
   const [showSimulatorBar, setShowSimulatorBar] = useState<boolean>(false);
 
-  // Unified Flexible Mic Seats State (Seats 1 to 20 - Equal Permissions & Free Positioning)
-  const [allMicSeats, setAllMicSeats] = useState<MicSeat[]>([
-    {
-      id: 1,
-      userId: '8841001',
-      userName: 'أميرة الشرق',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300',
-      isHost: true,
-      isMuted: false,
-      isSpeaking: false,
-      isEmpty: false,
-      vipLevel: 'VIP8',
-    },
-    {
-      id: 2,
-      userId: '8842002',
-      userName: 'سارة الك...',
-      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=200',
-      isMuted: false,
-      isSpeaking: false,
-      isEmpty: false
-    },
-    {
-      id: 3,
-      userId: '8843003',
-      userName: 'خالد...',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-      isMuted: true,
-      isMutedByAdmin: true,
-      isSpeaking: false,
-      isEmpty: false
-    },
-    {
-      id: 4,
-      userId: '8844004',
-      userName: 'ريما...',
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200',
-      isMuted: false,
-      isSpeaking: false,
-      isEmpty: false
-    },
-    {
-      id: 5,
-      userName: '',
-      isEmpty: true,
-      isLocked: true
-    },
-    ...Array.from({ length: 15 }, (_, i) => ({
-      id: i + 6,
+  // Unified Flexible Mic Seats State (Seats 1 to 20 - Clean Real Seats without Fake Bots)
+  const [allMicSeats, setAllMicSeats] = useState<MicSeat[]>(() => {
+    const hostSeatItem: MicSeat = isOwnerInitial
+      ? {
+          id: 1,
+          userId: myUserId,
+          userName: myUserName,
+          avatar: myUserAvatar,
+          isHost: true,
+          isMuted: false,
+          isSpeaking: false,
+          isEmpty: false,
+          vipLevel: myVipLevel
+        }
+      : {
+          id: 1,
+          userId: 'host_seat_1',
+          userName: hostName || 'مضيف الغرفة',
+          avatar: roomAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300',
+          isHost: true,
+          isMuted: false,
+          isSpeaking: false,
+          isEmpty: false,
+          vipLevel: 'VIP8'
+        };
+
+    const remainingSeats: MicSeat[] = Array.from({ length: 19 }, (_, i) => ({
+      id: i + 2,
       userName: '',
       isEmpty: true
-    }))
-  ]);
+    }));
+
+    return [hostSeatItem, ...remainingSeats];
+  });
 
   // Host Seat derived dynamically for info panels and headers
   const hostSeat = allMicSeats.find((s) => s.isHost && !s.isEmpty) || allMicSeats[0];
@@ -347,8 +340,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     allMicSeatsRef.current = allMicSeats;
   }, [allMicSeats]);
 
-  // User Profile ID & Role Definitions
-  const CURRENT_USER_PROFILE_ID = '88492011';
+  // User Profile ID & Role Definitions (dynamic CURRENT_USER_PROFILE_ID set above)
 
   // Helper to map AppRole to Room Role
   const mapAppRoleToRoomRole = (role: AppRole): 'owner' | 'host' | 'moderator' | 'guest' => {
@@ -397,11 +389,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   const isCurrentAdmin = isOwner || isModerator;
 
   const [userMuteStates, setUserMuteStates] = useState<Record<string, boolean>>({
-    [CURRENT_USER_PROFILE_ID]: true,
-    '8841001': false,
-    '8842002': false,
-    '8843003': true,
-    '8844004': false
+    [CURRENT_USER_PROFILE_ID]: true
   });
 
   // Current User Mic Mute State derived directly from user profile account state
@@ -412,21 +400,21 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     (s) =>
       !s.isEmpty &&
       (s.userId === CURRENT_USER_PROFILE_ID ||
-        s.userName.includes('أنا'))
+        (isOwner && s.isHost && s.id === 1))
   );
   const isMySeatMutedByAdmin = Boolean(myOccupiedSeat?.isMuted && myOccupiedSeat?.isMutedByAdmin);
-  // Supporter Coins Balance with real-time automatic persistence (Default 100,000,000 for testing)
+  // Supporter Coins Balance with real-time automatic persistence
   const getInitialUserCoins = (): number => {
     try {
       const saved = localStorage.getItem('user_wallet_coins');
       if (saved) {
         const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed) && parsed > 0) return Math.max(parsed, 100000000);
+        if (!isNaN(parsed) && parsed >= 0) return parsed;
       }
     } catch {
       // ignore localStorage errors
     }
-    return 100000000;
+    return isOwner ? 100000000 : (authUser?.coins || 50000);
   };
 
   const [userCoinsBalance, setUserCoinsBalance] = useState<number>(getInitialUserCoins);
@@ -1390,14 +1378,14 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   };
 
   useEffect(() => {
-    const currentUserName = currentUserRole === 'host' ? (hostName || 'المضيف (أنا)') : 'أنا';
-    const currentUserAvatar = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200';
+    const realDisplayName = myUserName;
+    const realDisplayAvatar = myUserAvatar;
     const engine = new UnifiedRealtimeVoiceEngine({
       roomId,
       userId: `user_${CURRENT_USER_PROFILE_ID}`,
-      userName: currentUserName,
-      userAvatar: currentUserAvatar,
-      seatId: null,
+      userName: realDisplayName,
+      userAvatar: realDisplayAvatar,
+      seatId: isOwner ? 1 : null,
       preferredDriver: 'auto',
       isNoiseSuppressionEnabled
     });
@@ -1421,6 +1409,11 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       // Sync other connected devices/peers into mic seats if they occupy a seat
       setAllMicSeats((prev) => {
         return prev.map((seat) => {
+          // If local user occupies this seat, keep local user
+          if (!seat.isEmpty && (seat.userId === CURRENT_USER_PROFILE_ID || (isOwner && seat.id === 1 && seat.isHost))) {
+            return seat;
+          }
+
           // Check if a remote peer sits on this seat
           const remotePeer = peers.find((p) => p.seatId === seat.id && p.peerId !== engine.myPeerId);
           if (remotePeer) {
@@ -1434,14 +1427,37 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
               isHost: seat.id === 1
             };
           }
-          return seat;
+
+          // If no remote peer is on seat 1, and local user is not owner, show the room host
+          if (seat.id === 1 && !isOwner) {
+            return {
+              ...seat,
+              isEmpty: false,
+              userId: 'host_seat_1',
+              userName: hostName || 'مضيف الغرفة',
+              avatar: roomAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300',
+              isHost: true,
+              vipLevel: 'VIP8'
+            };
+          }
+
+          // All other vacant seats: strictly EMPTY!
+          return {
+            ...seat,
+            isEmpty: true,
+            userId: undefined,
+            userName: '',
+            avatar: '',
+            isSpeaking: false,
+            isHost: false
+          };
         });
       });
     };
 
     engine.getCurrentSeatId = () => {
       const mySeat = allMicSeatsRef.current.find(
-        (s) => !s.isEmpty && (s.userId === CURRENT_USER_PROFILE_ID || s.userName.includes('أنا'))
+        (s) => !s.isEmpty && (s.userId === CURRENT_USER_PROFILE_ID || (isOwner && s.isHost && s.id === 1))
       );
       return mySeat ? mySeat.id : null;
     };
@@ -2654,14 +2670,15 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             };
           }
           if (seat.id === targetSeatId) {
-            // Occupy new mic seat with host identity and persistent/slot mute state
+            // Occupy new mic seat with user identity and persistent/slot mute state
             return {
               ...seat,
               isEmpty: false,
               userId: CURRENT_USER_PROFILE_ID,
-              userName: currentSeat.userName,
-              avatar: currentSeat.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-              isHost: currentUserRole === 'host' ? true : currentSeat.isHost,
+              userName: myUserName,
+              avatar: myUserAvatar,
+              vipLevel: myVipLevel,
+              isHost: isOwner && targetSeatId === 1,
               isMuted: joinMuted,
               isMutedByAdmin: joinMutedByAdmin,
               isSpeaking: false
@@ -2694,9 +2711,10 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
               ...seat,
               isEmpty: false,
               userId: CURRENT_USER_PROFILE_ID,
-              userName: currentUserRole === 'host' ? 'المضيف (أنا)' : (currentUserName || 'أنا'),
-              avatar: currentUserAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-              isHost: currentUserRole === 'host' ? true : seat.isHost,
+              userName: myUserName,
+              avatar: myUserAvatar,
+              vipLevel: myVipLevel,
+              isHost: isOwner && targetSeatId === 1,
               isMuted: joinMuted,
               isMutedByAdmin: joinMutedByAdmin,
               isSpeaking: false,
@@ -2744,9 +2762,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       const seatsToVacate = prev.filter(
         (s) =>
           s.id === targetId ||
-          s.userId === CURRENT_USER_PROFILE_ID ||
-          s.userName.includes('أنا') ||
-          s.userName === 'المضيف (أنا)'
+          s.userId === CURRENT_USER_PROFILE_ID
       );
 
       // Reset counters ONLY when user completely steps down off-stage or leaves room (Mic_Vacant_Event)
@@ -2763,9 +2779,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       return prev.map((seat) => {
         if (
           seat.id === targetId ||
-          seat.userId === CURRENT_USER_PROFILE_ID ||
-          seat.userName.includes('أنا') ||
-          seat.userName === 'المضيف (أنا)'
+          seat.userId === CURRENT_USER_PROFILE_ID
         ) {
           // If the seat was admin-muted, the empty slot permanently preserves the muted red badge
           const shouldKeepAdminMute = Boolean(seat.isMutedByAdmin);

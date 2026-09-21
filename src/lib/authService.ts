@@ -7,6 +7,8 @@
 import { OWNER_DEV_ID } from './adminRoleService';
 import { setActiveAppRole } from './roleService';
 
+export { OWNER_DEV_ID };
+
 export interface AuthUserData {
   id: string;
   name: string;
@@ -67,54 +69,35 @@ export function getCurrentAuthUser(): AuthUserData | null {
   return null;
 }
 
+export const OWNER_ACCESS_PIN = '1919';
+
+/**
+ * التحقق من صلاحية المالك والمطور الرئيسي
+ */
+export function verifyOwnerCredentials(pinOrEmail: string): boolean {
+  const clean = pinOrEmail.trim().toLowerCase();
+  return clean === OWNER_ACCESS_PIN || clean === 'megdy1919@gmail.com' || clean === OWNER_DEV_ID.toLowerCase();
+}
+
 /**
  * جلب قائمة الحسابات المحفوظة على هذا الجوال (Device Google & Login Accounts)
- * إذا كان المستخدم قد سجل مسبقاً، يتعرف عليه تلقائياً مع إتاحة الحسابات المسجلة
+ * يرجع فقط الحسابات التي قام هذا الجوال بتسجيلها أو استخدامها بالفعل
  */
 export function getSavedDeviceAccounts(): AuthUserData[] {
-  if (typeof window === 'undefined') return [OWNER_USER_ACCOUNT];
+  if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(SAVED_DEVICE_ACCOUNTS_KEY);
     if (raw) {
       const accounts: AuthUserData[] = JSON.parse(raw);
-      // التأكد دائماً من وجود حساب المالك ضمن الحسابات المتاحة
-      if (!accounts.some(a => a.email === OWNER_USER_ACCOUNT.email || a.id === OWNER_USER_ACCOUNT.id)) {
-        return [OWNER_USER_ACCOUNT, ...accounts];
+      if (Array.isArray(accounts)) {
+        return accounts;
       }
-      return accounts;
     }
   } catch (e) {
     console.error('Failed to get device accounts:', e);
   }
 
-  // حسابات مقترحة افتراضية متصلة بالجوال للمستخدم لتسهيل التجربة
-  const defaultAccounts: AuthUserData[] = [
-    OWNER_USER_ACCOUNT,
-    {
-      id: '8492015',
-      name: 'صقر قريش',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-      email: 'saqr.live@gmail.com',
-      country: 'اليمن',
-      bio: 'عاشق الغرف الصوتية والشيلات ⭐',
-      coins: 250000,
-      diamonds: 140,
-      level: 18,
-      vipTier: 'VIP2',
-      superLegendLevel: 'SL1',
-      isOwner: false,
-      role: 'regular_user',
-      loginType: 'google',
-      createdAt: '2026-02-10',
-      lastLoginAt: 'أمس'
-    }
-  ];
-
-  try {
-    localStorage.setItem(SAVED_DEVICE_ACCOUNTS_KEY, JSON.stringify(defaultAccounts));
-  } catch {}
-
-  return defaultAccounts;
+  return [];
 }
 
 /**

@@ -129,26 +129,46 @@ import {
   isCertifiedBroker
 } from '../lib/adminRoleService';
 import { backNavigation } from '../lib/backNavigation';
+import { getCurrentAuthUser } from '../lib/authService';
 
 export const ProfileScreen: React.FC = () => {
   // State Management
   const [profile, setProfile] = useState<UserProfileData>(() => {
+    const authUser = getCurrentAuthUser();
     const saved = localStorage.getItem('user_profile_data');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return {
-          ...INITIAL_USER_PROFILE,
-          userId: parsed.id || INITIAL_USER_PROFILE.userId,
-          name: parsed.name || INITIAL_USER_PROFILE.name,
-          bio: parsed.bio || INITIAL_USER_PROFILE.bio,
-          country: parsed.country || INITIAL_USER_PROFILE.country,
-          avatarUrl: parsed.avatar || parsed.avatarUrl || INITIAL_USER_PROFILE.avatarUrl,
-        };
+        if (parsed.id && (!authUser || parsed.id === authUser.id)) {
+          return {
+            ...INITIAL_USER_PROFILE,
+            userId: parsed.id,
+            name: parsed.name || (authUser ? authUser.name : INITIAL_USER_PROFILE.name),
+            bio: parsed.bio || (authUser ? authUser.bio : INITIAL_USER_PROFILE.bio),
+            country: parsed.country || (authUser ? authUser.country : INITIAL_USER_PROFILE.country),
+            avatarUrl: parsed.avatar || parsed.avatarUrl || (authUser ? authUser.avatar : INITIAL_USER_PROFILE.avatarUrl),
+            vipTier: parsed.vipLevel || (authUser ? authUser.vipTier : 'VIP1'),
+            level: parsed.level || (authUser ? authUser.level : 1)
+          };
+        }
       } catch (e) {
         console.error(e);
       }
     }
+
+    if (authUser) {
+      return {
+        ...INITIAL_USER_PROFILE,
+        userId: authUser.id,
+        name: authUser.name,
+        bio: authUser.bio,
+        country: authUser.country,
+        avatarUrl: authUser.avatar,
+        vipTier: authUser.vipTier,
+        level: authUser.level
+      };
+    }
+
     return INITIAL_USER_PROFILE;
   });
 
@@ -2198,6 +2218,7 @@ export const ProfileScreen: React.FC = () => {
               hostName={activeVoiceRoom.host}
               roomId={activeVoiceRoom.id}
               isOwner={Boolean(activeVoiceRoom.isOwner || activeVoiceRoom.ownerId === profile.userId)}
+              currentUserId={profile.userId}
               currentUserName={profile.name}
               currentUserAvatar={profile.avatarUrl}
               currentUserVip={profile.vipTier || 'VIP6'}

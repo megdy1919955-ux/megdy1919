@@ -35,7 +35,7 @@ export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps>
   onSelectAccount
 }) => {
   const [deviceAccounts, setDeviceAccounts] = useState<AuthUserData[]>(() => getSavedDeviceAccounts());
-  const [isAddingNew, setIsAddingNew] = useState(false);
+  const [isAddingNew, setIsAddingNew] = useState(() => getSavedDeviceAccounts().length === 0);
   const [newEmail, setNewEmail] = useState('');
   const [newName, setNewName] = useState('');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
