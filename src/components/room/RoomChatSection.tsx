@@ -145,7 +145,7 @@ export const RoomChatSection = React.memo(
           </div>
         </div>
 
-        {/* 1. قائمة الإجراءات الخمسة المحددة (مستطيل عائم فوق كل شيء يظهر) */}
+        {/* 1. قائمة إجراءات الرسالة المستطيلة العائمة من الأعلى للأسفل (نسخ - تبليغ - ترجمة) */}
         <ChatMessageActionsModal
           isOpen={Boolean(selectedActionMessage)}
           onClose={() => {
@@ -154,20 +154,8 @@ export const RoomChatSection = React.memo(
           }}
           message={selectedActionMessage}
           anchorPosition={actionMenuPosition}
-          onReply={(msg) => {
-            onReplyTo({
-              id: msg.id,
-              userName: msg.userName,
-              text: msg.text,
-              avatar: msg.avatar
-            });
-            onOpenChatInput();
-          }}
           onReport={(msg) => {
             setReportingMessage(msg);
-          }}
-          onAddToBlacklist={(userName) => {
-            handleAddToBlacklist(userName);
           }}
           onToast={showToast}
         />

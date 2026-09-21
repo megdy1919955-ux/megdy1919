@@ -55,6 +55,27 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
   onScrollToMessage,
   onSelectMessage,
 }) => {
+  const longPressTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const isLongPressRef = React.useRef<boolean>(false);
+
+  const startLongPress = (clientX: number, clientY: number) => {
+    isLongPressRef.current = false;
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      onSelectMessage?.(msg, { x: clientX, y: clientY });
+    }, 400); // 400ms threshold for long press
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
   // 1. JOIN MESSAGE
   if (msg.isJoinMessage) {
     let vipText = 'VIP 6';
@@ -344,14 +365,25 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
             </button>
           </div>
 
-          {/* Dynamic Bubble */}
+          {/* Dynamic Bubble - يدعم الضغط المطول والنقر والزر الأيمن */}
           <div
-            onClick={(e) => {
-              e.stopPropagation();
+            onPointerDown={(e) => startLongPress(e.clientX, e.clientY)}
+            onPointerUp={cancelLongPress}
+            onPointerLeave={cancelLongPress}
+            onPointerCancel={cancelLongPress}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              cancelLongPress();
               onSelectMessage?.(msg, { x: e.clientX, y: e.clientY });
             }}
-            className={`${getBubbleStyles(msg.bubbleSkin, msg.isHost, msg.isGift)} cursor-pointer active:scale-[0.98] transition-transform`}
-            title="انقر لخيارات الرسالة (الرد، استنساخ، ترجمة، تبليغ، القائمة السوداء)"
+            onClick={(e) => {
+              e.stopPropagation();
+              // إذا كان تم تشغيل الضغط المطول نتوقف حتى لا يتكرر
+              if (isLongPressRef.current) return;
+              onSelectMessage?.(msg, { x: e.clientX, y: e.clientY });
+            }}
+            className={`${getBubbleStyles(msg.bubbleSkin, msg.isHost, msg.isGift)} cursor-pointer active:scale-[0.98] transition-transform select-none`}
+            title="اضغط مطولاً للخيارات: نسخ، تبليغ، ترجمة"
           >
             {/* Quoted Reply */}
             {msg.replyTo && (
