@@ -17,6 +17,7 @@ export * from './RoomInfoModalContainer';
 export * from './RoomChatInputModal';
 export * from './WallpaperBackgroundCachePill';
 export * from './RoomLeaderboardStatsModal';
+export * from './RoomClubModal';
 export * from './RoomCinemaSection';
 export * from './RoomTeamBattleSection';
 export * from './modals/RoomExitSection';

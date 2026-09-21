@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, X, Users } from 'lucide-react';
+import { Trophy, X, Shield, Sparkles, Diamond, ArrowRight, Loader2, RefreshCw } from 'lucide-react';
 import { LeaderboardThemeConfig } from '../../types/leaderboardTheme';
-import { isDeveloper } from '../../lib/roleService';
 import { UserProfileData } from '../AdvancedUserProfileModal';
+import { RoomClubModal } from './RoomClubModal';
+import { RoomStatsData } from '../../types/roomStats';
+import {
+  fetchLiveRoomStats,
+  getLocalRoomStats,
+  resetRoomStats,
+  joinRoomClub,
+  leaveRoomClub
+} from '../../services/roomStatsService';
 
 export interface RoomLeaderboardStatsModalProps {
   isOpen: boolean;
@@ -11,54 +19,93 @@ export interface RoomLeaderboardStatsModalProps {
   currentAppRole?: string;
   leaderboardTheme: LeaderboardThemeConfig;
   onSelectUserProfile: (user: UserProfileData) => void;
-  onOpenFamilyModal: () => void;
+  onOpenFamilyModal?: () => void;
   totalRoomSupportDiamonds?: number;
   initialTab?: 'diamonds' | 'club' | 'charm';
   onResetStats?: () => void;
   roomId?: string;
+  roomTitle?: string;
+  currentUserId?: string;
+  currentUserName?: string;
+  currentUserAvatar?: string;
 }
 
 export const RoomLeaderboardStatsModal: React.FC<RoomLeaderboardStatsModalProps> = React.memo(({
   isOpen,
   onClose,
-  currentAppRole,
   leaderboardTheme,
   onSelectUserProfile,
-  onOpenFamilyModal,
-  totalRoomSupportDiamonds = 0,
   initialTab = 'diamonds',
   onResetStats,
-  roomId
+  roomId = 'default',
+  roomTitle = 'غرفة الصوت الحية',
+  currentUserId = 'user_me',
+  currentUserName = 'أنا (المالك)',
+  currentUserAvatar = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100'
 }) => {
   const [statsMainTab, setStatsMainTab] = useState<'diamonds' | 'club' | 'charm'>(initialTab);
-  const [statsTimeFilter, setStatsTimeFilter] = useState<'24h' | 'all' | 'weekly'>('24h');
-  const [realSupporters, setRealSupporters] = useState<any[]>([]);
+  const [statsTimeFilter, setStatsTimeFilter] = useState<'24h' | 'all'>('24h');
+  const [statsData, setStatsData] = useState<RoomStatsData>(() => getLocalRoomStats(roomId));
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showClubModal, setShowClubModal] = useState<boolean>(false);
 
-  // Reset tab and filter on open, and load real supporters
+  // Lazy loading ON-DEMAND when modal opens (does not load when just entering the room)
   useEffect(() => {
     if (isOpen) {
       setStatsMainTab(initialTab);
-      setStatsTimeFilter('24h');
-      try {
-        const key = `room_supporters_leaderboard_${roomId || 'default'}`;
-        const raw = localStorage.getItem(key);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            setRealSupporters(parsed);
-            return;
-          }
-        }
-      } catch (e) {}
-      setRealSupporters([]);
+      setIsLoading(true);
+      fetchLiveRoomStats(roomId)
+        .then((data) => {
+          setStatsData(data);
+        })
+        .catch(() => {
+          setStatsData(getLocalRoomStats(roomId));
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     }
   }, [isOpen, initialTab, roomId]);
 
+  // Handle zeroing / reset of stats
+  const handleReset = async () => {
+    if (window.confirm('هل أنت متأكد من تصفير إحصائيات الداعمين والجاذبية في هذه الغرفة إلى 0؟')) {
+      setIsLoading(true);
+      const fresh = await resetRoomStats(roomId);
+      setStatsData(fresh);
+      setIsLoading(false);
+      if (onResetStats) {
+        onResetStats();
+      }
+    }
+  };
+
+  // Club Join / Leave
+  const handleJoinClub = async () => {
+    const updated = await joinRoomClub(roomId, {
+      userId: currentUserId,
+      name: currentUserName,
+      avatar: currentUserAvatar
+    });
+    setStatsData(updated);
+  };
+
+  const handleLeaveClub = async () => {
+    const updated = await leaveRoomClub(roomId, currentUserId);
+    setStatsData(updated);
+  };
+
+  const isClubMember = statsData.clubMembers.some(
+    (m) => m.userId === currentUserId || m.name === currentUserName
+  );
+
+  if (!isOpen) return null;
+
   return (
-    <AnimatePresence>
-      {isOpen && (
+    <>
+      <AnimatePresence>
         <div
-          className="fixed inset-0 z-50 bg-transparent flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto cursor-default select-none"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto cursor-default select-none"
           onClick={onClose}
         >
           <motion.div
@@ -73,21 +120,27 @@ export const RoomLeaderboardStatsModal: React.FC<RoomLeaderboardStatsModalProps>
               boxShadow: leaderboardTheme.modalGlowEffect || `0 0 35px ${leaderboardTheme.modalBorderColor}40`
             }}
             className={`w-full max-w-md ${!leaderboardTheme.modalBgCustomCss ? leaderboardTheme.modalBg : ''} border-t-2 sm:border-2 rounded-t-3xl sm:rounded-3xl p-4 text-white shadow-2xl h-[85vh] min-h-[85vh] max-h-[85vh] flex flex-col justify-between pointer-events-auto overflow-hidden sm:mb-4`}
+            dir="rtl"
           >
-            {/* Header & Main Tabs Row (Fixed Top Section) */}
+            {/* Header & Main Tabs Row */}
             <div className="space-y-2 shrink-0">
               <div className="flex items-center justify-between pb-1 border-b border-white/10">
                 <div className="flex items-center gap-2">
                   <Trophy
-                    className="w-5 h-5"
+                    className="w-5 h-5 text-amber-400"
                     style={{ color: leaderboardTheme.headerIconColor || '#fbbf24' }}
                   />
-                  <h2
-                    className="text-base font-black"
-                    style={{ color: leaderboardTheme.headerTitleColor || '#fde047' }}
-                  >
-                    إحصائيات ولوحة متصدري الغرفة
-                  </h2>
+                  <div>
+                    <h2
+                      className="text-sm font-black text-amber-300"
+                      style={{ color: leaderboardTheme.headerTitleColor || '#fde047' }}
+                    >
+                      إحصائيات ولوحة متصدري الغرفة
+                    </h2>
+                    <p className="text-[10px] text-slate-400 font-bold truncate max-w-[200px]">
+                      {roomTitle}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-1.5">
@@ -106,424 +159,391 @@ export const RoomLeaderboardStatsModal: React.FC<RoomLeaderboardStatsModalProps>
                 style={{ backgroundColor: leaderboardTheme.tabsContainerBg }}
               >
                 <button
-                  onClick={() => {
-                    setStatsMainTab('diamonds');
-                    setStatsTimeFilter('24h');
-                  }}
+                  type="button"
+                  onClick={() => setStatsMainTab('diamonds')}
                   style={{
                     background: statsMainTab === 'diamonds' ? leaderboardTheme.diamondsTabGradient : 'transparent',
                     color: statsMainTab === 'diamonds' ? leaderboardTheme.diamondsTabTextColor : leaderboardTheme.inactiveTabTextColor
                   }}
-                  className={`py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     statsMainTab === 'diamonds' ? 'shadow-md scale-[1.02]' : 'hover:text-white'
                   }`}
                 >
-                  💎 المساهمات
+                  <Diamond className="w-3.5 h-3.5" />
+                  <span>المساهمات</span>
                 </button>
 
                 <button
-                  onClick={() => {
-                    setStatsMainTab('club');
-                    setStatsTimeFilter('24h');
-                  }}
+                  type="button"
+                  onClick={() => setStatsMainTab('club')}
                   style={{
                     background: statsMainTab === 'club' ? leaderboardTheme.clubTabGradient : 'transparent',
                     color: statsMainTab === 'club' ? leaderboardTheme.clubTabTextColor : leaderboardTheme.inactiveTabTextColor
                   }}
-                  className={`py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     statsMainTab === 'club' ? 'shadow-md scale-[1.02]' : 'hover:text-white'
                   }`}
                 >
-                  🛡️ النادي
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>النادي</span>
                 </button>
 
                 <button
-                  onClick={() => {
-                    setStatsMainTab('charm');
-                    setStatsTimeFilter('24h');
-                  }}
+                  type="button"
+                  onClick={() => setStatsMainTab('charm')}
                   style={{
                     background: statsMainTab === 'charm' ? leaderboardTheme.charmTabGradient : 'transparent',
                     color: statsMainTab === 'charm' ? leaderboardTheme.charmTabTextColor : leaderboardTheme.inactiveTabTextColor
                   }}
-                  className={`py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     statsMainTab === 'charm' ? 'shadow-md scale-[1.02]' : 'hover:text-white'
                   }`}
                 >
-                  ✨ الجاذبية
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>الجاذبية</span>
                 </button>
               </div>
 
-              {/* Sub-time filters row */}
-              <div className="flex items-center justify-center gap-2 pt-1">
-                {statsMainTab === 'club' ? (
-                  <>
-                    <button
-                      onClick={() => setStatsTimeFilter('24h')}
-                      style={{
-                        backgroundColor: statsTimeFilter === '24h' ? leaderboardTheme.filterActiveBg : leaderboardTheme.filterInactiveBg,
-                        color: statsTimeFilter === '24h' ? leaderboardTheme.filterActiveText : '#94a3b8'
-                      }}
-                      className="px-3 py-1 rounded-full text-[11px] font-black transition-all cursor-pointer"
-                    >
-                      24 ساعة
-                    </button>
-                    <button
-                      onClick={() => setStatsTimeFilter('weekly')}
-                      style={{
-                        backgroundColor: statsTimeFilter === 'weekly' ? leaderboardTheme.filterActiveBg : leaderboardTheme.filterInactiveBg,
-                        color: statsTimeFilter === 'weekly' ? leaderboardTheme.filterActiveText : '#94a3b8'
-                      }}
-                      className="px-3 py-1 rounded-full text-[11px] font-black transition-all cursor-pointer"
-                    >
-                      أسبوعي
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => setStatsTimeFilter('24h')}
-                      style={{
-                        backgroundColor: statsTimeFilter === '24h' ? leaderboardTheme.filterActiveBg : leaderboardTheme.filterInactiveBg,
-                        color: statsTimeFilter === '24h' ? leaderboardTheme.filterActiveText : '#94a3b8'
-                      }}
-                      className="px-3 py-1 rounded-full text-[11px] font-black transition-all cursor-pointer"
-                    >
-                      24 ساعة
-                    </button>
-                    <button
-                      onClick={() => setStatsTimeFilter('all')}
-                      style={{
-                        backgroundColor: statsTimeFilter === 'all' ? leaderboardTheme.filterActiveBg : leaderboardTheme.filterInactiveBg,
-                        color: statsTimeFilter === 'all' ? leaderboardTheme.filterActiveText : '#94a3b8'
-                      }}
-                      className="px-3 py-1 rounded-full text-[11px] font-black transition-all cursor-pointer"
-                    >
-                      الإجمالي
-                    </button>
-                  </>
-                )}
-              </div>
+              {/* Sub-time filters row for Diamonds */}
+              {statsMainTab === 'diamonds' && (
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setStatsTimeFilter('24h')}
+                    className={`px-3 py-1 rounded-full text-[11px] font-black transition-all cursor-pointer ${
+                      statsTimeFilter === '24h'
+                        ? 'bg-cyan-500 text-white shadow-xs'
+                        : 'bg-white/5 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    24 ساعة
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatsTimeFilter('all')}
+                    className={`px-3 py-1 rounded-full text-[11px] font-black transition-all cursor-pointer ${
+                      statsTimeFilter === 'all'
+                        ? 'bg-cyan-500 text-white shadow-xs'
+                        : 'bg-white/5 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    الإجمالي
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Swipe Container for Leaderboard List (Fixed Flex-1 Scrollable Center Area) */}
-            <motion.div
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.15}
-              onDragEnd={(_e, info) => {
-                const threshold = 35;
-                const velocityThreshold = 120;
-                const tabsOrder: ('diamonds' | 'club' | 'charm')[] = ['diamonds', 'club', 'charm'];
-                const currentIdx = tabsOrder.indexOf(statsMainTab);
-
-                if (info.offset.x > threshold || info.velocity.x > velocityThreshold) {
-                  if (currentIdx < tabsOrder.length - 1) {
-                    setStatsMainTab(tabsOrder[currentIdx + 1]);
-                    setStatsTimeFilter('24h');
-                  }
-                } else if (info.offset.x < -threshold || info.velocity.x < -velocityThreshold) {
-                  if (currentIdx > 0) {
-                    setStatsMainTab(tabsOrder[currentIdx - 1]);
-                    setStatsTimeFilter('24h');
-                  }
-                }
-              }}
-              className="flex-1 min-h-0 overflow-y-auto no-scrollbar touch-pan-y cursor-grab active:cursor-grabbing my-2 pr-0.5"
-            >
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={statsMainTab + statsTimeFilter}
-                  initial={{ opacity: 0, x: statsMainTab === 'diamonds' ? 25 : statsMainTab === 'charm' ? -25 : 0 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: statsMainTab === 'diamonds' ? -25 : statsMainTab === 'charm' ? 25 : 0 }}
-                  transition={{ duration: 0.18, ease: 'easeOut' }}
-                  className="space-y-2"
-                >
-                  {/* 1. DIAMONDS LEADERBOARD LIST */}
+            {/* Main Content Area */}
+            <div className="flex-1 overflow-y-auto px-1 py-3 my-1">
+              {isLoading ? (
+                <div className="h-full flex flex-col items-center justify-center py-16 space-y-2 text-slate-400">
+                  <Loader2 className="w-7 h-7 animate-spin text-cyan-400" />
+                  <p className="text-xs font-bold">جاري تحميل إحصائيات الغرفة من السيرفر...</p>
+                </div>
+              ) : (
+                <>
+                  {/* TAB 1: المساهمات (الداعمين الحقيقيين) */}
                   {statsMainTab === 'diamonds' && (
-                    realSupporters.length === 0 ? (
-                      <div className="py-14 flex flex-col items-center justify-center text-center space-y-2.5 text-slate-400">
-                        <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-2xl border border-white/10 shadow-inner">
-                          💎
+                    <div className="space-y-2">
+                      {statsData.supporters.length === 0 ? (
+                        <div className="py-16 flex flex-col items-center justify-center text-center space-y-3">
+                          <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shadow-inner">
+                            <span className="text-3xl">💎</span>
+                          </div>
+                          <div className="space-y-1">
+                            <h3 className="text-sm font-black text-slate-200">
+                              لا يوجد داعمون مسجلون في المتصدرين حالياً
+                            </h3>
+                            <p className="text-[11px] text-slate-400 max-w-xs">
+                              يتم تسجيل الداعمين الحقيقيين فور إرسال الهدايا والدعم داخل الغرفة
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-xs font-black text-slate-200">
-                          لا يوجد داعمون مسجلون في المتصدرين حالياً
-                        </p>
-                        <p className="text-[10px] text-slate-400 max-w-xs leading-relaxed">
-                          يتم تسجيل الداعمين الحقيقيين فور إرسال الهدايا والدعم داخل الغرفة
-                        </p>
-                      </div>
-                    ) : (
-                      realSupporters.map((item) => (
-                        <div
-                          key={`diamonds-${item.rank}-${item.userId || item.name}`}
-                          onClick={() => {
-                            onClose();
-                            onSelectUserProfile({
-                              id: item.userId || `sup-dia-${item.rank}`,
-                              name: item.name,
-                              avatar: item.avatar,
-                              userId: item.userId || `9920${item.rank}`,
-                              country: 'السعودية',
-                              countryFlag: '🇸🇦'
-                            });
-                          }}
-                          style={{
-                            backgroundColor: leaderboardTheme.cardBg,
-                            borderColor: leaderboardTheme.cardBorderColor
-                          }}
-                          className="p-2.5 border rounded-2xl flex items-center justify-between text-xs transition-all cursor-pointer hover:scale-[1.01] relative overflow-visible shadow-sm"
-                        >
-                          <div className="flex items-center gap-2 overflow-visible max-w-[72%] relative z-10">
-                            {/* Rank Badge (#1 Gold, #2 Silver, #3 Bronze) */}
-                            <div
-                              className={`w-7 h-7 shrink-0 rounded-xl flex items-center justify-center font-black text-xs shadow-md border ${
-                                item.rank === 1
-                                  ? 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 border-amber-200 ring-2 ring-amber-400/50'
-                                  : item.rank === 2
-                                  ? 'bg-gradient-to-tr from-slate-300 to-slate-100 text-slate-950 border-slate-200 ring-1 ring-slate-300'
-                                  : item.rank === 3
-                                  ? 'bg-gradient-to-tr from-amber-700 to-amber-500 text-white border-amber-600'
-                                  : 'bg-white/10 text-slate-300 border-white/5'
-                              }`}
-                            >
-                              {item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : item.rank}
-                            </div>
-
-                            {/* Themed Avatar Frame (Top 1, 2, 3 with custom upload / preset support) */}
-                            {(() => {
-                              const frameConfig =
-                                item.rank === 1
-                                  ? leaderboardTheme.rank1Frame
-                                  : item.rank === 2
-                                  ? leaderboardTheme.rank2Frame
-                                  : item.rank === 3
-                                  ? leaderboardTheme.rank3Frame
-                                  : null;
-
-                              if (!frameConfig || item.rank > 3) {
-                                return (
-                                  <img
-                                    src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                    alt={item.name}
-                                    className="w-8 h-8 rounded-full object-cover border border-white/20 shrink-0"
-                                  />
-                                );
-                              }
-
-                              if (frameConfig.type === 'custom_upload' && frameConfig.customImageUrl) {
-                                return (
-                                  <div className="relative shrink-0 flex items-center justify-center mr-1 z-20 overflow-visible w-9 h-9">
-                                    <img
-                                      src={frameConfig.customImageUrl}
-                                      alt="Custom Frame"
-                                      className="absolute inset-0 w-full h-full object-contain pointer-events-none z-30 scale-135"
-                                    />
-                                    <img
-                                      src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                      alt={item.name}
-                                      className="w-7 h-7 rounded-full object-cover relative z-10"
-                                    />
-                                  </div>
-                                );
-                              }
-
-                              return (
-                                <div className="relative shrink-0 flex items-center justify-center mr-1 z-20 overflow-visible">
-                                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[13px] filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] z-30 select-none pointer-events-none">
-                                    {frameConfig.crownEmoji || (item.rank === 1 ? '👑' : item.rank === 2 ? '💎' : '✨')}
+                      ) : (
+                        statsData.supporters.map((item, idx) => (
+                          <div
+                            key={item.userId || idx}
+                            onClick={() =>
+                              onSelectUserProfile({
+                                id: item.userId,
+                                name: item.name,
+                                avatar: item.avatar,
+                                bio: 'داعم الغرفة',
+                                isVerified: true,
+                                level: parseInt(item.level) || 1,
+                                followersCount: 0,
+                                followingCount: 0,
+                                sentGiftsCount: item.amount,
+                                receivedGiftsCount: 0
+                              })
+                            }
+                            className="flex items-center justify-between p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span
+                                className={`w-6 text-center font-black text-xs ${
+                                  idx === 0
+                                    ? 'text-amber-400 text-sm'
+                                    : idx === 1
+                                    ? 'text-slate-300'
+                                    : idx === 2
+                                    ? 'text-amber-600'
+                                    : 'text-slate-500'
+                                }`}
+                              >
+                                {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
+                              </span>
+                              <img
+                                src={item.avatar}
+                                alt={item.name}
+                                className="w-10 h-10 rounded-full object-cover border border-cyan-400/30"
+                              />
+                              <div>
+                                <h4 className="text-xs font-black text-white truncate max-w-[130px]">
+                                  {item.name}
+                                </h4>
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 font-bold">
+                                    Lv.{item.level}
                                   </span>
-                                  <div
-                                    className={`p-[2.5px] rounded-full bg-gradient-to-tr ${
-                                      frameConfig.borderGradient ||
-                                      (item.rank === 1
-                                        ? 'from-amber-600 via-yellow-300 to-amber-500'
-                                        : item.rank === 2
-                                        ? 'from-slate-400 via-white to-slate-300'
-                                        : 'from-amber-800 via-amber-500 to-yellow-600')
-                                    } relative z-20`}
-                                    style={{
-                                      boxShadow: `0 0 16px ${
-                                        frameConfig.glowColor ||
-                                        (item.rank === 1 ? 'rgba(251,191,36,0.85)' : item.rank === 2 ? 'rgba(226,232,240,0.8)' : 'rgba(217,119,6,0.8)')
-                                      }`
-                                    }}
-                                  >
-                                    <div className="p-[1px] bg-[#121827] rounded-full">
-                                      <img
-                                        src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                        alt={item.name}
-                                        className="w-8 h-8 rounded-full object-cover"
-                                      />
-                                    </div>
-                                  </div>
-                                  <span
-                                    className={`absolute -bottom-1 -right-0.5 text-[8px] rounded-full px-1 font-black shadow-md leading-tight z-30 pointer-events-none ${
-                                      frameConfig.badgeBg && frameConfig.badgeBg.startsWith('from-')
-                                        ? `bg-gradient-to-r ${frameConfig.badgeBg}`
-                                        : ''
-                                    }`}
-                                    style={{
-                                      background:
-                                        frameConfig.badgeBg && !frameConfig.badgeBg.startsWith('from-')
-                                          ? frameConfig.badgeBg
-                                          : undefined,
-                                      color:
-                                        frameConfig.badgeTextColor ||
-                                        (item.rank === 1 ? '#020617' : item.rank === 2 ? '#0f172a' : '#ffffff')
-                                    }}
-                                  >
-                                    {frameConfig.starBadgeEmoji || (item.rank === 1 ? '★' : '✦')}
-                                  </span>
+                                  {item.vip && (
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-bold">
+                                      {item.vip}
+                                    </span>
+                                  )}
                                 </div>
-                              );
-                            })()}
-
-                            {/* Single Line User Metadata: Name, Level, VIP, N-Level */}
-                            <div className="flex items-center gap-1.5 truncate overflow-hidden min-w-0">
-                              <span
-                                className="font-black truncate text-[11px]"
-                                style={{ color: leaderboardTheme.cardNameColor }}
-                              >
-                                {item.name}
-                              </span>
-                              <span
-                                className="text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                                style={{ backgroundColor: leaderboardTheme.cardMetaLevelBg }}
-                              >
-                                Lv.{item.level}
-                              </span>
-                              <span
-                                className="text-slate-950 text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                                style={{ backgroundColor: leaderboardTheme.cardMetaVipBg }}
-                              >
-                                {item.vip}
-                              </span>
-                              <span
-                                className="text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                                style={{ backgroundColor: leaderboardTheme.cardMetaNLevelBg }}
-                              >
-                                {item.nLevel}
+                              </div>
+                            </div>
+                            <div className="text-left font-mono">
+                              <span className="text-xs font-black text-cyan-300">
+                                {item.amount.toLocaleString()} 💎
                               </span>
                             </div>
                           </div>
+                        ))
+                      )}
+                    </div>
+                  )}
 
-                          {/* Value */}
-                          <span
-                            className="font-mono font-black text-xs dir-ltr shrink-0 pr-1"
-                            style={{ color: leaderboardTheme.cardStatsNumberColor }}
+                  {/* TAB 2: نادي الغرفة */}
+                  {statsMainTab === 'club' && (
+                    <div className="space-y-4">
+                      {/* Club Showcase Card */}
+                      <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-950/70 via-slate-900 to-purple-950/50 border border-indigo-500/30 text-center space-y-2.5 relative overflow-hidden">
+                        <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-500 flex items-center justify-center text-2xl shadow-lg border border-cyan-300">
+                          🛡️
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-black text-white">نادي {roomTitle}</h4>
+                          <p className="text-[11px] text-cyan-200 mt-0.5">
+                            المجتمع الرسمي المخصص لأعضاء وداعمي الغرفة
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setShowClubModal(true)}
+                            className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:brightness-110 active:scale-95 text-white font-black text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
                           >
-                            {item.val}
+                            <span>فتح نافذة النادي والمميزات</span>
+                            <ArrowRight className="w-3.5 h-3.5 rotate-180" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Club summary info */}
+                      <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                          <span>حالة العضوية الحالية:</span>
+                          {isClubMember ? (
+                            <span className="text-emerald-300 font-black flex items-center gap-1">
+                              <span>مشترك بالنادي</span>
+                              <span>🛡️</span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">غير مشترك</span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                          <span>إجمالي أعضاء النادي:</span>
+                          <span className="text-white font-black font-mono">
+                            {statsData.clubMembers.length} عضو
                           </span>
                         </div>
-                      ))
-                    )
-                  )}
 
-                  {/* 2. CLUB RANKING LIST */}
-                  {statsMainTab === 'club' && (
-                    <div className="py-14 flex flex-col items-center justify-center text-center space-y-2.5 text-slate-400">
-                      <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-2xl border border-white/10 shadow-inner">
-                        🛡️
+                        {!isClubMember ? (
+                          <button
+                            type="button"
+                            onClick={handleJoinClub}
+                            className="w-full mt-2 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 text-xs font-black transition-all cursor-pointer"
+                          >
+                            + الانضمام للنادي مجاناً
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleLeaveClub}
+                            className="w-full mt-2 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-[11px] font-bold transition-all cursor-pointer"
+                          >
+                            مغادرة النادي
+                          </button>
+                        )}
                       </div>
-                      <p className="text-xs font-black text-slate-200">
-                        لا توجد أندية أو عائلات متصدرة حالياً
-                      </p>
-                      <p className="text-[10px] text-slate-400 max-w-xs leading-relaxed">
-                        تظهر إحصائيات الأندية والعائلات هنا فور مشاركتهم الفعالة في الغرفة
-                      </p>
+
+                      {/* Members list */}
+                      {statsData.clubMembers.length > 0 && (
+                        <div className="space-y-1.5">
+                          <h5 className="text-[11px] font-black text-slate-300 pr-1">
+                            أعضاء النادي المسجلون:
+                          </h5>
+                          {statsData.clubMembers.map((m, idx) => (
+                            <div
+                              key={m.userId || idx}
+                              className="p-2 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between"
+                            >
+                              <div className="flex items-center gap-2">
+                                <img
+                                  src={m.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100'}
+                                  alt={m.name}
+                                  className="w-7 h-7 rounded-full object-cover border border-cyan-400/40"
+                                />
+                                <span className="text-xs font-black text-white truncate max-w-[150px]">
+                                  {m.name}
+                                </span>
+                              </div>
+                              <span className="text-[9px] text-cyan-300 font-bold">عضو 🛡️</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* 3. CHARM RANKING LIST */}
+                  {/* TAB 3: الجاذبية (مستلمي الهدايا على المايك) */}
                   {statsMainTab === 'charm' && (
-                    <div className="py-14 flex flex-col items-center justify-center text-center space-y-2.5 text-slate-400">
-                      <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-2xl border border-white/10 shadow-inner">
-                        ✨
+                    <div className="space-y-2">
+                      <div className="p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/20 text-center">
+                        <p className="text-[11px] text-purple-200 font-bold">
+                          ✨ نقاط الجاذبية: تعبر عن إجمالي ما تلقاه المدعومون على المايكات داخل الغرفة
+                        </p>
                       </div>
-                      <p className="text-xs font-black text-slate-200">
-                        لا توجد نقاط جاذبية مسجلة حالياً
-                      </p>
-                      <p className="text-[10px] text-slate-400 max-w-xs leading-relaxed">
-                        يتم احتساب نقاط الجاذبية لمستلمي الهدايا الحقيقيين على المايكات
-                      </p>
+
+                      {statsData.charmReceivers.length === 0 ? (
+                        <div className="py-14 flex flex-col items-center justify-center text-center space-y-3">
+                          <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shadow-inner">
+                            <span className="text-3xl">✨</span>
+                          </div>
+                          <div className="space-y-1">
+                            <h3 className="text-sm font-black text-slate-200">
+                              لا توجد نقاط جاذبية مسجلة حالياً
+                            </h3>
+                            <p className="text-[11px] text-slate-400 max-w-xs">
+                              يتم احتساب نقاط الجاذبية لمستلمي الهدايا الحقيقيين عند الصعود على المايك واستلام الدعم
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        statsData.charmReceivers.map((item, idx) => (
+                          <div
+                            key={item.userId || idx}
+                            onClick={() =>
+                              onSelectUserProfile({
+                                id: item.userId,
+                                name: item.name,
+                                avatar: item.avatar,
+                                bio: 'مستلم الدعم في الغرفة',
+                                isVerified: true,
+                                level: parseInt(item.level) || 1,
+                                followersCount: 0,
+                                followingCount: 0,
+                                sentGiftsCount: 0,
+                                receivedGiftsCount: item.charmPoints
+                              })
+                            }
+                            className="flex items-center justify-between p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span
+                                className={`w-6 text-center font-black text-xs ${
+                                  idx === 0
+                                    ? 'text-amber-400 text-sm'
+                                    : idx === 1
+                                    ? 'text-slate-300'
+                                    : idx === 2
+                                    ? 'text-amber-600'
+                                    : 'text-slate-500'
+                                }`}
+                              >
+                                {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
+                              </span>
+                              <img
+                                src={item.avatar}
+                                alt={item.name}
+                                className="w-10 h-10 rounded-full object-cover border border-purple-400/30"
+                              />
+                              <div>
+                                <h4 className="text-xs font-black text-white truncate max-w-[130px]">
+                                  {item.name}
+                                </h4>
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-purple-500/20 text-purple-300 font-bold">
+                                    Lv.{item.level}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-left font-mono">
+                              <span className="text-xs font-black text-purple-300">
+                                {item.charmPoints.toLocaleString()} ✨
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   )}
-                </motion.div>
-              </AnimatePresence>
-            </motion.div>
-
-            {/* Bottom Action / Footer Bar (Real Zeroed Out Clean Numbers) */}
-            <div className="pt-2 border-t border-white/10 shrink-0">
-              {statsMainTab === 'diamonds' && (
-                <div className="flex items-center justify-between px-2 py-1 text-xs">
-                  <div className="flex items-center gap-1.5 font-mono">
-                    <span className="text-xs select-none">💎</span>
-                    <span
-                      className="font-black text-xs dir-ltr"
-                      style={{ color: leaderboardTheme.cardStatsNumberColor || '#38bdf8' }}
-                    >
-                      {(totalRoomSupportDiamonds || 0).toLocaleString()} 💎
-                    </span>
-                  </div>
-                  {onResetStats && (totalRoomSupportDiamonds || 0) > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (window.confirm('هل أنت متأكد من رغبتك في تصفير إحصائيات الدعم في الغرفة؟')) {
-                          onResetStats();
-                        }
-                      }}
-                      className="text-[10px] text-rose-400 hover:text-rose-300 font-bold px-2 py-0.5 rounded-lg bg-rose-500/10 border border-rose-500/20 cursor-pointer transition-colors"
-                    >
-                      تصفير السجل 🧹
-                    </button>
-                  )}
-                </div>
+                </>
               )}
+            </div>
 
-              {statsMainTab === 'club' && (
-                <div className="space-y-1.5">
-                  <button
-                    onClick={() => {
-                      onClose();
-                      onOpenFamilyModal();
-                    }}
-                    className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black text-xs rounded-xl shadow-md hover:brightness-110 cursor-pointer transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <Users className="w-4 h-4" />
-                    <span>انضم الآن إلى النادي العائلي 🛡️</span>
-                  </button>
-                  <div className="flex items-center justify-center gap-1.5 text-xs font-mono">
-                    <span className="text-xs select-none">🛡️</span>
-                    <span
-                      className="font-black text-xs dir-ltr"
-                      style={{ color: leaderboardTheme.cardStatsNumberColor || '#38bdf8' }}
-                    >
-                      0 نقطة
-                    </span>
-                  </div>
-                </div>
-              )}
+            {/* Bottom Footer Bar (Live Totals & Reset) */}
+            <div className="pt-2 border-t border-white/10 flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                onClick={handleReset}
+                className="px-2.5 py-1 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer"
+                title="تصفير إحصائيات الدعم في الغرفة"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>تصفير السجل</span>
+              </button>
 
-              {statsMainTab === 'charm' && (
-                <div className="flex items-center justify-center gap-1.5 text-xs font-mono py-1">
-                  <span className="text-xs select-none">✨</span>
-                  <span
-                    className="font-black text-xs dir-ltr"
-                    style={{ color: leaderboardTheme.cardStatsNumberColor || '#38bdf8' }}
-                  >
-                    0 نقطة جاذبية
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-1 font-mono font-black text-cyan-300 text-xs">
+                <span>💎</span>
+                <span>{statsData.totalDiamonds.toLocaleString()}</span>
+                <span>💎</span>
+              </div>
             </div>
           </motion.div>
         </div>
+      </AnimatePresence>
+
+      {/* Standalone Room Club Modal */}
+      {showClubModal && (
+        <RoomClubModal
+          isOpen={showClubModal}
+          onClose={() => setShowClubModal(false)}
+          roomTitle={roomTitle}
+          clubMembers={statsData.clubMembers}
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
+          currentUserAvatar={currentUserAvatar}
+          onJoinClub={handleJoinClub}
+          onLeaveClub={handleLeaveClub}
+        />
       )}
-    </AnimatePresence>
+    </>
   );
 });
-
-RoomLeaderboardStatsModal.displayName = 'RoomLeaderboardStatsModal';

@@ -216,6 +216,7 @@ import {
 } from '../lib/roomCacheService';
 import { useRoomProgressiveHydration } from '../hooks/useRoomProgressiveHydration';
 import { getCurrentAuthUser, OWNER_DEV_ID } from '../lib/authService';
+import { recordGiftSupport, resetRoomStats } from '../services/roomStatsService';
 
 export type { BadgeItem, MicSeat, ChatMessage, RoomEntranceEvent };
 
@@ -1882,11 +1883,24 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       const saved = localStorage.getItem(`room_total_support_diamonds_${roomId}`);
       if (saved) {
         const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed) && parsed >= 0) return parsed;
+        if (!isNaN(parsed) && parsed >= 0 && parsed < 40000000) return parsed;
+        // أرقام المحاكاة القديمة (48.5 مليون) يتم تصفيرها فوراً
+        localStorage.setItem(`room_total_support_diamonds_${roomId}`, '0');
       }
     } catch (e) {}
     return 0; // تصفير كامل بدون أي محاكاة
   });
+
+  // فحص وتنظيف قاطع لأي بقايا للأرقام الوهمية السابقة فور فتح الغرفة
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`room_total_support_diamonds_${roomId}`);
+      if (saved && parseInt(saved, 10) >= 40000000) {
+        localStorage.setItem(`room_total_support_diamonds_${roomId}`, '0');
+        setTotalRoomSupportDiamonds(0);
+      }
+    } catch (e) {}
+  }, [roomId]);
 
   const [leaderboardTheme, setLeaderboardTheme] = useState<LeaderboardThemeConfig>(() => getSavedLeaderboardTheme());
   const [showRoomInfoModal, setShowRoomInfoModal] = useState(false);
@@ -3619,6 +3633,21 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         } catch (e) {}
         return nextVal;
       });
+
+      // Record real supporter and charm recipient in room stats service & server
+      const targetSeatUser = allMicSeats.find((s) => s.userName === recipient);
+      recordGiftSupport(roomId || roomTitle || 'default', {
+        senderId: myUserId || 'user_me',
+        senderName: myUserName || 'أنا (الزائر)',
+        senderAvatar: myUserAvatar || '',
+        senderLevel: '1',
+        recipientId: targetSeatUser?.userId,
+        recipientName: recipient,
+        recipientAvatar: targetSeatUser?.userAvatar,
+        giftValue: totalValue
+      }).then((updated) => {
+        setTotalRoomSupportDiamonds(updated.totalDiamonds);
+      }).catch(() => {});
     }
 
     // ================= LUCKY REFUND DRAW MECHANISM =================
@@ -5218,7 +5247,11 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           setToastNotification('🧹 تم تصفير إحصائيات الدعم في الغرفة بنجاح');
           setTimeout(() => setToastNotification(null), 2500);
         }}
-        roomId={roomId || roomTitle}
+        roomId={roomId || roomTitle || 'default'}
+        roomTitle={roomTitle || 'غرفة الصوت الحية'}
+        currentUserId={myUserId || authUser?.id || 'user_me'}
+        currentUserName={myUserName || authUser?.name || 'أنا'}
+        currentUserAvatar={myUserAvatar || authUser?.avatar || ''}
       />
 
       {/* FAMILY MODAL (محمل عند الطلب فقط) */}

@@ -33,6 +33,202 @@ async function startServer() {
     });
   });
 
+  // In-memory persistent room stats store
+  interface ServerRoomSupporter {
+    rank: number;
+    userId: string;
+    name: string;
+    avatar: string;
+    level: string;
+    vip: string;
+    nLevel: string;
+    amount: number;
+    val: string;
+    updatedAt: number;
+  }
+
+  interface ServerRoomCharmReceiver {
+    rank: number;
+    userId: string;
+    name: string;
+    avatar: string;
+    level: string;
+    vip: string;
+    nLevel: string;
+    charmPoints: number;
+    val: string;
+    updatedAt: number;
+  }
+
+  interface ServerRoomClubMember {
+    userId: string;
+    name: string;
+    avatar: string;
+    joinedAt: number;
+    role: 'member' | 'vip' | 'manager';
+  }
+
+  interface ServerRoomStats {
+    roomId: string;
+    totalDiamonds: number;
+    supporters: ServerRoomSupporter[];
+    charmReceivers: ServerRoomCharmReceiver[];
+    clubMembers: ServerRoomClubMember[];
+    updatedAt: number;
+  }
+
+  const roomStatsMap = new Map<string, ServerRoomStats>();
+
+  const getOrCreateRoomStats = (roomId: string): ServerRoomStats => {
+    let stats = roomStatsMap.get(roomId);
+    if (!stats) {
+      stats = {
+        roomId,
+        totalDiamonds: 0,
+        supporters: [],
+        charmReceivers: [],
+        clubMembers: [],
+        updatedAt: Date.now()
+      };
+      roomStatsMap.set(roomId, stats);
+    }
+    return stats;
+  };
+
+  // GET live room stats on-demand (only loaded when user requests it)
+  app.get('/api/rooms/:roomId/stats', (req, res) => {
+    const roomId = req.params.roomId;
+    const stats = getOrCreateRoomStats(roomId);
+    res.json(stats);
+  });
+
+  // POST record support / gift in room
+  app.post('/api/rooms/:roomId/stats/record', (req, res) => {
+    const roomId = req.params.roomId;
+    const stats = getOrCreateRoomStats(roomId);
+    const {
+      senderId,
+      senderName,
+      senderAvatar,
+      senderLevel,
+      senderVip,
+      senderNLevel,
+      recipientId,
+      recipientName,
+      recipientAvatar,
+      recipientLevel,
+      recipientVip,
+      recipientNLevel,
+      giftValue
+    } = req.body;
+
+    const val = Number(giftValue) || 0;
+    if (val > 0) {
+      stats.totalDiamonds += val;
+
+      // Update supporter
+      const existingSup = stats.supporters.find((s) => s.userId === senderId);
+      if (existingSup) {
+        existingSup.amount += val;
+        existingSup.val = `${existingSup.amount.toLocaleString()} 💎`;
+        existingSup.name = senderName || existingSup.name;
+        existingSup.avatar = senderAvatar || existingSup.avatar;
+        existingSup.updatedAt = Date.now();
+      } else {
+        stats.supporters.push({
+          rank: 0,
+          userId: senderId || `user_${Date.now()}`,
+          name: senderName || 'داعم',
+          avatar: senderAvatar || '',
+          level: senderLevel || '1',
+          vip: senderVip || 'VIP1',
+          nLevel: senderNLevel || 'N.1',
+          amount: val,
+          val: `${val.toLocaleString()} 💎`,
+          updatedAt: Date.now()
+        });
+      }
+
+      stats.supporters.sort((a, b) => b.amount - a.amount);
+      stats.supporters.forEach((s, idx) => {
+        s.rank = idx + 1;
+      });
+
+      // Update charm receiver if target is a mic occupant
+      if (recipientId && recipientName && recipientName !== 'الجميع') {
+        const existingCharm = stats.charmReceivers.find((c) => c.userId === recipientId);
+        if (existingCharm) {
+          existingCharm.charmPoints += val;
+          existingCharm.val = `${existingCharm.charmPoints.toLocaleString()} ✨`;
+          existingCharm.updatedAt = Date.now();
+        } else {
+          stats.charmReceivers.push({
+            rank: 0,
+            userId: recipientId,
+            name: recipientName,
+            avatar: recipientAvatar || '',
+            level: recipientLevel || '1',
+            vip: recipientVip || 'VIP1',
+            nLevel: recipientNLevel || 'N.1',
+            charmPoints: val,
+            val: `${val.toLocaleString()} ✨`,
+            updatedAt: Date.now()
+          });
+        }
+
+        stats.charmReceivers.sort((a, b) => b.charmPoints - a.charmPoints);
+        stats.charmReceivers.forEach((c, idx) => {
+          c.rank = idx + 1;
+        });
+      }
+
+      stats.updatedAt = Date.now();
+    }
+
+    res.json(stats);
+  });
+
+  // POST join room club
+  app.post('/api/rooms/:roomId/club/join', (req, res) => {
+    const roomId = req.params.roomId;
+    const stats = getOrCreateRoomStats(roomId);
+    const { userId, name, avatar } = req.body;
+    if (userId && !stats.clubMembers.some((m) => m.userId === userId)) {
+      stats.clubMembers.unshift({
+        userId,
+        name: name || 'عضو النادي',
+        avatar: avatar || '',
+        joinedAt: Date.now(),
+        role: 'member'
+      });
+      stats.updatedAt = Date.now();
+    }
+    res.json({ success: true, clubMembers: stats.clubMembers });
+  });
+
+  // POST leave room club
+  app.post('/api/rooms/:roomId/club/leave', (req, res) => {
+    const roomId = req.params.roomId;
+    const stats = getOrCreateRoomStats(roomId);
+    const { userId } = req.body;
+    if (userId) {
+      stats.clubMembers = stats.clubMembers.filter((m) => m.userId !== userId);
+      stats.updatedAt = Date.now();
+    }
+    res.json({ success: true, clubMembers: stats.clubMembers });
+  });
+
+  // POST reset room stats
+  app.post('/api/rooms/:roomId/stats/reset', (req, res) => {
+    const roomId = req.params.roomId;
+    const stats = getOrCreateRoomStats(roomId);
+    stats.totalDiamonds = 0;
+    stats.supporters = [];
+    stats.charmReceivers = [];
+    stats.updatedAt = Date.now();
+    res.json({ success: true, stats });
+  });
+
   // ZEGOCLOUD Configuration and Token Generation Endpoints
   app.get('/api/zego/config', (req, res) => {
     const isConfigured = Boolean(process.env.ZEGO_SERVER_SECRET && process.env.ZEGO_APP_ID);
