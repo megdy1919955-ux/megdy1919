@@ -33,6 +33,8 @@ export interface TopOptionsMenuModalProps {
   onStartTeamBattle?: () => void;
   onStartRoomPK?: () => void;
   onOpenModeratorStats?: () => void;
+  onOpenRoomStats?: () => void;
+  onOpenRoomInfo?: () => void;
   onTriggerToast?: (msg: string) => void;
 }
 
@@ -62,6 +64,8 @@ export const TopOptionsMenuModal: React.FC<TopOptionsMenuModalProps> = ({
   onStartTeamBattle,
   onStartRoomPK,
   onOpenModeratorStats,
+  onOpenRoomStats,
+  onOpenRoomInfo,
   onTriggerToast,
 }) => {
   const [showPasscodeDialog, setShowPasscodeDialog] = useState(false);
@@ -71,8 +75,8 @@ export const TopOptionsMenuModal: React.FC<TopOptionsMenuModalProps> = ({
   const isModerator = !isDev && !isRoomOwner && (currentAppRole === 'moderator' || currentUserRole === 'moderator');
   const isRegularUser = !isDev && !isRoomOwner && !isModerator;
 
-  // إخفاء القائمة كلياً للمستخدم العادي (تظهر فقط للمشرف وصاحب الروم والمبرمج)
-  if (!isOpen || currentUserRole === 'host' || isRegularUser) return null;
+  // التحقق من فتح النافذة
+  if (!isOpen) return null;
 
   const handlePasscodeSubmit = (code: string) => {
     if (!code || code.length !== 6) {
@@ -171,6 +175,8 @@ export const TopOptionsMenuModal: React.FC<TopOptionsMenuModalProps> = ({
     onStartTeamBattle,
     onStartRoomPK,
     onOpenModeratorStats,
+    onOpenRoomStats,
+    onOpenRoomInfo
   });
 
   return (

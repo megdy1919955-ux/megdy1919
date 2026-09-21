@@ -63,20 +63,18 @@ export const RoomHeader: React.FC<RoomHeaderProps> = ({
         </button>
 
         {/* Three-Dots Options Menu Button */}
-        {!isRegularUser && (
-          <button
-            id="room-top-more-options"
-            onClick={onOpenOptionsMenu}
-            style={{
-              backgroundColor: config.topMoreBtnBg || '#1A2132'
-            }}
-            className="w-7.5 h-7.5 rounded-full hover:brightness-125 border border-white/10 flex items-center justify-center text-slate-200 cursor-pointer relative transition-colors active:scale-95 shadow-xs"
-            title="خيارات وإعدادات الغرفة"
-          >
-            <MoreHorizontal className="w-4 h-4" />
-            <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-red-500 ring-1.5 ring-[#0B0E17]" />
-          </button>
-        )}
+        <button
+          id="room-top-more-options"
+          onClick={onOpenOptionsMenu}
+          style={{
+            backgroundColor: config.topMoreBtnBg || '#1A2132'
+          }}
+          className="w-7.5 h-7.5 rounded-full hover:brightness-125 border border-white/10 flex items-center justify-center text-slate-200 cursor-pointer relative transition-colors active:scale-95 shadow-xs"
+          title="خيارات وإعدادات الغرفة"
+        >
+          <MoreHorizontal className="w-4 h-4" />
+          <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-red-500 ring-1.5 ring-[#0B0E17]" />
+        </button>
 
         {/* Power/Close Button */}
         <button

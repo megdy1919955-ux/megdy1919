@@ -15,6 +15,8 @@ import {
   Swords,
   Zap,
   ShieldAlert,
+  Trophy,
+  Users,
   type LucideIcon
 } from 'lucide-react';
 
@@ -48,6 +50,8 @@ export interface BuildTopMenuItemsParams {
   onStartTeamBattle?: () => void;
   onStartRoomPK?: () => void;
   onOpenModeratorStats?: () => void;
+  onOpenRoomStats?: () => void;
+  onOpenRoomInfo?: () => void;
 }
 
 export function buildTopMenuItems(params: BuildTopMenuItemsParams): TopMenuItem[] {
@@ -69,7 +73,9 @@ export function buildTopMenuItems(params: BuildTopMenuItemsParams): TopMenuItem[
     onOpenMicMode,
     onStartTeamBattle,
     onStartRoomPK,
-    onOpenModeratorStats
+    onOpenModeratorStats,
+    onOpenRoomStats,
+    onOpenRoomInfo
   } = params;
 
   return [
@@ -212,6 +218,26 @@ export function buildTopMenuItems(params: BuildTopMenuItemsParams): TopMenuItem[
       action: onOpenModeratorStats,
       permissionRole: 'admin' as const,
       deniedMessage: 'إحصائيات وسجلات المشرفين متاحة لمالك الغرفة والمشرفين فقط 🛡️',
+      badge: false,
+    },
+    {
+      id: 'room_stats',
+      title: 'إحصائيات الروم',
+      icon: Trophy,
+      bgClass: 'bg-gradient-to-tr from-amber-400 to-yellow-500 text-slate-950 shadow-amber-500/30',
+      action: onOpenRoomStats,
+      permissionRole: 'all' as const,
+      deniedMessage: '',
+      badge: false,
+    },
+    {
+      id: 'room_info_profile',
+      title: 'معلومات الروم',
+      icon: Users,
+      bgClass: 'bg-gradient-to-tr from-teal-500 to-emerald-600 text-white shadow-teal-500/30',
+      action: onOpenRoomInfo,
+      permissionRole: 'all' as const,
+      deniedMessage: '',
       badge: false,
     },
   ];

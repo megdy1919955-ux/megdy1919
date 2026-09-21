@@ -2504,15 +2504,25 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       setTargetInviteSeatId(seatId);
       setShowSeatActionModal(true);
       return;
-    } else if (
+    }
+
+    const isCurrentUserSeat = !targetSeat.isEmpty && (
+      targetSeat.userId === CURRENT_USER_PROFILE_ID ||
+      targetSeat.userId === myUserId ||
+      (Boolean(authUser?.id) && targetSeat.userId === authUser?.id) ||
+      targetSeat.userName === myUserName ||
+      (isOwner && targetSeat.id === 1) ||
       targetSeat.userName === 'أنا (انضمام)' ||
       targetSeat.userName === 'أنا' ||
       targetSeat.userName === 'المضيف (أنا)' ||
       targetSeat.userName.includes('أنا')
-    ) {
-      // RESTORED: Show Quick Mic & Host Options Modal (الوقوف ومشاهدة، بيانات الهدية، كتم المايك، ملاحظات، هدية)
+    );
+
+    if (isCurrentUserSeat) {
+      // RESTORED: Show Quick Mic & Host Options Modal (المستطيلات الثلاثة: الوقوف ومشاهدة، إهداء هدية، الملف الشخصي)
       setSelectedSeatForQuickMic(seatId);
       setShowQuickMicOptionsModal(true);
+      return;
     } else {
       // 3. OTHER USER'S SEAT / HOST: Show Advanced User Profile Modal
       setSelectedUserForProfile({
@@ -2762,7 +2772,11 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       const seatsToVacate = prev.filter(
         (s) =>
           s.id === targetId ||
-          s.userId === CURRENT_USER_PROFILE_ID
+          s.userId === CURRENT_USER_PROFILE_ID ||
+          s.userId === myUserId ||
+          (Boolean(authUser?.id) && s.userId === authUser?.id) ||
+          s.userName === myUserName ||
+          s.userName.includes('أنا')
       );
 
       // Reset counters ONLY when user completely steps down off-stage or leaves room (Mic_Vacant_Event)
@@ -2779,7 +2793,11 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       return prev.map((seat) => {
         if (
           seat.id === targetId ||
-          seat.userId === CURRENT_USER_PROFILE_ID
+          seat.userId === CURRENT_USER_PROFILE_ID ||
+          seat.userId === myUserId ||
+          (Boolean(authUser?.id) && seat.userId === authUser?.id) ||
+          seat.userName === myUserName ||
+          seat.userName.includes('أنا')
         ) {
           // If the seat was admin-muted, the empty slot permanently preserves the muted red badge
           const shouldKeepAdminMute = Boolean(seat.isMutedByAdmin);
@@ -6051,14 +6069,16 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             isOpen={showQuickMicOptionsModal}
             onClose={() => setShowQuickMicOptionsModal(false)}
             seatId={selectedSeatForQuickMic || undefined}
-            userName={currentUserRole === 'host' ? 'المضيف (أنا)' : 'أنا'}
-            isHost={currentUserRole === 'host' || selectedSeatForQuickMic === 1 || Boolean(selectedSeatForQuickMic && allMicSeats.find((s) => s.id === selectedSeatForQuickMic)?.isHost)}
+            userName={myUserName}
+            avatar={myUserAvatar}
+            userId={myUserId}
+            isHost={Boolean(isOwner || currentUserRole === 'host' || selectedSeatForQuickMic === 1)}
             isMuted={
               selectedSeatForQuickMic
                 ? Boolean(allMicSeats.find((s) => s.id === selectedSeatForQuickMic)?.isMuted)
                 : false
             }
-            canControlMic={isCurrentAdmin || isOwner}
+            canControlMic={true}
             isCurrentAdmin={isCurrentAdmin}
             onToggleMute={() => {
               if (selectedSeatForQuickMic) {
@@ -6070,19 +6090,23 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
               setShowQuickMicOptionsModal(false);
               const mySeatObj = selectedSeatForQuickMic ? allMicSeats.find((s) => s.id === selectedSeatForQuickMic) : null;
               setSelectedUserForProfile({
-                id: 'my_user_profile',
-                name: currentUserRole === 'host' ? 'المضيف (أنا)' : 'أنا',
-                avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-                userId: '88492011',
-                country: 'السعودية',
-                countryFlag: '🇸🇦',
-                isHost: currentUserRole === 'host',
+                id: myUserId,
+                name: myUserName,
+                avatar: myUserAvatar,
+                userId: myUserId,
+                country: authUser?.country || 'اليمن',
+                countryFlag: authUser?.country === 'السعودية' ? '🇸🇦' : '🇾🇪',
+                isHost: Boolean(isOwner || currentUserRole === 'host' || selectedSeatForQuickMic === 1),
                 isMuted: mySeatObj ? mySeatObj.isMuted : false,
                 isMutedByAdmin: mySeatObj ? mySeatObj.isMutedByAdmin : false,
                 seatId: selectedSeatForQuickMic || 1,
+                vip: myVipLevel,
+                vipLevel: (authUser as any)?.vipLevel || (authUser as any)?.vip || 8,
+                level: authUser?.level || 1,
+                bio: authUser?.bio || 'أهلاً بكم في ملفي الشخصي في سوبر ليجند 🌟',
                 badges: [
-                  { id: 'b1', label: currentUserRole === 'host' ? 'المضيف 👑' : 'متحدث المايك', icon: '👑', bgClass: 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black' },
-                  { id: 'b2', label: 'VIP 10', icon: '💎', bgClass: 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold' },
+                  { id: 'b1', label: isOwner ? 'المالك والمبرمج 👑' : (currentUserRole === 'host' ? 'المضيف 👑' : 'متحدث المايك'), icon: '👑', bgClass: 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black' },
+                  { id: 'b2', label: myVipLevel, icon: '💎', bgClass: 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold' },
                   { id: 'b3', label: 'سوبر أسطورة', icon: '🔥', bgClass: 'bg-gradient-to-r from-red-500 to-amber-500 text-white font-bold' }
                 ],
                 cpRelation: {
@@ -6419,6 +6443,14 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         onOpenModeratorStats={() => {
           setShowTopOptionsMenuModal(false);
           setShowModeratorStatsModal(true);
+        }}
+        onOpenRoomStats={() => {
+          setShowTopOptionsMenuModal(false);
+          setShowRoomSupportModal(true);
+        }}
+        onOpenRoomInfo={() => {
+          setShowTopOptionsMenuModal(false);
+          setShowRoomInfoModal(true);
         }}
         onTriggerToast={(msg) => {
           setToastNotification(msg);

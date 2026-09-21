@@ -30,6 +30,8 @@ export interface RoomTopOptionsControllerProps {
   onStartTeamBattle: () => void;
   onStartRoomPK: () => void;
   onOpenModeratorStats: () => void;
+  onOpenRoomStats?: () => void;
+  onOpenRoomInfo?: () => void;
   onTriggerToast: (msg: string) => void;
 }
 
@@ -63,6 +65,8 @@ export const RoomTopOptionsController: React.FC<RoomTopOptionsControllerProps> =
   onStartTeamBattle,
   onStartRoomPK,
   onOpenModeratorStats,
+  onOpenRoomStats,
+  onOpenRoomInfo,
   onTriggerToast
 }) => {
   if (!isOpen) return null;
@@ -95,6 +99,8 @@ export const RoomTopOptionsController: React.FC<RoomTopOptionsControllerProps> =
         onStartTeamBattle={onStartTeamBattle}
         onStartRoomPK={onStartRoomPK}
         onOpenModeratorStats={onOpenModeratorStats}
+        onOpenRoomStats={onOpenRoomStats}
+        onOpenRoomInfo={onOpenRoomInfo}
         onTriggerToast={onTriggerToast}
       />
     </Suspense>
