@@ -733,7 +733,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       id: 'sys-welcome',
       userName: 'نظام الغرفة 🌟',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-      text: `مرحباً بك في ${roomName || 'الغرفة الصوتية'}! استمتع بأجمل الأوقات والتواصل اللحظي ✨🎙️`,
+      text: `مرحباً بك في ${roomTitle || 'الغرفة الصوتية'}! استمتع بأجمل الأوقات والتواصل اللحظي ✨🎙️`,
       userColor: 'text-amber-400 font-bold',
       isSystemMessage: true,
       bubbleSkin: 'default',
@@ -3525,7 +3525,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
               bgClass: 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black',
             },
           ],
-      bubbleSkinToUse
+      equippedBubbleSkin
     );
   };
 
