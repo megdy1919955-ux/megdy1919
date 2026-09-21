@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -55,14 +55,13 @@ import {
   Play,
   Sun,
   Moon,
-  Cloud
+  Cloud,
+  LogOut
 } from 'lucide-react';
 import { RedCinemaSeat } from './RedCinemaSeat';
 import { CinemaYouTubePickerModal, CinemaVideoItem, VideoSuggestion } from './CinemaYouTubePickerModal';
 import { FamilyModal } from './FamilyModal';
 import { SuperLegendModal } from './SuperLegendModal';
-import { RoomInfoModal } from './RoomInfoModal';
-import { LeaderboardThemeModal } from './LeaderboardThemeModal';
 import { LeaderboardThemeConfig } from '../types/leaderboardTheme';
 import { getSavedLeaderboardTheme } from '../lib/leaderboardThemeService';
 import { LottieReactionPlayer } from './LottieReactionPlayer';
@@ -72,26 +71,47 @@ import { HostProfileModal } from './HostProfileModal';
 import { AdvancedUserProfileModal, UserProfileData } from './AdvancedUserProfileModal';
 import { UserProfileModal } from './UserProfileModal';
 import { SeatActionModal } from './SeatActionModal';
-import { QuickMicOptionsModal } from './QuickMicOptionsModal';
 import { MicRequestQueueModal, MicRequestItem } from './MicRequestQueueModal';
 import type { GiftItem } from './ProfessionalGiftPanel';
-const ProfessionalGiftPanel = React.lazy(() =>
+const QuickMicOptionsModal = lazy(() =>
+  import('./QuickMicOptionsModal').then((m) => ({ default: m.QuickMicOptionsModal }))
+);
+const ProfessionalGiftPanel = lazy(() =>
   import('./ProfessionalGiftPanel').then((m) => ({ default: m.ProfessionalGiftPanel }))
 );
-import { MusicPlayerModal } from './MusicPlayerModal';
-import { EffectsAndSoundModal } from './EffectsAndSoundModal';
-import { MovableEmojiLottiePicker } from './MovableEmojiLottiePicker';
-import { TopOptionsMenuModal } from './TopOptionsMenuModal';
-import { ModeratorStatsModal } from './ModeratorStatsModal';
+const MusicPlayerModal = lazy(() =>
+  import('./MusicPlayerModal').then((m) => ({ default: m.MusicPlayerModal }))
+);
+const EffectsAndSoundModal = lazy(() =>
+  import('./audio').then((m) => ({ default: m.EffectsAndSoundModal }))
+);
+const MovableEmojiLottiePicker = lazy(() =>
+  import('./MovableEmojiLottiePicker').then((m) => ({ default: m.MovableEmojiLottiePicker }))
+);
+const ModeratorStatsModal = lazy(() =>
+  import('./moderator').then((m) => ({ default: m.ModeratorStatsModal }))
+);
 import { recordModeratorAction } from '../lib/moderatorStatsService';
 import { banUserFromRoom, isUserImmuneFromKick, getModeratorKickPermission } from '../lib/roomKickService';
-import { DigitalCounterControlModal } from './DigitalCounterControlModal';
-import { RoomBackgroundStoreModal } from './RoomBackgroundStoreModal';
+const DigitalCounterControlModal = lazy(() =>
+  import('./counter').then((m) => ({ default: m.DigitalCounterControlModal }))
+);
+const RoomBackgroundStoreModal = lazy(() =>
+  import('./wallpaper').then((m) => ({ default: m.RoomBackgroundStoreModal }))
+);
 import { NajmRoomMessagesModal, YoHoRoomMessagesModal } from './NajmRoomMessagesModal';
 import { NajmRoomToolsAndGamesModal, YoHoRoomToolsAndGamesModal } from './NajmRoomToolsAndGamesModal';
-import { TeamBattleModal } from './TeamBattleModal';
-import { TeamBattleResultModal, PKSupporter } from './TeamBattleResultModal';
-import { NormalRoundResultModal, NormalRoundResultData } from './NormalRoundResultModal';
+import type { PKSupporter } from './TeamBattleResultModal';
+import type { NormalRoundResultData } from './NormalRoundResultModal';
+const TeamBattleModal = lazy(() =>
+  import('./TeamBattleModal').then((m) => ({ default: m.TeamBattleModal }))
+);
+const TeamBattleResultModal = lazy(() =>
+  import('./TeamBattleResultModal').then((m) => ({ default: m.TeamBattleResultModal }))
+);
+const NormalRoundResultModal = lazy(() =>
+  import('./NormalRoundResultModal').then((m) => ({ default: m.NormalRoundResultModal }))
+);
 import { DynamicAnchoredGiftOverlay, DynamicFlyingGift } from './DynamicAnchoredGiftOverlay';
 import {
   MainRoomCustomizerConfig,
@@ -120,7 +140,16 @@ import { playElectricChargeZap, playElectricExplosionSound } from '../lib/electr
 import { SideGiftStream, SideGiftEvent } from './SideGiftStream';
 import { ErrorBoundary } from './ErrorBoundary';
 import { processRefundGiftDraw, isRefundGift, RefundDrawResult } from '../lib/refundVaultService';
-import { RoomExitModal } from './RoomExitModal';
+import { RoomCinemaSection } from './room/RoomCinemaSection';
+import { RoomTeamBattleSection } from './room/RoomTeamBattleSection';
+import { RoomExitSection } from './room/modals/RoomExitSection';
+const RoomTopOptionsController = lazy(() =>
+  import('./room/RoomTopOptionsController').then((m) => ({ default: m.RoomTopOptionsController }))
+);
+const RoomInfoModalContainer = lazy(() =>
+  import('./room/RoomInfoModalContainer').then((m) => ({ default: m.RoomInfoModalContainer }))
+);
+import { backNavigation } from '../lib/backNavigation';
 import {
   setActiveRoomSession,
   minimizeRoomSession,
@@ -135,8 +164,20 @@ import {
   canManageGifts,
   isDeveloper
 } from '../lib/roleService';
-import { RealtimeVoiceEngine } from '../lib/realtimeVoiceService';
-import { RealtimeRoomPresence, RealtimePeerAudioState } from '../types/realtimeAudio';
+import {
+  UnifiedRealtimeVoiceEngine
+} from '../lib/unifiedRealtimeVoiceEngine';
+import {
+  RealtimeVoiceEngine,
+  AudioStreamMode,
+  getSavedAudioStreamMode,
+  saveAudioStreamMode
+} from '../lib/realtimeVoiceService';
+import {
+  getSavedNoiseSuppressionState,
+  saveNoiseSuppressionState
+} from '../lib/audioNoiseSuppressionProcessor';
+import { RealtimeRoomPresence, RealtimePeerAudioState, RealtimeNetworkQuality } from '../types/realtimeAudio';
 import {
   MicSeat,
   SpeakingAuraType,
@@ -157,13 +198,23 @@ import {
   VipAnnouncementFlyer,
   VipAnnouncementItem,
   VipBroadcastChatInput,
+  RoomChatInputModal,
+  RoomLeaderboardStatsModal,
   getSavedVipBroadcastQuota,
   saveVipBroadcastQuota,
   getRowLayoutForCount,
   getTeamForSeat,
   getSpeakingAuraStyles,
-  getMicRowSpacingClass
+  getMicRowSpacingClass,
+  WallpaperBackgroundCachePill
 } from './room';
+import {
+  getCachedRoomState,
+  saveRoomStateToCache,
+  preloadWallpaperSilently,
+  isWallpaperInCache
+} from '../lib/roomCacheService';
+import { useRoomProgressiveHydration } from '../hooks/useRoomProgressiveHydration';
 
 export type { BadgeItem, MicSeat, ChatMessage, RoomEntranceEvent };
 
@@ -236,7 +287,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300',
       isHost: true,
       isMuted: false,
-      isSpeaking: true,
+      isSpeaking: false,
       isEmpty: false,
       vipLevel: 'VIP8',
     },
@@ -246,7 +297,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       userName: 'سارة الك...',
       avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=200',
       isMuted: false,
-      isSpeaking: true,
+      isSpeaking: false,
       isEmpty: false
     },
     {
@@ -290,6 +341,11 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       prev.map((s) => (s.id === 1 ? { ...s, vipLevel: `VIP${hostVipLevel}` } : s))
     );
   }, [hostVipLevel]);
+
+  const allMicSeatsRef = useRef<MicSeat[]>(allMicSeats);
+  useEffect(() => {
+    allMicSeatsRef.current = allMicSeats;
+  }, [allMicSeats]);
 
   // User Profile ID & Role Definitions
   const CURRENT_USER_PROFILE_ID = '88492011';
@@ -341,7 +397,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   const isCurrentAdmin = isOwner || isModerator;
 
   const [userMuteStates, setUserMuteStates] = useState<Record<string, boolean>>({
-    [CURRENT_USER_PROFILE_ID]: false,
+    [CURRENT_USER_PROFILE_ID]: true,
     '8841001': false,
     '8842002': false,
     '8843003': true,
@@ -870,78 +926,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     }
   }, [currentVipAnnouncement, vipAnnouncementQueue]);
 
-  // Dynamic Visual Viewport Metrics for Chat Input Flush Alignment to Keyboard
-  const [chatInputViewport, setChatInputViewport] = useState<{
-    height: number;
-    offsetTop: number;
-    keyboardOpen: boolean;
-  }>({
-    height: typeof window !== 'undefined' ? window.innerHeight : 800,
-    offsetTop: 0,
-    keyboardOpen: false,
-  });
-
-  useEffect(() => {
-    if (!showChatInputModal) return;
-
-    const updateMetrics = () => {
-      if (window.visualViewport) {
-        const vv = window.visualViewport;
-        const isKeyboard = vv.height < window.innerHeight * 0.85;
-        setChatInputViewport({
-          height: vv.height,
-          offsetTop: vv.offsetTop,
-          keyboardOpen: isKeyboard,
-        });
-      } else {
-        setChatInputViewport({
-          height: window.innerHeight,
-          offsetTop: 0,
-          keyboardOpen: false,
-        });
-      }
-    };
-
-    updateMetrics();
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', updateMetrics);
-      window.visualViewport.addEventListener('scroll', updateMetrics);
-    }
-    window.addEventListener('resize', updateMetrics);
-
-    return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', updateMetrics);
-        window.visualViewport.removeEventListener('scroll', updateMetrics);
-      }
-      window.removeEventListener('resize', updateMetrics);
-    };
-  }, [showChatInputModal]);
-
-  // Stabilize viewport and instantly eliminate keyboard dismissal scroll gaps
-  useEffect(() => {
-    const handleViewportReset = () => {
-      if (!showChatInputModal) {
-        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-        if (document.body) document.body.scrollTop = 0;
-        if (document.documentElement) document.documentElement.scrollTop = 0;
-      }
-    };
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleViewportReset);
-      window.visualViewport.addEventListener('scroll', handleViewportReset);
-    }
-    window.addEventListener('scroll', handleViewportReset, { passive: true });
-
-    return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleViewportReset);
-        window.visualViewport.removeEventListener('scroll', handleViewportReset);
-      }
-      window.removeEventListener('scroll', handleViewportReset);
-    };
-  }, [showChatInputModal]);
+  // Dynamic Visual Viewport Metrics are encapsulated inside RoomChatInputModal
 
   // Floating Effects
   const [floatingEffects, setFloatingEffects] = useState<FloatingEffect[]>([]);
@@ -1095,7 +1080,10 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   const [showModeratorStatsModal, setShowModeratorStatsModal] = useState(false);
   const [showRoomExitModal, setShowRoomExitModal] = useState(false);
   const [mainRoomConfig, setMainRoomConfig] = useState<MainRoomCustomizerConfig>(() => getMainRoomCustomizerConfig());
-  const [currentRoomBgName, setCurrentRoomBgName] = useState<string>('القصر الملكي البنفسجي 🏰');
+  const [currentRoomBgName, setCurrentRoomBgName] = useState<string>(() => {
+    const cached = getCachedRoomState(roomId);
+    return cached?.wallpaperName || 'القصر الملكي البنفسجي 🏰';
+  });
 
   // Sync active room session with roomSessionService
   useEffect(() => {
@@ -1128,6 +1116,35 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   // Handle Individual Exit (خروج)
   const handleSoloExit = () => {
     setIsVipBroadcastActive(false);
+    // Disconnect and release physical microphone tracks immediately
+    if (voiceEngineRef.current) {
+      try {
+        voiceEngineRef.current.updateSeat(null);
+        voiceEngineRef.current.disableMicrophone();
+        voiceEngineRef.current.destroy();
+      } catch {}
+      voiceEngineRef.current = null;
+    }
+    // Clear user seat immediately on exit so account does not hang
+    setAllMicSeats(prev => prev.map(s => {
+      if (s.userId === CURRENT_USER_PROFILE_ID || s.userName?.includes('أنا')) {
+        return {
+          ...s,
+          isEmpty: true,
+          userId: undefined,
+          userName: '',
+          avatar: '',
+          vipLevel: undefined,
+          isHost: false,
+          isMuted: false,
+          isMutedByAdmin: false,
+          isSpeaking: false,
+          isInvitationPending: false,
+          isPendingAudioAcceptance: false
+        };
+      }
+      return s;
+    }));
     exitRoomSession();
     setIsRoomActive(false);
     setRoomUptimeSeconds(0);
@@ -1169,10 +1186,18 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     const handleRoomWallpaperUpdated = (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail?.wallpaperUrl) {
-        setCurrentRoomBgUrl(customEvent.detail.wallpaperUrl);
+        const nextUrl = customEvent.detail.wallpaperUrl;
+        const nextName = customEvent.detail.wallpaperName || 'خلفية الروم';
+        setCurrentRoomBgUrl(nextUrl);
         if (customEvent.detail.wallpaperName) {
-          setCurrentRoomBgName(customEvent.detail.wallpaperName);
+          setCurrentRoomBgName(nextName);
         }
+        // Save to mobile cache & preload in background silently
+        saveRoomStateToCache(roomId, {
+          wallpaperUrl: nextUrl,
+          wallpaperName: nextName
+        });
+        preloadWallpaperSilently(nextUrl, nextName);
       }
     };
 
@@ -1207,6 +1232,11 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         }
         if (cloudDoc.wallpaperUrl) {
           setCurrentRoomBgUrl(cloudDoc.wallpaperUrl);
+          saveRoomStateToCache(roomId, {
+            wallpaperUrl: cloudDoc.wallpaperUrl,
+            wallpaperName: cloudDoc.wallpaperName || 'خلفية الروم'
+          });
+          preloadWallpaperSilently(cloudDoc.wallpaperUrl, cloudDoc.wallpaperName);
         }
         if (cloudDoc.wallpaperName) {
           setCurrentRoomBgName(cloudDoc.wallpaperName);
@@ -1321,19 +1351,69 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
 
   const [isIncognito, setIsIncognito] = useState(false);
 
-  // Real-time WebRTC & WebSocket Audio Engine Instance
-  const voiceEngineRef = useRef<RealtimeVoiceEngine | null>(null);
+  // Real-time WebRTC & Agora Unified Audio Engine Instance
+  const voiceEngineRef = useRef<UnifiedRealtimeVoiceEngine | null>(null);
   const [onlineRealtimePeers, setOnlineRealtimePeers] = useState<RealtimeRoomPresence[]>([]);
   const [isVoiceEngineConnected, setIsVoiceEngineConnected] = useState<boolean>(false);
+  const [activeVoiceDriver, setActiveVoiceDriver] = useState<'zegocloud' | 'agora' | 'webrtc'>('zegocloud');
+  const [voiceNetworkQuality, setVoiceNetworkQuality] = useState<RealtimeNetworkQuality | null>(null);
+  const [isNoiseSuppressionEnabled, setIsNoiseSuppressionEnabled] = useState<boolean>(() =>
+    getSavedNoiseSuppressionState()
+  );
+  const [audioStreamMode, setAudioStreamMode] = useState<AudioStreamMode>(() =>
+    getSavedAudioStreamMode()
+  );
+
+  const handleToggleAudioStreamMode = (_targetMode?: AudioStreamMode) => {
+    setAudioStreamMode('media');
+    saveAudioStreamMode('media');
+    if (voiceEngineRef.current) {
+      voiceEngineRef.current.setAudioStreamMode('media');
+    }
+    setToastNotification('🎵 مسار الصوت مضبوط تلقائياً وموحد على وضع الوسائط (Media Stream) لجميع المستخدمين');
+    setTimeout(() => setToastNotification(null), 3500);
+  };
+
+  const handleToggleNoiseSuppression = () => {
+    const nextState = !isNoiseSuppressionEnabled;
+    setIsNoiseSuppressionEnabled(nextState);
+    saveNoiseSuppressionState(nextState);
+    if (voiceEngineRef.current) {
+      voiceEngineRef.current.setNoiseSuppression(nextState);
+    }
+    setToastNotification(
+      nextState
+        ? '🎙️ تم تشغيل إلغاء ضوضاء المايكروفون (عزل الضجيج الصوتي بتقنية DSP)'
+        : '🎙️ تم إيقاف إلغاء ضوضاء المايكروفون'
+    );
+    setTimeout(() => setToastNotification(null), 3000);
+  };
 
   useEffect(() => {
     const currentUserName = currentUserRole === 'host' ? (hostName || 'المضيف (أنا)') : 'أنا';
     const currentUserAvatar = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200';
-    const engine = new RealtimeVoiceEngine(roomId, currentUserName, currentUserAvatar);
+    const engine = new UnifiedRealtimeVoiceEngine({
+      roomId,
+      userId: `user_${CURRENT_USER_PROFILE_ID}`,
+      userName: currentUserName,
+      userAvatar: currentUserAvatar,
+      seatId: null,
+      preferredDriver: 'auto',
+      isNoiseSuppressionEnabled
+    });
+    engine.setNoiseSuppression(isNoiseSuppressionEnabled);
     voiceEngineRef.current = engine;
 
     engine.onConnectionStatus = (status) => {
       setIsVoiceEngineConnected(status === 'connected');
+    };
+
+    engine.onDriverChanged = (driver) => {
+      setActiveVoiceDriver(driver);
+    };
+
+    engine.onNetworkQuality = (quality) => {
+      setVoiceNetworkQuality(quality);
     };
 
     engine.onPresenceUpdate = (peers) => {
@@ -1359,16 +1439,32 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       });
     };
 
+    engine.getCurrentSeatId = () => {
+      const mySeat = allMicSeatsRef.current.find(
+        (s) => !s.isEmpty && (s.userId === CURRENT_USER_PROFILE_ID || s.userName.includes('أنا'))
+      );
+      return mySeat ? mySeat.id : null;
+    };
+
     engine.onPeerSpeaking = (speakingState) => {
-      if (speakingState.seatId) {
-        setAllMicSeats((prev) =>
-          prev.map((s) =>
-            s.id === speakingState.seatId
-              ? { ...s, isSpeaking: speakingState.isSpeaking }
-              : s
-          )
-        );
-      }
+      setAllMicSeats((prev) =>
+        prev.map((s) => {
+          const isTargetSeat = (speakingState.seatId && s.id === speakingState.seatId) ||
+            (!speakingState.seatId && !s.isEmpty && (
+              (speakingState.peerId && s.userId === speakingState.peerId) ||
+              (speakingState.userName && s.userName === speakingState.userName)
+            ));
+
+          if (isTargetSeat) {
+            return {
+              ...s,
+              isSpeaking: speakingState.isSpeaking,
+              audioLevel: speakingState.isSpeaking ? Math.max(20, speakingState.audioLevel || 40) : 0
+            };
+          }
+          return s;
+        })
+      );
     };
 
     engine.onChatMessage = (incomingMsg) => {
@@ -1397,7 +1493,10 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     engine.connect();
 
     return () => {
-      engine.destroy();
+      try {
+        engine.disableMicrophone();
+        engine.destroy();
+      } catch {}
       voiceEngineRef.current = null;
     };
   }, [roomId, currentUserRole, hostName]);
@@ -1884,12 +1983,11 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     };
   }, [isTeamBattleActive, teamBattleStatus, teamBattleTimer, redTeamScore, blueTeamScore, pkTopSupportersMap]);
 
-  // Dynamic Dev Emoji Configurations synced in real-time
+  // Dynamic Dev Emoji Configurations synced in real-time (بدون تحميل مسبق ثقيل عند الدخول)
   const [emojiConfigs, setEmojiConfigs] = useState(() => getStoredEmojiConfigs());
 
-  // Pre-cache all Lottie assets on voice room mount and keep synced with Dev Manager
+  // مزامنة تعديلات الإيموجي دون أي تحميل مسبق ثقيل يستهلك المعالج أو الذاكرة
   useEffect(() => {
-    precacheAllLottieAssets();
     const handleConfigUpdate = () => {
       setEmojiConfigs(getStoredEmojiConfigs());
     };
@@ -1911,15 +2009,35 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     return 48500000; // القيمة التراكمية الأولية الشاملة لدعم الغرفة (48.5M 💎)
   });
 
-  const [showLeaderboardThemeModal, setShowLeaderboardThemeModal] = useState(false);
   const [leaderboardTheme, setLeaderboardTheme] = useState<LeaderboardThemeConfig>(() => getSavedLeaderboardTheme());
   const [showRoomInfoModal, setShowRoomInfoModal] = useState(false);
   const [showRoomBackgroundStoreModal, setShowRoomBackgroundStoreModal] = useState<boolean>(false);
   const [showYoHoMessagesModal, setShowYoHoMessagesModal] = useState<boolean>(false);
   const [privateChatTargetUser, setPrivateChatTargetUser] = useState<any | null>(null);
-  const [currentRoomBgUrl, setCurrentRoomBgUrl] = useState<string>(
-    'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=1200'
-  );
+  const [currentRoomBgUrl, setCurrentRoomBgUrl] = useState<string>(() => {
+    const cached = getCachedRoomState(roomId);
+    return (
+      cached?.wallpaperUrl ||
+      'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=1200'
+    );
+  });
+
+  // Progressive Hydration Pipeline & Ultra-Fast On-Demand Loading:
+  // Phase 1: الصوت أولاً فوراً (Instant Audio Stream ⚡)
+  // Phase 2: هيكل المايكات مع الأشخاص (Seats Layout & Structure 🎙️)
+  // Phase 3: الشات والرسائل التفاعلية (Live Chat Stream 💬)
+  // Phase 4: البروفايلات في المقاعد (Seat Profiles Hydration 👤)
+  // Phase 5: الأشرطة المتحركة إن وجدت (Moving Tickers & Strips 🎟️)
+  // Phase 6: خلفية الروم والفعاليات (Wallpaper Last 🖼️)
+  const {
+    isAudioReady,
+    isSeatsReady,
+    isChatReady,
+    isProfilesHydrated,
+    isTickersReady,
+    isWallpaperReady,
+    wallpaperCacheNotice
+  } = useRoomProgressiveHydration(roomId, currentRoomBgUrl, currentRoomBgName);
   const [showHostProfileModal, setShowHostProfileModal] = useState(false);
   const [showAudienceModal, setShowAudienceModal] = useState(false);
 
@@ -2002,8 +2120,8 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     inviterName: string;
   } | null>(null);
 
-  // Dynamic list of room audience and chat members
-  const audienceAndChatMembers = useMemo(() => [
+  // Dynamic list of room audience and chat members currently present in the room
+  const [roomAudienceList, setRoomAudienceList] = useState([
     { id: 'usr-chat-1', name: 'مريم العتيبي', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=200', role: 'متفاعل بالشات 💬', level: 'Lv.48', vip: 'VIP 5' },
     { id: 'usr-chat-2', name: 'أصيل العدني', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200', role: 'متفاعل بالشات 💬', level: 'Lv.36', vip: 'VIP 2' },
     { id: 'usr-chat-3', name: 'صقر الشام', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200', role: 'داعم بالشات 🏆', level: 'Lv.58', vip: 'VIP 7' },
@@ -2014,7 +2132,253 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     { id: 'aud-8', name: 'صقر الشمال', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200', role: 'عضو نشيط ⚡', level: 'Lv.29', vip: 'VIP 1' },
     { id: 'usr-chat-9', name: 'طلال الشمري', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=200', role: 'مستمع بالشات 🎧', level: 'Lv.44', vip: 'VIP 3' },
     { id: 'usr-chat-10', name: 'ريم القحطاني', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200', role: 'عضو مميز 💎', level: 'Lv.61', vip: 'VIP 6' }
-  ], []);
+  ]);
+  const audienceAndChatMembers = roomAudienceList;
+
+  // Hardware Back Button handler for Voice Room and its modals
+  useEffect(() => {
+    return backNavigation.registerHandler('voice_room_screen', 80, () => {
+      // 1. If Exit Modal is open, close it
+      if (showRoomExitModal) {
+        setShowRoomExitModal(false);
+        return;
+      }
+      // 2. If any inner drawer/modal is open, close that first
+      if (showGiftDrawer) {
+        setShowGiftDrawer(false);
+        return;
+      }
+      if (showGamesDrawer) {
+        setShowGamesDrawer(false);
+        return;
+      }
+      if (showSettingsDrawer) {
+        setShowSettingsDrawer(false);
+        return;
+      }
+      if (showEmojiPicker) {
+        setShowEmojiPicker(false);
+        return;
+      }
+      if (showChatInputModal) {
+        setShowChatInputModal(false);
+        return;
+      }
+      if (showTopOptionsMenuModal) {
+        setShowTopOptionsMenuModal(false);
+        return;
+      }
+      if (showYoHoBottomToolsModal) {
+        setShowYoHoBottomToolsModal(false);
+        return;
+      }
+      if (showLuckyChestModal) {
+        setShowLuckyChestModal(false);
+        return;
+      }
+      if (showLuckyChestClaimModal) {
+        setShowLuckyChestClaimModal(false);
+        return;
+      }
+      if (showTeamBattleModal) {
+        setShowTeamBattleModal(false);
+        return;
+      }
+      if (showTeamBattleResultModal) {
+        setShowTeamBattleResultModal(false);
+        return;
+      }
+      if (showNormalRoundResultModal) {
+        setShowNormalRoundResultModal(false);
+        return;
+      }
+      if (showAudienceModal) {
+        setShowAudienceModal(false);
+        return;
+      }
+      if (showAdvancedProfileModal) {
+        setShowAdvancedProfileModal(false);
+        return;
+      }
+      if (showFullUserProfileModal) {
+        setShowFullUserProfileModal(false);
+        return;
+      }
+      if (showHostProfileModal) {
+        setShowHostProfileModal(false);
+        return;
+      }
+      if (showRoomInfoModal) {
+        setShowRoomInfoModal(false);
+        return;
+      }
+      if (showRoomSupportModal) {
+        setShowRoomSupportModal(false);
+        return;
+      }
+      if (showSuperLegendModal) {
+        setShowSuperLegendModal(false);
+        return;
+      }
+      if (showRoomBackgroundStoreModal) {
+        setShowRoomBackgroundStoreModal(false);
+        return;
+      }
+      if (showYoHoMessagesModal) {
+        setShowYoHoMessagesModal(false);
+        return;
+      }
+      if (showQuickMicOptionsModal) {
+        setShowQuickMicOptionsModal(false);
+        return;
+      }
+      if (showSeatActionModal) {
+        setShowSeatActionModal(false);
+        return;
+      }
+      if (showFamilyModal) {
+        setShowFamilyModal(false);
+        return;
+      }
+      if (showCinemaVideoPickerModal) {
+        setShowCinemaVideoPickerModal(false);
+        return;
+      }
+      if (showDevConfigModal) {
+        setShowDevConfigModal(false);
+        return;
+      }
+      if (showCounterControlModal) {
+        setShowCounterControlModal(false);
+        return;
+      }
+      if (showMusicPlayerModal) {
+        setShowMusicPlayerModal(false);
+        return;
+      }
+      if (showSoundEffectsModal) {
+        setShowSoundEffectsModal(false);
+        return;
+      }
+      if (showModeratorStatsModal) {
+        setShowModeratorStatsModal(false);
+        return;
+      }
+      if (showMicControlModal) {
+        setShowMicControlModal(false);
+        return;
+      }
+
+      // 3. If in full voice room with no modal open, open Room Exit modal
+      setShowRoomExitModal(true);
+    });
+  }, [
+    showRoomExitModal,
+    showGiftDrawer,
+    showGamesDrawer,
+    showSettingsDrawer,
+    showEmojiPicker,
+    showChatInputModal,
+    showTopOptionsMenuModal,
+    showYoHoBottomToolsModal,
+    showLuckyChestModal,
+    showLuckyChestClaimModal,
+    showTeamBattleModal,
+    showTeamBattleResultModal,
+    showNormalRoundResultModal,
+    showAudienceModal,
+    showAdvancedProfileModal,
+    showFullUserProfileModal,
+    showHostProfileModal,
+    showRoomInfoModal,
+    showRoomSupportModal,
+    showSuperLegendModal,
+    showRoomBackgroundStoreModal,
+    showYoHoMessagesModal,
+    showQuickMicOptionsModal,
+    showSeatActionModal,
+    showFamilyModal,
+    showCinemaVideoPickerModal,
+    showDevConfigModal,
+    showCounterControlModal,
+    showMusicPlayerModal,
+    showSoundEffectsModal,
+    showModeratorStatsModal,
+    showMicControlModal
+  ]);
+
+  // تفريغ فوري لمقعد المايك عند خروج الشخص المستدعى أو أي متواجد من البث/الروم حتى لا يظل حسابه معلقاً
+  const handleUserExitRoom = useCallback((userId: string, userName?: string) => {
+    setAllMicSeats((prev) =>
+      prev.map((seat) => {
+        const matchesId = Boolean(seat.userId && seat.userId === userId);
+        const matchesName = Boolean(
+          userName &&
+          seat.userName &&
+          (seat.userName.trim().toLowerCase() === userName.trim().toLowerCase() ||
+           seat.userName.includes(userName) ||
+           userName.includes(seat.userName))
+        );
+        if (matchesId || matchesName) {
+          return {
+            ...seat,
+            isEmpty: true,
+            userId: undefined,
+            userName: '',
+            avatar: '',
+            vipLevel: undefined,
+            isHost: false,
+            isMuted: false,
+            isMutedByAdmin: false,
+            isSpeaking: false,
+            isInvitationPending: false,
+            isPendingAudioAcceptance: false
+          };
+        }
+        return seat;
+      })
+    );
+
+    // إزالة المستخدم من قائمة المتواجدين في الروم
+    setRoomAudienceList((prev) => prev.filter((u) => u.id !== userId));
+    setInvitedUserIds((prev) => prev.filter((id) => id !== userId));
+    setPendingHostInvitation((prev) => (prev?.user.id === userId ? null : prev));
+
+    setToastNotification(`🚪 غادر ${userName || 'المستخدم'} الروم وتم إفراغ مقعد المايك تلقائياً`);
+    setTimeout(() => setToastNotification(null), 3000);
+  }, []);
+
+  // مراقبة تلقائية: إذا خرج أي مستخدم من الروم وكان على المايك أو مستدعى، يزال حسابه فوراً من المايك
+  useEffect(() => {
+    setAllMicSeats((prev) => {
+      let changed = false;
+      const updated = prev.map((seat) => {
+        if (seat.isEmpty || seat.isHost || seat.id === 1) return seat;
+        if (seat.userId === CURRENT_USER_PROFILE_ID || seat.userName?.includes('أنا')) return seat;
+
+        // إذا كان المقعد مشغولاً بشخص لم يعد متواجداً في قائمة المتواجدين بالروم
+        if (seat.userId && !roomAudienceList.some((u) => u.id === seat.userId)) {
+          changed = true;
+          return {
+            ...seat,
+            isEmpty: true,
+            userId: undefined,
+            userName: '',
+            avatar: '',
+            vipLevel: undefined,
+            isHost: false,
+            isMuted: false,
+            isMutedByAdmin: false,
+            isSpeaking: false,
+            isInvitationPending: false,
+            isPendingAudioAcceptance: false
+          };
+        }
+        return seat;
+      });
+      return changed ? updated : prev;
+    });
+  }, [roomAudienceList]);
 
   // Filter ONLY audience in chat / room who are NOT on any mic seat!
   const availableAudienceForInvite = useMemo(() => {
@@ -2040,18 +2404,6 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       return !isOnMic && !isHostSelf;
     });
   }, [allMicSeats, audienceAndChatMembers]);
-
-  // Tabbed Statistics Panel State
-  const [statsMainTab, setStatsMainTab] = useState<'diamonds' | 'club' | 'charm'>('diamonds');
-  const [statsTimeFilter, setStatsTimeFilter] = useState<'24h' | 'all' | 'weekly'>('24h');
-
-  // Auto-reset statistics modal tab to default 'diamonds' (المساهمات) when closed
-  useEffect(() => {
-    if (!showRoomSupportModal) {
-      setStatsMainTab('diamonds');
-      setStatsTimeFilter('24h');
-    }
-  }, [showRoomSupportModal]);
 
   // Active Mic Seats sliced dynamically according to activeMicCount
   const activeSeats = allMicSeats.slice(0, activeMicCount);
@@ -2124,6 +2476,13 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         return;
       }
 
+      // إذا كان المايك مفتوحاً (غير مقفل) والمستخدم ليس مشرفاً يريد إدارة المقعد:
+      // يصعد فوراً إلى المايك ويفتح الصوت روتينياً بدون نوافذ إضافية
+      if (!targetSeat.isLocked && !isOwner && !isCurrentAdmin && currentUserRole !== 'moderator') {
+        handleTakeSeat(seatId);
+        return;
+      }
+
       // EMPTY SEAT: Show Seat Action Modal so user can invite audience, take seat, lock, etc.
       setSelectedSeatForAction(seatId);
       setTargetInviteSeatId(seatId);
@@ -2187,6 +2546,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         setTimeout(() => setToastNotification(null), 3000);
       }
     } else if (voiceEngineRef.current) {
+      voiceEngineRef.current.disableMicrophone();
       voiceEngineRef.current.setMute(true);
     }
 
@@ -2204,7 +2564,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             ...seat,
             isMuted: nextMuted,
             isMutedByAdmin: false,
-            isSpeaking: !nextMuted
+            isSpeaking: false
           };
         }
         return seat;
@@ -2246,15 +2606,29 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           s.userName.includes('أنا'))
     );
 
-    // If target seat was muted by Admin/Owner, the user joins in Muted state & red icon is displayed
-    const joinMuted = isTargetSlotAdminMuted ? true : Boolean(userMuteStates[CURRENT_USER_PROFILE_ID]);
+    // Strict User Intent Mute Rule:
+    // When the user is muted via the bottom bar or previously muted on a seat,
+    // switching seats MUST NEVER unmute the microphone!
+    // The mic remains strictly muted until the user presses the bottom bar mic button to unmute.
+    const isCurrentlyMuted = isMyMicMuted || (currentSeat ? Boolean(currentSeat.isMuted) : false);
+    const joinMuted = isTargetSlotAdminMuted || isCurrentlyMuted;
     const joinMutedByAdmin = isTargetSlotAdminMuted;
 
-    if (isTargetSlotAdminMuted) {
-      setUserMuteStates((prev) => ({
-        ...prev,
-        [CURRENT_USER_PROFILE_ID]: true
-      }));
+    setUserMuteStates((prev) => ({
+      ...prev,
+      [CURRENT_USER_PROFILE_ID]: joinMuted
+    }));
+
+    // Update real-time voice engine seat and mute state
+    if (voiceEngineRef.current) {
+      voiceEngineRef.current.updateSeat(targetSeatId);
+      if (joinMuted) {
+        voiceEngineRef.current.disableMicrophone();
+        voiceEngineRef.current.setMute(true);
+      } else {
+        voiceEngineRef.current.enableMicrophone();
+        voiceEngineRef.current.setMute(false);
+      }
     }
 
     if (currentSeat && currentSeat.id !== targetSeatId) {
@@ -2290,7 +2664,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
               isHost: currentUserRole === 'host' ? true : currentSeat.isHost,
               isMuted: joinMuted,
               isMutedByAdmin: joinMutedByAdmin,
-              isSpeaking: !joinMuted
+              isSpeaking: false
             };
           }
           return seat;
@@ -2305,8 +2679,8 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       }));
 
       setToastNotification(
-        isTargetSlotAdminMuted
-          ? `🔄 تم الانتقال للمايك #${targetSeatId}. المقعد مكتوم إدارياً (تم الكتم تلقائياً 🔇)`
+        joinMuted
+          ? `🔄 تم الانتقال للمايك #${targetSeatId} في وضع الكتم 🔇 (الميكروفون مغلق)`
           : `🔄 تم نقل المضيف ورصيد العداد (${formatCounterNumber(currentVal)}) تلقائياً من المايك #${currentSeat.id} إلى المايك #${targetSeatId}!`
       );
       setTimeout(() => setToastNotification(null), 3200);
@@ -2320,12 +2694,14 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
               ...seat,
               isEmpty: false,
               userId: CURRENT_USER_PROFILE_ID,
-              userName: currentUserRole === 'host' ? 'المضيف (أنا)' : 'أنا (انضمام)',
-              avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+              userName: currentUserRole === 'host' ? 'المضيف (أنا)' : (currentUserName || 'أنا'),
+              avatar: currentUserAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
               isHost: currentUserRole === 'host' ? true : seat.isHost,
               isMuted: joinMuted,
               isMutedByAdmin: joinMutedByAdmin,
-              isSpeaking: !joinMuted
+              isSpeaking: false,
+              isInvitationPending: false,
+              isPendingAudioAcceptance: false
             };
           }
           return seat;
@@ -2338,15 +2714,10 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         [targetSeatId]: 0
       }));
 
-      // Sync seat with real-time audio signaling engine
-      if (voiceEngineRef.current) {
-        voiceEngineRef.current.updateSeat(targetSeatId);
-      }
-
       setToastNotification(
-        isTargetSlotAdminMuted
-          ? `🎙️ تم صعود المايك #${targetSeatId} في وضع الكتم الإداري 🔇 (المقعد مكتوم مسبقاً)`
-          : `🎙️ تم صعود المايك #${targetSeatId} وبدء جلسة صوتية واقعية!`
+        joinMuted
+          ? `🎙️ تم صعود المايك #${targetSeatId} في وضع الكتم 🔇 (الميكروفون مغلق)`
+          : `🎙️ تم صعود المايك #${targetSeatId} وفُتح الصوت مباشرة للحديث!`
       );
       setTimeout(() => setToastNotification(null), 2500);
     }
@@ -2360,8 +2731,14 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     // Sync leave seat with real-time audio signaling engine
     if (voiceEngineRef.current) {
       voiceEngineRef.current.updateSeat(null);
+      voiceEngineRef.current.disableMicrophone();
       voiceEngineRef.current.setMute(true);
     }
+
+    setUserMuteStates((prev) => ({
+      ...prev,
+      [CURRENT_USER_PROFILE_ID]: true
+    }));
 
     setAllMicSeats((prev) => {
       const seatsToVacate = prev.filter(
@@ -2490,7 +2867,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             ...seat,
             isMuted: nextMuted,
             isMutedByAdmin: isByAdmin,
-            isSpeaking: !nextMuted
+            isSpeaking: false
           };
         }
         return seat;
@@ -2587,7 +2964,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
 
   // Direct & Silent Host / Audience Mic Invitation (دعوة المضيف وظهور صورته فوراً مع فتح الصوت بعد الموافقة)
   const handleDirectInviteToMic = (
-    user: { id: string; name: string; avatar?: string; role?: string; isHost?: boolean },
+    user: { id: string; name: string; avatar?: string; role?: string; isHost?: boolean; vip?: string | number; vipLevel?: string | number },
     preferredSeatId?: number | null
   ) => {
     // التحقق من الصلاحيات: المضيف العادي لا يحق له تصعيد أي شخص إلى المايك. الصلاحية للمشرف أو صاحب الروم فقط
@@ -2648,23 +3025,26 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
 
     const assignedSeatId = targetSeatId;
 
-    // 1. Instantly place host on assignedSeatId with their photo/avatar and name, with yellow mic visible to everyone
+    // 1. Instantly place user on assignedSeatId with their photo/avatar and name, with yellow mic visible to everyone
+    const inviterTitle = hostSeat?.userName || hostName || (isOwner ? 'أبو أمجد' : 'المشرف');
+
     setAllMicSeats((prev) =>
       prev.map((seat) => {
         if (seat.id === assignedSeatId) {
           return {
             ...seat,
-            isEmpty: false, // Visible to everyone that the host is on the mic!
+            isEmpty: false, // Visible to everyone that the user is on the mic!
             userId: user.id,
             userName: user.name,
             avatar: user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+            vipLevel: (user as any).vipLevel ?? (user as any).vip ?? seat.vipLevel,
             isHost: false,
-            isMuted: true, // Muted initially until accepted
+            isMuted: true, // Muted initially until accepted (لا يصدر صوت)
             isMutedByAdmin: false,
             isSpeaking: false,
-            isInvitationPending: true, // Yellow mic indicator stays visible until approved
+            isInvitationPending: true, // Yellow mic indicator stays visible until approved (إشارة المايك الصفراء)
             isPendingAudioAcceptance: true,
-            inviterName: isOwner ? 'أميرة الشرق (المالك)' : 'المشرف'
+            inviterName: inviterTitle
           };
         }
         return seat;
@@ -2683,7 +3063,6 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     }));
 
     // Trigger acceptance prompt strictly as a private invite for the invited user
-    const inviterTitle = isOwner ? 'أميرة الشرق (المالك)' : 'المشرف';
     setPendingHostInvitation({
       user,
       seatId: assignedSeatId,
@@ -2696,14 +3075,27 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     setSelectedSeatForAction(null);
     setTargetInviteSeatId(null);
 
-    setToastNotification(`🎙️ تم إرسال دعوة خاصة إلى @${user.name} على المايك #${assignedSeatId}`);
+    setToastNotification(`🎙️ لقد دعاك ${inviterTitle} إلى المايك #${assignedSeatId}`);
     setTimeout(() => setToastNotification(null), 3000);
   };
 
   // Handle Accept Invitation -> Unmutes audio & activates voice stream!
-  const handleAcceptHostInvitation = () => {
+  const handleAcceptHostInvitation = async () => {
     if (!pendingHostInvitation) return;
     const { user, seatId } = pendingHostInvitation;
+
+    // Activate microphone and real-time audio broadcast
+    if (voiceEngineRef.current) {
+      voiceEngineRef.current.updateSeat(seatId);
+      await voiceEngineRef.current.enableMicrophone();
+      voiceEngineRef.current.setMute(false);
+    }
+
+    setUserMuteStates((prev) => ({
+      ...prev,
+      [user.id]: false,
+      [CURRENT_USER_PROFILE_ID]: false
+    }));
 
     setAllMicSeats((prev) =>
       prev.map((seat) => {
@@ -2714,8 +3106,9 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             userId: user.id,
             userName: user.name,
             avatar: user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-            isMuted: false, // Open voice mic upon approval!
-            isSpeaking: true,
+            vipLevel: (user as any).vipLevel ?? (user as any).vip ?? seat.vipLevel,
+            isMuted: false, // Open voice mic upon approval! (يصدر الصوت الآن)
+            isSpeaking: false,
             isInvitationPending: false,
             isPendingAudioAcceptance: false
           };
@@ -2725,7 +3118,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     );
 
     setPendingHostInvitation(null);
-    setToastNotification(`🎉 صعد ${user.name} للمايك #${seatId} وفُتح الميكروفون بنجاح!`);
+    setToastNotification(`🎉 صعد ${user.name} للمايك #${seatId} وفُتح الميكروفون وبدأ بث الصوت بنجاح! 🎙️`);
     setTimeout(() => setToastNotification(null), 3500);
   };
 
@@ -2814,10 +3207,39 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       reason: 'مخالفة آداب وقوانين الروم'
     });
 
-    // 5. If occupying a mic seat, clear it silently (no chat announcement)
-    if (user.seatId) {
-      handleRemoveFromMic(user.seatId, kickerName);
-    }
+    // 5. If occupying a mic seat or invited, clear seat completely and remove from room
+    setAllMicSeats((prev) =>
+      prev.map((seat) => {
+        const matchesId = Boolean(
+          (user.userId && seat.userId === user.userId) ||
+          (user.id && seat.userId === user.id) ||
+          (user.seatId && seat.id === user.seatId)
+        );
+        const matchesName = Boolean(
+          user.name && seat.userName && seat.userName.trim().toLowerCase() === user.name.trim().toLowerCase()
+        );
+        if (matchesId || matchesName) {
+          return {
+            ...seat,
+            isEmpty: true,
+            userId: undefined,
+            userName: '',
+            avatar: '',
+            vipLevel: undefined,
+            isHost: false,
+            isMuted: false,
+            isMutedByAdmin: false,
+            isSpeaking: false,
+            isInvitationPending: false,
+            isPendingAudioAcceptance: false
+          };
+        }
+        return seat;
+      })
+    );
+    setRoomAudienceList((prev) => prev.filter((u) => u.id !== user.id && u.id !== user.userId));
+    setInvitedUserIds((prev) => prev.filter((id) => id !== user.id && id !== user.userId));
+    setPendingHostInvitation((prev) => (prev?.user.id === user.id || prev?.user.id === user.userId ? null : prev));
 
     // 6. Broadcast red notification message in chat: "خالد قام بطرد سارة"
     const kickChatMsg: ChatMessage = {
@@ -2957,7 +3379,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             userName: req.userName,
             avatar: req.avatar,
             isMuted: s.isMuted,
-            isSpeaking: !s.isMuted
+            isSpeaking: false
           };
         }
         return s;
@@ -3015,7 +3437,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             userName: req.userName,
             avatar: req.avatar,
             isMuted: s.isMuted,
-            isSpeaking: !s.isMuted
+            isSpeaking: false
           };
         }
         return s;
@@ -3849,12 +4271,17 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       className="fixed inset-0 w-full h-full z-50 bg-[#0B0E17] text-white font-sans flex flex-col justify-between overflow-hidden overflow-x-hidden select-none overscroll-none"
       dir="rtl"
     >
-      {/* ACTIVE ROOM WALLPAPER BACKGROUND LAYER (الخلفية التي عينها صاحب الروم/المبرمج) */}
+      {/* BACKGROUND WALLPAPER CACHE NOTIFICATION (تنبيه خفي رشيق لتحميل وتجهيز خلفية الروم) */}
+      <WallpaperBackgroundCachePill notice={wallpaperCacheNotice} />
+
+      {/* ACTIVE ROOM WALLPAPER BACKGROUND LAYER (الخلفية التي عينها صاحب الروم - محملة تدريجياً وخفياً كآخر عنصر) */}
       <div
-        className="absolute inset-0 bg-cover bg-center transition-all duration-500 pointer-events-none"
+        className={`absolute inset-0 bg-cover bg-center transition-all duration-700 pointer-events-none ${
+          isWallpaperReady ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
+        }`}
         style={{
-          backgroundImage: `url('${currentRoomBgUrl}')`,
-          opacity: (mainRoomConfig.activeWallpaperOpacity ?? 100) / 100,
+          backgroundImage: isWallpaperReady ? `url('${currentRoomBgUrl}')` : undefined,
+          opacity: isWallpaperReady ? (mainRoomConfig.activeWallpaperOpacity ?? 100) / 100 : 0,
           filter: `brightness(${(mainRoomConfig.activeWallpaperBrightness ?? 100) / 100}) contrast(${(mainRoomConfig.activeWallpaperContrast ?? 100) / 100})`
         }}
       />
@@ -4116,11 +4543,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
 
             {/* 7. Left: Diamond / Total Room Support -> Opens Room Support Stats Modal */}
             <button
-              onClick={() => {
-                setStatsMainTab('diamonds');
-                setStatsTimeFilter('24h');
-                setShowRoomSupportModal(true);
-              }}
+              onClick={() => setShowRoomSupportModal(true)}
               className="bg-gradient-to-r from-[#111A2E] to-[#16233B] border border-cyan-400/50 hover:border-cyan-300 px-2 py-0.5 rounded-full flex items-center gap-1 text-[8.5px] font-mono font-black text-cyan-300 shadow-xs cursor-pointer transition-all active:scale-95"
               title={`إجمالي إحصائيات الدعم الكلي في الغرفة: ${totalRoomSupportDiamonds.toLocaleString()} 💎 (انقر لفتح الإحصائيات الكاملة)`}
             >
@@ -4186,6 +4609,26 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                 )}
               </button>
             )}
+            {/* Real-time Voice Engine Status Pill */}
+            <div
+              className={`px-2 py-0.5 rounded-full flex items-center gap-1 text-[8px] font-black border transition-all shadow-xs cursor-default ${
+                isVoiceEngineConnected
+                  ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300 shadow-emerald-500/10'
+                  : 'bg-amber-950/80 border-amber-500/50 text-amber-300'
+              }`}
+              title={
+                isVoiceEngineConnected
+                  ? `بث الصوت اللحظي نشط ومستقر (${activeVoiceDriver === 'zegocloud' ? 'ZEGOCLOUD Ultra Latency' : activeVoiceDriver === 'agora' ? 'سيرفرات Agora العالمية' : 'WebRTC P2P فائقة السرعة'}) - البنج: ${voiceNetworkQuality?.pingMs ?? 28}ms`
+                  : 'جاري تهيئة الصوت اللحظي...'
+              }
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${isVoiceEngineConnected ? 'bg-emerald-400 animate-pulse shadow-[0_0_6px_#10b981]' : 'bg-amber-400'}`} />
+              <span>{isVoiceEngineConnected ? (activeVoiceDriver === 'zegocloud' ? 'ZEGOCLOUD' : activeVoiceDriver === 'agora' ? 'Agora RTC' : 'HD صوت حي') : 'صوت...'}</span>
+              {voiceNetworkQuality?.pingMs && (
+                <span className="text-[7px] text-emerald-400/80 font-mono tracking-tighter">{voiceNetworkQuality.pingMs}ms</span>
+              )}
+            </div>
+
             {/* Quick Room & Banners Simulator Trigger Pill */}
             <button
               id="quick-room-simulator-toggle-btn"
@@ -4376,140 +4819,26 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         {/* 2. DYNAMIC MIC ARRANGEMENT SECTION / CINEMA WATCH MODE */}
         <div className={`relative px-3 sm:px-6 pt-1 pb-0 ${isCinemaWatchMode ? 'space-y-1.5 sm:space-y-2' : ''} w-full max-w-2xl mx-auto flex flex-col shrink-0 transition-all duration-300 overflow-visible`}>
           {isCinemaWatchMode ? (
-            /* CINEMA / WATCH TOGETHER MODE (مشاهدة الفيديو ومقاعد السينما الحمراء الفخمة) */
-            <div className="w-full flex flex-col items-center space-y-2 sm:space-y-3 z-10">
-              {/* 1. TOP VIDEO SCREEN BOX (شاشة ثابتة غير متوسعة ممتدة للأعلى بحوالي 1سم) */}
-              <div className="w-full max-w-md mx-auto h-[205px] sm:h-[225px] bg-[#000000]/95 border border-white/10 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden shadow-[0_10px_35px_rgba(0,0,0,0.9)] select-none">
-                {/* Minimal Top Control Header */}
-                <div className="absolute top-2 inset-x-2.5 flex items-center justify-between z-30 pointer-events-auto">
-                  {selectedCinemaVideo ? (
-                    <button
-                      onClick={() => setShowCinemaVideoPickerModal(true)}
-                      className={`px-2.5 py-1 rounded-full text-white text-[11px] font-bold border flex items-center gap-1.5 cursor-pointer backdrop-blur-xs shadow-md transition-all active:scale-95 ${
-                        isOwner
-                          ? 'bg-black/80 hover:bg-black/95 border-emerald-500/40 text-emerald-300'
-                          : 'bg-black/80 hover:bg-black/95 border-amber-500/40 text-amber-300'
-                      }`}
-                      title={isOwner ? "إدارة الفيديوهات وقائمة الاقتراحات" : "اقتراح فيديو آخر لصاحب الغرفة"}
-                    >
-                      {isOwner ? (
-                        <>
-                          <Search className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>بحث / إدارة {videoSuggestions.length > 0 ? `(${videoSuggestions.length})` : ''}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
-                          <span>اقتراح فيديو 💡</span>
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <div />
-                  )}
-
-                  <button
-                    onClick={() => {
-                      if (isOwner) {
-                        setIsCinemaWatchMode(false);
-                        setSelectedCinemaVideo(null);
-                        setToastNotification('تم إغلاق وضع سينما الروم والعودة للمقاعد 🎙️');
-                        setTimeout(() => setToastNotification(null), 3000);
-                      } else {
-                        setToastNotification('عذراً، إغلاق سينما الروم متاح حصرياً لمالك الغرفة فقط 👑');
-                        setTimeout(() => setToastNotification(null), 3000);
-                      }
-                    }}
-                    className="p-1.5 rounded-full bg-black/75 hover:bg-rose-600/90 text-white border border-white/15 transition-colors cursor-pointer backdrop-blur-xs shadow-md"
-                    title={isOwner ? "إغلاق وضع السينما والعودة للمقاعد" : "إغلاق الشاشة متاح لمالك الغرفة فقط"}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                {selectedCinemaVideo ? (
-                  /* Clean YouTube Player with Minimal Fixed Frame */
-                  <div className="w-full h-full flex flex-col relative z-10 bg-black">
-                    <iframe
-                      src={`https://www.youtube-nocookie.com/embed/${selectedCinemaVideo.youtubeId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&controls=1&fs=0`}
-                      title={selectedCinemaVideo.title}
-                      className="w-full h-full border-0 bg-black"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    />
-                  </div>
-                ) : (
-                  /* Minimal Empty Cinema Screen Matching Screenshot Exactly */
-                  <div className="flex flex-col items-center justify-center text-center z-10 space-y-2 px-4">
-                    {/* Clapperboard Slate Icon in rounded square */}
-                    <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-300 shadow-inner mb-0.5">
-                      <Clapperboard className="w-8 h-8 text-slate-300 stroke-[1.4]" />
-                    </div>
-
-                    {/* Action Button: Owner selects/plays, Non-owner suggests */}
-                    <button
-                      onClick={() => setShowCinemaVideoPickerModal(true)}
-                      className={`px-8 sm:px-9 py-2.5 rounded-full font-black text-xs sm:text-sm active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer ${
-                        isOwner
-                          ? 'bg-[#00E676] hover:bg-[#00c853] text-[#003314] shadow-[0_0_20px_rgba(0,230,118,0.45)]'
-                          : 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-[0_0_20px_rgba(251,191,36,0.35)]'
-                      }`}
-                    >
-                      {isOwner ? (
-                        <>
-                          <Play className="w-3.5 h-3.5 fill-[#003314]" />
-                          <span>تحديد وتشغيل فيديو</span>
-                        </>
-                      ) : (
-                        <>
-                          <Lightbulb className="w-3.5 h-3.5" />
-                          <span>اقتراح فيديو للمالك 💡</span>
-                        </>
-                      )}
-                    </button>
-
-                    {/* Subtitle text */}
-                    <p className="text-[11px] sm:text-xs text-slate-400 font-medium tracking-tight">
-                      {isOwner
-                        ? 'مشاهدة الفيديو والدردشة مع الأصدقاء'
-                        : 'يمكن للمشرفين والأعضاء اقتراح مقاطع ليعتمدها مالك الغرفة'}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* 2. THE 8 LUXURY RED CINEMA SEATS (2 Rows of 4 Seats - Exact Match to Screenshot) */}
-              <div className="w-full max-w-md mx-auto space-y-1 sm:space-y-1.5 pt-0.5">
-                {/* Row 1: Seats 4, 3, 2, 1 (in RTL grid order [1, 2, 3, 4] -> renders 1 on right, 4 on left) */}
-                <div className="grid grid-cols-4 gap-1 sm:gap-2 justify-items-center dir-rtl">
-                  {[1, 2, 3, 4].map((seatId) => {
-                    const seatData = allMicSeats.find((s) => s.id === seatId);
-                    return (
-                      <RedCinemaSeat
-                        key={`cinema-seat-${seatId}`}
-                        seatNumber={seatId}
-                        seatData={seatData}
-                        onClick={() => handleSeatClick(seatId)}
-                      />
-                    );
-                  })}
-                </div>
-
-                {/* Row 2: Seats 8, 7, 6, 5 (in RTL grid order [5, 6, 7, 8] -> renders 5 on right, 8 on left) */}
-                <div className="grid grid-cols-4 gap-1 sm:gap-2 justify-items-center dir-rtl">
-                  {[5, 6, 7, 8].map((seatId) => {
-                    const seatData = allMicSeats.find((s) => s.id === seatId);
-                    return (
-                      <RedCinemaSeat
-                        key={`cinema-seat-${seatId}`}
-                        seatNumber={seatId}
-                        seatData={seatData}
-                        onClick={() => handleSeatClick(seatId)}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+            /* CINEMA / WATCH TOGETHER MODE (مشاهدة الفيديو ومقاعد السينما الحمراء الفخمة - مكون معزول) */
+            <RoomCinemaSection
+              selectedCinemaVideo={selectedCinemaVideo}
+              videoSuggestions={videoSuggestions}
+              isOwner={isOwner}
+              allMicSeats={allMicSeats}
+              onOpenVideoPicker={() => setShowCinemaVideoPickerModal(true)}
+              onCloseCinema={() => {
+                if (isOwner) {
+                  setIsCinemaWatchMode(false);
+                  setSelectedCinemaVideo(null);
+                  setToastNotification('تم إغلاق وضع سينما الروم والعودة للمقاعد 🎙️');
+                  setTimeout(() => setToastNotification(null), 3000);
+                } else {
+                  setToastNotification('عذراً، إغلاق سينما الروم متاح حصرياً لمالك الغرفة فقط 👑');
+                  setTimeout(() => setToastNotification(null), 3000);
+                }
+              }}
+              onSeatClick={handleSeatClick}
+            />
           ) : (
             <>
               <RoomMicsGrid
@@ -4518,6 +4847,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                 seatRows={seatRows}
                 mainRoomConfig={mainRoomConfig}
                 hostVipLevel={hostVipLevel}
+                isProfilesHydrated={isProfilesHydrated}
                 isTeamBattleActive={isTeamBattleActive}
                 teamBattleStatus={teamBattleStatus}
                 ownerJoinedTeam={ownerJoinedTeam}
@@ -4540,299 +4870,42 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           )}
         </div>
 
-        {/* TEAM BATTLE (معركة الفريق) VS STATUS BAR & CONTROL PANEL */}
-        {isTeamBattleActive && (
-          <div className="w-full max-w-md mx-auto my-1.5 px-3 dir-rtl shrink-0 z-30 animate-fadeIn">
-            {/* Dual PK Score Progress Bar - VISIBLE ONLY WHEN BATTLE IS RUNNING */}
-            {teamBattleStatus === 'running' && (() => {
-              const totalScore = redTeamScore + blueTeamScore;
-              const redPct = totalScore === 0 ? 50 : Math.max(8, Math.min(92, (redTeamScore / totalScore) * 100));
-              const bluePct = 100 - redPct;
-
-              return (
-                <div className="relative h-5 my-2">
-                  {/* Outer Bar Track (Rounded pill holding the Red and Blue progress colors) */}
-                  <div className="w-full h-full rounded-full bg-slate-950 overflow-hidden border-2 border-amber-500/40 flex shadow-[0_0_20px_rgba(0,0,0,0.8)]">
-                    {/* Red Team Score Fill (Right side in RTL) */}
-                    <div
-                      className="h-full bg-gradient-to-r from-amber-500 via-red-500 to-rose-600 transition-all duration-500 ease-out flex items-center justify-start px-2 font-mono text-[9px] font-black text-white whitespace-nowrap overflow-hidden"
-                      style={{ width: `${redPct}%` }}
-                    >
-                      <span className="drop-shadow-sm">{redTeamScore.toLocaleString()} PK</span>
-                    </div>
-
-                    {/* Blue Team Score Fill (Left side in RTL) */}
-                    <div
-                      className="h-full bg-gradient-to-r from-indigo-500 via-cyan-500 to-blue-600 transition-all duration-500 ease-out flex items-center justify-end px-2 font-mono text-[9px] font-black text-white whitespace-nowrap overflow-hidden"
-                      style={{ width: `${bluePct}%` }}
-                    >
-                      <span className="drop-shadow-sm">{blueTeamScore.toLocaleString()} PK</span>
-                    </div>
-                  </div>
-
-                  {/* 3D Floating Dueling Swords & VS Marker (Realistic 3D, Containerless, Red Right / Blue Left) */}
-                  <div
-                    className="absolute top-1/2 transition-all duration-500 ease-out z-30 flex flex-col items-center justify-center pointer-events-none select-none"
-                    style={{
-                      right: `${redPct}%`,
-                      transform: 'translate(50%, -50%)',
-                    }}
-                  >
-                    {/* Glowing Vertical Split Beam */}
-                    <div className="absolute -inset-y-3 w-0.5 bg-gradient-to-b from-amber-100 via-yellow-400 to-amber-600 shadow-[0_0_14px_#f59e0b] opacity-90 rounded-full" />
-
-                    {/* Animated 3D Floating Dueling Assembly */}
-                    <div className="relative flex flex-col items-center justify-center filter drop-shadow-[0_6px_12px_rgba(0,0,0,0.95)]">
-                      {/* 3D Realistic Dueling Swords SVG */}
-                      <div className="relative w-12 h-12 flex items-center justify-center">
-                        <svg viewBox="0 0 72 72" className="w-full h-full overflow-visible">
-                          <defs>
-                            {/* RED TEAM SWORD 3D GRADIENTS (Right Side) */}
-                            <linearGradient id="redBlade3D" x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" stopColor="#ffffff" />
-                              <stop offset="25%" stopColor="#fca5a5" />
-                              <stop offset="65%" stopColor="#dc2626" />
-                              <stop offset="100%" stopColor="#7f1d1d" />
-                            </linearGradient>
-                            <linearGradient id="redHilt3D" x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" stopColor="#fde047" />
-                              <stop offset="50%" stopColor="#d97706" />
-                              <stop offset="100%" stopColor="#78350f" />
-                            </linearGradient>
-                            <radialGradient id="rubyCoreGlow" cx="50%" cy="50%" r="50%">
-                              <stop offset="0%" stopColor="#ff4d4d" />
-                              <stop offset="100%" stopColor="#990000" />
-                            </radialGradient>
-
-                            {/* BLUE TEAM SWORD 3D GRADIENTS (Left Side) */}
-                            <linearGradient id="blueBlade3D" x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" stopColor="#ffffff" />
-                              <stop offset="25%" stopColor="#bae6fd" />
-                              <stop offset="65%" stopColor="#0284c7" />
-                              <stop offset="100%" stopColor="#0c4a6e" />
-                            </linearGradient>
-                            <linearGradient id="blueHilt3D" x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" stopColor="#e2e8f0" />
-                              <stop offset="50%" stopColor="#64748b" />
-                              <stop offset="100%" stopColor="#0f172a" />
-                            </linearGradient>
-                            <radialGradient id="sapphireCoreGlow" cx="50%" cy="50%" r="50%">
-                              <stop offset="0%" stopColor="#38bdf8" />
-                              <stop offset="100%" stopColor="#0369a1" />
-                            </radialGradient>
-
-                            {/* CLASH SPARK GLOW */}
-                            <radialGradient id="clashSparkGlow" cx="50%" cy="50%" r="50%">
-                              <stop offset="0%" stopColor="#ffffff" />
-                              <stop offset="40%" stopColor="#fef08a" />
-                              <stop offset="80%" stopColor="#f59e0b" />
-                              <stop offset="100%" stopColor="transparent" />
-                            </radialGradient>
-                          </defs>
-
-                          {/* RED SWORD (Positioned on Right Side, Striking Leftwards) */}
-                          <motion.g
-                            animate={{
-                              rotate: [-34, -26, -34],
-                              x: [0, -2, 0],
-                              y: [0, 1, 0],
-                            }}
-                            transition={{
-                              repeat: Infinity,
-                              duration: 0.5,
-                              ease: 'easeInOut',
-                            }}
-                            style={{ transformOrigin: '48px 48px' }}
-                          >
-                            {/* Blade Drop Shadow */}
-                            <path d="M48 48 L22 14 L20 18 L46 52 Z" fill="#000" opacity="0.4" />
-
-                            {/* Realistic Main Blade */}
-                            <path d="M48 48 L21 13 L17 11 L19 17 L46 52 Z" fill="url(#redBlade3D)" />
-                            {/* Blade Ridge / Fuller Reflection */}
-                            <line x1="47" y1="50" x2="19" y2="13" stroke="#ffffff" strokeWidth="0.8" opacity="0.85" />
-
-                            {/* Guard (Crossguard) */}
-                            <path d="M40 43 Q46 48 43 53 L49 51 Q51 45 44 40 Z" fill="url(#redHilt3D)" stroke="#f59e0b" strokeWidth="0.5" />
-
-                            {/* Handle / Grip */}
-                            <line x1="47" y1="50" x2="57" y2="60" stroke="#78350f" strokeWidth="3" strokeLinecap="round" />
-                            <line x1="47" y1="50" x2="57" y2="60" stroke="#fef08a" strokeWidth="0.8" strokeDasharray="1 2" />
-
-                            {/* Pommel Gem (Ruby) */}
-                            <circle cx="58" cy="61" r="3.5" fill="url(#rubyCoreGlow)" stroke="#f59e0b" strokeWidth="0.8" />
-                          </motion.g>
-
-                          {/* BLUE SWORD (Positioned on Left Side, Striking Rightwards) */}
-                          <motion.g
-                            animate={{
-                              rotate: [34, 26, 34],
-                              x: [0, 2, 0],
-                              y: [0, 1, 0],
-                            }}
-                            transition={{
-                              repeat: Infinity,
-                              duration: 0.5,
-                              ease: 'easeInOut',
-                            }}
-                            style={{ transformOrigin: '24px 48px' }}
-                          >
-                            {/* Blade Drop Shadow */}
-                            <path d="M24 48 L50 14 L52 18 L26 52 Z" fill="#000" opacity="0.4" />
-
-                            {/* Realistic Main Blade */}
-                            <path d="M24 48 L51 13 L55 11 L53 17 L26 52 Z" fill="url(#blueBlade3D)" />
-                            {/* Blade Ridge / Fuller Reflection */}
-                            <line x1="25" y1="50" x2="53" y2="13" stroke="#ffffff" strokeWidth="0.8" opacity="0.85" />
-
-                            {/* Guard (Crossguard) */}
-                            <path d="M32 43 Q26 48 29 53 L23 51 Q21 45 28 40 Z" fill="url(#blueHilt3D)" stroke="#e2e8f0" strokeWidth="0.5" />
-
-                            {/* Handle / Grip */}
-                            <line x1="25" y1="50" x2="15" y2="60" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
-                            <line x1="25" y1="50" x2="15" y2="60" stroke="#38bdf8" strokeWidth="0.8" strokeDasharray="1 2" />
-
-                            {/* Pommel Gem (Sapphire) */}
-                            <circle cx="14" cy="61" r="3.5" fill="url(#sapphireCoreGlow)" stroke="#e2e8f0" strokeWidth="0.8" />
-                          </motion.g>
-
-                          {/* REALISTIC CLASH SPARK EFFECT */}
-                          <motion.g
-                            animate={{
-                              scale: [0.7, 1.35, 0.7],
-                              opacity: [0.5, 1, 0.5],
-                            }}
-                            transition={{
-                              repeat: Infinity,
-                              duration: 0.25,
-                              ease: 'easeInOut',
-                            }}
-                            style={{ transformOrigin: '36px 28px' }}
-                          >
-                            <circle cx="36" cy="28" r="7" fill="url(#clashSparkGlow)" />
-                            <circle cx="36" cy="28" r="2.5" fill="#ffffff" />
-                            <path d="M36 18 L36 38 M26 28 L46 28" stroke="#ffffff" strokeWidth="0.9" opacity="0.9" />
-                          </motion.g>
-                        </svg>
-                      </div>
-
-                      {/* Floating 3D "VS" Text (Borderless & Containerless) */}
-                      <span
-                        className="font-black italic text-[11px] tracking-tighter -mt-1.5 bg-gradient-to-b from-yellow-100 via-amber-300 to-amber-600 bg-clip-text text-transparent select-none filter drop-shadow-[0_2px_4px_rgba(0,0,0,1)]"
-                        style={{
-                          textShadow: '0 0 10px rgba(245, 158, 11, 0.9), 0 2px 4px rgba(0, 0, 0, 1)',
-                          WebkitTextStroke: '0.4px rgba(255, 255, 255, 0.8)',
-                        }}
-                      >
-                        VS
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Team Banners & Controls Row (Matching Image 2) */}
-            <div className="mt-1 flex items-center justify-between text-xs font-black">
-              {/* Red Team Banner (Right side in RTL) */}
-              <div className="bg-gradient-to-r from-rose-950/90 to-red-900/90 border border-rose-500/50 rounded-xl px-2.5 py-1 text-rose-300 flex items-center gap-1.5 shadow-md">
-                <span className="text-sm">🚩</span>
-                <div className="flex flex-col text-right">
-                  <span className="text-[10px] font-bold text-rose-200">الفريق الأحمر</span>
-                  <span className="text-[9px] font-mono text-rose-400/80">Lv0</span>
-                </div>
-              </div>
-
-              {/* Center Capsule Pill Button */}
-              <div className="bg-gradient-to-r from-purple-950/90 via-slate-900 to-indigo-950/90 border border-purple-500/50 rounded-full px-3 py-1 flex items-center gap-2 shadow-xl">
-                <button
-                  onClick={() => {
-                    if (isOwner) {
-                      setShowTeamBattleModal(true);
-                    } else {
-                      setToastNotification('معاينة إعدادات التحدي (متاحة للتعديل للمالك فقط 👑)');
-                      setTimeout(() => setToastNotification(null), 3000);
-                    }
-                  }}
-                  className="flex items-center gap-1 text-[10.5px] font-black text-purple-200 hover:text-white cursor-pointer"
-                >
-                  <span>معركة الفريق</span>
-                  <HelpCircle className="w-3 h-3 text-purple-400" />
-                </button>
-
-                {/* Action Button: Start / End / Timer */}
-                {teamBattleStatus === 'preparation' ? (
-                  <button
-                    onClick={() => {
-                      if (!isOwner) {
-                        setToastNotification('بدء التحدي متاح لمالك الغرفة فقط 👑');
-                        setTimeout(() => setToastNotification(null), 3000);
-                        return;
-                      }
-                      const allowedMicCounts = [2, 4, 5, 6, 8, 9, 10, 12, 15, 20];
-                      if (!allowedMicCounts.includes(activeMicCount)) {
-                        setToastNotification('لا يمكن تشغيل التحدي بهذا العدد من المايكات');
-                        setTimeout(() => setToastNotification(null), 3000);
-                        return;
-                      }
-                      setTeamBattleStatus('running');
-                      setRedTeamScore(0);
-                      setBlueTeamScore(0);
-                      setSeatCounters({});
-                      setPkTopSupportersMap({});
-                      setToastNotification('بدأت معركة الفريق الآن! ⚔️🔥');
-                      setTimeout(() => setToastNotification(null), 3000);
-                    }}
-                    className="px-3.5 py-1 rounded-full bg-gradient-to-r from-amber-500 via-yellow-400 to-rose-500 text-slate-950 text-[11px] font-black shadow-lg shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-amber-300 ring-2 ring-amber-400/40 animate-pulse"
-                  >
-                    <Swords className="w-3.5 h-3.5 text-slate-950 stroke-[2.5]" />
-                    <span>بدء المعركة</span>
-                  </button>
-                ) : teamBattleStatus === 'running' ? (
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-[10px] text-amber-300 font-black animate-pulse">
-                      ⏱️ {Math.floor(teamBattleTimer / 60)}:{String(teamBattleTimer % 60).padStart(2, '0')}
-                    </span>
-                    {isOwner && (
-                      <button
-                        onClick={() => {
-                          finishTeamBattleRound();
-                        }}
-                        className="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[9px] font-bold hover:bg-rose-700 cursor-pointer shadow-sm"
-                      >
-                        إنهاء المعركة
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setIsTeamBattleActive(false);
-                      setToastNotification('انتهت معركة الفريق 🎉');
-                      setTimeout(() => setToastNotification(null), 3000);
-                    }}
-                    className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black cursor-pointer"
-                  >
-                    تمت الجولة
-                  </button>
-                )}
-              </div>
-
-              {/* Blue Team Banner (Left side in RTL) */}
-              <div className="bg-gradient-to-r from-blue-950/90 to-cyan-900/90 border border-cyan-500/50 rounded-xl px-2.5 py-1 text-cyan-300 flex items-center gap-1.5 shadow-md">
-                <div className="flex flex-col text-left">
-                  <span className="text-[10px] font-bold text-cyan-200">الفريق الأزرق</span>
-                  <span className="text-[9px] font-mono text-cyan-400/80">Lv0</span>
-                </div>
-                <span className="text-sm">🚩</span>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* TEAM BATTLE (معركة الفريق) VS STATUS BAR & CONTROL PANEL - مكون معزول */}
+        <RoomTeamBattleSection
+          isTeamBattleActive={isTeamBattleActive}
+          teamBattleStatus={teamBattleStatus}
+          teamBattleTimer={teamBattleTimer}
+          redTeamScore={redTeamScore}
+          blueTeamScore={blueTeamScore}
+          isOwner={isOwner}
+          activeMicCount={activeMicCount}
+          onOpenTeamBattleModal={() => setShowTeamBattleModal(true)}
+          onStartBattle={() => {
+            setTeamBattleStatus('running');
+            setRedTeamScore(0);
+            setBlueTeamScore(0);
+            setSeatCounters({});
+            setPkTopSupportersMap({});
+            setToastNotification('بدأت معركة الفريق الآن! ⚔️🔥');
+            setTimeout(() => setToastNotification(null), 3000);
+          }}
+          onFinishBattle={() => {
+            finishTeamBattleRound();
+          }}
+          onCloseBattle={() => {
+            setIsTeamBattleActive(false);
+            setToastNotification('انتهت معركة الفريق 🎉');
+            setTimeout(() => setToastNotification(null), 3000);
+          }}
+          onToast={(msg) => {
+            setToastNotification(msg);
+            setTimeout(() => setToastNotification(null), 3000);
+          }}
+        />
 
         {/* SUBTLE & COMPACT GIFT BANNER PILL IN MIDDLE OF SCREEN (ISOLATION TEST: Completely hidden/disabled during animation sequence) */}
         <AnimatePresence>
-          {activeGiftBanner && flyingGifts.length === 0 && (
+          {isTickersReady && activeGiftBanner && flyingGifts.length === 0 && (
             <motion.div
               initial={{ opacity: 0, x: 150, scale: 0.95 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
@@ -5055,16 +5128,18 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             }}
           />
 
-          <RoomChatFeed
-            chatMessages={chatMessages}
-            onReplyTo={(reply) => setReplyingToMessage(reply)}
-            onOpenChatInput={() => setShowChatInputModal(true)}
-            onToggleHostGender={handleToggleHostGender}
-            onOpenUserProfile={(userData) => {
-              setSelectedUserForProfile(userData);
-              setShowAdvancedProfileModal(true);
-            }}
-          />
+          <div className={`flex-1 flex flex-col min-h-0 w-full transition-opacity duration-300 ${isChatReady ? 'opacity-100' : 'opacity-0'}`}>
+            <RoomChatFeed
+              chatMessages={chatMessages}
+              onReplyTo={(reply) => setReplyingToMessage(reply)}
+              onOpenChatInput={() => setShowChatInputModal(true)}
+              onToggleHostGender={handleToggleHostGender}
+              onOpenUserProfile={(userData) => {
+                setSelectedUserForProfile(userData);
+                setShowAdvancedProfileModal(true);
+              }}
+            />
+          </div>
 
           {/* DEDICATED LEFT-SIDE GIFT & PRIZES STREAM (WITH FLOATING BROADCAST TIMER AT TOP) */}
           <ErrorBoundary fallback={null}>
@@ -5112,6 +5187,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         isUserOnMic={isUserOnMic}
         isMySeatMutedByAdmin={isMySeatMutedByAdmin}
         isMyMicMuted={isMyMicMuted}
+        isNoiseSuppressionEnabled={isNoiseSuppressionEnabled}
         showEmojiPicker={showEmojiPicker}
         onOpenChatInput={() => {
           if (isChatLocked && !canUserTypeInChat()) {
@@ -5130,89 +5206,33 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         onOpenToolsModal={() => setShowYoHoBottomToolsModal(true)}
       />
 
-      {/* CHAT INPUT MODAL POPUP (INSTANT ZERO-LAG & FLUSH ALIGNED TO KEYBOARD) */}
-      <AnimatePresence>
-        {showChatInputModal && (
-          <div
-            className="fixed inset-x-0 z-50 flex items-end justify-center bg-black/50 cursor-default select-none pointer-events-auto transition-opacity duration-75"
-            style={{
-              top: `${chatInputViewport.offsetTop}px`,
-              height: `${chatInputViewport.height}px`,
-            }}
-            onPointerDown={(e) => {
-              if (e.target === e.currentTarget) {
-                if (document.activeElement instanceof HTMLElement) {
-                  document.activeElement.blur();
-                }
-                setShowChatInputModal(false);
-              }
-            }}
-          >
-            <div
-              dir="rtl"
-              onClick={(e) => e.stopPropagation()}
-              className={`w-full max-w-md bg-[#121827] border-t border-x border-white/20 px-3 pt-2.5 rounded-t-2xl shadow-2xl pointer-events-auto transform-gpu ${
-                chatInputViewport.keyboardOpen
-                  ? 'pb-2'
-                  : 'pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]'
-              }`}
-            >
-              {/* CONDITIONAL REPLY PREVIEW BAR (معاينة الرد الشرطية - تظهر فقط عند وجود رد مفعل) */}
-              {replyingToMessage && (
-                <div className="flex items-center justify-between gap-2 p-2 mb-2 bg-[#1B2338] border border-amber-400/40 border-r-4 border-r-amber-400 rounded-xl text-xs shadow-md">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {/* Speaker Avatar Thumbnail */}
-                    <img
-                      src={
-                        replyingToMessage.avatar ||
-                        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'
-                      }
-                      alt={replyingToMessage.userName}
-                      className="w-7 h-7 rounded-full object-cover border border-amber-400/60 shadow-xs shrink-0"
-                    />
-                    <div className="flex flex-col min-w-0">
-                      <div className="flex items-center gap-1 text-[10px] font-black text-amber-300">
-                        <CornerUpLeft className="w-3 h-3 text-amber-400 shrink-0" />
-                        <span>جاري الرد على @{replyingToMessage.userName}:</span>
-                      </div>
-                      <span className="text-[11px] text-slate-100 font-medium truncate">{replyingToMessage.text}</span>
-                    </div>
-                  </div>
-                  {/* Close Icon (X) button to cancel reply */}
-                  <button
-                    type="button"
-                    onClick={() => setReplyingToMessage(null)}
-                    className="p-1 text-slate-400 hover:text-red-400 rounded-full hover:bg-white/10 cursor-pointer transition-colors shrink-0"
-                    title="إلغاء الرد"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-
-              {/* MODULAR VIP BROADCAST CHAT INPUT BAR (مستقل ومفصول تماماً عن كود الغرفة) */}
-              <VipBroadcastChatInput
-                inputMessage={inputMessage}
-                setInputMessage={setInputMessage}
-                canUserType={canUserTypeInChat()}
-                isVipBroadcastActive={isVipBroadcastActive}
-                onToggleVipBroadcast={() => setIsVipBroadcastActive((prev) => !prev)}
-                vipBroadcastRemaining={vipBroadcastRemaining}
-                onSendMessage={handleSendMessage}
-              />
-            </div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* MOVABLE & DYNAMIC EMOJI / LOTTIE REACTION PICKER */}
-      <MovableEmojiLottiePicker
-        isOpen={showEmojiPicker}
-        onClose={() => setShowEmojiPicker(false)}
-        onSendEmojiReaction={handleSendEmojiReaction}
+      {/* CHAT INPUT MODAL POPUP (DECOUPLED & MODULAR) */}
+      <RoomChatInputModal
+        isOpen={showChatInputModal}
+        onClose={() => setShowChatInputModal(false)}
+        inputMessage={inputMessage}
+        setInputMessage={setInputMessage}
+        canUserType={canUserTypeInChat()}
+        isVipBroadcastActive={isVipBroadcastActive}
+        onToggleVipBroadcast={() => setIsVipBroadcastActive((prev) => !prev)}
+        vipBroadcastRemaining={vipBroadcastRemaining}
+        onSendMessage={handleSendMessage}
+        replyingToMessage={replyingToMessage}
+        onCancelReply={() => setReplyingToMessage(null)}
       />
 
-      {/* PROFESSIONAL GIFTS PANEL (تحميل كسول عند الضغط للحاجة فقط لتخفيف الغرفة) */}
+      {/* MOVABLE & DYNAMIC EMOJI / LOTTIE REACTION PICKER (محمل عند الطلب فقط) */}
+      {showEmojiPicker && (
+        <Suspense fallback={null}>
+          <MovableEmojiLottiePicker
+            isOpen={showEmojiPicker}
+            onClose={() => setShowEmojiPicker(false)}
+            onSendEmojiReaction={handleSendEmojiReaction}
+          />
+        </Suspense>
+      )}
+
+      {/* PROFESSIONAL GIFTS PANEL (معزول تماماً عن الروم ولا يُحمّل إلا عند النقر عليه وحفظه في ذاكرة الهاتف) */}
       {showGiftDrawer && (
         <Suspense fallback={null}>
           <ProfessionalGiftPanel
@@ -5466,831 +5486,76 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         )}
       </AnimatePresence>
 
-      {/* TABBED STATISTICS PANEL (Diamond Badge / Support Stats Click) */}
-      <AnimatePresence>
-        {showRoomSupportModal && (
-          <div
-            className="fixed inset-0 z-50 bg-transparent flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-auto cursor-default select-none"
-            onClick={() => setShowRoomSupportModal(false)}
-          >
-            <motion.div
-              initial={{ y: '100%', opacity: 0.5 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: '100%', opacity: 0 }}
-              transition={{ duration: 0.22, ease: 'easeOut' }}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                background: leaderboardTheme.modalBgCustomCss || undefined,
-                borderColor: leaderboardTheme.modalBorderColor,
-                boxShadow: leaderboardTheme.modalGlowEffect || `0 0 35px ${leaderboardTheme.modalBorderColor}40`
-              }}
-              className={`w-full max-w-md ${!leaderboardTheme.modalBgCustomCss ? leaderboardTheme.modalBg : ''} border-t-2 sm:border-2 rounded-t-3xl sm:rounded-3xl p-4 text-white shadow-2xl h-[85vh] min-h-[85vh] max-h-[85vh] flex flex-col justify-between pointer-events-auto overflow-hidden sm:mb-4`}
-            >
-              {/* Header & Main Tabs Row (Fixed Top Section) */}
-              <div className="space-y-2 shrink-0">
-                <div className="flex items-center justify-between pb-1 border-b border-white/10">
-                  <div className="flex items-center gap-2">
-                    <Trophy
-                      className="w-5 h-5"
-                      style={{ color: leaderboardTheme.headerIconColor || '#fbbf24' }}
-                    />
-                    <h2
-                      className="text-base font-black"
-                      style={{ color: leaderboardTheme.headerTitleColor || '#fde047' }}
-                    >
-                      إحصائيات ولوحة متصدري الغرفة
-                    </h2>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    {/* DEVELOPER THEME CUSTOMIZATION BUTTON - ONLY VISIBLE TO THE PROGRAMMER */}
-                    {isDeveloper(currentAppRole) && (
-                      <button
-                        onClick={() => setShowLeaderboardThemeModal(true)}
-                        title="تخصيص ثيم وألوان النافذة (خاص بالمبرمج فقط)"
-                        className="p-1.5 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 text-slate-950 hover:brightness-110 shadow-md transition-all cursor-pointer flex items-center justify-center animate-pulse"
-                      >
-                        <Palette className="w-4 h-4 stroke-[2.5]" />
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() => setShowRoomSupportModal(false)}
-                      className="p-1.5 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* 3 Main Tabs: المساهمات (Diamonds), النادي (Club), الجاذبية (Charm) */}
-                <div
-                  className="grid grid-cols-3 gap-1 p-1 rounded-2xl border border-white/10 text-center"
-                  style={{ backgroundColor: leaderboardTheme.tabsContainerBg }}
-                >
-                  <button
-                    onClick={() => {
-                      setStatsMainTab('diamonds');
-                      setStatsTimeFilter('24h');
-                    }}
-                    style={{
-                      background: statsMainTab === 'diamonds' ? leaderboardTheme.diamondsTabGradient : 'transparent',
-                      color: statsMainTab === 'diamonds' ? leaderboardTheme.diamondsTabTextColor : leaderboardTheme.inactiveTabTextColor
-                    }}
-                    className={`py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                      statsMainTab === 'diamonds' ? 'shadow-md scale-[1.02]' : 'hover:text-white'
-                    }`}
-                  >
-                    💎 المساهمات
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setStatsMainTab('club');
-                      setStatsTimeFilter('24h');
-                    }}
-                    style={{
-                      background: statsMainTab === 'club' ? leaderboardTheme.clubTabGradient : 'transparent',
-                      color: statsMainTab === 'club' ? leaderboardTheme.clubTabTextColor : leaderboardTheme.inactiveTabTextColor
-                    }}
-                    className={`py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                      statsMainTab === 'club' ? 'shadow-md scale-[1.02]' : 'hover:text-white'
-                    }`}
-                  >
-                    🛡️ النادي
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setStatsMainTab('charm');
-                      setStatsTimeFilter('24h');
-                    }}
-                    style={{
-                      background: statsMainTab === 'charm' ? leaderboardTheme.charmTabGradient : 'transparent',
-                      color: statsMainTab === 'charm' ? leaderboardTheme.charmTabTextColor : leaderboardTheme.inactiveTabTextColor
-                    }}
-                    className={`py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                      statsMainTab === 'charm' ? 'shadow-md scale-[1.02]' : 'hover:text-white'
-                    }`}
-                  >
-                    ✨ الجاذبية
-                  </button>
-                </div>
-
-                {/* Sub-time filters row */}
-                <div className="flex items-center justify-center gap-2 pt-1">
-                  {statsMainTab === 'club' ? (
-                    <>
-                      <button
-                        onClick={() => setStatsTimeFilter('24h')}
-                        style={{
-                          backgroundColor: statsTimeFilter === '24h' ? leaderboardTheme.filterActiveBg : leaderboardTheme.filterInactiveBg,
-                          color: statsTimeFilter === '24h' ? leaderboardTheme.filterActiveText : '#94a3b8'
-                        }}
-                        className="px-3 py-1 rounded-full text-[11px] font-black transition-all cursor-pointer"
-                      >
-                        24 ساعة
-                      </button>
-                      <button
-                        onClick={() => setStatsTimeFilter('weekly')}
-                        style={{
-                          backgroundColor: statsTimeFilter === 'weekly' ? leaderboardTheme.filterActiveBg : leaderboardTheme.filterInactiveBg,
-                          color: statsTimeFilter === 'weekly' ? leaderboardTheme.filterActiveText : '#94a3b8'
-                        }}
-                        className="px-3 py-1 rounded-full text-[11px] font-black transition-all cursor-pointer"
-                      >
-                        أسبوعي
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => setStatsTimeFilter('24h')}
-                        style={{
-                          backgroundColor: statsTimeFilter === '24h' ? leaderboardTheme.filterActiveBg : leaderboardTheme.filterInactiveBg,
-                          color: statsTimeFilter === '24h' ? leaderboardTheme.filterActiveText : '#94a3b8'
-                        }}
-                        className="px-3 py-1 rounded-full text-[11px] font-black transition-all cursor-pointer"
-                      >
-                        24 ساعة
-                      </button>
-                      <button
-                        onClick={() => setStatsTimeFilter('all')}
-                        style={{
-                          backgroundColor: statsTimeFilter === 'all' ? leaderboardTheme.filterActiveBg : leaderboardTheme.filterInactiveBg,
-                          color: statsTimeFilter === 'all' ? leaderboardTheme.filterActiveText : '#94a3b8'
-                        }}
-                        className="px-3 py-1 rounded-full text-[11px] font-black transition-all cursor-pointer"
-                      >
-                        الإجمالي
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Swipe Container for Leaderboard List (Fixed Flex-1 Scrollable Center Area) */}
-              <motion.div
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.15}
-                onDragEnd={(_e, info) => {
-                  const threshold = 35;
-                  const velocityThreshold = 120;
-                  const tabsOrder: ('diamonds' | 'club' | 'charm')[] = ['diamonds', 'club', 'charm'];
-                  const currentIdx = tabsOrder.indexOf(statsMainTab);
-
-                  if (info.offset.x > threshold || info.velocity.x > velocityThreshold) {
-                    if (currentIdx < tabsOrder.length - 1) {
-                      setStatsMainTab(tabsOrder[currentIdx + 1]);
-                      setStatsTimeFilter('24h');
-                    }
-                  } else if (info.offset.x < -threshold || info.velocity.x < -velocityThreshold) {
-                    if (currentIdx > 0) {
-                      setStatsMainTab(tabsOrder[currentIdx - 1]);
-                      setStatsTimeFilter('24h');
-                    }
-                  }
-                }}
-                className="flex-1 min-h-0 overflow-y-auto no-scrollbar touch-pan-y cursor-grab active:cursor-grabbing my-2 pr-0.5"
-              >
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={statsMainTab + statsTimeFilter}
-                    initial={{ opacity: 0, x: statsMainTab === 'diamonds' ? 25 : statsMainTab === 'charm' ? -25 : 0 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: statsMainTab === 'diamonds' ? -25 : statsMainTab === 'charm' ? 25 : 0 }}
-                    transition={{ duration: 0.18, ease: 'easeOut' }}
-                    className="space-y-2"
-                  >
-                    {/* 1. DIAMONDS LEADERBOARD LIST */}
-                    {statsMainTab === 'diamonds' && (
-                      (statsTimeFilter === '24h' ? [
-                        { rank: 1, name: 'الأمير أسامة (الرئيس)', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '88', vip: 'VIP8', nLevel: 'N.15', val: '18,500,000 💎' },
-                        { rank: 2, name: 'سارة الكابيتانو', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=100', level: '75', vip: 'VIP6', nLevel: 'N.12', val: '12,200,000 💎' },
-                        { rank: 3, name: 'صقر الشام', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100', level: '64', vip: 'VIP5', nLevel: 'N.10', val: '9,300,000 💎' },
-                        { rank: 4, name: 'الملك الكويتي', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100', level: '52', vip: 'VIP4', nLevel: 'N.8', val: '5,100,000 💎' },
-                        { rank: 5, name: 'الدكتورة هناء', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100', level: '48', vip: 'VIP3', nLevel: 'N.6', val: '3,400,000 💎' }
-                      ] : [
-                        { rank: 1, name: 'السلطان قابوس', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100', level: '99', vip: 'VIP9', nLevel: 'N.20', val: '120,500,000 💎' },
-                        { rank: 2, name: 'الأمير أسامة (الرئيس)', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '88', vip: 'VIP8', nLevel: 'N.15', val: '95,000,000 💎' },
-                        { rank: 3, name: 'شيخ الشباب', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100', level: '82', vip: 'VIP7', nLevel: 'N.14', val: '68,200,000 💎' },
-                        { rank: 4, name: 'لورد بغداد', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100', level: '71', vip: 'VIP6', nLevel: 'N.11', val: '42,000,000 💎' }
-                      ]).map((item) => (
-                        <div
-                          key={`diamonds-${statsTimeFilter}-${item.rank}-${item.name}`}
-                          onClick={() => {
-                            setShowRoomSupportModal(false);
-                            setSelectedUserForProfile({
-                              id: `sup-dia-${item.rank}`,
-                              name: item.name,
-                              avatar: item.avatar,
-                              userId: `9920${item.rank}`,
-                              country: 'السعودية',
-                              countryFlag: '🇸🇦'
-                            });
-                            setShowAdvancedProfileModal(true);
-                          }}
-                          style={{
-                            backgroundColor: leaderboardTheme.cardBg,
-                            borderColor: leaderboardTheme.cardBorderColor
-                          }}
-                          className="p-2.5 border rounded-2xl flex items-center justify-between text-xs transition-all cursor-pointer hover:scale-[1.01] relative overflow-visible shadow-sm"
-                        >
-                          <div className="flex items-center gap-2 overflow-visible max-w-[72%] relative z-10">
-                            {/* Rank Badge (#1 Gold, #2 Silver, #3 Bronze) */}
-                            <div
-                              className={`w-7 h-7 shrink-0 rounded-xl flex items-center justify-center font-black text-xs shadow-md border ${
-                                item.rank === 1
-                                  ? 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 border-amber-200 ring-2 ring-amber-400/50'
-                                  : item.rank === 2
-                                  ? 'bg-gradient-to-tr from-slate-300 to-slate-100 text-slate-950 border-slate-200 ring-1 ring-slate-300'
-                                  : item.rank === 3
-                                  ? 'bg-gradient-to-tr from-amber-700 to-amber-500 text-white border-amber-600'
-                                  : 'bg-white/10 text-slate-300 border-white/5'
-                              }`}
-                            >
-                              {item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : item.rank}
-                            </div>
-
-                            {/* Themed Avatar Frame (Top 1, 2, 3 with custom upload / preset support) */}
-                            {(() => {
-                              const frameConfig =
-                                item.rank === 1
-                                  ? leaderboardTheme.rank1Frame
-                                  : item.rank === 2
-                                  ? leaderboardTheme.rank2Frame
-                                  : item.rank === 3
-                                  ? leaderboardTheme.rank3Frame
-                                  : null;
-
-                              if (!frameConfig || item.rank > 3) {
-                                return (
-                                  <img
-                                    src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                    alt={item.name}
-                                    className="w-8 h-8 rounded-full object-cover border border-white/20 shrink-0"
-                                  />
-                                );
-                              }
-
-                              if (frameConfig.type === 'custom_upload' && frameConfig.customImageUrl) {
-                                return (
-                                  <div className="relative shrink-0 flex items-center justify-center mr-1 z-20 overflow-visible w-9 h-9">
-                                    <img
-                                      src={frameConfig.customImageUrl}
-                                      alt="Custom Frame"
-                                      className="absolute inset-0 w-full h-full object-contain pointer-events-none z-30 scale-135"
-                                    />
-                                    <img
-                                      src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                      alt={item.name}
-                                      className="w-7 h-7 rounded-full object-cover relative z-10"
-                                    />
-                                  </div>
-                                );
-                              }
-
-                              return (
-                                <div className="relative shrink-0 flex items-center justify-center mr-1 z-20 overflow-visible">
-                                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[13px] filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] z-30 select-none pointer-events-none">
-                                    {frameConfig.crownEmoji || (item.rank === 1 ? '👑' : item.rank === 2 ? '💎' : '✨')}
-                                  </span>
-                                  <div
-                                    className={`p-[2.5px] rounded-full bg-gradient-to-tr ${
-                                      frameConfig.borderGradient ||
-                                      (item.rank === 1
-                                        ? 'from-amber-600 via-yellow-300 to-amber-500'
-                                        : item.rank === 2
-                                        ? 'from-slate-400 via-white to-slate-300'
-                                        : 'from-amber-800 via-amber-500 to-yellow-600')
-                                    } relative z-20`}
-                                    style={{
-                                      boxShadow: `0 0 16px ${
-                                        frameConfig.glowColor ||
-                                        (item.rank === 1 ? 'rgba(251,191,36,0.85)' : item.rank === 2 ? 'rgba(226,232,240,0.8)' : 'rgba(217,119,6,0.8)')
-                                      }`
-                                    }}
-                                  >
-                                    <div className="p-[1px] bg-[#121827] rounded-full">
-                                      <img
-                                        src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                        alt={item.name}
-                                        className="w-8 h-8 rounded-full object-cover"
-                                      />
-                                    </div>
-                                  </div>
-                                  <span
-                                    className={`absolute -bottom-1 -right-0.5 text-[8px] rounded-full px-1 font-black shadow-md leading-tight z-30 pointer-events-none ${
-                                      frameConfig.badgeBg && frameConfig.badgeBg.startsWith('from-')
-                                        ? `bg-gradient-to-r ${frameConfig.badgeBg}`
-                                        : ''
-                                    }`}
-                                    style={{
-                                      background:
-                                        frameConfig.badgeBg && !frameConfig.badgeBg.startsWith('from-')
-                                          ? frameConfig.badgeBg
-                                          : undefined,
-                                      color:
-                                        frameConfig.badgeTextColor ||
-                                        (item.rank === 1 ? '#020617' : item.rank === 2 ? '#0f172a' : '#ffffff')
-                                    }}
-                                  >
-                                    {frameConfig.starBadgeEmoji || (item.rank === 1 ? '★' : '✦')}
-                                  </span>
-                                </div>
-                              );
-                            })()}
-
-                            {/* Single Line User Metadata: Name, Level, VIP, N-Level */}
-                            <div className="flex items-center gap-1.5 truncate overflow-hidden min-w-0">
-                              <span
-                                className="font-black truncate text-[11px]"
-                                style={{ color: leaderboardTheme.cardNameColor }}
-                              >
-                                {item.name}
-                              </span>
-                              <span
-                                className="text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                                style={{ backgroundColor: leaderboardTheme.cardMetaLevelBg }}
-                              >
-                                Lv.{item.level}
-                              </span>
-                              <span
-                                className="text-slate-950 text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                                style={{ backgroundColor: leaderboardTheme.cardMetaVipBg }}
-                              >
-                                {item.vip}
-                              </span>
-                              <span
-                                className="text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                                style={{ backgroundColor: leaderboardTheme.cardMetaNLevelBg }}
-                              >
-                                {item.nLevel}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Value */}
-                          <span
-                            className="font-mono font-black text-xs dir-ltr shrink-0 pr-1"
-                            style={{ color: leaderboardTheme.cardStatsNumberColor }}
-                          >
-                            {item.val}
-                          </span>
-                        </div>
-                      ))
-                    )}
-
-                    {/* 2. CLUB RANKING LIST */}
-                    {statsMainTab === 'club' && (
-                      (statsTimeFilter === '24h' ? [
-                        { rank: 1, name: 'نادي الفرسان الذهب', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '80', vip: 'VIP8', nLevel: 'N.16', val: '240,000 نقطة' },
-                        { rank: 2, name: 'نادي الملوك والعظماء', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100', level: '72', vip: 'VIP7', nLevel: 'N.14', val: '180,000 نقطة' },
-                        { rank: 3, name: 'نادي النجوم الأسطوري', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=100', level: '65', vip: 'VIP5', nLevel: 'N.11', val: '135,000 نقطة' }
-                      ] : [
-                        { rank: 1, name: 'نادي الصقور العالمية', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100', level: '90', vip: 'VIP9', nLevel: 'N.18', val: '1,250,000 نقطة' },
-                        { rank: 2, name: 'نادي الفرسان الذهب', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '80', vip: 'VIP8', nLevel: 'N.16', val: '980,000 نقطة' },
-                        { rank: 3, name: 'نادي عشاق الطرب', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100', level: '68', vip: 'VIP6', nLevel: 'N.12', val: '740,000 نقطة' }
-                      ]).map((item) => (
-                        <div
-                          key={`club-${statsTimeFilter}-${item.rank}-${item.name}`}
-                          style={{
-                            backgroundColor: leaderboardTheme.cardBg,
-                            borderColor: leaderboardTheme.cardBorderColor
-                          }}
-                          className="p-2.5 border rounded-2xl flex items-center justify-between text-xs transition-colors relative overflow-visible shadow-sm"
-                        >
-                          <div className="flex items-center gap-2 overflow-visible max-w-[72%] relative z-10">
-                            <div
-                              className={`w-7 h-7 shrink-0 rounded-xl flex items-center justify-center font-black text-xs shadow-md border ${
-                                item.rank === 1
-                                  ? 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 border-amber-200'
-                                  : item.rank === 2
-                                  ? 'bg-gradient-to-tr from-slate-300 to-slate-100 text-slate-950 border-slate-200'
-                                  : 'bg-gradient-to-tr from-amber-700 to-amber-500 text-white border-amber-600'
-                              }`}
-                            >
-                              {item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : '🥉'}
-                            </div>
-
-                            {/* Themed Avatar Frame */}
-                            {(() => {
-                              const frameConfig =
-                                item.rank === 1
-                                  ? leaderboardTheme.rank1Frame
-                                  : item.rank === 2
-                                  ? leaderboardTheme.rank2Frame
-                                  : item.rank === 3
-                                  ? leaderboardTheme.rank3Frame
-                                  : null;
-
-                              if (!frameConfig || item.rank > 3) {
-                                return (
-                                  <img
-                                    src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                    alt={item.name}
-                                    className="w-8 h-8 rounded-full object-cover border border-white/20 shrink-0"
-                                  />
-                                );
-                              }
-
-                              if (frameConfig.type === 'custom_upload' && frameConfig.customImageUrl) {
-                                return (
-                                  <div className="relative shrink-0 flex items-center justify-center mr-1 z-20 overflow-visible w-9 h-9">
-                                    <img
-                                      src={frameConfig.customImageUrl}
-                                      alt="Custom Frame"
-                                      className="absolute inset-0 w-full h-full object-contain pointer-events-none z-30 scale-135"
-                                    />
-                                    <img
-                                      src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                      alt={item.name}
-                                      className="w-7 h-7 rounded-full object-cover relative z-10"
-                                    />
-                                  </div>
-                                );
-                              }
-
-                              return (
-                                <div className="relative shrink-0 flex items-center justify-center mr-1 z-20 overflow-visible">
-                                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[13px] filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] z-30 select-none pointer-events-none">
-                                    {frameConfig.crownEmoji || (item.rank === 1 ? '👑' : item.rank === 2 ? '💎' : '✨')}
-                                  </span>
-                                  <div
-                                    className={`p-[2.5px] rounded-full bg-gradient-to-tr ${
-                                      frameConfig.borderGradient ||
-                                      (item.rank === 1
-                                        ? 'from-amber-600 via-yellow-300 to-amber-500'
-                                        : item.rank === 2
-                                        ? 'from-slate-400 via-white to-slate-300'
-                                        : 'from-amber-800 via-amber-500 to-yellow-600')
-                                    } relative z-20`}
-                                    style={{
-                                      boxShadow: `0 0 16px ${
-                                        frameConfig.glowColor ||
-                                        (item.rank === 1 ? 'rgba(251,191,36,0.85)' : item.rank === 2 ? 'rgba(226,232,240,0.8)' : 'rgba(217,119,6,0.8)')
-                                      }`
-                                    }}
-                                  >
-                                    <div className="p-[1px] bg-[#121827] rounded-full">
-                                      <img
-                                        src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                        alt={item.name}
-                                        className="w-8 h-8 rounded-full object-cover"
-                                      />
-                                    </div>
-                                  </div>
-                                  <span
-                                    className={`absolute -bottom-1 -right-0.5 text-[8px] rounded-full px-1 font-black shadow-md leading-tight z-30 pointer-events-none ${
-                                      frameConfig.badgeBg && frameConfig.badgeBg.startsWith('from-')
-                                        ? `bg-gradient-to-r ${frameConfig.badgeBg}`
-                                        : ''
-                                    }`}
-                                    style={{
-                                      background:
-                                        frameConfig.badgeBg && !frameConfig.badgeBg.startsWith('from-')
-                                          ? frameConfig.badgeBg
-                                          : undefined,
-                                      color:
-                                        frameConfig.badgeTextColor ||
-                                        (item.rank === 1 ? '#020617' : item.rank === 2 ? '#0f172a' : '#ffffff')
-                                    }}
-                                  >
-                                    {frameConfig.starBadgeEmoji || (item.rank === 1 ? '★' : '✦')}
-                                  </span>
-                                </div>
-                              );
-                            })()}
-
-                            <div className="flex items-center gap-1.5 truncate overflow-hidden min-w-0">
-                              <span
-                                className="font-black truncate text-[11px]"
-                                style={{ color: leaderboardTheme.cardNameColor }}
-                              >
-                                {item.name}
-                              </span>
-                              <span
-                                className="text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                                style={{ backgroundColor: leaderboardTheme.cardMetaLevelBg }}
-                              >
-                                Lv.{item.level}
-                              </span>
-                              <span
-                                className="text-slate-950 text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                                style={{ backgroundColor: leaderboardTheme.cardMetaVipBg }}
-                              >
-                                {item.vip}
-                              </span>
-                              <span
-                                className="text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                                style={{ backgroundColor: leaderboardTheme.cardMetaNLevelBg }}
-                              >
-                                {item.nLevel}
-                              </span>
-                            </div>
-                          </div>
-
-                          <span
-                            className="font-mono font-black text-xs dir-ltr shrink-0 pr-1"
-                            style={{ color: leaderboardTheme.cardStatsNumberColor }}
-                          >
-                            {item.val}
-                          </span>
-                        </div>
-                      ))
-                    )}
-
-                    {/* 3. CHARM RANKING LIST */}
-                    {statsMainTab === 'charm' && (
-                      (statsTimeFilter === '24h' ? [
-                        { rank: 1, name: 'وردة الأمل', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=100', level: '70', vip: 'VIP7', nLevel: 'N.13', val: '2,850,000 ✨' },
-                        { rank: 2, name: 'ليلى الملكة', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '66', vip: 'VIP6', nLevel: 'N.11', val: '1,920,000 ✨' },
-                        { rank: 3, name: 'نغم السعادة', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100', level: '59', vip: 'VIP5', nLevel: 'N.9', val: '1,410,000 ✨' },
-                        { rank: 4, name: 'شمس الأصيل', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100', level: '45', vip: 'VIP3', nLevel: 'N.6', val: '890,000 ✨' }
-                      ] : [
-                        { rank: 1, name: 'أميرة القلوب', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=100', level: '92', vip: 'VIP9', nLevel: 'N.19', val: '28,500,000 ✨' },
-                        { rank: 2, name: 'وردة الأمل', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100', level: '70', vip: 'VIP7', nLevel: 'N.13', val: '19,200,000 ✨' },
-                        { rank: 3, name: 'ملكة الشرق', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100', level: '68', vip: 'VIP6', nLevel: 'N.12', val: '14,800,000 ✨' }
-                      ]).map((item) => (
-                        <div
-                          key={`charm-${statsTimeFilter}-${item.rank}-${item.name}`}
-                          onClick={() => {
-                            setShowRoomSupportModal(false);
-                            setSelectedUserForProfile({
-                              id: `sup-ch-${item.rank}`,
-                              name: item.name,
-                              avatar: item.avatar,
-                              userId: `9920${item.rank}`,
-                              country: 'السعودية',
-                              countryFlag: '🇸🇦'
-                            });
-                            setShowAdvancedProfileModal(true);
-                          }}
-                          style={{
-                            backgroundColor: leaderboardTheme.cardBg,
-                            borderColor: leaderboardTheme.cardBorderColor
-                          }}
-                          className="p-2.5 border rounded-2xl flex items-center justify-between text-xs transition-all cursor-pointer hover:scale-[1.01] relative overflow-visible shadow-sm"
-                        >
-                          <div className="flex items-center gap-2 overflow-visible max-w-[72%] relative z-10">
-                            <div
-                              className={`w-7 h-7 shrink-0 rounded-xl flex items-center justify-center font-black text-xs shadow-md border ${
-                                item.rank === 1
-                                  ? 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 border-amber-200'
-                                  : item.rank === 2
-                                  ? 'bg-gradient-to-tr from-slate-300 to-slate-100 text-slate-950 border-slate-200'
-                                  : item.rank === 3
-                                  ? 'bg-gradient-to-tr from-amber-700 to-amber-500 text-white border-amber-600'
-                                  : 'bg-white/10 text-slate-300 border-white/5'
-                              }`}
-                            >
-                              {item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : item.rank}
-                            </div>
-
-                            {/* Themed Avatar Frame */}
-                            {(() => {
-                              const frameConfig =
-                                item.rank === 1
-                                  ? leaderboardTheme.rank1Frame
-                                  : item.rank === 2
-                                  ? leaderboardTheme.rank2Frame
-                                  : item.rank === 3
-                                  ? leaderboardTheme.rank3Frame
-                                  : null;
-
-                              if (!frameConfig || item.rank > 3) {
-                                return (
-                                  <img
-                                    src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                    alt={item.name}
-                                    className="w-8 h-8 rounded-full object-cover border border-white/20 shrink-0"
-                                  />
-                                );
-                              }
-
-                              if (frameConfig.type === 'custom_upload' && frameConfig.customImageUrl) {
-                                return (
-                                  <div className="relative shrink-0 flex items-center justify-center mr-1 z-20 overflow-visible w-9 h-9">
-                                    <img
-                                      src={frameConfig.customImageUrl}
-                                      alt="Custom Frame"
-                                      className="absolute inset-0 w-full h-full object-contain pointer-events-none z-30 scale-135"
-                                    />
-                                    <img
-                                      src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                      alt={item.name}
-                                      className="w-7 h-7 rounded-full object-cover relative z-10"
-                                    />
-                                  </div>
-                                );
-                              }
-
-                              return (
-                                <div className="relative shrink-0 flex items-center justify-center mr-1 z-20 overflow-visible">
-                                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[13px] filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] z-30 select-none pointer-events-none">
-                                    {frameConfig.crownEmoji || (item.rank === 1 ? '👑' : item.rank === 2 ? '💎' : '✨')}
-                                  </span>
-                                  <div
-                                    className={`p-[2.5px] rounded-full bg-gradient-to-tr ${
-                                      frameConfig.borderGradient ||
-                                      (item.rank === 1
-                                        ? 'from-amber-600 via-yellow-300 to-amber-500'
-                                        : item.rank === 2
-                                        ? 'from-slate-400 via-white to-slate-300'
-                                        : 'from-amber-800 via-amber-500 to-yellow-600')
-                                    } relative z-20`}
-                                    style={{
-                                      boxShadow: `0 0 16px ${
-                                        frameConfig.glowColor ||
-                                        (item.rank === 1 ? 'rgba(251,191,36,0.85)' : item.rank === 2 ? 'rgba(226,232,240,0.8)' : 'rgba(217,119,6,0.8)')
-                                      }`
-                                    }}
-                                  >
-                                    <div className="p-[1px] bg-[#121827] rounded-full">
-                                      <img
-                                        src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                                        alt={item.name}
-                                        className="w-8 h-8 rounded-full object-cover"
-                                      />
-                                    </div>
-                                  </div>
-                                  <span
-                                    className={`absolute -bottom-1 -right-0.5 text-[8px] rounded-full px-1 font-black shadow-md leading-tight z-30 pointer-events-none ${
-                                      frameConfig.badgeBg && frameConfig.badgeBg.startsWith('from-')
-                                        ? `bg-gradient-to-r ${frameConfig.badgeBg}`
-                                        : ''
-                                    }`}
-                                    style={{
-                                      background:
-                                        frameConfig.badgeBg && !frameConfig.badgeBg.startsWith('from-')
-                                          ? frameConfig.badgeBg
-                                          : undefined,
-                                      color:
-                                        frameConfig.badgeTextColor ||
-                                        (item.rank === 1 ? '#020617' : item.rank === 2 ? '#0f172a' : '#ffffff')
-                                    }}
-                                  >
-                                    {frameConfig.starBadgeEmoji || (item.rank === 1 ? '★' : '✦')}
-                                  </span>
-                                </div>
-                              );
-                            })()}
-
-                            <div className="flex items-center gap-1.5 truncate overflow-hidden min-w-0">
-                              <span
-                                className="font-black truncate text-[11px]"
-                                style={{ color: leaderboardTheme.cardNameColor }}
-                              >
-                                {item.name}
-                              </span>
-                              <span
-                                className="text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                                style={{ backgroundColor: leaderboardTheme.cardMetaLevelBg }}
-                              >
-                                Lv.{item.level}
-                              </span>
-                              <span
-                                className="text-slate-950 text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                                style={{ backgroundColor: leaderboardTheme.cardMetaVipBg }}
-                              >
-                                {item.vip}
-                              </span>
-                              <span
-                                className="text-white text-[8px] font-black px-1.5 py-0.2 rounded-md shrink-0"
-                                style={{ backgroundColor: leaderboardTheme.cardMetaNLevelBg }}
-                              >
-                                {item.nLevel}
-                              </span>
-                            </div>
-                          </div>
-
-                          <span
-                            className="font-mono font-black text-xs dir-ltr shrink-0 pr-1"
-                            style={{ color: leaderboardTheme.cardStatsNumberColor }}
-                          >
-                            {item.val}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </motion.div>
-                </AnimatePresence>
-              </motion.div>
-
-              {/* Bottom Action / Footer Bar (Compact Minimalist Numbers & Indicators) */}
-              <div className="pt-2 border-t border-white/10 shrink-0">
-                {statsMainTab === 'diamonds' && (
-                  <div className="flex items-center justify-center gap-1.5 text-xs font-mono py-1">
-                    <span className="text-xs select-none">💎</span>
-                    <span
-                      className="font-black text-xs dir-ltr"
-                      style={{ color: leaderboardTheme.cardStatsNumberColor || '#38bdf8' }}
-                    >
-                      {statsTimeFilter === '24h' ? '40M' : '325.7M'}
-                    </span>
-                  </div>
-                )}
-
-                {statsMainTab === 'club' && (
-                  <div className="space-y-1.5">
-                    <button
-                      onClick={() => {
-                        setShowRoomSupportModal(false);
-                        setShowFamilyModal(true);
-                      }}
-                      className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black text-xs rounded-xl shadow-md hover:brightness-110 cursor-pointer transition-all flex items-center justify-center gap-1.5"
-                    >
-                      <Users className="w-4 h-4" />
-                      <span>انضم الآن إلى النادي العائلي 🛡️</span>
-                    </button>
-                    <div className="flex items-center justify-center gap-1.5 text-xs font-mono">
-                      <span className="text-xs select-none">🛡️</span>
-                      <span
-                        className="font-black text-xs dir-ltr"
-                        style={{ color: leaderboardTheme.cardStatsNumberColor || '#38bdf8' }}
-                      >
-                        {statsTimeFilter === '24h' ? '555K' : '2.97M'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {statsMainTab === 'charm' && (
-                  <div className="flex items-center justify-center gap-1.5 text-xs font-mono py-1">
-                    <span className="text-xs select-none">✨</span>
-                    <span
-                      className="font-black text-xs dir-ltr"
-                      style={{ color: leaderboardTheme.cardStatsNumberColor || '#38bdf8' }}
-                    >
-                      {statsTimeFilter === '24h' ? '7.07M' : '62.5M'}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* LEADERBOARD DEVELOPER THEME MODAL */}
-      <LeaderboardThemeModal
-        isOpen={showLeaderboardThemeModal}
-        onClose={() => setShowLeaderboardThemeModal(false)}
-        currentTheme={leaderboardTheme}
-        onThemeChange={(newTheme) => setLeaderboardTheme(newTheme)}
-      />
-
-      {/* FAMILY MODAL */}
-      <FamilyModal
-        isOpen={showFamilyModal}
-        onClose={() => setShowFamilyModal(false)}
-      />
-
-      {/* SUPER LEGEND MODAL */}
-      <SuperLegendModal
-        isOpen={showSuperLegendModal}
-        onClose={() => setShowSuperLegendModal(false)}
-        onOpenRecharge={onOpenRecharge}
-      />
-
-      {/* HOST PROFILE QUICK VIEW MODAL */}
-      <HostProfileModal
-        isOpen={showHostProfileModal}
-        onClose={() => setShowHostProfileModal(false)}
-        hostName={hostSeat.userName || 'أميرة الشرق 👑'}
-        hostAvatar={hostSeat.avatar}
-        hostId={roomId}
-        isHostMuted={hostSeat.isMuted}
-        canControlMic={currentUserRole === 'owner'}
+      {/* TABBED STATISTICS PANEL (Leaderboard & Stats Modal - Extracted into RoomLeaderboardStatsModal) */}
+      <RoomLeaderboardStatsModal
+        isOpen={showRoomSupportModal}
+        onClose={() => setShowRoomSupportModal(false)}
         currentAppRole={currentAppRole}
-        onToggleHostMute={() => {
-          handleToggleMuteSeat(hostSeat.id);
+        leaderboardTheme={leaderboardTheme}
+        onSelectUserProfile={(user) => {
+          setSelectedUserForProfile(user);
+          setShowAdvancedProfileModal(true);
         }}
-        onSendGift={() => {
-          setSelectedGiftTargetSeatIds([hostSeat.id || 1]);
-          setShowHostProfileModal(false);
-          setShowGiftDrawer(true);
-        }}
-        onMentionHost={() => {
-          setInputMessage(`@${hostSeat.userName || 'أميرة الشرق'} `);
-          setShowChatInputModal(true);
-        }}
-        onOpenFullProfile={() => {
-          setFullProfileUser({
-            id: roomId || '8849201',
-            userId: roomId || '8849201',
-            name: hostSeat.userName || 'أميرة الشرق 👑',
-            avatar: hostSeat.avatar,
-            country: 'اليمن',
-            countryFlag: '🇾🇪',
-            isHost: true,
-            isAdmin: true
-          });
-          setShowHostProfileModal(false);
-          setShowFullUserProfileModal(true);
-        }}
+        onOpenFamilyModal={() => setShowFamilyModal(true)}
+        totalRoomSupportDiamonds={totalRoomSupportDiamonds}
       />
+
+      {/* FAMILY MODAL (محمل عند الطلب فقط) */}
+      {showFamilyModal && (
+        <FamilyModal
+          isOpen={showFamilyModal}
+          onClose={() => setShowFamilyModal(false)}
+        />
+      )}
+
+      {/* SUPER LEGEND MODAL (محمل عند الطلب فقط) */}
+      {showSuperLegendModal && (
+        <SuperLegendModal
+          isOpen={showSuperLegendModal}
+          onClose={() => setShowSuperLegendModal(false)}
+          onOpenRecharge={onOpenRecharge}
+        />
+      )}
+
+      {/* HOST PROFILE QUICK VIEW MODAL (محمل عند الطلب فقط) */}
+      {showHostProfileModal && (
+        <HostProfileModal
+          isOpen={showHostProfileModal}
+          onClose={() => setShowHostProfileModal(false)}
+          hostName={hostSeat.userName || 'أميرة الشرق 👑'}
+          hostAvatar={hostSeat.avatar}
+          hostId={roomId}
+          isHostMuted={hostSeat.isMuted}
+          canControlMic={currentUserRole === 'owner'}
+          currentAppRole={currentAppRole}
+          onToggleHostMute={() => {
+            handleToggleMuteSeat(hostSeat.id);
+          }}
+          onSendGift={() => {
+            setSelectedGiftTargetSeatIds([hostSeat.id || 1]);
+            setShowHostProfileModal(false);
+            setShowGiftDrawer(true);
+          }}
+          onMentionHost={() => {
+            setInputMessage(`@${hostSeat.userName || 'أميرة الشرق'} `);
+            setShowChatInputModal(true);
+          }}
+          onOpenFullProfile={() => {
+            setFullProfileUser({
+              id: roomId || '8849201',
+              userId: roomId || '8849201',
+              name: hostSeat.userName || 'أميرة الشرق 👑',
+              avatar: hostSeat.avatar,
+              country: 'اليمن',
+              countryFlag: '🇾🇪',
+              isHost: true,
+              isAdmin: true
+            });
+            setShowHostProfileModal(false);
+            setShowFullUserProfileModal(true);
+          }}
+        />
+      )}
 
       {/* ADVANCED USER PROFILE MODAL (بطاقة البروفايل المتقدمة) */}
       {showAdvancedProfileModal && selectedUserForProfile && (
@@ -6579,6 +5844,20 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                             >
                               <User className="w-3.5 h-3.5" />
                             </button>
+
+                            {/* Exit / Leave Room Simulation Button (مغادرة الروم لتفريغ المايك تلقائياً) */}
+                            <button
+                              type="button"
+                              title="مغادرة الروم (خروج من البث)"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUserExitRoom(usr.id, usr.name);
+                              }}
+                              className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 border border-rose-500/20 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-[10px]"
+                            >
+                              <LogOut className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">خروج</span>
+                            </button>
                           </div>
                         </div>
                       );
@@ -6591,88 +5870,92 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         })()}
       </AnimatePresence>
 
-      {/* SEAT ACTION MODAL (قائمة التحكم بالمقعد والمايك - خيارات الإدارة والجمهور) */}
-      <SeatActionModal
-        isOpen={showSeatActionModal}
-        onClose={() => {
-          setShowSeatActionModal(false);
-          setSelectedSeatForAction(null);
-        }}
-        seatId={selectedSeatForAction}
-        seatUserName={
-          selectedSeatForAction
-            ? allMicSeats.find((s) => s.id === selectedSeatForAction)?.userName
-            : undefined
-        }
-        isSeatLocked={
-          selectedSeatForAction
-            ? allMicSeats.find((s) => s.id === selectedSeatForAction)?.isLocked
-            : false
-        }
-        isSeatMuted={
-          selectedSeatForAction
-            ? allMicSeats.find((s) => s.id === selectedSeatForAction)?.isMuted
-            : false
-        }
-        isInvitationPending={
-          selectedSeatForAction
-            ? Boolean(allMicSeats.find((s) => s.id === selectedSeatForAction)?.isInvitationPending)
-            : false
-        }
-        onAcceptInvitation={(seatId) => {
-          handleAcceptHostInvitation();
-          setShowSeatActionModal(false);
-        }}
-        onCancelInvitation={(seatId) => {
-          handleRejectHostInvitation();
-          setShowSeatActionModal(false);
-        }}
-        isCurrentAdmin={isCurrentAdmin || currentUserRole === 'moderator' || isOwner}
-        isRoomOwner={isOwner || currentUserRole === 'owner'}
-        currentUserSeatId={allMicSeats.find((s) => !s.isEmpty && (s.userId === CURRENT_USER_PROFILE_ID || s.userName.includes('أنا')))?.id}
-        onTakeSeat={(seatId) => handleTakeSeat(seatId)}
-        onToggleLockSeat={(seatId) => handleToggleLockSeat(seatId)}
-        onToggleMuteSeat={(seatId) => handleToggleMuteSeat(seatId, true)}
-        onRequestMic={() => handleRequestMicFromUser()}
-        onInviteAudience={(seatId) => {
-          setTargetInviteSeatId(seatId);
-          setSelectedSeatForAction(seatId);
-          setShowSeatActionModal(false);
-          setShowAudienceModal(true);
-        }}
-        onRemoveFromMic={(seatId) => handleRemoveFromMic(seatId)}
-        onViewProfile={(seatId) => {
-          const targetSeat = allMicSeats.find((s) => s.id === seatId);
-          if (targetSeat) {
-            setSelectedUserForProfile({
-              id: targetSeat.id.toString(),
-              name: targetSeat.userName,
-              avatar: targetSeat.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-              userId: `884${targetSeat.id}901`,
-              country: 'السعودية',
-              countryFlag: '🇸🇦',
-              isHost: targetSeat.isHost,
-              isMuted: targetSeat.isMuted,
-              isMutedByAdmin: targetSeat.isMutedByAdmin,
-              seatId: targetSeat.id
-            });
-            setShowAdvancedProfileModal(true);
+      {/* SEAT ACTION MODAL (قائمة التحكم بالمقعد والمايك - محمل عند الطلب فقط) */}
+      {showSeatActionModal && (
+        <SeatActionModal
+          isOpen={showSeatActionModal}
+          onClose={() => {
+            setShowSeatActionModal(false);
+            setSelectedSeatForAction(null);
+          }}
+          seatId={selectedSeatForAction}
+          seatUserName={
+            selectedSeatForAction
+              ? allMicSeats.find((s) => s.id === selectedSeatForAction)?.userName
+              : undefined
           }
-        }}
-      />
+          isSeatLocked={
+            selectedSeatForAction
+              ? allMicSeats.find((s) => s.id === selectedSeatForAction)?.isLocked
+              : false
+          }
+          isSeatMuted={
+            selectedSeatForAction
+              ? allMicSeats.find((s) => s.id === selectedSeatForAction)?.isMuted
+              : false
+          }
+          isInvitationPending={
+            selectedSeatForAction
+              ? Boolean(allMicSeats.find((s) => s.id === selectedSeatForAction)?.isInvitationPending)
+              : false
+          }
+          onAcceptInvitation={(seatId) => {
+            handleAcceptHostInvitation();
+            setShowSeatActionModal(false);
+          }}
+          onCancelInvitation={(seatId) => {
+            handleRejectHostInvitation();
+            setShowSeatActionModal(false);
+          }}
+          isCurrentAdmin={isCurrentAdmin || currentUserRole === 'moderator' || isOwner}
+          isRoomOwner={isOwner || currentUserRole === 'owner'}
+          currentUserSeatId={allMicSeats.find((s) => !s.isEmpty && (s.userId === CURRENT_USER_PROFILE_ID || s.userName.includes('أنا')))?.id}
+          onTakeSeat={(seatId) => handleTakeSeat(seatId)}
+          onToggleLockSeat={(seatId) => handleToggleLockSeat(seatId)}
+          onToggleMuteSeat={(seatId) => handleToggleMuteSeat(seatId, true)}
+          onRequestMic={() => handleRequestMicFromUser()}
+          onInviteAudience={(seatId) => {
+            setTargetInviteSeatId(seatId);
+            setSelectedSeatForAction(seatId);
+            setShowSeatActionModal(false);
+            setShowAudienceModal(true);
+          }}
+          onRemoveFromMic={(seatId) => handleRemoveFromMic(seatId)}
+          onViewProfile={(seatId) => {
+            const targetSeat = allMicSeats.find((s) => s.id === seatId);
+            if (targetSeat) {
+              setSelectedUserForProfile({
+                id: targetSeat.id.toString(),
+                name: targetSeat.userName,
+                avatar: targetSeat.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+                userId: `884${targetSeat.id}901`,
+                country: 'السعودية',
+                countryFlag: '🇸🇦',
+                isHost: targetSeat.isHost,
+                isMuted: targetSeat.isMuted,
+                isMutedByAdmin: targetSeat.isMutedByAdmin,
+                seatId: targetSeat.id
+              });
+              setShowAdvancedProfileModal(true);
+            }
+          }}
+        />
+      )}
 
-      {/* SEAT REQUEST QUEUE MODAL (قائمة طلبات الصعود للميكروفون) */}
-      <MicRequestQueueModal
-        isOpen={showMicRequestsModal}
-        onClose={() => setShowMicRequestsModal(false)}
-        requests={micRequests}
-        userRole={currentUserRole}
-        isCurrentAdmin={isCurrentAdmin}
-        onApproveRequest={handleApproveMicRequest}
-        onRejectRequest={handleRejectMicRequest}
-        onApproveAll={handleApproveAllMicRequests}
-        onClearAll={handleClearAllMicRequests}
-      />
+      {/* SEAT REQUEST QUEUE MODAL (قائمة طلبات الصعود للميكروفون - محمل عند الطلب فقط) */}
+      {showMicRequestsModal && (
+        <MicRequestQueueModal
+          isOpen={showMicRequestsModal}
+          onClose={() => setShowMicRequestsModal(false)}
+          requests={micRequests}
+          userRole={currentUserRole}
+          isCurrentAdmin={isCurrentAdmin}
+          onApproveRequest={handleApproveMicRequest}
+          onRejectRequest={handleRejectMicRequest}
+          onApproveAll={handleApproveAllMicRequests}
+          onClearAll={handleClearAllMicRequests}
+        />
+      )}
 
       {/* FLOATING ACTION TOAST NOTIFICATION BANNER */}
       <AnimatePresence>
@@ -6713,12 +5996,12 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                   </div>
                 </div>
                 <div className="text-right min-w-0 flex-1">
-                  <h4 className="text-sm font-black text-white flex items-center gap-1.5">
-                    <span>تمت دعوتك إلى المايك</span>
+                  <h4 className="text-sm font-black text-white flex items-center gap-1.5 flex-wrap">
+                    <span>لقد دعاك {pendingHostInvitation.inviterName} إلى المايك</span>
                     <span className="text-amber-400 font-bold text-xs font-mono">#{pendingHostInvitation.seatId}</span>
                   </h4>
-                  <p className="text-xs text-slate-300 font-medium mt-0.5">
-                    دعوة من <span className="font-extrabold text-amber-400">{pendingHostInvitation.inviterName}</span> للصعود على المايك
+                  <p className="text-xs text-slate-300 font-medium mt-1 leading-relaxed">
+                    صورتك متواجدة على المايك مع إشارة المايك الصفراء 🟡 لا يصدر صوت إلا عند الضغط على موافق.
                   </p>
                 </div>
               </div>
@@ -6731,7 +6014,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                   className="flex-1 py-2.5 px-4 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:brightness-110 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95"
                 >
                   <Check className="w-4 h-4 stroke-[3]" />
-                  <span>موافقة</span>
+                  <span>موافق (بدء التحدث وبث الصوت 🎙️)</span>
                 </button>
                 <button
                   type="button"
@@ -6747,61 +6030,65 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         )}
       </AnimatePresence>
 
-      {/* QUICK MIC & HOST OPTIONS MODAL (قائمة خيارات الملاحظات والمايك وتفاصيل المضيف) */}
-      <QuickMicOptionsModal
-        isOpen={showQuickMicOptionsModal}
-        onClose={() => setShowQuickMicOptionsModal(false)}
-        seatId={selectedSeatForQuickMic || undefined}
-        userName={currentUserRole === 'host' ? 'المضيف (أنا)' : 'أنا'}
-        isHost={currentUserRole === 'host' || selectedSeatForQuickMic === 1 || Boolean(selectedSeatForQuickMic && allMicSeats.find((s) => s.id === selectedSeatForQuickMic)?.isHost)}
-        isMuted={
-          selectedSeatForQuickMic
-            ? Boolean(allMicSeats.find((s) => s.id === selectedSeatForQuickMic)?.isMuted)
-            : false
-        }
-        canControlMic={isCurrentAdmin || isOwner}
-        isCurrentAdmin={isCurrentAdmin}
-        onToggleMute={() => {
-          if (selectedSeatForQuickMic) {
-            handleToggleMuteSeat(selectedSeatForQuickMic);
-          }
-        }}
-        onLeaveSeat={() => handleLeaveSeat(selectedSeatForQuickMic || undefined)}
-        onOpenDataStats={() => {
-          setShowQuickMicOptionsModal(false);
-          const mySeatObj = selectedSeatForQuickMic ? allMicSeats.find((s) => s.id === selectedSeatForQuickMic) : null;
-          setSelectedUserForProfile({
-            id: 'my_user_profile',
-            name: currentUserRole === 'host' ? 'المضيف (أنا)' : 'أنا',
-            avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-            userId: '88492011',
-            country: 'السعودية',
-            countryFlag: '🇸🇦',
-            isHost: currentUserRole === 'host',
-            isMuted: mySeatObj ? mySeatObj.isMuted : false,
-            isMutedByAdmin: mySeatObj ? mySeatObj.isMutedByAdmin : false,
-            seatId: selectedSeatForQuickMic || 1,
-            badges: [
-              { id: 'b1', label: currentUserRole === 'host' ? 'المضيف 👑' : 'متحدث المايك', icon: '👑', bgClass: 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black' },
-              { id: 'b2', label: 'VIP 10', icon: '💎', bgClass: 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold' },
-              { id: 'b3', label: 'سوبر أسطورة', icon: '🔥', bgClass: 'bg-gradient-to-r from-red-500 to-amber-500 text-white font-bold' }
-            ],
-            cpRelation: {
-              partnerName: 'أميرة الشرق 👑',
-              partnerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-              level: 25,
-              intimacyPoints: '128,900',
-              title: 'الشريك الماسي 💖'
+      {/* QUICK MIC & HOST OPTIONS MODAL (قائمة خيارات الملاحظات والمايك وتفاصيل المضيف) - Lazy Loaded */}
+      {showQuickMicOptionsModal && (
+        <Suspense fallback={null}>
+          <QuickMicOptionsModal
+            isOpen={showQuickMicOptionsModal}
+            onClose={() => setShowQuickMicOptionsModal(false)}
+            seatId={selectedSeatForQuickMic || undefined}
+            userName={currentUserRole === 'host' ? 'المضيف (أنا)' : 'أنا'}
+            isHost={currentUserRole === 'host' || selectedSeatForQuickMic === 1 || Boolean(selectedSeatForQuickMic && allMicSeats.find((s) => s.id === selectedSeatForQuickMic)?.isHost)}
+            isMuted={
+              selectedSeatForQuickMic
+                ? Boolean(allMicSeats.find((s) => s.id === selectedSeatForQuickMic)?.isMuted)
+                : false
             }
-          });
-          setShowAdvancedProfileModal(true);
-        }}
-        onSendGift={() => {
-          setSelectedGiftTargetSeatIds([selectedSeatForQuickMic || 1]);
-          setShowQuickMicOptionsModal(false);
-          setShowGiftDrawer(true);
-        }}
-      />
+            canControlMic={isCurrentAdmin || isOwner}
+            isCurrentAdmin={isCurrentAdmin}
+            onToggleMute={() => {
+              if (selectedSeatForQuickMic) {
+                handleToggleMuteSeat(selectedSeatForQuickMic);
+              }
+            }}
+            onLeaveSeat={() => handleLeaveSeat(selectedSeatForQuickMic || undefined)}
+            onOpenDataStats={() => {
+              setShowQuickMicOptionsModal(false);
+              const mySeatObj = selectedSeatForQuickMic ? allMicSeats.find((s) => s.id === selectedSeatForQuickMic) : null;
+              setSelectedUserForProfile({
+                id: 'my_user_profile',
+                name: currentUserRole === 'host' ? 'المضيف (أنا)' : 'أنا',
+                avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+                userId: '88492011',
+                country: 'السعودية',
+                countryFlag: '🇸🇦',
+                isHost: currentUserRole === 'host',
+                isMuted: mySeatObj ? mySeatObj.isMuted : false,
+                isMutedByAdmin: mySeatObj ? mySeatObj.isMutedByAdmin : false,
+                seatId: selectedSeatForQuickMic || 1,
+                badges: [
+                  { id: 'b1', label: currentUserRole === 'host' ? 'المضيف 👑' : 'متحدث المايك', icon: '👑', bgClass: 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black' },
+                  { id: 'b2', label: 'VIP 10', icon: '💎', bgClass: 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold' },
+                  { id: 'b3', label: 'سوبر أسطورة', icon: '🔥', bgClass: 'bg-gradient-to-r from-red-500 to-amber-500 text-white font-bold' }
+                ],
+                cpRelation: {
+                  partnerName: 'أميرة الشرق 👑',
+                  partnerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+                  level: 25,
+                  intimacyPoints: '128,900',
+                  title: 'الشريك الماسي 💖'
+                }
+              });
+              setShowAdvancedProfileModal(true);
+            }}
+            onSendGift={() => {
+              setSelectedGiftTargetSeatIds([selectedSeatForQuickMic || 1]);
+              setShowQuickMicOptionsModal(false);
+              setShowGiftDrawer(true);
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* DYNAMIC MIC CONTROL PANEL MODAL (STRICTLY VISIBLE & LOADED FOR ROOM OWNER ONLY) */}
       <AnimatePresence>
@@ -6944,65 +6231,77 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Integrated Music Player & Audio Import Modal */}
-      <MusicPlayerModal
-        isOpen={showMusicPlayerModal}
-        onClose={() => setShowMusicPlayerModal(false)}
-        currentUserRole={currentUserRole}
-        canControl={isOwner || currentUserRole === 'host' || currentUserRole === 'moderator'}
-        isMicSpeaking={allMicSeats.some((s) => !s.isEmpty && !s.isMuted && s.isSpeaking)}
-        onToastNotification={(msg) => {
-          setToastNotification(msg);
-          setTimeout(() => setToastNotification(null), 3000);
-        }}
-      />
+      {/* Integrated Music Player & Audio Import Modal - Lazy Loaded */}
+      {showMusicPlayerModal && (
+        <Suspense fallback={null}>
+          <MusicPlayerModal
+            isOpen={showMusicPlayerModal}
+            onClose={() => setShowMusicPlayerModal(false)}
+            currentUserRole={currentUserRole}
+            canControl={isOwner || currentUserRole === 'host' || currentUserRole === 'moderator'}
+            isMicSpeaking={allMicSeats.some((s) => !s.isEmpty && !s.isMuted && s.isSpeaking)}
+            onToastNotification={(msg) => {
+              setToastNotification(msg);
+              setTimeout(() => setToastNotification(null), 3000);
+            }}
+          />
+        </Suspense>
+      )}
 
-      {/* SCREEN: تحويل التأثير والصوت (Effects & Sound Settings Modal - 11 Toggle Controls) */}
-      <EffectsAndSoundModal
-        isOpen={showSoundEffectsModal}
-        onClose={() => setShowSoundEffectsModal(false)}
-        onTriggerToast={(msg) => {
-          setToastNotification(msg);
-          setTimeout(() => setToastNotification(null), 3000);
-        }}
-        onSettingsChanged={(cfg) => {
-          if (cfg.smartBalance !== undefined) {
-            setIsSmartBalanceEnabled(cfg.smartBalance);
-          }
-        }}
-      />
+      {/* SCREEN: تحويل التأثير والصوت (Effects & Sound Settings Modal - 11 Toggle Controls) - Lazy Loaded */}
+      {showSoundEffectsModal && (
+        <Suspense fallback={null}>
+          <EffectsAndSoundModal
+            isOpen={showSoundEffectsModal}
+            onClose={() => setShowSoundEffectsModal(false)}
+            onTriggerToast={(msg) => {
+              setToastNotification(msg);
+              setTimeout(() => setToastNotification(null), 3000);
+            }}
+            onSettingsChanged={(cfg) => {
+              if (cfg.smartBalance !== undefined) {
+                setIsSmartBalanceEnabled(cfg.smartBalance);
+              }
+            }}
+          />
+        </Suspense>
+      )}
 
-      {/* Developer Configuration & Lottie Assets Manager Modal */}
-      <DevConfigModal
-        isOpen={showDevConfigModal}
-        onClose={() => setShowDevConfigModal(false)}
-      />
+      {/* Developer Configuration & Lottie Assets Manager Modal (محمل عند الطلب فقط) */}
+      {showDevConfigModal && (
+        <DevConfigModal
+          isOpen={showDevConfigModal}
+          onClose={() => setShowDevConfigModal(false)}
+        />
+      )}
 
-      {/* TOP THREE-DOTS OPTIONS MENU MODAL (قائمة الخيارات العلوية 16 عنصر شبكة 4x4) */}
-      <TopOptionsMenuModal
-        isOpen={showTopOptionsMenuModal}
-        onClose={() => setShowTopOptionsMenuModal(false)}
-        currentUserRole={currentUserRole}
-        currentAppRole={currentAppRole}
-        isOwner={isOwner}
-        isVIP={true}
-        userVipLevel={8}
-        isRoomLocked={isRoomLocked}
-        onToggleLockRoom={(passcode) => {
-          setRoomLockStatus(!isRoomLocked, passcode);
-        }}
-        onClearChat={() => {
-          setChatMessages([]);
-          setToastNotification('تم مسح جميع رسائل الدردشة 🧹');
-          setTimeout(() => setToastNotification(null), 3000);
-        }}
-        isChatLocked={isChatLocked}
-        onToggleLockChat={() => {
-          setIsChatLocked(!isChatLocked);
-          setToastNotification(!isChatLocked ? 'تم قفل الدردشة في الغرفة 🚫' : 'تم فتح الدردشة في الغرفة 💬');
-          setTimeout(() => setToastNotification(null), 3000);
-        }}
-        onOpenWallpapers={() => setShowRoomBackgroundStoreModal(true)}
+      {/* TOP THREE-DOTS OPTIONS MENU MODAL (قائمة الخيارات العلوية 16 عنصر شبكة 4x4 - محمل عند الطلب فقط) */}
+      {showTopOptionsMenuModal && (
+        <Suspense fallback={null}>
+          <RoomTopOptionsController
+          isOpen={showTopOptionsMenuModal}
+          onClose={() => setShowTopOptionsMenuModal(false)}
+          currentUserRole={currentUserRole}
+          currentAppRole={currentAppRole}
+          isOwner={isOwner}
+          isVIP={true}
+          userVipLevel={8}
+          isRoomLocked={isRoomLocked}
+          onToggleLockRoom={(passcode) => {
+            setRoomLockStatus(!isRoomLocked, passcode);
+          }}
+          onClearChat={() => {
+            setChatMessages([]);
+            setToastNotification('تم مسح جميع رسائل الدردشة 🧹');
+            setTimeout(() => setToastNotification(null), 3000);
+          }}
+          isChatLocked={isChatLocked}
+          onToggleLockChat={() => {
+            setIsChatLocked(!isChatLocked);
+            setToastNotification(!isChatLocked ? 'تم قفل الدردشة في الغرفة 🚫' : 'تم فتح الدردشة في الغرفة 💬');
+            setTimeout(() => setToastNotification(null), 3000);
+          }}
+          onOpenWallpapers={() => setShowRoomBackgroundStoreModal(true)}
         isIncognito={isIncognito}
         onToggleIncognito={() => {
           if (!isRoomLocked) {
@@ -7103,10 +6402,6 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           setToastNotification('تم فتح تحدي الغُرَف PK 🥊🔥');
           setTimeout(() => setToastNotification(null), 3000);
         }}
-        onOpenCustomTheme={() => {
-          setToastNotification('جاري تجهيز ثيم المايكات الموحد 🎙️');
-          setTimeout(() => setToastNotification(null), 3000);
-        }}
         onOpenModeratorStats={() => {
           setShowTopOptionsMenuModal(false);
           setShowModeratorStatsModal(true);
@@ -7116,97 +6411,114 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           setTimeout(() => setToastNotification(null), 3200);
         }}
       />
+      </Suspense>
+      )}
 
-      {/* MODERATOR AUDIT & STATS MODAL (إحصائيات وسجل المشرفين - رصد الطرد وتنزيل المايكات) */}
-      <ModeratorStatsModal
-        isOpen={showModeratorStatsModal}
-        onClose={() => setShowModeratorStatsModal(false)}
-        currentUserRole={currentUserRole}
-        roomTitle={currentRoomTitle}
-        onTriggerToast={(msg) => {
-          setToastNotification(msg);
-          setTimeout(() => setToastNotification(null), 3200);
-        }}
-      />
+      {/* MODERATOR AUDIT & STATS MODAL (إحصائيات وسجل المشرفين - رصد الطرد وتنزيل المايكات - تحميل كسول موفر للباقة) */}
+      {showModeratorStatsModal && (
+        <Suspense fallback={null}>
+          <ModeratorStatsModal
+            isOpen={showModeratorStatsModal}
+            onClose={() => setShowModeratorStatsModal(false)}
+            currentUserRole={currentUserRole}
+            roomTitle={currentRoomTitle}
+            onTriggerToast={(msg) => {
+              setToastNotification(msg);
+              setTimeout(() => setToastNotification(null), 3200);
+            }}
+          />
+        </Suspense>
+      )}
 
-      {/* YOHO BOTTOM TOOLS & GAMES MODAL (مطابقة قائمة الأزرار السفلية لمرجع يوهو) */}
-      <YoHoRoomToolsAndGamesModal
-        isOpen={showYoHoBottomToolsModal}
-        onClose={() => setShowYoHoBottomToolsModal(false)}
-        roomId={roomId}
-        roomTitle={currentRoomTitle}
-        currentUserRole={currentUserRole}
-        currentAppRole={currentAppRole}
-        isOwner={isOwner}
-        isSpeakerMuted={isRoomSpeakerMuted}
-        onToggleSpeaker={() => {
-          const nextState = !isRoomSpeakerMuted;
-          setIsRoomSpeakerMuted(nextState);
-          setToastNotification(nextState ? 'تم إيقاف مكبر الصوت 🔇' : 'تم تشغيل مكبر الصوت 🔊');
-          setTimeout(() => setToastNotification(null), 3000);
-        }}
-        onOpenSoundEffects={() => setShowSoundEffectsModal(true)}
-        onOpenMusicPlayer={() => setShowMusicPlayerModal(true)}
-        onOpenLuckyBox={() => setShowLuckyChestModal(true)}
-        onOpenCinemaWatchParty={() => {
-          if (isOwner) {
-            setIsCinemaWatchMode(true);
-            setShowCinemaVideoPickerModal(true);
-            setToastNotification('تم فتح نافذة سينما الروم وتشغيل الفيديوهات 🎬🍿');
+      {/* YOHO BOTTOM TOOLS & GAMES MODAL (مطابقة قائمة الأزرار السفلية لمرجع يوهو - محمل عند الطلب فقط) */}
+      {showYoHoBottomToolsModal && (
+        <YoHoRoomToolsAndGamesModal
+          isOpen={showYoHoBottomToolsModal}
+          onClose={() => setShowYoHoBottomToolsModal(false)}
+          roomId={roomId}
+          roomTitle={currentRoomTitle}
+          currentUserRole={currentUserRole}
+          currentAppRole={currentAppRole}
+          isOwner={isOwner}
+          isSpeakerMuted={isRoomSpeakerMuted}
+          onToggleSpeaker={() => {
+            const nextState = !isRoomSpeakerMuted;
+            setIsRoomSpeakerMuted(nextState);
+            if (voiceEngineRef.current) {
+              voiceEngineRef.current.setSpeakerMuted(nextState);
+            }
+            setToastNotification(nextState ? 'تم إيقاف مكبر الصوت 🔇' : 'تم تشغيل مكبر الصوت 🔊');
+            setTimeout(() => setToastNotification(null), 3000);
+          }}
+          isNoiseSuppressionEnabled={isNoiseSuppressionEnabled}
+          onToggleNoiseSuppression={handleToggleNoiseSuppression}
+          audioStreamMode={audioStreamMode}
+          onToggleAudioStreamMode={handleToggleAudioStreamMode}
+          onOpenSoundEffects={() => setShowSoundEffectsModal(true)}
+          onOpenMusicPlayer={() => setShowMusicPlayerModal(true)}
+          onOpenLuckyBox={() => setShowLuckyChestModal(true)}
+          onOpenCinemaWatchParty={() => {
+            if (isOwner) {
+              setIsCinemaWatchMode(true);
+              setShowCinemaVideoPickerModal(true);
+              setToastNotification('تم فتح نافذة سينما الروم وتشغيل الفيديوهات 🎬🍿');
+              setTimeout(() => setToastNotification(null), 3200);
+            } else {
+              setShowCinemaVideoPickerModal(true);
+              setToastNotification('خاصية تشغيل الفيديو لمالك الغرفة فقط 👑 - يمكنك اقتراح مقاطع لعرضها 💡');
+              setTimeout(() => setToastNotification(null), 3500);
+            }
+          }}
+          onTriggerToast={(msg) => {
+            setToastNotification(msg);
             setTimeout(() => setToastNotification(null), 3200);
-          } else {
-            setShowCinemaVideoPickerModal(true);
-            setToastNotification('خاصية تشغيل الفيديو لمالك الغرفة فقط 👑 - يمكنك اقتراح مقاطع لعرضها 💡');
-            setTimeout(() => setToastNotification(null), 3500);
-          }
-        }}
-        onTriggerToast={(msg) => {
-          setToastNotification(msg);
-          setTimeout(() => setToastNotification(null), 3200);
-        }}
-        onTestEntrance={(vipLevel, userName) => {
-          triggerRoomEntrance({
-            userName: userName || currentUserName || 'تـTarfsرف ☕',
-            vipLevel: vipLevel,
-            actionText: 'انضم إلى الغرفة',
-          });
-        }}
-        onTestBatchEntrance={(count) => {
-          triggerBatchRoomEntrance(count || 10);
-        }}
-      />
+          }}
+          onTestEntrance={(vipLevel, userName) => {
+            triggerRoomEntrance({
+              userName: userName || currentUserName || 'تـTarfsرف ☕',
+              vipLevel: vipLevel,
+              actionText: 'انضم إلى الغرفة',
+            });
+          }}
+          onTestBatchEntrance={(count) => {
+            triggerBatchRoomEntrance(count || 10);
+          }}
+        />
+      )}
 
-      {/* CINEMA YOUTUBE VIDEO PICKER, SUGGESTIONS & SEARCH MODAL */}
-      <CinemaYouTubePickerModal
-        isOpen={showCinemaVideoPickerModal}
-        onClose={() => setShowCinemaVideoPickerModal(false)}
-        isOwner={isOwner}
-        currentUserRole={currentUserRole}
-        currentUserName={
-          currentUserRole === 'host'
-            ? 'المضيف (أنا)'
-            : currentUserRole === 'owner'
-            ? (hostSeat.userName || 'مالك الغرفة')
-            : currentUserRole === 'moderator'
-            ? 'المشرف (أنا)'
-            : 'عضو الغرفة (أنا)'
-        }
-        currentUserId={hostSeat.userId || 'user_current'}
-        currentUserAvatar={hostSeat.avatar}
-        currentVideoId={selectedCinemaVideo?.youtubeId}
-        suggestions={videoSuggestions}
-        onSelectVideo={(video) => {
-          setSelectedCinemaVideo(video);
-          setIsCinemaWatchMode(true);
-        }}
-        onSuggestVideo={handleSuggestVideo}
-        onAcceptSuggestion={handleAcceptSuggestion}
-        onDeleteSuggestion={handleDeleteSuggestion}
-        onTriggerToast={(msg) => {
-          setToastNotification(msg);
-          setTimeout(() => setToastNotification(null), 3200);
-        }}
-      />
+      {/* CINEMA YOUTUBE VIDEO PICKER, SUGGESTIONS & SEARCH MODAL (محمل عند الطلب فقط) */}
+      {showCinemaVideoPickerModal && (
+        <CinemaYouTubePickerModal
+          isOpen={showCinemaVideoPickerModal}
+          onClose={() => setShowCinemaVideoPickerModal(false)}
+          isOwner={isOwner}
+          currentUserRole={currentUserRole}
+          currentUserName={
+            currentUserRole === 'host'
+              ? 'المضيف (أنا)'
+              : currentUserRole === 'owner'
+              ? (hostSeat.userName || 'مالك الغرفة')
+              : currentUserRole === 'moderator'
+              ? 'المشرف (أنا)'
+              : 'عضو الغرفة (أنا)'
+          }
+          currentUserId={hostSeat.userId || 'user_current'}
+          currentUserAvatar={hostSeat.avatar}
+          currentVideoId={selectedCinemaVideo?.youtubeId}
+          suggestions={videoSuggestions}
+          onSelectVideo={(video) => {
+            setSelectedCinemaVideo(video);
+            setIsCinemaWatchMode(true);
+          }}
+          onSuggestVideo={handleSuggestVideo}
+          onAcceptSuggestion={handleAcceptSuggestion}
+          onDeleteSuggestion={handleDeleteSuggestion}
+          onTriggerToast={(msg) => {
+            setToastNotification(msg);
+            setTimeout(() => setToastNotification(null), 3200);
+          }}
+        />
+      )}
 
       {/* FLOATING LUCKY CHEST POPUP BENEATH GEMS / TOP HEADER */}
       <FloatingLuckyChestWidget
@@ -7221,230 +6533,270 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         isInsideRoom={true}
       />
 
-      {/* LUCKY CHEST MODAL (إرسال صندوق حظ / سوبر / حقيبة الهدايا) */}
-      <LuckyChestModal
-        isOpen={showLuckyChestModal}
-        onClose={() => setShowLuckyChestModal(false)}
-        onSendChest={handleSendLuckyChest}
-        userCoins={userCoins}
-        onTriggerToast={(msg) => {
-          setToastNotification(msg);
-          setTimeout(() => setToastNotification(null), 3500);
-        }}
-      />
+      {/* LUCKY CHEST MODAL (إرسال صندوق حظ / سوبر / حقيبة الهدايا - محمل عند الطلب فقط) */}
+      {showLuckyChestModal && (
+        <LuckyChestModal
+          isOpen={showLuckyChestModal}
+          onClose={() => setShowLuckyChestModal(false)}
+          onSendChest={handleSendLuckyChest}
+          userCoins={userCoins}
+          onTriggerToast={(msg) => {
+            setToastNotification(msg);
+            setTimeout(() => setToastNotification(null), 3500);
+          }}
+        />
+      )}
 
-      {/* LUCKY CHEST CLAIM & WIN POPUP (الانقضاض على الصندوق والفوز الفوري) */}
-      <LuckyChestClaimModal
-        isOpen={showLuckyChestClaimModal}
-        onClose={() => setShowLuckyChestClaimModal(false)}
-        chest={selectedChestForClaim}
-        currentUserId={hostSeat.userId || '88492011'}
-        currentUserName={hostSeat.userName || hostName || 'عابر سبيل'}
-        currentUserAvatar={hostSeat.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200'}
-        onClaimPrize={handleClaimLuckyChestPrize}
-        onTriggerToast={(msg) => {
-          setToastNotification(msg);
-          setTimeout(() => setToastNotification(null), 3500);
-        }}
-      />
+      {/* LUCKY CHEST CLAIM & WIN POPUP (الانقضاض على الصندوق والفوز الفوري - محمل عند الطلب فقط) */}
+      {showLuckyChestClaimModal && (
+        <LuckyChestClaimModal
+          isOpen={showLuckyChestClaimModal}
+          onClose={() => setShowLuckyChestClaimModal(false)}
+          chest={selectedChestForClaim}
+          currentUserId={hostSeat.userId || '88492011'}
+          currentUserName={hostSeat.userName || hostName || 'عابر سبيل'}
+          currentUserAvatar={hostSeat.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200'}
+          onClaimPrize={handleClaimLuckyChestPrize}
+          onTriggerToast={(msg) => {
+            setToastNotification(msg);
+            setTimeout(() => setToastNotification(null), 3500);
+          }}
+        />
+      )}
 
-      {/* ROOM BACKGROUND STORE MODAL (RoomBackgroundStoreView) */}
-      <RoomBackgroundStoreModal
-        isOpen={showRoomBackgroundStoreModal}
-        onClose={() => setShowRoomBackgroundStoreModal(false)}
-        activeBackgroundUrl={currentRoomBgUrl}
-        roomId={roomId}
-        isOwner={isOwner}
-        ownerId={hostSeat.userId || '88492011'}
-        ownerName={hostSeat.userName || hostName}
-        roomTitle={currentRoomTitle}
-        themeConfig={mainRoomConfig}
-        onSelectBackground={(bgUrl, bgName) => {
-          setCurrentRoomBgUrl(bgUrl);
-          setCurrentRoomBgName(bgName);
-          setToastNotification(`تم تغيير خلفية الغرفة إلى "${bgName}" 🎨✨`);
-          setTimeout(() => setToastNotification(null), 3000);
-        }}
-        isUnlockedViaGiftOrStore={true}
-      />
+      {/* ROOM BACKGROUND STORE MODAL (RoomBackgroundStoreView - Lazy Loaded) */}
+      {showRoomBackgroundStoreModal && (
+        <Suspense fallback={null}>
+          <RoomBackgroundStoreModal
+            isOpen={showRoomBackgroundStoreModal}
+            onClose={() => setShowRoomBackgroundStoreModal(false)}
+            activeBackgroundUrl={currentRoomBgUrl}
+            roomId={roomId}
+            isOwner={isOwner}
+            ownerId={hostSeat.userId || '88492011'}
+            ownerName={hostSeat.userName || hostName}
+            roomTitle={currentRoomTitle}
+            currentAppRole={currentAppRole}
+            onSelectBackground={(bgUrl, bgName) => {
+              setCurrentRoomBgUrl(bgUrl);
+              setCurrentRoomBgName(bgName);
+              // Save to mobile cache & preload in background silently
+              saveRoomStateToCache(roomId, {
+                wallpaperUrl: bgUrl,
+                wallpaperName: bgName
+              });
+              preloadWallpaperSilently(bgUrl, bgName);
+              setToastNotification(`تم تغيير خلفية الغرفة إلى "${bgName}" 🎨✨`);
+              setTimeout(() => setToastNotification(null), 3000);
+            }}
+            isUnlockedViaGiftOrStore={true}
+          />
+        </Suspense>
+      )}
 
-      {/* YOHO ROOM DIRECT MESSAGES & CHAT MODAL (دردشة) */}
-      <YoHoRoomMessagesModal
-        isOpen={showYoHoMessagesModal}
-        onClose={() => {
-          setShowYoHoMessagesModal(false);
-          setPrivateChatTargetUser(null);
-        }}
-        targetUser={privateChatTargetUser}
-        onOpenUserProfile={(userData) => {
-          setSelectedUserForProfile(userData);
-          setShowAdvancedProfileModal(true);
-        }}
-      />
+      {/* YOHO ROOM DIRECT MESSAGES & CHAT MODAL (دردشة - محمل عند الطلب فقط) */}
+      {showYoHoMessagesModal && (
+        <YoHoRoomMessagesModal
+          isOpen={showYoHoMessagesModal}
+          onClose={() => {
+            setShowYoHoMessagesModal(false);
+            setPrivateChatTargetUser(null);
+          }}
+          targetUser={privateChatTargetUser}
+          onOpenUserProfile={(userData) => {
+            setSelectedUserForProfile(userData);
+            setShowAdvancedProfileModal(true);
+          }}
+        />
+      )}
 
-      {/* DIGITAL COUNTER CONTROL MODAL (العداد الرقمي المتزامن للتحكم والتصفير بواسطة صاحب الغرفة) */}
-      <DigitalCounterControlModal
-        isOpen={showCounterControlModal}
-        onClose={() => setShowCounterControlModal(false)}
-        seatId={selectedSeatForCounterControl}
-        seatUserName={
-          selectedSeatForCounterControl
-            ? allMicSeats.find((s) => s.id === selectedSeatForCounterControl)?.userName || `المقعد #${selectedSeatForCounterControl}`
-            : ''
-        }
-        currentValue={
-          selectedSeatForCounterControl ? seatCounters[selectedSeatForCounterControl] || 0 : 0
-        }
-        onUpdateCounter={(seatId, newValue) => {
-          setSeatCounters((prev) => ({ ...prev, [seatId]: newValue }));
-        }}
-        onResetCounter={(seatId) => {
-          setSeatCounters((prev) => ({ ...prev, [seatId]: 0 }));
-        }}
-        onTriggerToast={(msg) => {
-          setToastNotification(msg);
-          setTimeout(() => setToastNotification(null), 3200);
-        }}
-        isCounterRunning={isCounterRunning}
-        isCounterPaused={isCounterPaused}
-        onToggleCounterRunning={() => {
-          if (isCounterRunning && !isCounterPaused) {
-            stopCounter();
-            setToastNotification('تم إيقاف العداد بنجاح ⏸️');
-          } else {
-            setIsCounterRunning(true);
-            setIsCounterPaused(false);
-            setShowCountersOnMics(true);
-            setRoomUptimeSeconds(0);
-            setToastNotification('تم تشغيل العداد بنجاح ▶️');
-          }
-          setTimeout(() => setToastNotification(null), 3000);
-        }}
-      />
+      {/* DIGITAL COUNTER CONTROL MODAL (العداد الرقمي المتزامن للتحكم والتصفير بواسطة صاحب الغرفة - Lazy Loaded) */}
+      {showCounterControlModal && (
+        <Suspense fallback={null}>
+          <DigitalCounterControlModal
+            isOpen={showCounterControlModal}
+            onClose={() => setShowCounterControlModal(false)}
+            seatId={selectedSeatForCounterControl}
+            seatUserName={
+              selectedSeatForCounterControl
+                ? allMicSeats.find((s) => s.id === selectedSeatForCounterControl)?.userName || `المقعد #${selectedSeatForCounterControl}`
+                : ''
+            }
+            currentValue={
+              selectedSeatForCounterControl ? seatCounters[selectedSeatForCounterControl] || 0 : 0
+            }
+            onUpdateCounter={(seatId, newValue) => {
+              setSeatCounters((prev) => ({ ...prev, [seatId]: newValue }));
+            }}
+            onResetCounter={(seatId) => {
+              setSeatCounters((prev) => ({ ...prev, [seatId]: 0 }));
+            }}
+            onTriggerToast={(msg) => {
+              setToastNotification(msg);
+              setTimeout(() => setToastNotification(null), 3200);
+            }}
+            isCounterRunning={isCounterRunning}
+            isCounterPaused={isCounterPaused}
+            onToggleCounterRunning={() => {
+              if (isCounterRunning && !isCounterPaused) {
+                stopCounter();
+                setToastNotification('تم إيقاف العداد بنجاح ⏸️');
+              } else {
+                setIsCounterRunning(true);
+                setIsCounterPaused(false);
+                setShowCountersOnMics(true);
+                setRoomUptimeSeconds(0);
+                setToastNotification('تم تشغيل العداد بنجاح ▶️');
+              }
+              setTimeout(() => setToastNotification(null), 3000);
+            }}
+          />
+        </Suspense>
+      )}
 
-      {/* TEAM BATTLE CONFIGURATION & START MODAL (نافذة معركة الفريق) */}
-      <TeamBattleModal
-        isOpen={showTeamBattleModal}
-        onClose={() => setShowTeamBattleModal(false)}
-        activeMicCount={activeMicCount}
-        onConfirmStart={(config) => {
-          const allowedMicCounts = [2, 4, 5, 6, 8, 9, 10, 12, 15, 20];
-          if (!allowedMicCounts.includes(activeMicCount)) {
-            setToastNotification('لا يمكن تشغيل التحدي بهذا العدد من المايكات');
+      {/* TEAM BATTLE CONFIGURATION & START MODAL (نافذة معركة الفريق - محمل عند الطلب فقط) */}
+      {showTeamBattleModal && (
+        <Suspense fallback={null}>
+          <TeamBattleModal
+            isOpen={showTeamBattleModal}
+            onClose={() => setShowTeamBattleModal(false)}
+            activeMicCount={activeMicCount}
+            onConfirmStart={(config) => {
+              const allowedMicCounts = [2, 4, 5, 6, 8, 9, 10, 12, 15, 20];
+              if (!allowedMicCounts.includes(activeMicCount)) {
+                setToastNotification('لا يمكن تشغيل التحدي بهذا العدد من المايكات');
+                setTimeout(() => setToastNotification(null), 3000);
+                return;
+              }
+              setIsTeamBattleActive(true);
+              setTeamBattleStatus('preparation');
+              setTeamBattleTimer(config.durationMinutes * 60);
+              setOwnerJoinedTeam(config.joinedTeam);
+              setRedTeamScore(0);
+              setBlueTeamScore(0);
+              setSeatCounters({});
+              setPkTopSupportersMap({});
+              setToastNotification(`تم إعداد معركة الفريق (${config.durationMinutes} دقيقة). اضغط "بدء المعركة" للانطلاق ⚔️🔥`);
+              setTimeout(() => setToastNotification(null), 3500);
+            }}
+            onTriggerToast={(msg) => {
+              setToastNotification(msg);
+              setTimeout(() => setToastNotification(null), 3200);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* NORMAL ROOM COUNTER RESULT MODAL (نافذة نتائج الجولة العادية المستقلة وتصفير الحسابات - محمل عند الطلب فقط) */}
+      {showNormalRoundResultModal && (
+        <Suspense fallback={null}>
+          <NormalRoundResultModal
+            isOpen={showNormalRoundResultModal}
+            onClose={() => {
+              setShowNormalRoundResultModal(false);
+              setSeatCounters({}); // تصفير عدادات المايكات للجولة عند إغلاق النتيجة
+            }}
+            resultData={normalRoundResultData}
+          />
+        </Suspense>
+      )}
+
+      {/* TEAM BATTLE RESULT POPUP MODAL (نافذة نتائج معركة الفريق والداعم الأكبر - محمل عند الطلب فقط) */}
+      {showTeamBattleResultModal && (
+        <Suspense fallback={null}>
+          <TeamBattleResultModal
+            isOpen={showTeamBattleResultModal}
+            onClose={() => setShowTeamBattleResultModal(false)}
+            redScore={pkResultData.redScore}
+            blueScore={pkResultData.blueScore}
+            winner={pkResultData.winner}
+            topSupporter={pkResultData.topSupporter}
+          />
+        </Suspense>
+      )}
+
+      {/* ROOM INFO & MANAGEMENT MODAL (نافذة تفاصيل ومعلومات الروم وإدارة المشرفين وتعديل اسم وصورة الروم للمالك - محمل عند الطلب فقط) */}
+      {showRoomInfoModal && (
+        <Suspense fallback={null}>
+          <RoomInfoModalContainer
+            isOpen={showRoomInfoModal}
+            onClose={() => setShowRoomInfoModal(false)}
+            roomTitle={currentRoomTitle}
+            roomId={roomId}
+            hostAvatar={currentRoomAvatar || hostSeat.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'}
+            hostName={hostSeat.userName || 'مالك الغرفة'}
+            currentUserRole={currentUserRole}
+            isRoomOwner={currentUserRole === 'owner' && isOwner}
+            currentAppRole={currentAppRole}
+            agencyName="وكالة أبو أمجد لتسجيل المضيفين"
+            agencyOwnerName="أبو أمجد 👑"
+            agencyGid="88902"
+            onRoleChange={(role) => {
+              setCurrentUserRole(role);
+            }}
+            onOpenSettings={() => setShowSettingsDrawer(true)}
+            onUpdateRoomTitle={(newTitle) => {
+              if (currentUserRole !== 'owner' || !isOwner) {
+                setToastNotification('🔒 غير مصرح: تعديل اسم الروم متاح فقط لصاحب الروم (المالك)، ولا يحق للمشرف أو المضيف تعديله');
+                setTimeout(() => setToastNotification(null), 3000);
+                return;
+              }
+              setCurrentRoomTitle(newTitle);
+              try {
+                localStorage.setItem(`super_legend_room_title_${roomId}`, newTitle);
+              } catch (e) {}
+              // Also persist to Firestore if owner
+              saveRoomThemeAndWallpaperToFirestore({
+                roomId,
+                isOwner: isOwner,
+                roomTitle: newTitle
+              }).catch(() => {});
+              setToastNotification(`تم تغيير اسم الروم إلى "${newTitle}" بنجاح 🏷️👑`);
+              setTimeout(() => setToastNotification(null), 3000);
+            }}
+            onUpdateRoomAvatar={(newAvatarUrl) => {
+              if (currentUserRole !== 'owner' || !isOwner) {
+                setToastNotification('🔒 غير مصرح: تعديل صورة الروم متاح فقط لصاحب الروم (المالك)، ولا يحق للمشرف أو المضيف تعديلها');
+                setTimeout(() => setToastNotification(null), 3000);
+                return;
+              }
+              setCurrentRoomAvatar(newAvatarUrl);
+              try {
+                localStorage.setItem(`super_legend_room_avatar_${roomId}`, newAvatarUrl);
+              } catch (e) {}
+              // Persist to Firestore and dispatch global event
+              saveRoomThemeAndWallpaperToFirestore({
+                roomId,
+                isOwner: isOwner,
+                roomAvatar: newAvatarUrl
+              }).catch(() => {});
+              setToastNotification(`تم تحديث صورة الغرفة بنجاح وتطبيقها خارج وداخل الروم 📸👑`);
+              setTimeout(() => setToastNotification(null), 3000);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* ROOM EXIT ACTION MODAL (نافذة خيارات مغادرة الغرفة: احتفاظ، خروج، إحالة - محمل عند الطلب فقط) */}
+      {showRoomExitModal && (
+        <RoomExitSection
+          isOpen={showRoomExitModal}
+          onClose={() => setShowRoomExitModal(false)}
+          onKeepInBackground={handleKeepInBackground}
+          onExit={handleSoloExit}
+          onDissolveAll={handleDissolveRoom}
+          isOwner={isOwner}
+          roomTitle={currentRoomTitle}
+          hostName={hostSeat.userName || hostName}
+          onTriggerToast={(msg) => {
+            setToastNotification(msg);
             setTimeout(() => setToastNotification(null), 3000);
-            return;
-          }
-          setIsTeamBattleActive(true);
-          setTeamBattleStatus('preparation');
-          setTeamBattleTimer(config.durationMinutes * 60);
-          setOwnerJoinedTeam(config.joinedTeam);
-          setRedTeamScore(0);
-          setBlueTeamScore(0);
-          setSeatCounters({});
-          setPkTopSupportersMap({});
-          setToastNotification(`تم إعداد معركة الفريق (${config.durationMinutes} دقيقة). اضغط "بدء المعركة" للانطلاق ⚔️🔥`);
-          setTimeout(() => setToastNotification(null), 3500);
-        }}
-        onTriggerToast={(msg) => {
-          setToastNotification(msg);
-          setTimeout(() => setToastNotification(null), 3200);
-        }}
-      />
-
-      {/* NORMAL ROOM COUNTER RESULT MODAL (نافذة نتائج الجولة العادية المستقلة وتصفير الحسابات) */}
-      <NormalRoundResultModal
-        isOpen={showNormalRoundResultModal}
-        onClose={() => {
-          setShowNormalRoundResultModal(false);
-          setSeatCounters({}); // تصفير عدادات المايكات للجولة عند إغلاق النتيجة
-        }}
-        resultData={normalRoundResultData}
-      />
-
-      {/* TEAM BATTLE RESULT POPUP MODAL (نافذة نتائج معركة الفريق والداعم الأكبر) */}
-      <TeamBattleResultModal
-        isOpen={showTeamBattleResultModal}
-        onClose={() => setShowTeamBattleResultModal(false)}
-        redScore={pkResultData.redScore}
-        blueScore={pkResultData.blueScore}
-        winner={pkResultData.winner}
-        topSupporter={pkResultData.topSupporter}
-      />
-
-      {/* ROOM INFO & MANAGEMENT MODAL (نافذة تفاصيل ومعلومات الروم وإدارة المشرفين وتعديل اسم وصورة الروم للمالك) */}
-      <RoomInfoModal
-        isOpen={showRoomInfoModal}
-        onClose={() => setShowRoomInfoModal(false)}
-        roomTitle={currentRoomTitle}
-        roomId={roomId}
-        hostAvatar={currentRoomAvatar || hostSeat.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'}
-        hostName={hostSeat.userName || 'مالك الغرفة'}
-        userRole={currentUserRole}
-        isRoomOwner={currentUserRole === 'owner' && isOwner}
-        currentAppRole={currentAppRole}
-        agencyName="وكالة أبو أمجد لتسجيل المضيفين"
-        agencyOwnerName="أبو أمجد 👑"
-        agencyGid="88902"
-        onRoleChange={(role) => {
-          setCurrentUserRole(role);
-        }}
-        onOpenSettings={() => setShowSettingsDrawer(true)}
-        onUpdateRoomTitle={(newTitle) => {
-          if (currentUserRole !== 'owner' || !isOwner) {
-            setToastNotification('🔒 غير مصرح: تعديل اسم الروم متاح فقط لصاحب الروم (المالك)، ولا يحق للمشرف أو المضيف تعديله');
-            setTimeout(() => setToastNotification(null), 3000);
-            return;
-          }
-          setCurrentRoomTitle(newTitle);
-          try {
-            localStorage.setItem(`super_legend_room_title_${roomId}`, newTitle);
-          } catch (e) {}
-          // Also persist to Firestore if owner
-          saveRoomThemeAndWallpaperToFirestore({
-            roomId,
-            isOwner: isOwner,
-            roomTitle: newTitle
-          }).catch(() => {});
-          setToastNotification(`تم تغيير اسم الروم إلى "${newTitle}" بنجاح 🏷️👑`);
-          setTimeout(() => setToastNotification(null), 3000);
-        }}
-        onUpdateRoomAvatar={(newAvatarUrl) => {
-          if (currentUserRole !== 'owner' || !isOwner) {
-            setToastNotification('🔒 غير مصرح: تعديل صورة الروم متاح فقط لصاحب الروم (المالك)، ولا يحق للمشرف أو المضيف تعديلها');
-            setTimeout(() => setToastNotification(null), 3000);
-            return;
-          }
-          setCurrentRoomAvatar(newAvatarUrl);
-          try {
-            localStorage.setItem(`super_legend_room_avatar_${roomId}`, newAvatarUrl);
-          } catch (e) {}
-          // Persist to Firestore and dispatch global event
-          saveRoomThemeAndWallpaperToFirestore({
-            roomId,
-            isOwner: isOwner,
-            roomAvatar: newAvatarUrl
-          }).catch(() => {});
-          setToastNotification(`تم تحديث صورة الغرفة بنجاح وتطبيقها خارج وداخل الروم 📸👑`);
-          setTimeout(() => setToastNotification(null), 3000);
-        }}
-      />
-
-      {/* ROOM EXIT ACTION MODAL (نافذة خيارات مغادرة الغرفة: احتفاظ، خروج، إحالة) */}
-      <RoomExitModal
-        isOpen={showRoomExitModal}
-        onClose={() => setShowRoomExitModal(false)}
-        onKeepInBackground={handleKeepInBackground}
-        onExit={handleSoloExit}
-        onDissolveAll={handleDissolveRoom}
-        isOwner={isOwner}
-        roomTitle={currentRoomTitle}
-        hostName={hostSeat.userName || hostName}
-        onTriggerToast={(msg) => {
-          setToastNotification(msg);
-          setTimeout(() => setToastNotification(null), 3000);
-        }}
-      />
+          }}
+        />
+      )}
     </div>
   );
 };
+
+export default VoiceRoomScreen;
 

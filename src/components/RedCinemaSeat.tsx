@@ -13,8 +13,10 @@ interface RedCinemaSeatProps {
     isMuted?: boolean;
     isLocked?: boolean;
     isSpeaking?: boolean;
+    audioLevel?: number;
     isInvitationPending?: boolean;
     gender?: 'male' | 'female';
+    vipLevel?: string | number;
   };
   onClick: () => void;
 }
@@ -27,9 +29,16 @@ export const RedCinemaSeat: React.FC<RedCinemaSeatProps> = ({
   const isEmpty = seatData?.isEmpty ?? true;
   const isLocked = seatData?.isLocked ?? false;
   const isSpeaking = (seatData?.isSpeaking ?? false) && !seatData?.isMuted;
+  const audioLevel = seatData?.audioLevel ?? 0;
+  const normLevel = isSpeaking ? Math.min(1.0, Math.max(0.25, (audioLevel > 0 ? audioLevel : 45) / 100)) : 0;
+  const dynamicScale = 1.08 + normLevel * 0.22;
+  const jitterDist = Math.max(1, Math.round(normLevel * 2));
   const isMuted = seatData?.isMuted ?? false;
   const isHost = seatData?.isHost ?? false;
   const isInvitationPending = seatData?.isInvitationPending ?? false;
+  const rawVip = seatData?.vipLevel;
+  const seatVipNum = typeof rawVip === 'number' ? rawVip : parseInt(rawVip?.toString().match(/\d+/)?.[0] || '0', 10);
+  const isVip8Plus = seatVipNum >= 8;
 
   return (
     <div
@@ -128,20 +137,26 @@ export const RedCinemaSeat: React.FC<RedCinemaSeatProps> = ({
             <div className="relative w-10 h-10 sm:w-11 sm:h-11">
               {/* Speaking Soundwave Glow Ring */}
               {isSpeaking && (
-                <motion.div
-                  animate={{ scale: [1, 1.25, 1], opacity: [0.9, 0.4, 0.9] }}
-                  transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
-                  className="absolute -inset-1 rounded-full bg-emerald-400/40 border-2 border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.8)] z-0"
-                />
-              )}
-
-              {/* Invitation Pending Pulsing Ring */}
-              {isInvitationPending && (
-                <motion.div
-                  animate={{ scale: [1, 1.2, 1], opacity: [0.9, 0.4, 0.9] }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-                  className="absolute -inset-1 rounded-full bg-amber-400/40 border-2 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.85)] z-0"
-                />
+                <>
+                  <motion.div
+                    animate={{
+                      scale: [1, dynamicScale, 1.01, dynamicScale, 1],
+                      x: [-jitterDist * 0.4, jitterDist * 0.4, -jitterDist * 0.2, jitterDist * 0.2, 0],
+                      y: [jitterDist * 0.2, -jitterDist * 0.2, -jitterDist * 0.4, jitterDist * 0.4, 0],
+                      opacity: [0.75, 0.95, 0.8, 0.95, 0.75],
+                    }}
+                    transition={{ duration: 0.26, repeat: Infinity, ease: 'easeInOut' }}
+                    className="absolute -inset-1 rounded-full border-[1px] border-emerald-400/50 shadow-[0_0_8px_rgba(52,211,153,0.35)] z-0"
+                    style={{
+                      boxShadow: `0 0 ${Math.round(8 + normLevel * 6)}px rgba(52,211,153,0.4)`,
+                    }}
+                  />
+                  <motion.div
+                    animate={{ scale: [1, 1.18 + normLevel * 0.12], opacity: [0.35, 0] }}
+                    transition={{ duration: 0.95, repeat: Infinity, ease: 'easeOut' }}
+                    className="absolute -inset-1 rounded-full border-[0.75px] border-emerald-300/35 shadow-[0_0_6px_rgba(52,211,153,0.2)] z-0"
+                  />
+                </>
               )}
 
               {/* User Avatar */}
@@ -152,7 +167,7 @@ export const RedCinemaSeat: React.FC<RedCinemaSeatProps> = ({
                   isSpeaking
                     ? 'border-emerald-400 ring-2 ring-emerald-500/50'
                     : isInvitationPending
-                    ? 'border-amber-400 ring-2 ring-amber-400/80'
+                    ? 'border-amber-400/40'
                     : isHost
                     ? 'border-amber-400 ring-2 ring-amber-500/40'
                     : 'border-red-400/80 ring-1 ring-red-500/30'
@@ -168,7 +183,7 @@ export const RedCinemaSeat: React.FC<RedCinemaSeatProps> = ({
 
               {/* Mute Mic Badge / Yellow Mic Indicator */}
               {isInvitationPending ? (
-                <div className="absolute -bottom-1 -right-1 z-20 rounded-full p-0.5 shadow-md border border-white/80 bg-amber-400 text-slate-950 ring-1 ring-amber-300">
+                <div className="absolute -bottom-1 -right-1 z-20 rounded-full p-0.5 shadow-md border border-white/80 bg-amber-400 text-slate-950">
                   <Mic className="w-2.5 h-2.5" />
                 </div>
               ) : isMuted ? (
@@ -190,7 +205,7 @@ export const RedCinemaSeat: React.FC<RedCinemaSeatProps> = ({
         ) : (
           <div className="flex flex-col items-center">
             <span className={`text-[10px] font-black truncate w-full leading-tight drop-shadow-sm ${
-              isInvitationPending ? 'text-amber-300' : 'text-amber-200'
+              isVip8Plus ? 'text-red-500 drop-shadow-[0_1px_3px_rgba(239,68,68,0.8)]' : 'text-white'
             }`}>
               {seatData?.userName}
             </span>

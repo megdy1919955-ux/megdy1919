@@ -38,7 +38,8 @@ import {
   CheckSquare,
   Square,
   Folder,
-  FolderOpen
+  FolderOpen,
+  FolderUp
 } from 'lucide-react';
 
 export interface TrackItem {
@@ -60,45 +61,11 @@ interface MusicPlayerModalProps {
   isMicSpeaking?: boolean;
 }
 
-// Sample High-Quality Audio Tracks
-const INITIAL_PLAYLIST: TrackItem[] = [
-  {
-    id: 'sample-1',
-    title: 'أنغام الشرق الهادئة (Lofi Oriental)',
-    artist: 'دي جي الغرفة',
-    duration: 180,
-    src: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3',
-    coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=300',
-    isCustom: false,
-  },
-  {
-    id: 'sample-2',
-    title: 'إيقاعات السهرة والحفلة (Party Beats)',
-    artist: 'ميكس السهرة',
-    duration: 154,
-    src: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=cheerful-upbeat-10582.mp3',
-    coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=300',
-    isCustom: false,
-  },
-  {
-    id: 'sample-3',
-    title: 'معزوفة العود والاسترخاء (Chill Oud)',
-    artist: 'أنغام ذهبية',
-    duration: 210,
-    src: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=ambient-piano-amp-strings-10711.mp3',
-    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&q=80&w=300',
-    isCustom: false,
-  },
-  {
-    id: 'sample-4',
-    title: 'إيقاع التحديات والحماس (Action Beats)',
-    artist: 'دي جي الأسطورة',
-    duration: 142,
-    src: 'https://cdn.pixabay.com/download/audio/2021/09/06/audio_8b273fa410.mp3?filename=hiphop-rock-113842.mp3',
-    coverUrl: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&q=80&w=300',
-    isCustom: false,
-  },
-];
+// Sample High-Quality Audio Tracks - Cleared (zero hardcoded tracks, 100% on-demand from device)
+const INITIAL_PLAYLIST: TrackItem[] = [];
+
+// Clean offline SVG vinyl fallback cover for tracks without album artwork
+const DEFAULT_TRACK_COVER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%230f172a"/><circle cx="150" cy="150" r="120" fill="%231e293b" stroke="%23f59e0b" stroke-width="4"/><circle cx="150" cy="150" r="40" fill="%230f172a" stroke="%23fbbf24" stroke-width="3"/><circle cx="150" cy="150" r="10" fill="%23f59e0b"/></svg>';
 
 // Global cache for preserving imported songs across modal open/close cycles
 let globalPlaylistCache: TrackItem[] | null = null;
@@ -176,7 +143,7 @@ const loadRomMp3FromIndexedDB = async (): Promise<TrackItem[]> => {
             artist: item.artist || 'ذاكرة الروم المحفوظة 📱',
             duration: item.duration || 180,
             src: objectUrl,
-            coverUrl: item.coverUrl || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=300',
+            coverUrl: item.coverUrl || DEFAULT_TRACK_COVER,
             isCustom: true,
           };
         }).filter((t) => !!t.src);
@@ -212,7 +179,14 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
   // Role-Based Access Control (RBAC): Only Room Owner and Hosts/Moderators can control music
   const hasControlPermission = canControl ?? (currentUserRole === 'owner' || currentUserRole === 'host' || currentUserRole === 'moderator');
 
-  const [playlist, setPlaylist] = useState<TrackItem[]>(() => globalPlaylistCache || INITIAL_PLAYLIST);
+  const [playlist, setPlaylist] = useState<TrackItem[]>(() => {
+    if (globalPlaylistCache) {
+      const filtered = globalPlaylistCache.filter((t) => t.isCustom);
+      globalPlaylistCache = filtered;
+      return filtered;
+    }
+    return INITIAL_PLAYLIST;
+  });
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
@@ -419,6 +393,14 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
 
       if (!audioRef.current) return;
 
+      if (!currentTrack || playlist.length === 0) {
+        if (onToastNotification) {
+          onToastNotification('لا توجد أغانٍ في القائمة، يرجى استيراد مقاطع MP3 من ذاكرة هاتفك أولاً 🎵');
+        }
+        setShowPlaylist(true);
+        return;
+      }
+
       if (isPlaying) {
         audioRef.current.pause();
         setIsPlaying(false);
@@ -527,8 +509,14 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
 
   // Handle Track Source Changes
   useEffect(() => {
-    if (audioRef.current && currentTrack) {
+    if (audioRef.current) {
       const audio = audioRef.current;
+      if (!currentTrack) {
+        audio.pause();
+        audio.src = '';
+        setIsPlaying(false);
+        return;
+      }
       if (audio.src !== currentTrack.src) {
         audio.src = currentTrack.src;
       }
@@ -763,7 +751,7 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
                 artist: 'ذاكرة الروم المحفوظة 📱',
                 duration,
                 blob: fileBlob,
-                coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=300',
+                coverUrl: DEFAULT_TRACK_COVER,
                 addedAt: Date.now(),
               };
 
@@ -776,7 +764,7 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
                 artist: 'ذاكرة الروم المحفوظة 📱',
                 duration,
                 src: audioUrl,
-                coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=300',
+                coverUrl: DEFAULT_TRACK_COVER,
                 isCustom: true,
               });
             }
@@ -962,8 +950,8 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
             >
               {/* Spinning Track Cover Art */}
               <img
-                src={currentTrack?.coverUrl || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=300'}
-                alt={currentTrack?.title}
+                src={currentTrack?.coverUrl || DEFAULT_TRACK_COVER}
+                alt={currentTrack?.title || 'موسيقى'}
                 className={`w-full h-full object-cover rounded-full pointer-events-none ${isPlaying ? 'animate-spin' : ''}`}
                 style={{ animationDuration: '4s' }}
               />
@@ -1401,10 +1389,10 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
                 {/* Main Compact Player Horizontal Row: Album Cover (shrunk 50%) + Title + Mini Equalizer */}
                 <div className="relative flex items-center justify-between gap-2">
                   {/* Album Cover Vinyl: Shrunk 50% from w-16 h-16 to w-8 h-8 */}
-                  <div className="relative w-8 h-8 shrink-0 rounded-lg overflow-hidden border border-amber-400/60 shadow-sm">
+                  <div className="relative w-8 h-8 shrink-0 rounded-lg overflow-hidden border border-amber-400/60 shadow-sm bg-slate-900">
                     <img
-                      src={currentTrack?.coverUrl || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=300'}
-                      alt={currentTrack?.title}
+                      src={currentTrack?.coverUrl || DEFAULT_TRACK_COVER}
+                      alt={currentTrack?.title || 'موسيقى'}
                       className={`w-full h-full object-cover ${isPlaying ? 'scale-110' : ''}`}
                     />
                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
@@ -1415,12 +1403,12 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
                   {/* Single Line Track Title & Equalizer */}
                   <div className="flex-1 min-w-0 space-y-0.5">
                     <div className="flex items-center justify-between gap-1">
-                      <h4 className="text-[11px] font-extrabold text-white truncate dir-rtl flex-1" title={currentTrack?.title}>
-                        {currentTrack?.title || 'لا توجد أغانٍ'}
+                      <h4 className="text-[11px] font-extrabold text-white truncate dir-rtl flex-1" title={currentTrack?.title || 'لا توجد أغانٍ مضافة'}>
+                        {currentTrack?.title || 'لا توجد أغانٍ مضافة'}
                       </h4>
 
                       <span className="px-1 py-0.2 bg-amber-500/20 text-amber-300 rounded text-[8px] font-black border border-amber-500/30 shrink-0">
-                        {currentTrack?.isCustom ? 'محلي' : 'عينة'}
+                        {currentTrack ? 'ذاكرة الهاتف 📱' : 'فارغ'}
                       </span>
                     </div>
 
@@ -1716,9 +1704,28 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
                 {/* Saved Track List Scroll Container */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1.5 p-1.5 bg-slate-950/50 rounded-xl border border-white/5 min-h-[220px]">
                   {filteredPlaylist.length === 0 ? (
-                    <div className="py-10 text-center text-slate-400 text-xs space-y-2">
-                      <Music className="w-8 h-8 text-slate-600 mx-auto opacity-50" />
-                      <p>لا توجد أغانٍ تطابق البحث</p>
+                    <div className="py-12 text-center text-slate-400 text-xs space-y-3 px-4">
+                      <div className="w-12 h-12 rounded-full bg-slate-900/90 border border-amber-400/30 flex items-center justify-center mx-auto shadow-inner">
+                        <Music className="w-6 h-6 text-amber-400/80" />
+                      </div>
+                      {playlist.length === 0 ? (
+                        <>
+                          <p className="font-bold text-white text-sm">قائمة الأغاني فارغة</p>
+                          <p className="text-slate-400 text-[11px] leading-relaxed max-w-xs mx-auto">
+                            تم تفريغ العينات التجريبية. يمكنك الآن استيراد الأغاني الخاصة بك مباشرة من ذاكرة هاتفك وحفظها للتشغيل في الروم عند الطلب.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={importMp3FilesFromDevice}
+                            className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-xs shadow-md hover:brightness-110 active:scale-95 transition-transform"
+                          >
+                            <FolderUp className="w-4 h-4" />
+                            <span>استيراد أغانٍ من الهاتف</span>
+                          </button>
+                        </>
+                      ) : (
+                        <p>لا توجد أغانٍ تطابق البحث الحالي</p>
+                      )}
                     </div>
                   ) : (
                     filteredPlaylist.map((track) => {
@@ -1757,8 +1764,8 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
                               )}
                             </button>
 
-                            <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-white/10">
-                              <img src={track.coverUrl || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=300'} alt={track.title} className="w-full h-full object-cover" />
+                            <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-slate-900">
+                              <img src={track.coverUrl || DEFAULT_TRACK_COVER} alt={track.title} className="w-full h-full object-cover" />
                               {isNowPlaying && isPlaying && (
                                 <div className="absolute inset-0 bg-amber-500/60 flex items-center justify-center">
                                   <Music className="w-4 h-4 text-slate-950 animate-bounce" />

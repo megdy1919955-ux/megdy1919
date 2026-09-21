@@ -36,7 +36,9 @@ import {
   Pin,
   FolderPlus,
   UserCheck,
-  FileCheck2
+  FileCheck2,
+  Play,
+  Pause
 } from 'lucide-react';
 import {
   getAgencyNotifications,
@@ -53,6 +55,7 @@ export interface ChatMessageEntry {
   text?: string;
   imageUrl?: string;
   audioDuration?: string;
+  audioUrl?: string;
   time: string;
   status: 'sent' | 'delivered' | 'read';
   replyTo?: {
@@ -292,6 +295,183 @@ export const UnifiedChatMessagesView: React.FC<UnifiedChatMessagesViewProps> = (
   const [agencyNotifs, setAgencyNotifs] = useState<AgencyNotificationItem[]>(getAgencyNotifications());
   const [reviewingInvitation, setReviewingInvitation] = useState<AgencyInvitation | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Voice Note Recording & Playback States (تسجيل الرسائل الصوتية بدون تشغيل مسبق للمايك)
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [playingAudioMsgId, setPlayingAudioMsgId] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<any>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const activeAudioElementRef = useRef<HTMLAudioElement | null>(null);
+
+  // Guarantee all hardware mic tracks are immediately closed on component unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((t) => {
+          try {
+            t.stop();
+          } catch {}
+        });
+        mediaStreamRef.current = null;
+      }
+      if (activeAudioElementRef.current) {
+        activeAudioElementRef.current.pause();
+        activeAudioElementRef.current = null;
+      }
+    };
+  }, []);
+
+  // Audio Playback Toggle
+  const handleTogglePlayAudio = (msgId: string, audioUrl?: string) => {
+    if (!audioUrl) {
+      showToast('تشغيل التسجيل الصوتي 🎵');
+      return;
+    }
+
+    if (playingAudioMsgId === msgId) {
+      if (activeAudioElementRef.current) {
+        activeAudioElementRef.current.pause();
+        activeAudioElementRef.current = null;
+      }
+      setPlayingAudioMsgId(null);
+    } else {
+      if (activeAudioElementRef.current) {
+        activeAudioElementRef.current.pause();
+      }
+      const audio = new Audio(audioUrl);
+      activeAudioElementRef.current = audio;
+      setPlayingAudioMsgId(msgId);
+      audio.onended = () => {
+        setPlayingAudioMsgId(null);
+        activeAudioElementRef.current = null;
+      };
+      audio.onerror = () => {
+        setPlayingAudioMsgId(null);
+        activeAudioElementRef.current = null;
+      };
+      audio.play().catch(() => {
+        setPlayingAudioMsgId(null);
+      });
+    }
+  };
+
+  // Start Voice Message Recording (طلب إذن المايك عند الضغط على التسجيل حصراً)
+  const handleStartVoiceRecording = async () => {
+    try {
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        showToast('تسجيل الصوت غير مدعوم في هذا المتصفح');
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecordingVoice(true);
+      setRecordingDuration(0);
+
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((prev) => prev + 1);
+      }, 1000);
+    } catch (err: any) {
+      console.warn('Microphone permission error during chat recording:', err);
+      showToast('يرجى السماح بصلاحية المايك لتسجيل رسالة صوتية 🎙️');
+      setIsRecordingVoice(false);
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((t) => {
+          try {
+            t.stop();
+          } catch {}
+        });
+        mediaStreamRef.current = null;
+      }
+    }
+  };
+
+  // Stop / Send Voice Message Recording (إغلاق عتاد المايك فوراً بعد الانتهاء)
+  const handleStopVoiceRecording = (shouldSend = true) => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+
+    const durationSec = recordingDuration;
+    setIsRecordingVoice(false);
+    setRecordingDuration(0);
+
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.onstop = () => {
+        // ALWAYS cleanly stop all tracks on hardware immediately to turn off the mic indicator!
+        if (mediaStreamRef.current) {
+          mediaStreamRef.current.getTracks().forEach((track) => {
+            try {
+              track.stop();
+            } catch {}
+          });
+          mediaStreamRef.current = null;
+        }
+
+        if (shouldSend && activeChat) {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const durationStr = `0:${durationSec < 10 ? '0' : ''}${durationSec || 1}`;
+
+          const randomSuffix = Math.random().toString(36).substring(2, 9);
+          const newMsg: ChatMessageEntry = {
+            id: `msg-${Date.now()}-${randomSuffix}`,
+            sender: 'me',
+            audioDuration: durationStr,
+            audioUrl: audioUrl,
+            time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+            status: 'sent',
+            ...(replyingToMessage ? { replyTo: replyingToMessage } : {})
+          };
+
+          const updatedMessages = [...activeChat.messages, newMsg];
+          const updatedChat: NajmChatMessageItem = {
+            ...activeChat,
+            lastMessage: `[رسالة صوتية ${durationStr}]`,
+            lastMessageTime: newMsg.time,
+            unreadCount: 0,
+            messages: updatedMessages
+          };
+
+          setActiveChat(updatedChat);
+          const updatedList = chatList.map((c) => (c.id === activeChat.id ? updatedChat : c));
+          saveChats(updatedList);
+          setReplyingToMessage(null);
+          showToast('تم إرسال الرسالة الصوتية 🎙️');
+        }
+      };
+      recorder.stop();
+    } else {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => {
+          try {
+            track.stop();
+          } catch {}
+        });
+        mediaStreamRef.current = null;
+      }
+    }
+  };
 
   // Auto-open direct chat if initialTargetUser provided
   useEffect(() => {
@@ -667,6 +847,49 @@ export const UnifiedChatMessagesView: React.FC<UnifiedChatMessagesViewProps> = (
                         {/* Message Text */}
                         {msg.text && <p className="text-sm font-medium leading-relaxed select-text whitespace-pre-line">{msg.text}</p>}
 
+                        {/* Audio Voice Note Bubble (رسالة صوتية قابلة للتشغيل) */}
+                        {msg.audioDuration && (
+                          <div className={`flex items-center gap-2.5 py-1 px-1 rounded-xl min-w-[190px] ${isMe ? 'text-white' : 'text-slate-800'}`}>
+                            <button
+                              type="button"
+                              onClick={() => handleTogglePlayAudio(msg.id, msg.audioUrl)}
+                              className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer ${
+                                isMe
+                                  ? 'bg-white/20 hover:bg-white/30 text-white'
+                                  : 'bg-[#00c765] hover:bg-[#00b058] text-white shadow-xs'
+                              }`}
+                              title={playingAudioMsgId === msg.id ? 'إيقاف مؤقت' : 'تشغيل الرسالة الصوتية'}
+                            >
+                              {playingAudioMsgId === msg.id ? (
+                                <Pause className="w-4 h-4" />
+                              ) : (
+                                <Play className="w-4 h-4 ml-0.5" />
+                              )}
+                            </button>
+                            <div className="flex-1 flex flex-col gap-1">
+                              {/* Audio sound wave visual bars */}
+                              <div className="flex items-center gap-0.5 h-4">
+                                {[35, 75, 45, 90, 60, 40, 85, 50, 70, 30, 80, 55, 65].map((barHeight, bIdx) => (
+                                  <div
+                                    key={bIdx}
+                                    className={`w-1 rounded-full transition-all ${
+                                      isMe ? 'bg-white' : 'bg-[#00c765]'
+                                    } ${playingAudioMsgId === msg.id ? 'animate-pulse' : 'opacity-70'}`}
+                                    style={{ height: `${barHeight}%` }}
+                                  />
+                                ))}
+                              </div>
+                              <div className="flex items-center justify-between text-[10px] font-mono opacity-80">
+                                <span>{msg.audioDuration}</span>
+                                <span className="font-sans font-bold flex items-center gap-0.5">
+                                  <Mic className="w-2.5 h-2.5 inline" />
+                                  صوتي
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Interactive Agency Invitation Card inside Message */}
                         {(msg as any).invitationId && (
                           <div className="mt-2.5 p-3 rounded-xl bg-purple-50/90 border border-purple-200 text-slate-800 space-y-2">
@@ -752,38 +975,78 @@ export const UnifiedChatMessagesView: React.FC<UnifiedChatMessagesViewProps> = (
           )}
 
           {/* Chat Input Bar */}
-          <div className="p-3 bg-white border-t border-slate-100 flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => showToast('إرسال هدية في المحادثة 🎁')}
-              className="p-2 rounded-full text-amber-500 hover:bg-amber-50 transition-colors"
-            >
-              <Gift className="w-5 h-5" />
-            </button>
-            <div className="flex-1 relative bg-slate-100 rounded-full flex items-center px-3 py-1.5 border border-slate-200">
-              <input
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                placeholder={replyingToMessage ? 'اكتب ردك هنا...' : 'اكتب رسالة... (أو اسحب رسالة للرد)'}
-                className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400 font-medium"
-              />
-              <button className="text-slate-400 hover:text-slate-600 ml-1">
-                <Smile className="w-4 h-4" />
-              </button>
+          {isRecordingVoice ? (
+            <div className="p-3 bg-emerald-50 border-t border-emerald-200 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2 text-emerald-800 min-w-0">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+                <span className="font-bold text-xs text-red-600 shrink-0">جاري تسجيل الصوت...</span>
+                <span className="font-mono font-bold text-xs bg-white px-2 py-0.5 rounded-full border border-emerald-200 text-emerald-700">
+                  {`0:${recordingDuration < 10 ? '0' : ''}${recordingDuration}`}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleStopVoiceRecording(false)}
+                  className="px-3 py-1.5 rounded-full bg-red-100 hover:bg-red-200 text-red-600 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                  title="إلغاء وحذف التسجيل"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>إلغاء</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStopVoiceRecording(true)}
+                  className="px-4 py-1.5 rounded-full bg-[#00c765] hover:bg-[#00b058] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 transition-all"
+                  title="إرسال التسجيل الصوتي"
+                >
+                  <Send className="w-3.5 h-3.5 -scale-x-100" />
+                  <span>إرسال</span>
+                </button>
+              </div>
             </div>
-            <button
-              onClick={handleSendMessage}
-              disabled={!inputMessage.trim()}
-              className={`p-2.5 rounded-full flex items-center justify-center transition-transform active:scale-90 ${
-                inputMessage.trim()
-                  ? 'bg-[#00c765] text-white shadow-md cursor-pointer'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-              }`}
-            >
-              <Send className="w-4 h-4 -scale-x-100" />
-            </button>
-          </div>
+          ) : (
+            <div className="p-3 bg-white border-t border-slate-100 flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => showToast('إرسال هدية في المحادثة 🎁')}
+                className="p-2 rounded-full text-amber-500 hover:bg-amber-50 transition-colors cursor-pointer"
+                title="إرسال هدية"
+              >
+                <Gift className="w-5 h-5" />
+              </button>
+              <div className="flex-1 relative bg-slate-100 rounded-full flex items-center px-3 py-1.5 border border-slate-200">
+                <input
+                  type="text"
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  placeholder={replyingToMessage ? 'اكتب ردك هنا...' : 'اكتب رسالة... (أو انقر على المايك لتسجيل صوت)'}
+                  className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400 font-medium"
+                />
+                <button className="text-slate-400 hover:text-slate-600 ml-1">
+                  <Smile className="w-4 h-4" />
+                </button>
+              </div>
+              {inputMessage.trim() ? (
+                <button
+                  onClick={handleSendMessage}
+                  className="p-2.5 rounded-full flex items-center justify-center transition-transform active:scale-90 bg-[#00c765] text-white shadow-md cursor-pointer"
+                  title="إرسال الرسالة"
+                >
+                  <Send className="w-4 h-4 -scale-x-100" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleStartVoiceRecording}
+                  className="p-2.5 rounded-full flex items-center justify-center transition-all active:scale-90 bg-[#00c765] hover:bg-[#00b058] text-white shadow-md cursor-pointer"
+                  title="تسجيل رسالة صوتية (انقر لبدء التسجيل)"
+                >
+                  <Mic className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         /* 2. MAIN CHAT DIRECTORY VIEW */

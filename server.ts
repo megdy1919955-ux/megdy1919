@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
+import { generateZegoToken04, ZEGO_DEFAULT_APP_ID, ZEGO_DEFAULT_SECRET } from './src/lib/zegoServerAssistant';
 
 interface ClientConnection {
   ws: WebSocket;
@@ -30,6 +31,51 @@ async function startServer() {
       connectedClients: clients.size,
       time: new Date().toISOString()
     });
+  });
+
+  // ZEGOCLOUD Configuration and Token Generation Endpoints
+  app.get('/api/zego/config', (req, res) => {
+    const isConfigured = Boolean(process.env.ZEGO_SERVER_SECRET && process.env.ZEGO_APP_ID);
+    const appId = Number(process.env.ZEGO_APP_ID) || 0;
+    const serverUrl = process.env.ZEGO_SERVER_URL || '';
+    res.json({
+      appId,
+      server: serverUrl,
+      isConfigured
+    });
+  });
+
+  app.get('/api/zego/token', (req, res) => {
+    try {
+      const isConfigured = Boolean(process.env.ZEGO_SERVER_SECRET && process.env.ZEGO_APP_ID);
+      if (!isConfigured) {
+        return res.json({
+          available: false,
+          token: null,
+          message: 'ZEGOCLOUD is not configured with ZEGO_SERVER_SECRET and ZEGO_APP_ID'
+        });
+      }
+
+      const userId = (req.query.userId as string) || `user_${Math.floor(Math.random() * 100000)}`;
+      const roomId = (req.query.roomId as string) || 'default_room';
+      const appId = Number(process.env.ZEGO_APP_ID);
+      const secret = process.env.ZEGO_SERVER_SECRET!;
+      const serverUrl = process.env.ZEGO_SERVER_URL || `wss://webliveroom${appId}-api.coolzcloud.com/ws`;
+
+      const token = generateZegoToken04(appId, userId, secret, 86400);
+
+      res.json({
+        available: true,
+        appId,
+        userId,
+        roomId,
+        server: serverUrl,
+        token
+      });
+    } catch (err: any) {
+      console.error('Failed to generate ZEGOCLOUD Token04:', err);
+      res.status(500).json({ available: false, error: err.message || 'Token generation failed' });
+    }
   });
 
   // Explicit PWA Service Worker & Manifest routes for 100% Android & iOS standalone compliance
@@ -114,11 +160,15 @@ async function startServer() {
           }
 
           case 'speaking_state': {
+            if (payload.seatId) {
+              clientData.seatId = payload.seatId;
+            }
+            const activeSeatId = payload.seatId || clientData.seatId;
             broadcastToRoom(clientData.roomId, ws, {
               type: 'peer_speaking_state',
               payload: {
                 peerId: clientData.peerId,
-                seatId: clientData.seatId,
+                seatId: activeSeatId,
                 isSpeaking: payload.isSpeaking,
                 audioLevel: payload.audioLevel || 0
               }

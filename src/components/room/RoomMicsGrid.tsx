@@ -117,14 +117,14 @@ export const getSpeakingAuraStyles = (aura: SpeakingAuraType = 'default') => {
     case 'default':
     default:
       return {
-        ring1Class: 'border border-white/35 bg-white/5 shadow-[0_0_8px_rgba(255,255,255,0.2)]',
-        ring2Class: 'border border-white/20 shadow-[0_0_10px_rgba(255,255,255,0.15)]',
-        ring3Class: 'border border-dashed border-white/15 shadow-none',
-        avatarBorderClass: 'from-white/60 via-slate-200/40 to-white/60 shadow-[0_0_8px_rgba(255,255,255,0.3)] ring-1 ring-white/40',
-        scale1: [1, 1.12, 1],
-        opacity1: [0.4, 0.1, 0.4],
-        scale2: [1, 1.2, 1],
-        opacity2: [0.25, 0.05, 0.25],
+        ring1Class: 'border-[1px] border-emerald-400/40 shadow-[0_0_8px_rgba(52,211,153,0.3)]',
+        ring2Class: 'border-[0.75px] border-cyan-400/25 shadow-[0_0_6px_rgba(6,182,212,0.15)]',
+        ring3Class: 'border-[0.75px] border-dashed border-emerald-300/35',
+        avatarBorderClass: 'from-emerald-400/40 via-teal-300/30 to-emerald-400/40 shadow-[0_0_6px_rgba(52,211,153,0.25)] ring-1 ring-emerald-400/30',
+        scale1: [1, 1.14, 1],
+        opacity1: [0.6, 0.2, 0.6],
+        scale2: [1, 1.25, 1],
+        opacity2: [0.4, 0.05, 0.4],
       };
   }
 };
@@ -147,6 +147,7 @@ export interface RoomMicsGridProps {
   isSpeakerAudioMuted?: boolean;
   sessionTimerNode?: React.ReactNode;
   hostVipLevel?: number | string;
+  isProfilesHydrated?: boolean;
   onSeatClick: (seatId: number) => void;
   onOpenUserProfile?: (userData: any) => void;
 }
@@ -168,6 +169,7 @@ export const RoomMicsGrid: React.FC<RoomMicsGridProps> = React.memo(({
   currentUserRole = 'guest',
   sessionTimerNode,
   hostVipLevel = 6,
+  isProfilesHydrated = true,
   onSeatClick,
 }) => {
   const activeSeats = allMicSeats.slice(0, activeMicCount);
@@ -253,6 +255,7 @@ export const RoomMicsGrid: React.FC<RoomMicsGridProps> = React.memo(({
                   currentUserRole={currentUserRole}
                   sessionTimerNode={sessionTimerNode}
                   isTimerSeat={isTimerSeat}
+                  isProfilesHydrated={isProfilesHydrated}
                   onSeatClick={onSeatClick}
                 />
               );

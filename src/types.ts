@@ -73,3 +73,10 @@ export interface LikeActivity {
   giftIcon?: string;
   timeAgo: string;
 }
+
+export interface SeatUser {
+  id: number;
+  userName: string;
+  avatar?: string;
+  isEmpty?: boolean;
+}

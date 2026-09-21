@@ -15,6 +15,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { NajmLogo } from './common/NajmLogo';
+import { logoutUserSession } from '../lib/authService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -179,7 +180,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {/* Logout Section */}
               <div className="bg-slate-800/40 border border-slate-800 rounded-2xl overflow-hidden">
                 <div 
-                  onClick={() => alert('تم تسجيل الخروج')}
+                  onClick={() => {
+                    onClose();
+                    logoutUserSession();
+                  }}
                   className="flex items-center justify-between p-4 hover:bg-rose-500/10 cursor-pointer transition-all group"
                 >
                   <div className="flex items-center gap-3">

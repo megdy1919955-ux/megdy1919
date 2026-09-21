@@ -36,6 +36,8 @@ import {
   isMediaUrl,
   getCleanGiftEmoji
 } from '../lib/giftCmsService';
+import { GiftCategoryPage } from './GiftCategoryPage';
+import { SingleGiftCard } from './SingleGiftCard';
 import {
   getRefundVaultBalance,
   subscribeToRefundVault,
@@ -123,6 +125,21 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
 
   const [selectedTab, setSelectedTab] = useState<CategoryType>('استرداد');
   const [selectedSubTab, setSelectedSubTab] = useState<string>('الكل');
+  const [adminNotice, setAdminNotice] = useState<string | null>(null);
+
+  // تخزين فئات الهدايا التي تم طلبها في ذاكرة الهاتف المؤقتة وعدم تحميل غيرها
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => new Set(['استرداد']));
+
+  useEffect(() => {
+    if (selectedTab) {
+      setVisitedTabs((prev) => {
+        if (prev.has(selectedTab)) return prev;
+        const next = new Set(prev);
+        next.add(selectedTab);
+        return next;
+      });
+    }
+  }, [selectedTab]);
 
   // Default selected gift is position 0 in 'استرداد'
   const firstRefundGift = giftsList.find((g) => g.category === 'استرداد' || isRefundGift(g)) || giftsList[0];
@@ -200,13 +217,20 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
   useEffect(() => {
     const unsubscribeGifts = subscribeToGifts((updatedList) => {
       setGiftsList(updatedList);
-      // If current selected gift was updated, refresh its details
+      // If current selected gift was deleted, fallback to the first available gift immediately
       setSelectedGift((prevSelected) => {
         if (!prevSelected) return updatedList[0];
         const match = updatedList.find((g) => g.id === prevSelected.id);
-        return match || prevSelected;
+        return match || updatedList[0];
       });
     });
+
+    const handleGiftDeleted = (e: Event) => {
+      const customEvent = e as CustomEvent<{ giftId: string; giftName: string }>;
+      const name = customEvent.detail?.giftName;
+      setAdminNotice(name ? `تمت إزالة هدية (${name}) وتحديث القائمة من لوحة الإدارة` : 'تم تحديث قائمة الهدايا تلقائياً من الإدارة');
+      setTimeout(() => setAdminNotice(null), 3500);
+    };
 
     const unsubscribeRole = subscribeToCmsRole((newRole) => {
       setActiveRole(newRole);
@@ -225,12 +249,14 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
 
     window.addEventListener('app_role_changed', handleRoleChanged);
     window.addEventListener('app_permissions_updated', handlePermissionsUpdated);
+    window.addEventListener('gift_deleted_by_admin', handleGiftDeleted);
 
     return () => {
       unsubscribeGifts();
       unsubscribeRole();
       window.removeEventListener('app_role_changed', handleRoleChanged);
       window.removeEventListener('app_permissions_updated', handlePermissionsUpdated);
+      window.removeEventListener('gift_deleted_by_admin', handleGiftDeleted);
     };
   }, []);
 
@@ -293,8 +319,8 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
     prevIsOpenRef.current = isOpen;
   }, [isOpen, isComboActive]);
 
-  // ================= 5-SECOND COUNTDOWN COMBO ANIMATION FRAME =================
-  const COMBO_DURATION_MS = 5000;
+  // ================= 4-SECOND COUNTDOWN COMBO ANIMATION FRAME =================
+  const COMBO_DURATION_MS = 4000;
 
   const startOrResetComboTimer = () => {
     comboEndTimeRef.current = Date.now() + COMBO_DURATION_MS;
@@ -905,6 +931,23 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                 </div>
               </div>
 
+              {/* Admin Real-Time Notification Banner */}
+              <AnimatePresence>
+                {adminNotice && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="bg-emerald-500/20 border-b border-emerald-500/30 px-3 py-1 text-center shrink-0"
+                  >
+                    <span className="text-[10px] font-bold text-emerald-300 flex items-center justify-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                      {adminNotice}
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* ================= 3. MAIN CATEGORY TABS ================= */}
               <div className="bg-[#080D18] border-b border-white/5 px-1.5 pt-1 shrink-0 space-y-0.5">
                 <div 
@@ -933,119 +976,36 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                     );
                   })}
                 </div>
-
-                {/* Sub-categories bar */}
-                {selectedTab === 'الفعالية' && (
-                  <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1 text-[9px]">
-                    {['الكل', 'حدث برج الاسد', 'النمط الاسبوعي', 'رحلة رومانسية'].map((sub) => (
-                      <button
-                        key={sub}
-                        onClick={() => setSelectedSubTab(sub)}
-                        className={`px-2 py-0.5 rounded-md font-bold whitespace-nowrap transition-all cursor-pointer ${
-                          selectedSubTab === sub
-                            ? 'bg-white/15 text-amber-300 border border-amber-400/30'
-                            : 'bg-white/5 text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        {sub}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
 
               {/* ================= 4. SPECIAL LUCKY REFUND VAULT BANNER (HIDDEN AS REQUESTED) ================= */}
 
-              {/* ================= 5. GIFTS GRID (Synchronized Horizontal Paged Carousel) ================= */}
+              {/* ================= 5. GIFTS GRID (Synchronized Horizontal Paged Carousel - Decoupled On-Demand) ================= */}
               <div
                 ref={giftsScrollContainerRef}
                 onScroll={handleGiftsScroll}
                 className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar flex-1 min-h-[160px] max-h-[220px] scroll-smooth"
               >
                 {GIFT_CATEGORIES.map((cat) => {
-                  const catGifts = giftsList.filter((gift) => {
-                    if (cat === 'الكل') return true;
-                    if (gift.category !== cat) return false;
-                    if (cat === 'الفعالية' && selectedSubTab !== 'الكل' && gift.subCategory) {
-                      return gift.subCategory === selectedSubTab;
-                    }
-                    return true;
-                  });
+                  // تحميل الصفحة النشطة فقط أو الصفحات التي سبق زيارتها والمحفوظة في الذاكرة
+                  const isCurrentActive = cat === selectedTab;
+                  const isCached = visitedTabs.has(cat);
+                  const shouldRenderContent = isCurrentActive || isCached;
 
                   return (
                     <div
                       key={cat}
                       ref={(el) => { pageRefs.current[cat] = el; }}
-                      className="w-full shrink-0 snap-center px-1.5 py-1.5 overflow-y-auto no-scrollbar"
+                      className="w-full shrink-0 snap-center"
                     >
-                      <div className="grid grid-cols-4 gap-1.5 w-full">
-                        {catGifts.map((gift) => {
-                          const isSelected = selectedGift?.id === gift.id;
-                          const mediaSrc = gift.videoUrl || gift.icon;
-                          const isVid = isVideoResource(mediaSrc);
-                          const isImg = !isVid && isMediaUrl(mediaSrc);
-                          const isRefund = isRefundGift(gift) || cat === 'استرداد';
-
-                          return (
-                            <div
-                              key={gift.id}
-                              onClick={() => setSelectedGift(gift)}
-                              className={`relative rounded-xl p-1 sm:p-1.5 flex flex-col items-center justify-between text-center transition-all cursor-pointer group min-h-[76px] w-full ${
-                                isSelected
-                                  ? 'bg-[#102232] border-2 border-emerald-400 shadow-md shadow-emerald-500/25 scale-[1.01]'
-                                  : 'bg-[#111726]/90 border border-white/5 hover:bg-[#162034] hover:border-cyan-400/40'
-                              }`}
-                            >
-                              {/* Top Left Badge */}
-                              {isRefund ? (
-                                <span className="absolute top-0.5 left-0.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 text-slate-950 text-[7px] font-black px-1.5 py-0.5 rounded-md shadow-[0_0_8px_rgba(16,185,129,0.7)] z-10 border border-emerald-200">
-                                  استرداد 🎰
-                                </span>
-                              ) : gift.badge ? (
-                                <span className="absolute top-0.5 left-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-[7px] font-black px-1 py-0.1 rounded-md shadow-xs z-10">
-                                  {gift.badge}
-                                </span>
-                              ) : null}
-
-                              {/* Top Right Icons */}
-                              <div className="absolute top-0.5 right-0.5 flex items-center gap-0.5 z-20">
-                                {/* Global broadcast icon */}
-                                {gift.hasGlobalBroadcast && gift.price >= 20000 && (
-                                  <span className="w-3 h-3 rounded-full bg-pink-500/80 text-white flex items-center justify-center text-[6px]" title="إشعار عالمي">
-                                    🌐
-                                  </span>
-                                )}
-
-                                {/* Sound icon */}
-                                {gift.hasSound && (
-                                  <span className="w-3 h-3 rounded-full bg-cyan-500/80 text-slate-950 flex items-center justify-center text-[6px]" title="مؤثر صوتي">
-                                    🎵
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Gift Graphic / Icon */}
-                              <div className="my-auto py-0.5 text-2xl group-hover:scale-110 transition-transform duration-200 drop-shadow-xs flex items-center justify-center">
-                                {isVid ? (
-                                  <video src={mediaSrc} autoPlay loop muted playsInline className="w-8 h-8 object-contain pointer-events-none" style={{ mixBlendMode: gift.blendMode || 'screen' }} />
-                                ) : isImg ? (
-                                  <img src={mediaSrc} alt={gift.name} className="w-8 h-8 object-contain" />
-                                ) : (
-                                  <span>{getCleanGiftEmoji(gift.name, gift.icon)}</span>
-                                )}
-                              </div>
-
-                              {/* Gift Price in Coins */}
-                              <div className="mt-auto flex items-center justify-center gap-0.5 w-full pt-0.5">
-                                <span className="text-amber-400 text-[9px]">🪙</span>
-                                <span className="text-[10px] font-mono font-black text-amber-300">
-                                  {gift.price.toLocaleString()}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      <GiftCategoryPage
+                        category={cat}
+                        selectedSubTab={selectedSubTab}
+                        giftsList={giftsList}
+                        selectedGiftId={selectedGift?.id}
+                        isActivePage={shouldRenderContent}
+                        onSelectGift={(g) => setSelectedGift(g)}
+                      />
                     </div>
                   );
                 })}
@@ -1207,19 +1167,19 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
               </AnimatePresence>
             </div>
 
-            {/* Main Interactive Circular Button with 5s Clockwise Countdown Border */}
+            {/* Main Interactive Circular Button with 4s Clockwise Countdown Border */}
             <motion.button
               id="consecutive-combo-gift-btn"
               whileTap={{ scale: 0.86 }}
               whileHover={{ scale: 1.06 }}
               onClick={handleComboTap}
               className="relative w-20 h-20 flex items-center justify-center cursor-pointer rounded-full group focus:outline-hidden"
-              title="اضغط للإرسال المتتالي (خلال 5 ثوانٍ)"
+              title="اضغط للإرسال المتتالي (خلال 4 ثوانٍ)"
             >
               {/* Outer Radiant Glow Halo */}
               <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-amber-500 via-orange-500 to-yellow-300 opacity-70 blur-md group-hover:opacity-100 animate-pulse transition-opacity" />
 
-              {/* Clockwise SVG Border Countdown Ring (5-Second Countdown like Clock Hands) */}
+              {/* Clockwise SVG Border Countdown Ring (4-Second Countdown like Clock Hands) */}
               <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 80 80">
                 <defs>
                   <linearGradient id="comboTimerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -1237,7 +1197,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
                   strokeWidth="4"
                   fill="none"
                 />
-                {/* Active Circular Countdown Line (Decreases Clockwise like Clock hands over 5 seconds) */}
+                {/* Active Circular Countdown Line (Decreases Clockwise like Clock hands over 4 seconds) */}
                 <circle
                   cx="40"
                   cy="40"
@@ -1289,7 +1249,7 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
             {/* Remaining Seconds Clock Countdown Badge */}
             <div className="mt-1 px-2.5 py-0.5 rounded-full bg-slate-950/85 border border-amber-500/40 text-[9px] font-mono font-black text-amber-300 flex items-center gap-1 shadow-md">
               <Sparkles className="w-2.5 h-2.5 text-amber-400 animate-spin" />
-              <span>{(comboProgress * 5).toFixed(1)}s</span>
+              <span>{(comboProgress * 4).toFixed(1)}s</span>
             </div>
           </motion.div>
         )}
@@ -1325,3 +1285,5 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
     </>
   );
 };
+
+export default ProfessionalGiftPanel;

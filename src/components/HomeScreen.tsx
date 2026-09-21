@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { VoiceRoomScreen } from './VoiceRoomScreen';
 import { FloatingRoomWidget } from './FloatingRoomWidget';
 import { subscribeToRoomSession } from '../lib/roomSessionService';
 import { LuckyChestConfig } from './LuckyChestModal';
 import { ThreeDLuckyChest } from './ThreeDLuckyChest';
 import { PWAInstallBanner } from './PWAInstallBanner';
+import { LazyModalSkeleton } from './common/LazyModalSkeleton';
+import { lazyWithRetry } from '../lib/lazyWithRetry';
+
+const VoiceRoomScreen = lazyWithRetry(() => import('./VoiceRoomScreen'), 'VoiceRoomScreen');
 import {
   Search,
   Crown,
@@ -1309,18 +1312,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRo
       {/* FULL SCREEN VOICE ROOM INTERIOR (الوضع الاحتياطي - يبقى محملاً بالخلفية عند الاحتفاظ) */}
       {!onOpenRoom && activeVoiceRoom && (
         <div className={isRoomMinimized ? 'opacity-0 pointer-events-none invisible fixed inset-0 -z-50' : 'opacity-100 pointer-events-auto visible fixed inset-0 z-50'}>
-          <VoiceRoomScreen
-            roomTitle={activeVoiceRoom.title}
-            hostName={activeVoiceRoom.host}
-            roomId={activeVoiceRoom.id}
-            isOwner={Boolean(activeVoiceRoom.isOwner || activeVoiceRoom.ownerId === currentUserId)}
-            onClose={() => {
-              setActiveVoiceRoom(null);
-              setIsRoomMinimized(false);
-            }}
-            onMinimize={() => setIsRoomMinimized(true)}
-            onOpenRecharge={onOpenRecharge}
-          />
+          <Suspense fallback={<LazyModalSkeleton title="جاري فتح الغرفة الصوتية..." />}>
+            <VoiceRoomScreen
+              roomTitle={activeVoiceRoom.title}
+              hostName={activeVoiceRoom.host}
+              roomId={activeVoiceRoom.id}
+              isOwner={Boolean(activeVoiceRoom.isOwner || activeVoiceRoom.ownerId === currentUserId)}
+              onClose={() => {
+                setActiveVoiceRoom(null);
+                setIsRoomMinimized(false);
+              }}
+              onMinimize={() => setIsRoomMinimized(true)}
+              onOpenRecharge={onOpenRecharge}
+            />
+          </Suspense>
         </div>
       )}
     </div>

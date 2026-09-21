@@ -10,6 +10,7 @@ export interface RoomBottomBarProps {
   isUserOnMic: boolean;
   isMySeatMutedByAdmin: boolean;
   isMyMicMuted: boolean;
+  isNoiseSuppressionEnabled?: boolean;
   showEmojiPicker: boolean;
   onOpenChatInput: () => void;
   onToggleMyMic: () => void;
@@ -26,6 +27,7 @@ export const RoomBottomBar: React.FC<RoomBottomBarProps> = ({
   isUserOnMic,
   isMySeatMutedByAdmin,
   isMyMicMuted,
+  isNoiseSuppressionEnabled = true,
   showEmojiPicker,
   onOpenChatInput,
   onToggleMyMic,
@@ -110,7 +112,15 @@ export const RoomBottomBar: React.FC<RoomBottomBarProps> = ({
           ) : isMyMicMuted ? (
             <MicOff className="w-4 h-4 stroke-[2.5]" />
           ) : (
-            <Mic className="w-4 h-4 stroke-[2.5]" />
+            <div className="relative flex items-center justify-center">
+              <Mic className="w-4 h-4 stroke-[2.5]" />
+              {isNoiseSuppressionEnabled && (
+                <span
+                  className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 ring-1 ring-[#0D121F]"
+                  title="عزل ضوضاء المايكروفون الذكي مفعل 🎙️✨"
+                />
+              )}
+            </div>
           )}
         </button>
       </div>

@@ -6,9 +6,11 @@
 export type AdminRole = 
   | 'super_admin'     // المبرمج / المالك العام (Owner)
   | 'agency_admin'    // مدير الوكالات (Agency Manager)
-  | 'theme_admin'     // مدير الثيمات والمتجر (Themes & Store Manager)
+  | 'agency_rep'      // مندوب وكالات (Agency Representative)
   | 'official_agent'  // وكيل رسمي (Official Agent)
+  | 'recharge_agent'  // وكيل شحن معتمد (Certified Recharge Agent)
   | 'broker'          // وسيط معتمد (Certified Broker)
+  | 'theme_admin'     // مدير الثيمات والمتجر (Themes & Store Manager)
   | 'moderator'       // المراقب العام / الدعم والرقابة (General Moderator)
   | 'regular_user';   // مستخدم عادي (بدون أزرار إدارية)
 
@@ -623,6 +625,77 @@ export function isOwnerOrSuperAdmin(userId: string): boolean {
   if (!userId) return false;
   const cleanId = userId.trim().toUpperCase();
   return OFFICIAL_SUPER_ADMIN_IDS.map(id => id.toUpperCase()).includes(cleanId);
+}
+
+/**
+  * هل المستخدم لديه رتبة إداري المتجر والثيمات؟
+  */
+export function isThemeAdmin(userId: string): boolean {
+  if (!userId) return false;
+  if (isOwnerOrSuperAdmin(userId)) return true;
+  const role = getAdminRoleForUser(userId);
+  return role === 'theme_admin' || role === 'super_admin';
+}
+
+/**
+  * هل المستخدم لديه رتبة مدير الوكالات الرسمية؟
+  */
+export function isAgencyManager(userId: string): boolean {
+  if (!userId) return false;
+  if (isOwnerOrSuperAdmin(userId)) return true;
+  const role = getAdminRoleForUser(userId);
+  return role === 'agency_admin' || role === 'super_admin';
+}
+
+/**
+  * هل المستخدم لديه رتبة مندوب وكالات معتمد؟
+  */
+export function isAgencyRepresentative(userId: string): boolean {
+  if (!userId) return false;
+  if (isOwnerOrSuperAdmin(userId)) return true;
+  const cleanId = userId.trim().toUpperCase();
+  const role = getAdminRoleForUser(userId);
+  if (role === 'agency_rep' || role === 'agency_admin' || role === 'super_admin') return true;
+  try {
+    const rawReps = localStorage.getItem('official_agency_manager_representatives');
+    if (rawReps) {
+      const reps = JSON.parse(rawReps);
+      if (Array.isArray(reps) && reps.some((r: any) => (r.userId && r.userId.toString().toUpperCase() === cleanId) || (r.id && r.id.toUpperCase() === cleanId))) {
+        return true;
+      }
+    }
+  } catch {}
+  return false;
+}
+
+/**
+  * هل المستخدم لديه رتبة وكيل رسمي؟
+  */
+export function isOfficialAgent(userId: string): boolean {
+  if (!userId) return false;
+  if (isOwnerOrSuperAdmin(userId)) return true;
+  const role = getAdminRoleForUser(userId);
+  return role === 'official_agent' || role === 'super_admin';
+}
+
+/**
+  * هل المستخدم لديه رتبة وكيل شحن معتمد؟
+  */
+export function isRechargeAgent(userId: string): boolean {
+  if (!userId) return false;
+  if (isOwnerOrSuperAdmin(userId)) return true;
+  const role = getAdminRoleForUser(userId);
+  return role === 'recharge_agent' || role === 'official_agent' || role === 'super_admin';
+}
+
+/**
+  * هل المستخدم لديه رتبة وسيط معتمد؟
+  */
+export function isCertifiedBroker(userId: string): boolean {
+  if (!userId) return false;
+  if (isOwnerOrSuperAdmin(userId)) return true;
+  const role = getAdminRoleForUser(userId);
+  return role === 'broker' || role === 'official_agent' || role === 'super_admin';
 }
 
 /**

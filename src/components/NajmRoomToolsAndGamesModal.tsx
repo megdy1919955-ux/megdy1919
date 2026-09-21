@@ -16,9 +16,9 @@ import {
   Check,
   Copy,
   Users,
-  Radio,
   Flame,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Mic
 } from 'lucide-react';
 import { ThreeDLuckyChest } from './ThreeDLuckyChest';
 
@@ -29,6 +29,10 @@ export interface NajmRoomToolsAndGamesModalProps {
   roomTitle?: string;
   isSpeakerMuted?: boolean;
   onToggleSpeaker?: () => void;
+  isNoiseSuppressionEnabled?: boolean;
+  onToggleNoiseSuppression?: () => void;
+  audioStreamMode?: 'media' | 'communication';
+  onToggleAudioStreamMode?: (mode?: 'media' | 'communication') => void;
   onOpenSoundEffects?: () => void;
   onOpenMusicPlayer?: () => void;
   onOpenLuckyBox?: () => void;
@@ -52,6 +56,10 @@ export const NajmRoomToolsAndGamesModal: React.FC<NajmRoomToolsAndGamesModalProp
   roomTitle = 'وكالة شحن سوريا ألمانيا',
   isSpeakerMuted = false,
   onToggleSpeaker,
+  isNoiseSuppressionEnabled = true,
+  onToggleNoiseSuppression,
+  audioStreamMode = 'media',
+  onToggleAudioStreamMode,
   onOpenSoundEffects,
   onOpenMusicPlayer,
   onOpenLuckyBox,
@@ -74,6 +82,7 @@ export const NajmRoomToolsAndGamesModal: React.FC<NajmRoomToolsAndGamesModalProp
   const [activeSubModal, setActiveSubModal] = useState<string | null>(null);
   const [activeGameTitle, setActiveGameTitle] = useState<string>('');
   const [speakerMutedLocal, setSpeakerMutedLocal] = useState<boolean>(isSpeakerMuted);
+  const [noiseSuppressionLocal, setNoiseSuppressionLocal] = useState<boolean>(isNoiseSuppressionEnabled);
   const [copiedLink, setCopiedLink] = useState(false);
   const [luckyBoxOpened, setLuckyBoxOpened] = useState(false);
   const [luckyReward, setLuckyReward] = useState<{ amount: number; type: 'coins' | 'diamonds' } | null>(null);
@@ -81,6 +90,23 @@ export const NajmRoomToolsAndGamesModal: React.FC<NajmRoomToolsAndGamesModalProp
   const [diceResult, setDiceResult] = useState<number | null>(null);
   const [coinFlipResult, setCoinFlipResult] = useState<'heads' | 'tails' | null>(null);
   const [isRolling, setIsRolling] = useState(false);
+
+  // Sync prop changes
+  React.useEffect(() => {
+    setNoiseSuppressionLocal(isNoiseSuppressionEnabled);
+  }, [isNoiseSuppressionEnabled]);
+
+  const handleNoiseSuppressionToggle = () => {
+    const nextState = !noiseSuppressionLocal;
+    setNoiseSuppressionLocal(nextState);
+    if (onToggleNoiseSuppression) {
+      onToggleNoiseSuppression();
+    }
+    const msg = nextState
+      ? 'تم تشغيل إلغاء ضوضاء المايكروفون 🎙️✨ (عزل الضجيج الصوتي بتقنية DSP)'
+      : 'تم إيقاف إلغاء ضوضاء المايكروفون 🎙️';
+    onTriggerToast?.(msg);
+  };
 
   if (!isOpen) return null;
 
@@ -225,6 +251,48 @@ export const NajmRoomToolsAndGamesModal: React.FC<NajmRoomToolsAndGamesModalProp
                     </div>
                     <span className="text-xs font-bold text-slate-700 group-hover:text-sky-600 transition-colors text-center leading-tight">
                       {speakerMutedLocal ? 'تشغيل مكبر الصوت' : 'إيقاف مكبر الصوت'}
+                    </span>
+                  </button>
+
+                  {/* 2.5 زر إلغاء ضوضاء المايكروفون الذكي (AI / DSP Mic Noise Suppression) */}
+                  <button
+                    type="button"
+                    onClick={handleNoiseSuppressionToggle}
+                    className="flex flex-col items-center gap-1.5 group cursor-pointer active:scale-95 transition-transform"
+                    title={
+                      noiseSuppressionLocal
+                        ? 'إلغاء الضوضاء مفعل (صوت نقي ومعزول) 🎙️✨ - انقر للإيقاف'
+                        : 'إلغاء الضوضاء معطل 🎙️ - انقر للتشغيل'
+                    }
+                  >
+                    <div
+                      className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-md relative transition-all ${
+                        noiseSuppressionLocal
+                          ? 'bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-500 shadow-emerald-500/30 ring-2 ring-emerald-300'
+                          : 'bg-slate-700 shadow-slate-700/20'
+                      }`}
+                    >
+                      {noiseSuppressionLocal && (
+                        <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-600 border border-white items-center justify-center text-[8px] font-black text-white shadow-sm">
+                            ✓
+                          </span>
+                        </span>
+                      )}
+                      <div className="relative flex items-center justify-center">
+                        <Mic className="w-6 h-6" />
+                        <Sparkles
+                          className={`w-3.5 h-3.5 absolute -top-1.5 -right-1.5 ${
+                            noiseSuppressionLocal
+                              ? 'text-yellow-300 fill-yellow-300 animate-pulse'
+                              : 'text-slate-400'
+                          }`}
+                        />
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-slate-700 group-hover:text-emerald-600 transition-colors text-center leading-tight">
+                      {noiseSuppressionLocal ? 'عزل الضوضاء: مفعل' : 'عزل الضوضاء: إيقاف'}
                     </span>
                   </button>
 
@@ -546,6 +614,48 @@ export const NajmRoomToolsAndGamesModal: React.FC<NajmRoomToolsAndGamesModalProp
                       </div>
                       <span className="text-xs font-bold text-slate-700 group-hover:text-sky-600 transition-colors text-center leading-tight">
                         {speakerMutedLocal ? 'تشغيل مكبر الصوت' : 'إيقاف مكبر الصوت'}
+                      </span>
+                    </button>
+
+                    {/* 2.5 زر إلغاء ضوضاء المايكروفون الذكي (AI / DSP Mic Noise Suppression) */}
+                    <button
+                      type="button"
+                      onClick={handleNoiseSuppressionToggle}
+                      className="flex flex-col items-center gap-1.5 group cursor-pointer active:scale-95 transition-transform"
+                      title={
+                        noiseSuppressionLocal
+                          ? 'إلغاء الضوضاء مفعل (صوت نقي ومعزول) 🎙️✨ - انقر للإيقاف'
+                          : 'إلغاء الضوضاء معطل 🎙️ - انقر للتشغيل'
+                      }
+                    >
+                      <div
+                        className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-md relative transition-all ${
+                          noiseSuppressionLocal
+                            ? 'bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-500 shadow-emerald-500/30 ring-2 ring-emerald-300'
+                            : 'bg-slate-700 shadow-slate-700/20'
+                        }`}
+                      >
+                        {noiseSuppressionLocal && (
+                          <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-600 border border-white items-center justify-center text-[8px] font-black text-white shadow-sm">
+                              ✓
+                            </span>
+                          </span>
+                        )}
+                        <div className="relative flex items-center justify-center">
+                          <Mic className="w-6 h-6" />
+                          <Sparkles
+                            className={`w-3.5 h-3.5 absolute -top-1.5 -right-1.5 ${
+                              noiseSuppressionLocal
+                                ? 'text-yellow-300 fill-yellow-300 animate-pulse'
+                                : 'text-slate-400'
+                            }`}
+                          />
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-slate-700 group-hover:text-emerald-600 transition-colors text-center leading-tight">
+                        {noiseSuppressionLocal ? 'عزل الضوضاء: مفعل' : 'عزل الضوضاء: إيقاف'}
                       </span>
                     </button>
 

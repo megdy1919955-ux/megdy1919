@@ -37,6 +37,7 @@ export const DEFAULT_MAIN_ROOM_CONFIG: MainRoomCustomizerConfig = {
   seatNumberBadgeBg: '#0f172a',
   seatNumberBadgeColor: '#38bdf8',
   seatNameTextColor: '#ffffff',
+  showPendingMicBorder: true,
   customChairFrameOpacity: 85,
 
   // 3. الشريط العلوي

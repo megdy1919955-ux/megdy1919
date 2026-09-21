@@ -6,6 +6,7 @@
 import { canManageGifts } from './roleService';
 import { tempMediaCacheManager } from './tempMediaCacheManager';
 import { persistentMediaStorage } from './persistentMediaStorage';
+import { evictCachedGift } from './giftOnDemandLoader';
 
 export interface GiftItem {
   id: string;
@@ -150,8 +151,8 @@ export const GIFT_TEST_VIDEO_PRESETS: GiftTestVideoPreset[] = [
     name: 'زئير الأسد الملكي الأسطوري 🦁',
     description: 'دخولية أسد ملكي يركض ويزأر بملء الشاشة مع دمج Screen ومؤثر زئير مدوي',
     icon: '🦁',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-bright-golden-sparkles-floating-in-the-dark-41662-large.mp4',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=400&q=80',
+    videoUrl: '',
+    thumbnailUrl: '',
     soundPreset: 'lion_roar',
     placement: 'center',
     scale: 1.1,
@@ -162,8 +163,8 @@ export const GIFT_TEST_VIDEO_PRESETS: GiftTestVideoPreset[] = [
     name: 'سيارة لامبورغيني خارقة 🏎️',
     description: 'دخولية سيارة رياضية ذهبية فارهة مع خطوط ضوئية ومحرك تسارع',
     icon: '🏎️',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-car-lights-moving-fast-in-a-city-43282-large.mp4',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=400&q=80',
+    videoUrl: '',
+    thumbnailUrl: '',
     soundPreset: 'supercar',
     placement: 'center',
     scale: 1.0,
@@ -174,7 +175,8 @@ export const GIFT_TEST_VIDEO_PRESETS: GiftTestVideoPreset[] = [
     name: 'تنين اللهب الأسطوري 🐉',
     description: 'تنين مجنح ينفث كرات اللهب والشرارات النارية حول المايكات',
     icon: '🐉',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-fire-particles-in-the-dark-41719-large.mp4',
+    videoUrl: '',
+    thumbnailUrl: '',
     soundPreset: 'boom',
     placement: 'mics',
     scale: 1.1,
@@ -185,7 +187,8 @@ export const GIFT_TEST_VIDEO_PRESETS: GiftTestVideoPreset[] = [
     name: 'التاج الإمبراطوري المرصع 👑',
     description: 'تاج ملكي ذهبي مع وميض ألماسي متلألئ وشلال كوينز',
     icon: '👑',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-golden-light-effects-with-sparkles-42774-large.mp4',
+    videoUrl: '',
+    thumbnailUrl: '',
     soundPreset: 'fanfare',
     placement: 'top',
     scale: 1.0,
@@ -196,7 +199,8 @@ export const GIFT_TEST_VIDEO_PRESETS: GiftTestVideoPreset[] = [
     name: 'ألعاب نارية ومفرقعات كبرى 🎆',
     description: 'احتفال ألعاب نارية صاخبة تملأ شاشة الروم بأكملها',
     icon: '🎆',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-exploding-fireworks-in-the-night-sky-40455-large.mp4',
+    videoUrl: '',
+    thumbnailUrl: '',
     soundPreset: 'applause',
     placement: 'fullscreen',
     scale: 1.0,
@@ -207,7 +211,8 @@ export const GIFT_TEST_VIDEO_PRESETS: GiftTestVideoPreset[] = [
     name: 'بوابة الفضاء والنجوم 🌌',
     description: 'ثقب كوني وبوابة طاقة مشعة بالنيون الأزرق والبنفسجي',
     icon: '🌌',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-purple-and-blue-light-particles-in-motion-41668-large.mp4',
+    videoUrl: '',
+    thumbnailUrl: '',
     soundPreset: 'magic_sparkle',
     placement: 'center',
     scale: 1.15,
@@ -215,226 +220,15 @@ export const GIFT_TEST_VIDEO_PRESETS: GiftTestVideoPreset[] = [
   }
 ];
 
-const STORAGE_KEY = 'super_legend_gifts_database_v2';
+const STORAGE_KEY = 'super_legend_gifts_database_v4';
 const ROLE_STORAGE_KEY = 'super_legend_cms_active_role';
 const SYNC_CHANNEL_NAME = 'super_legend_gifts_cms_sync_channel';
 
-// Initial Comprehensive Default Gifts Database
+// Initial Lightweight Default Gifts Database (1 gift per category - customized via Dashboard CMS)
 export const DEFAULT_GIFTS_DATABASE: GiftItem[] = [
-  // 1. الفعالية / برج الأسد / الفعاليات
+  // 1. استرداد (Lucky Refund)
   {
-    id: 'lion_emperor_overlay',
-    name: 'زئير الأسد الملكي 🦁',
-    price: 1000000,
-    icon: '🦁',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-bright-golden-sparkles-floating-in-the-dark-41662-large.mp4',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=400&q=80',
-    placement: 'center',
-    scale: 1.15,
-    blendMode: 'screen',
-    durationSeconds: 6.0,
-    category: 'الفعالية',
-    subCategory: 'حدث برج الاسد',
-    badge: 'ملك الغرفة',
-    hasSound: true,
-    soundPreset: 'lion_roar',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '1',
-    name: 'شعلة الأسد 🦁',
-    price: 50,
-    icon: '🔥',
-    category: 'الفعالية',
-    subCategory: 'حدث برج الاسد',
-    badge: 'برج الاسد',
-    hasSound: true,
-    soundPreset: 'lion_roar',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '2',
-    name: 'خاتم برج الأسد ♌',
-    price: 10000,
-    icon: '🔮',
-    category: 'الفعالية',
-    subCategory: 'حدث برج الاسد',
-    badge: 'برج الاسد',
-    hasSound: true,
-    soundPreset: 'magic_sparkle',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '3',
-    name: 'سيارة الأفعى الذهبية 🏎️',
-    price: 500000,
-    icon: '🏎️',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-car-lights-moving-fast-in-a-city-43282-large.mp4',
-    placement: 'center',
-    scale: 1.0,
-    blendMode: 'screen',
-    category: 'الفعالية',
-    subCategory: 'حدث برج الاسد',
-    badge: 'برج الاسد',
-    hasSound: true,
-    soundPreset: 'supercar',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '4',
-    name: 'المحارب الأسطوري ⚔️',
-    price: 250000,
-    icon: '🛡️',
-    category: 'الفعالية',
-    subCategory: 'حدث برج الاسد',
-    badge: 'برج الاسد',
-    hasSound: true,
-    soundPreset: 'fanfare',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '5',
-    name: 'الأسد الملكي الشامخ 🦁',
-    price: 99999,
-    icon: '🦁',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-bright-golden-sparkles-floating-in-the-dark-41662-large.mp4',
-    placement: 'center',
-    scale: 1.05,
-    blendMode: 'screen',
-    category: 'الفعالية',
-    subCategory: 'حدث برج الاسد',
-    badge: 'برج الاسد',
-    hasSound: true,
-    soundPreset: 'lion_roar',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '6',
-    name: 'أمير الصحراء 👳‍♂️',
-    price: 20000,
-    icon: '👳‍♂️',
-    category: 'الفعالية',
-    subCategory: 'حدث برج الاسد',
-    badge: 'برج الاسد',
-    hasSound: true,
-    soundPreset: 'fanfare',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '7',
-    name: 'طائرة الفضاء الملكية 🚀',
-    price: 2000000,
-    icon: '🚀',
-    category: 'الفعالية',
-    subCategory: 'حدث برج الاسد',
-    badge: 'برج الاسد',
-    hasSound: true,
-    soundPreset: 'laser',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '8',
-    name: 'عشاق الأبدية 💖',
-    price: 5000000,
-    icon: '👩‍❤️‍👨',
-    category: 'الفعالية',
-    subCategory: 'رحلة رومانسية',
-    badge: 'برج الاسد',
-    hasSound: true,
-    soundPreset: 'kiss',
-    hasGlobalBroadcast: true
-  },
-
-  // 2. رائج (Trending)
-  {
-    id: '9',
-    name: 'المجرة الكونية 🌌',
-    price: 777,
-    icon: '🌌',
-    category: 'رائج',
-    badge: 'رائج',
-    hasSound: true,
-    soundPreset: 'magic_sparkle',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '10',
-    name: 'الأسد الذهبي المتلألئ 🦁',
-    price: 77777,
-    icon: '🦁',
-    category: 'رائج',
-    badge: 'رائج',
-    hasSound: true,
-    soundPreset: 'lion_roar',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '11',
-    name: 'أحد أساطير الحب 📜',
-    price: 20000,
-    icon: '📜',
-    category: 'رائج',
-    badge: 'رائج',
-    hasSound: true,
-    soundPreset: 'magic_sparkle',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '12',
-    name: 'القصر الكريستالي 🏰',
-    price: 999900,
-    icon: '🏰',
-    category: 'رائج',
-    badge: 'رائج',
-    hasSound: true,
-    soundPreset: 'fanfare',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '13',
-    name: 'السيارة الذهبية الفارهة 🚘',
-    price: 150000,
-    icon: '🏎️',
-    category: 'رائج',
-    badge: 'رائج',
-    hasSound: true,
-    soundPreset: 'supercar',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '14',
-    name: 'زجاجة العطور الفاخرة 🍾',
-    price: 1777,
-    icon: '🍾',
-    category: 'رائج',
-    hasSound: true,
-    soundPreset: 'magic_sparkle',
-    hasGlobalBroadcast: false
-  },
-  {
-    id: '15',
-    name: 'ملك العرش 👑',
-    price: 77777,
-    icon: '🤴',
-    category: 'رائج',
-    badge: 'رائج',
-    hasSound: true,
-    soundPreset: 'fanfare',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '16',
-    name: 'البطة السعيدة 🐥',
-    price: 300,
-    icon: '🐥',
-    category: 'رائج',
-    hasSound: true,
-    soundPreset: 'magic_sparkle'
-  },
-
-  // 3. استرداد / Lucky Refund (Lucky Cashback & Jackpot Treasury)
-  {
-    id: '17',
+    id: 'refund_lucky_watermelon',
     name: 'البطيخة السعيدة 🍉',
     price: 2000,
     icon: '🍉',
@@ -445,237 +239,49 @@ export const DEFAULT_GIFTS_DATABASE: GiftItem[] = [
     hasSound: true,
     soundPreset: 'jackpot_bells'
   },
-  {
-    id: '18',
-    name: 'الآيس كريم المثلج 🍦',
-    price: 400,
-    icon: '🍦',
-    category: 'استرداد',
-    badge: 'استرداد',
-    isLucky: true,
-    isRefund: true,
-    hasSound: true,
-    soundPreset: 'jackpot_bells'
-  },
-  {
-    id: '19',
-    name: 'السيارة الذهب الأسطورية 🏎️',
-    price: 10000,
-    icon: '🏎️',
-    category: 'استرداد',
-    badge: 'استرداد',
-    isLucky: true,
-    isRefund: true,
-    hasSound: true,
-    soundPreset: 'supercar',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '20',
-    name: 'حقيبة الأموال الملكية 💰',
-    price: 5000,
-    icon: '💰',
-    category: 'استرداد',
-    badge: 'استرداد',
-    isLucky: true,
-    isRefund: true,
-    hasSound: true,
-    soundPreset: 'jackpot_bells'
-  },
-  {
-    id: '21',
-    name: 'أجراس الحظ الذهبية 🔔',
-    price: 800,
-    icon: '🔔',
-    category: 'استرداد',
-    badge: 'استرداد',
-    isLucky: true,
-    isRefund: true,
-    hasSound: true,
-    soundPreset: 'jackpot_bells'
-  },
-  {
-    id: '22',
-    name: 'صندوق الكنز السحري 📦',
-    price: 24000,
-    icon: '📦',
-    category: 'استرداد',
-    badge: 'استرداد',
-    isLucky: true,
-    isRefund: true,
-    hasSound: true,
-    soundPreset: 'jackpot_bells',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '23',
-    name: 'الكرة البلورية الأسطورية 🔮',
-    price: 4000,
-    icon: '🔮',
-    category: 'استرداد',
-    badge: 'استرداد',
-    isLucky: true,
-    isRefund: true,
-    hasSound: true,
-    soundPreset: 'magic_sparkle'
-  },
-  {
-    id: '24',
-    name: 'نجمة الجاكبوت الخارقة ⭐️',
-    price: 500,
-    icon: '⭐️',
-    category: 'استرداد',
-    badge: 'استرداد',
-    isLucky: true,
-    isRefund: true,
-    hasSound: true,
-    soundPreset: 'jackpot_bells'
-  },
-  {
-    id: 'refund_gold_bar',
-    name: 'سبيكة الذهب الخالص 🪙',
-    price: 15000,
-    icon: '🪙',
-    category: 'استرداد',
-    badge: 'استرداد',
-    isLucky: true,
-    isRefund: true,
-    hasSound: true,
-    soundPreset: 'jackpot_bells',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: 'refund_phoenix_flame',
-    name: 'طائر الفينيق الماسي 🦅',
-    price: 50000,
-    icon: '🦅',
-    category: 'استرداد',
-    badge: 'استرداد',
-    isLucky: true,
-    isRefund: true,
-    hasSound: true,
-    soundPreset: 'fanfare',
-    hasGlobalBroadcast: true
-  },
 
-  // 4. الدولة / المنطقة (Country Flags & Monuments)
+  // 2. رائج (Trending)
   {
-    id: '25',
-    name: 'علم دولة قطر 🇶🇦',
-    price: 20000,
-    icon: '🇶🇦',
-    category: 'الدولة/المنطقة',
-    hasSound: true,
-    soundPreset: 'fanfare',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '26',
-    name: 'علم المملكة العربية السعودية 🇸🇦',
-    price: 20000,
-    icon: '🇸🇦',
-    category: 'الدولة/المنطقة',
-    hasSound: true,
-    soundPreset: 'fanfare',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '27',
-    name: 'علم سلطنة عمان 🇴🇲',
-    price: 20000,
-    icon: '🇴🇲',
-    category: 'الدولة/المنطقة',
-    hasSound: true,
-    soundPreset: 'fanfare',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '28',
-    name: 'بوابة الشمس الأسطورية ☀️',
-    price: 2000000,
-    icon: '🪐',
-    category: 'الدولة/المنطقة',
-    hasSound: true,
-    soundPreset: 'fanfare',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '29',
-    name: 'علم دولة الإمارات 🇦🇪',
-    price: 20000,
-    icon: '🇦🇪',
-    category: 'الدولة/المنطقة',
-    hasSound: true,
-    soundPreset: 'fanfare',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '30',
-    name: 'علم الجمهورية اللبنانية 🇱🇧',
-    price: 20000,
-    icon: '🇱🇧',
-    category: 'الدولة/المنطقة',
-    hasSound: true,
-    soundPreset: 'fanfare',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '31',
-    name: 'علم الجمهورية العربية السورية 🇸🇾',
-    price: 20000,
-    icon: '🇸🇾',
-    category: 'الدولة/المنطقة',
-    hasSound: true,
-    soundPreset: 'fanfare',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '32',
-    name: 'علم جمهورية مصر العربية 🇪🇬',
-    price: 20000,
-    icon: '🇪🇬',
-    category: 'الدولة/المنطقة',
-    hasSound: true,
-    soundPreset: 'fanfare',
-    hasGlobalBroadcast: true
-  },
-
-  // 5. مخصصة (Custom Frames / Badges)
-  {
-    id: '33',
-    name: 'اقهريهم 💃',
-    price: 20000,
-    icon: '💃',
-    category: 'مخصصة',
-    badge: 'Top3',
+    id: 'trending_cosmic_galaxy',
+    name: 'المجرة الكونية 🌌',
+    price: 777,
+    icon: '🌌',
+    category: 'رائج',
+    badge: 'رائج',
     hasSound: true,
     soundPreset: 'magic_sparkle',
     hasGlobalBroadcast: true
   },
+
+  // 3. الفعالية (Events)
   {
-    id: '34',
-    name: 'سوري وكيان 💑',
-    price: 20000,
-    icon: '💑',
-    category: 'مخصصة',
-    badge: 'Top2',
+    id: 'event_royal_lion',
+    name: 'زئير الأسد الملكي 🦁',
+    price: 1000000,
+    icon: '🦁',
+    category: 'الفعالية',
+    badge: 'الفعالية',
     hasSound: true,
-    soundPreset: 'kiss',
+    soundPreset: 'lion_roar',
     hasGlobalBroadcast: true
   },
+
+  // 4. الدولة/المنطقة (اليمن فقط حسب طلب المستخدم)
   {
-    id: '35',
-    name: 'نسيم ونورة 👑',
+    id: 'country_yemen_flag',
+    name: 'علم الجمهورية اليمنية 🇾🇪',
     price: 20000,
-    icon: '👑',
-    category: 'مخصصة',
-    badge: 'Top1',
+    icon: '🇾🇪',
+    category: 'الدولة/المنطقة',
+    badge: 'اليمن',
     hasSound: true,
     soundPreset: 'fanfare',
     hasGlobalBroadcast: true
   },
+
+  // 5. مخصصة (Custom Frames / VIP)
   {
-    id: '36',
+    id: 'custom_top_frame',
     name: 'إحنا دولة 🦁',
     price: 20000,
     icon: '🦁',
@@ -685,50 +291,10 @@ export const DEFAULT_GIFTS_DATABASE: GiftItem[] = [
     soundPreset: 'lion_roar',
     hasGlobalBroadcast: true
   },
-  {
-    id: '37',
-    name: 'فيرساتشي الذهبي 👑',
-    price: 20000,
-    icon: '✨',
-    category: 'مخصصة',
-    badge: 'LV1',
-    hasSound: true,
-    soundPreset: 'fanfare',
-    hasGlobalBroadcast: true
-  },
 
-  // 6. مداعبة (Teasing / Fun)
+  // 6. الامتيازات (Privileges / VIP)
   {
-    id: '38',
-    name: 'مسدس الماء 🔫',
-    price: 100,
-    icon: '🔫',
-    category: 'مداعبة',
-    hasSound: true,
-    soundPreset: 'laser'
-  },
-  {
-    id: '39',
-    name: 'المطرقة المضحكة 🔨',
-    price: 200,
-    icon: '🔨',
-    category: 'مداعبة',
-    hasSound: true,
-    soundPreset: 'boom'
-  },
-  {
-    id: '40',
-    name: 'قنبلة الضحك 💣',
-    price: 500,
-    icon: '💣',
-    category: 'مداعبة',
-    hasSound: true,
-    soundPreset: 'boom'
-  },
-
-  // 7. الامتيازات (Privileges / VIP)
-  {
-    id: '41',
+    id: 'privilege_empire_crown',
     name: 'تاج الإمبراطورية 👑',
     price: 1000000,
     icon: '👑',
@@ -738,27 +304,16 @@ export const DEFAULT_GIFTS_DATABASE: GiftItem[] = [
     soundPreset: 'fanfare',
     hasGlobalBroadcast: true
   },
+
+  // 7. مداعبة (Teasing / Fun)
   {
-    id: '42',
-    name: 'جناح النسر الماسي 🦅',
-    price: 888888,
-    icon: '🦅',
-    category: 'الامتيازات',
-    badge: 'Top1',
+    id: 'flirt_water_gun',
+    name: 'مسدس الماء 🔫',
+    price: 100,
+    icon: '🔫',
+    category: 'مداعبة',
     hasSound: true,
-    soundPreset: 'magic_sparkle',
-    hasGlobalBroadcast: true
-  },
-  {
-    id: '43',
-    name: 'يخت الملوك العائم 🛥️',
-    price: 1500000,
-    icon: '🛥️',
-    category: 'الامتيازات',
-    badge: 'VIP',
-    hasSound: true,
-    soundPreset: 'supercar',
-    hasGlobalBroadcast: true
+    soundPreset: 'laser'
   }
 ];
 
@@ -767,7 +322,7 @@ let inMemoryGiftsCache: GiftItem[] = DEFAULT_GIFTS_DATABASE;
 let isCacheInitialized = false;
 
 // IndexedDB Helper Configuration for Large Media & Gift Assets
-const IDB_NAME = 'super_legend_gifts_idb';
+const IDB_NAME = 'super_legend_gifts_idb_v3';
 const IDB_VERSION = 1;
 const IDB_STORE_NAME = 'gifts_store';
 
@@ -1020,12 +575,28 @@ export function addNewGift(newGiftData: Omit<GiftItem, 'id'>): GiftItem {
 }
 
 /**
- * Delete a gift by ID
+ * Delete a gift by ID and evict from all user devices immediately
  */
 export function deleteGift(giftId: string): GiftItem[] {
   const currentGifts = getGiftsDatabase();
+  const deletedGift = currentGifts.find((g) => g.id === giftId);
   const updatedGifts = currentGifts.filter((g) => g.id !== giftId);
+
+  // 1. Evict from local memory and device cache immediately
+  evictCachedGift(giftId);
+
+  // 2. Persist updated database and broadcast to all windows/tabs
   setGiftsDatabase(updatedGifts);
+
+  // 3. Dispatch deletion event for UI alert / toast
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('gift_deleted_by_admin', {
+        detail: { giftId, giftName: deletedGift?.name || '' }
+      })
+    );
+  }
+
   return updatedGifts;
 }
 

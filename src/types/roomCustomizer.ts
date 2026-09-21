@@ -43,6 +43,9 @@ export interface MainRoomCustomizerConfig {
   seatNumberBadgeColor: string;
   seatNameTextColor: string;
 
+  // خيار إظهار أو إخفاء الخط الأصفر المخفف حول بروفايل المستدعى للمايك
+  showPendingMicBorder?: boolean;
+
   // خيار دمج صورة خلفية كرسي المقعد (Custom Chair Frame / Image)
   customChairFrameUrl?: string;
   customChairFrameOpacity: number; // 0 to 100%

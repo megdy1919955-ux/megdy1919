@@ -27,6 +27,7 @@ export interface SingleMicSeatProps {
   currentUserRole?: string;
   sessionTimerNode?: React.ReactNode;
   isTimerSeat?: boolean;
+  isProfilesHydrated?: boolean;
   onSeatClick: (seatId: number) => void;
 }
 
@@ -50,21 +51,30 @@ export const SingleMicSeat: React.FC<SingleMicSeatProps> = React.memo(({
   currentUserRole = 'guest',
   sessionTimerNode,
   isTimerSeat = false,
+  isProfilesHydrated = true,
   onSeatClick,
 }) => {
   const isSeatHost = seat.isHost || (seat.id === 1 && !seat.isEmpty && (seat.userName?.includes('أميرة') || seat.userName?.includes('المضيف')));
   const rawVip = seat.vipLevel ?? (isSeatHost ? hostVipLevel : undefined);
   const seatVipNum = typeof rawVip === 'number' ? rawVip : parseInt(rawVip?.toString().match(/\d+/)?.[0] || '0', 10);
   const isVip8Plus = seatVipNum >= 8;
-  const isSpeaking = seat.isSpeaking && !seat.isMuted;
+  const isSpeaking = Boolean(seat.isSpeaking) && !seat.isMuted;
+  const audioLevel = seat.audioLevel ?? 0;
+  // Normalized audio intensity (0.25 to 1.0 when speaking for audio reactivity)
+  const normLevel = isSpeaking
+    ? Math.min(1.0, Math.max(0.25, (audioLevel > 0 ? audioLevel : 45) / 100))
+    : 0;
+
   const auraStyle = getSpeakingAuraStyles(seat.speakingAura || 'default');
 
-  const dynamicPulseDuration = config.speakingPulseSpeed || 1.2;
-  const dynamicScaleTarget = config.speakingScaleMultiplier || 1.15;
-  const dynamicGlowColor = config.speakingGlowColor || '#22c55e';
-  const dynamicGlowIntensity = config.speakingGlowIntensity ?? 24;
-  const dynamicRingColor = config.speakingRingColor || '#4ade80';
-  const dynamicRingWidth = config.speakingRingWidth || 2.5;
+  // Fast micro-pulse and vibration duration reflecting acoustic speed
+  const dynamicPulseDuration = Math.max(0.24, 0.46 - normLevel * 0.12);
+  const dynamicScaleTarget = Math.max(config.speakingScaleMultiplier || 1.08, 1.05 + normLevel * 0.08);
+  const dynamicGlowColor = config.speakingGlowColor || 'rgba(52, 211, 153, 0.4)';
+  const dynamicGlowIntensity = Math.round((config.speakingGlowIntensity ?? 9) * (0.8 + normLevel * 0.4));
+  const dynamicRingColor = config.speakingRingColor || 'rgba(110, 231, 183, 0.65)';
+  const dynamicRingWidth = Math.max(0.75, (config.speakingRingWidth ? config.speakingRingWidth * 0.4 : 1.0));
+  const jitterDistance = Math.min(0.8, Math.max(0.3, normLevel * 0.8));
 
   return (
     <div
@@ -72,7 +82,7 @@ export const SingleMicSeat: React.FC<SingleMicSeatProps> = React.memo(({
       onClick={() => onSeatClick(seat.id)}
       className="flex flex-col items-center space-y-0.5 cursor-pointer group my-0 relative overflow-visible"
     >
-      <div className="relative overflow-visible">
+      <div id={`mic-seat-circle-${seat.id}`} className="relative overflow-visible">
         {/* Custom Chair Frame Integration */}
         {config.customChairFrameUrl && (
           <div
@@ -147,30 +157,47 @@ export const SingleMicSeat: React.FC<SingleMicSeatProps> = React.memo(({
           </div>
         ) : (
           <div className="relative flex items-center justify-center overflow-visible">
-            {seat.isInvitationPending && (
-              <motion.div
-                animate={{ scale: [1, 1.16, 1], opacity: [0.9, 0.4, 0.9] }}
-                transition={{ repeat: Infinity, duration: 1.3, ease: 'easeInOut' }}
-                className={`absolute -inset-1.5 ${seatShapeRounded} rounded-full bg-amber-400/35 border-2 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.95)] pointer-events-none z-0 overflow-visible`}
-              />
-            )}
-
             {isSpeaking && (
               <>
+                {/* 1. Subtle Vibrating Core Ring with Micro-Jitter (Less than half thickness, soft gentle glow) */}
                 <motion.div
-                  animate={{ scale: [1, dynamicScaleTarget, 1], opacity: [0.35, 0.95, 0.35] }}
-                  transition={{ repeat: Infinity, duration: dynamicPulseDuration, ease: 'easeInOut' }}
+                  animate={{
+                    scale: [1, dynamicScaleTarget, 1.01, dynamicScaleTarget, 1],
+                    x: [-jitterDistance, jitterDistance, -jitterDistance * 0.5, jitterDistance * 0.5, 0],
+                    y: [jitterDistance * 0.5, -jitterDistance * 0.5, -jitterDistance, jitterDistance, 0],
+                    opacity: [0.75, 0.95, 0.8, 0.95, 0.75],
+                  }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: dynamicPulseDuration,
+                    ease: 'easeInOut',
+                  }}
                   className={`absolute -inset-1 ${seatShapeRounded} pointer-events-none z-0 overflow-visible`}
                   style={{
                     boxShadow: `0 0 ${dynamicGlowIntensity}px ${dynamicGlowColor}`,
                     border: `${dynamicRingWidth}px solid ${dynamicRingColor}`
                   }}
                 />
+
+                {/* 2. Soft Delicate Acoustic Wave */}
                 <motion.div
-                  animate={{ scale: auraStyle.scale2, opacity: auraStyle.opacity2 }}
-                  transition={{ repeat: Infinity, duration: 1.6, ease: 'easeOut', delay: 0.2 }}
-                  className={`absolute -inset-2 ${seatShapeRounded} pointer-events-none z-0 overflow-visible ${auraStyle.ring2Class}`}
+                  animate={{
+                    scale: [1, 1.18 + normLevel * 0.12],
+                    opacity: [0.4, 0],
+                  }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: Math.max(0.85, 1.25 - normLevel * 0.2),
+                    ease: 'easeOut',
+                  }}
+                  className={`absolute -inset-1 ${seatShapeRounded} pointer-events-none z-0 overflow-visible`}
+                  style={{
+                    border: `${Math.max(0.75, dynamicRingWidth * 0.8)}px solid ${dynamicRingColor}`,
+                    boxShadow: `0 0 ${Math.round(dynamicGlowIntensity * 0.5)}px ${dynamicGlowColor}`
+                  }}
                 />
+
+                {/* 3. Delicate Soft Rotating Shimmer Ring */}
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ repeat: Infinity, duration: 5, ease: 'linear' }}
@@ -179,10 +206,16 @@ export const SingleMicSeat: React.FC<SingleMicSeatProps> = React.memo(({
               </>
             )}
 
-            <div
+            <motion.div
+              animate={isSpeaking ? {
+                scale: [1, 1 + normLevel * 0.04, 1],
+              } : { scale: 1 }}
+              transition={{ repeat: Infinity, duration: dynamicPulseDuration, ease: 'easeInOut' }}
               className={`${circleSizeClass} rounded-full p-0.5 bg-gradient-to-tr ${
                 seat.isInvitationPending
-                  ? 'from-amber-400 via-yellow-300 to-amber-500 shadow-[0_0_18px_rgba(251,191,36,0.95)] ring-2 ring-amber-400'
+                  ? (config.showPendingMicBorder ?? true)
+                    ? 'from-amber-400/30 to-amber-500/30 ring-1 ring-amber-400/35 shadow-xs'
+                    : 'from-transparent to-transparent'
                   : isSpeaking
                   ? auraStyle.avatarBorderClass
                   : isRedTeamSeat
@@ -235,7 +268,10 @@ export const SingleMicSeat: React.FC<SingleMicSeatProps> = React.memo(({
               <img
                 src={seat.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200'}
                 alt={seat.userName}
-                className="w-full h-full object-cover rounded-full relative z-10"
+                loading="lazy"
+                className={`w-full h-full object-cover rounded-full relative z-10 transition-all duration-300 ${
+                  isProfilesHydrated ? 'opacity-100 scale-100' : 'opacity-80 scale-95 blur-[0.5px]'
+                }`}
               />
 
               {seat.isLocked && !(
@@ -272,7 +308,7 @@ export const SingleMicSeat: React.FC<SingleMicSeatProps> = React.memo(({
                   initial={{ scale: 0 }}
                   animate={{ scale: [1, 1.18, 1] }}
                   transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
-                  className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center border-1.5 border-[#0B0E17] bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-300 text-slate-950 shadow-[0_0_12px_rgba(251,191,36,0.95)] z-30 ring-1.5 ring-amber-300"
+                  className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center border-1.5 border-[#0B0E17] bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-300 text-slate-950 shadow-md z-30"
                   title="المايك أصفر: بانتظار موافقة المضيف على البقاء في المايك 🎙️"
                 >
                   <Mic className="w-3 h-3 stroke-[3]" />
@@ -284,7 +320,7 @@ export const SingleMicSeat: React.FC<SingleMicSeatProps> = React.memo(({
                   initial={{ scale: 0 }}
                   animate={{ scale: [1, 1.1, 1] }}
                   transition={{ repeat: Infinity, duration: 1.5 }}
-                  className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 rounded-full flex items-center justify-center border-1.5 border-[#0B0E17] bg-amber-500 text-slate-950 shadow-md z-30 ring-1.5 ring-amber-400/80"
+                  className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 rounded-full flex items-center justify-center border-1.5 border-[#0B0E17] bg-amber-500 text-slate-950 shadow-md z-30"
                   title="بانتظار موافقة المضيف لفتح الصوت 🎙️"
                 >
                   <MicOff className="w-2.5 h-2.5 stroke-[2.8]" />
@@ -309,7 +345,7 @@ export const SingleMicSeat: React.FC<SingleMicSeatProps> = React.memo(({
                   </motion.div>
                 </AnimatePresence>
               )}
-            </div>
+            </motion.div>
           </div>
         )}
 
@@ -382,12 +418,8 @@ export const SingleMicSeat: React.FC<SingleMicSeatProps> = React.memo(({
           <div className="max-w-full truncate flex items-center justify-center">
             <span
               className={`text-[9.5px] truncate block leading-tight ${
-                isSeatHost
-                  ? isVip8Plus
-                    ? 'text-red-500 font-black drop-shadow-[0_1px_3px_rgba(239,68,68,0.8)]'
-                    : 'text-white font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]'
-                  : seat.isInvitationPending
-                  ? 'text-amber-300 font-bold'
+                isVip8Plus
+                  ? 'text-red-500 font-black drop-shadow-[0_1px_3px_rgba(239,68,68,0.8)]'
                   : 'text-white font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]'
               }`}
             >

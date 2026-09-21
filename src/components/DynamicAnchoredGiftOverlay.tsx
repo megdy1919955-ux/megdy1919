@@ -88,22 +88,27 @@ const SingleGiftFlight: React.FC<SingleGiftFlightProps> = ({ gift, containerRef,
         }
       }
 
-      // Check if target is a mic seat -> apply upward elevation (total ~4cm = ~152px in CSS pixels)
-      const isMicSeat = gift.targetElementId ? gift.targetElementId.startsWith('mic-seat') : false;
-      const micElevationOffsetY = isMicSeat ? 152 : 0;
-
       let targetX = (gift.fallbackTargetPct.x / 100) * containerRect.width;
-      let targetY = (gift.fallbackTargetPct.y / 100) * containerRect.height - micElevationOffsetY;
+      let targetY = (gift.fallbackTargetPct.y / 100) * containerRect.height;
 
-      // Check DOM element once with exact positioning elevated above the mic seat
-      const targetElem = document.getElementById(gift.targetElementId);
+      // Locate specific mic circle element or target element with exact center alignment
+      let targetElem: HTMLElement | null = null;
+      if (gift.targetElementId) {
+        if (gift.targetElementId.startsWith('mic-seat-')) {
+          const seatNum = gift.targetElementId.replace('mic-seat-', '');
+          targetElem = document.getElementById(`mic-seat-circle-${seatNum}`) || document.getElementById(gift.targetElementId);
+        } else {
+          targetElem = document.getElementById(gift.targetElementId);
+        }
+      }
+
       if (targetElem) {
-        const avatarElem = (targetElem.querySelector('.rounded-full') || targetElem) as HTMLElement;
-        const targetRect = avatarElem.getBoundingClientRect();
+        const circleElem = (targetElem.querySelector('.rounded-full') || targetElem) as HTMLElement;
+        const targetRect = circleElem.getBoundingClientRect();
         if (targetRect.width > 0 && targetRect.height > 0) {
+          // Zero-Point Bullseye: Exactly at the horizontal and vertical center of the seat circle
           targetX = (targetRect.left + targetRect.width / 2) - containerRect.left;
-          // Target placed precisely elevated ~152px above the mic seat center
-          targetY = (targetRect.top + targetRect.height / 2) - containerRect.top - micElevationOffsetY;
+          targetY = (targetRect.top + targetRect.height / 2) - containerRect.top;
         }
       }
 
@@ -188,7 +193,7 @@ const SingleGiftFlight: React.FC<SingleGiftFlightProps> = ({ gift, containerRef,
         const p2x = targetX - deltaX * 0.12;
         const p2y = apexY;
 
-        // P3: Land precisely 2cm elevated above the specified mic seat
+        // P3: Land precisely at the zero-point center of the specified mic seat
         const p3x = targetX;
         const p3y = targetY;
 

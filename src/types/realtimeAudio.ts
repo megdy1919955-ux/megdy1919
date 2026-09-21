@@ -21,9 +21,19 @@ export interface RealtimeRoomPresence {
 export interface RealtimeChatMessagePayload {
   id: string;
   userName: string;
+  avatar?: string;
   userAvatar: string;
   text: string;
   timestamp: number;
   userColor?: string;
   seatId?: number | null;
+  badges?: any[];
+  bubbleSkin?: string;
+}
+
+export interface RealtimeNetworkQuality {
+  pingMs: number;
+  qualityScore: 'excellent' | 'good' | 'fair' | 'poor';
+  engineMode: 'zegocloud' | 'agora' | 'webrtc';
+  bitrateKbps?: number;
 }

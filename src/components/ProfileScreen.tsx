@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Copy,
@@ -37,23 +37,9 @@ import {
   Palette
 } from 'lucide-react';
 import { UserProfileData, StatItem, BadgeInfo } from '../types';
+import { lazyWithRetry } from '../lib/lazyWithRetry';
 import { INITIAL_USER_PROFILE, MOCK_VISITORS, MOCK_FRIENDS, MOCK_FOLLOWERS, MOCK_LIKES } from '../data/mockData';
 import { RoyalThemeMode, ROYAL_THEMES } from './profile/ProfileThemeConfig';
-import { ProfileHeader } from './profile/ProfileHeader';
-import { ProfileStats } from './profile/ProfileStats';
-import { ProfileWalletRow } from './profile/ProfileWalletRow';
-import { ProfileActivitiesGrid } from './profile/ProfileActivitiesGrid';
-import { ProfileMiniGamesStrip } from './profile/ProfileMiniGamesStrip';
-import { ProfileServicesList } from './profile/ProfileServicesList';
-import { ProfileBottomNav } from './profile/ProfileBottomNav';
-import { StatDetailModal } from './StatDetailModal';
-import { BadgeDetailModal } from './BadgeDetailModal';
-import { EditProfileModal } from './EditProfileModal';
-import { UserLevelModal } from './UserLevelModal';
-import { FamilyModal } from './FamilyModal';
-import { BadgesCenterModal } from './BadgesCenterModal';
-import { AppearanceModal } from './AppearanceModal';
-import { ServicesModal, ServiceType } from './ServicesModal';
 import {
   UserLevel3DIcon,
   Badges3DIcon,
@@ -79,33 +65,48 @@ import {
   BroadcasterCenter3DIcon,
   RechargeAgency3DIcon
 } from './profile/RealisticIcons';
-import { RechargeAgencyModal } from './RechargeAgencyModal';
-import { RechargeModal } from './RechargeModal';
-import { SuperLegendModal } from './SuperLegendModal';
-import { SettingsModal } from './SettingsModal';
 import { NajmLogo } from './common/NajmLogo';
-import { CustomerServiceModal } from './CustomerServiceModal';
-import { UserProfileModal } from './UserProfileModal';
-import { VipCenterModal } from './VipCenterModal';
-import { AgencyModal } from './AgencyModal';
-import { BrokerCenterModal } from './BrokerCenterModal';
-import { SuperAdminControlModal } from './SuperAdminControlModal';
-import { AgencyAdminDashboardModal } from './AgencyAdminDashboardModal';
-import { ThemeAdminDashboardModal } from './ThemeAdminDashboardModal';
-import { StoreAndThemeAdminModal } from './StoreAndThemeAdminModal';
-import { OfficialAgencyManagerModal } from './OfficialAgencyManagerModal';
-import { AgencyRepresentativeModal } from './AgencyRepresentativeModal';
-import { ModeratorDashboardModal } from './ModeratorDashboardModal';
-import { BroadcasterCenterModal } from './BroadcasterCenterModal';
-import { GeniusNajmModal } from './GeniusNajmModal';
-import { FriendlyPointsModal } from './FriendlyPointsModal';
-import { MallCenterModal } from './MallCenterModal';
-import { HomeScreen, RoomData } from './HomeScreen';
-import { ExploreScreen } from './ExploreScreen';
-import { GamesScreen } from './GamesScreen';
-import { MessagesScreen } from './MessagesScreen';
-import { VoiceRoomScreen } from './VoiceRoomScreen';
 import { FloatingRoomWidget } from './FloatingRoomWidget';
+import { LazyModalSkeleton } from './common/LazyModalSkeleton';
+import { LazyScreenSkeleton } from './common/LazyScreenSkeleton';
+import type { ServiceType } from './ServicesModal';
+import type { RoomData } from './HomeScreen';
+
+// On-Demand Lazy Loaded Components (تحميل فوري حسب الطلب فقط لتخفيف التطبيق وسرعة الفتح الفائقة)
+const StatDetailModal = React.lazy(() => import('./StatDetailModal').then(m => ({ default: m.StatDetailModal || (m as any).default })));
+const BadgeDetailModal = React.lazy(() => import('./BadgeDetailModal').then(m => ({ default: m.BadgeDetailModal || (m as any).default })));
+const EditProfileModal = React.lazy(() => import('./EditProfileModal').then(m => ({ default: m.EditProfileModal || (m as any).default })));
+const UserLevelModal = React.lazy(() => import('./UserLevelModal').then(m => ({ default: m.UserLevelModal || (m as any).default })));
+const FamilyModal = React.lazy(() => import('./FamilyModal').then(m => ({ default: m.FamilyModal || (m as any).default })));
+const BadgesCenterModal = React.lazy(() => import('./BadgesCenterModal').then(m => ({ default: m.BadgesCenterModal || (m as any).default })));
+const AppearanceModal = React.lazy(() => import('./AppearanceModal').then(m => ({ default: m.AppearanceModal || (m as any).default })));
+const ServicesModal = React.lazy(() => import('./ServicesModal').then(m => ({ default: m.ServicesModal || (m as any).default })));
+const RechargeAgencyModal = React.lazy(() => import('./RechargeAgencyModal').then(m => ({ default: m.RechargeAgencyModal || (m as any).default })));
+const RechargeModal = React.lazy(() => import('./RechargeModal').then(m => ({ default: m.RechargeModal || (m as any).default })));
+const SuperLegendModal = React.lazy(() => import('./SuperLegendModal').then(m => ({ default: m.SuperLegendModal || (m as any).default })));
+const SettingsModal = React.lazy(() => import('./SettingsModal').then(m => ({ default: m.SettingsModal || (m as any).default })));
+const CustomerServiceModal = React.lazy(() => import('./CustomerServiceModal').then(m => ({ default: m.CustomerServiceModal || (m as any).default })));
+const UserProfileModal = React.lazy(() => import('./UserProfileModal').then(m => ({ default: m.UserProfileModal || (m as any).default })));
+const VipCenterModal = React.lazy(() => import('./VipCenterModal').then(m => ({ default: m.VipCenterModal || (m as any).default })));
+const AgencyModal = React.lazy(() => import('./AgencyModal').then(m => ({ default: m.AgencyModal || (m as any).default })));
+const BrokerCenterModal = React.lazy(() => import('./BrokerCenterModal').then(m => ({ default: m.BrokerCenterModal || (m as any).default })));
+const SuperAdminControlModal = React.lazy(() => import('./SuperAdminControlModal').then(m => ({ default: m.SuperAdminControlModal || (m as any).default })));
+const AgencyAdminDashboardModal = React.lazy(() => import('./AgencyAdminDashboardModal').then(m => ({ default: m.AgencyAdminDashboardModal || (m as any).default })));
+const StoreAndThemeAdminModal = React.lazy(() => import('./StoreAndThemeAdminModal').then(m => ({ default: m.StoreAndThemeAdminModal || (m as any).default })));
+const OfficialAgencyManagerModal = React.lazy(() => import('./OfficialAgencyManagerModal').then(m => ({ default: m.OfficialAgencyManagerModal || (m as any).default })));
+const AgencyRepresentativeModal = React.lazy(() => import('./AgencyRepresentativeModal').then(m => ({ default: m.AgencyRepresentativeModal || (m as any).default })));
+const ModeratorDashboardModal = React.lazy(() => import('./ModeratorDashboardModal').then(m => ({ default: m.ModeratorDashboardModal || (m as any).default })));
+const BroadcasterCenterModal = React.lazy(() => import('./BroadcasterCenterModal').then(m => ({ default: m.BroadcasterCenterModal || (m as any).default })));
+const GeniusNajmModal = React.lazy(() => import('./GeniusNajmModal').then(m => ({ default: m.GeniusNajmModal || (m as any).default })));
+const FriendlyPointsModal = React.lazy(() => import('./FriendlyPointsModal').then(m => ({ default: m.FriendlyPointsModal || (m as any).default })));
+const MallCenterModal = React.lazy(() => import('./MallCenterModal').then(m => ({ default: m.MallCenterModal || (m as any).default })));
+
+// Tabs / screens loaded on demand (بحسب الطلب)
+const HomeScreen = lazyWithRetry(() => import('./HomeScreen'), 'HomeScreen');
+const ExploreScreen = lazyWithRetry(() => import('./ExploreScreen'), 'ExploreScreen');
+const GamesScreen = lazyWithRetry(() => import('./GamesScreen'), 'GamesScreen');
+const MessagesScreen = lazyWithRetry(() => import('./MessagesScreen'), 'MessagesScreen');
+const VoiceRoomScreen = lazyWithRetry(() => import('./VoiceRoomScreen'), 'VoiceRoomScreen');
 import { 
   subscribeToRoomSession, 
   maximizeRoomSession, 
@@ -119,8 +120,15 @@ import {
   isOwnerOrSuperAdmin, 
   subscribeToAdminRoles, 
   OWNER_DEV_ID,
-  AdminRole
+  AdminRole,
+  isThemeAdmin,
+  isAgencyManager,
+  isAgencyRepresentative,
+  isOfficialAgent,
+  isRechargeAgent,
+  isCertifiedBroker
 } from '../lib/adminRoleService';
+import { backNavigation } from '../lib/backNavigation';
 
 export const ProfileScreen: React.FC = () => {
   // State Management
@@ -131,6 +139,7 @@ export const ProfileScreen: React.FC = () => {
         const parsed = JSON.parse(saved);
         return {
           ...INITIAL_USER_PROFILE,
+          userId: parsed.id || INITIAL_USER_PROFILE.userId,
           name: parsed.name || INITIAL_USER_PROFILE.name,
           bio: parsed.bio || INITIAL_USER_PROFILE.bio,
           country: parsed.country || INITIAL_USER_PROFILE.country,
@@ -177,11 +186,13 @@ export const ProfileScreen: React.FC = () => {
           queueMicrotask(() => {
             setProfile((prev) => ({
               ...prev,
+              userId: parsed.id || prev.userId,
               name: parsed.name || prev.name,
               bio: parsed.bio || prev.bio,
               country: parsed.country || prev.country,
               avatarUrl: parsed.avatar || parsed.avatarUrl || prev.avatarUrl,
             }));
+            setAdminRole(getAdminRoleForUser(parsed.id || profile.userId));
           });
         } catch (e) {
           console.error(e);
@@ -200,7 +211,16 @@ export const ProfileScreen: React.FC = () => {
   const [activeStatModal, setActiveStatModal] = useState<StatItem['id'] | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<BadgeInfo | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'home' | 'explore' | 'games' | 'messages' | 'profile'>('home');
+  const [activeTab, setActiveTabState] = useState<'home' | 'explore' | 'games' | 'messages' | 'profile'>('home');
+  const [tabHistory, setTabHistory] = useState<('home' | 'explore' | 'games' | 'messages' | 'profile')[]>(['home']);
+
+  const setActiveTab = (tab: 'home' | 'explore' | 'games' | 'messages' | 'profile') => {
+    setActiveTabState(tab);
+    setTabHistory((prev) => {
+      if (prev[prev.length - 1] === tab) return prev;
+      return [...prev, tab];
+    });
+  };
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
   const [coinsBalance, setCoinsBalance] = useState<number>(() => {
     try {
@@ -345,6 +365,178 @@ export const ProfileScreen: React.FC = () => {
   const isOwner = isOwnerOrSuperAdmin(profile.userId);
   const [activeServiceModal, setActiveServiceModal] = useState<ServiceType | null>(null);
 
+  // Hardware Back Button Handler for ProfileScreen & Sub-modals
+  useEffect(() => {
+    // Priority 50: runs after VoiceRoom (80) if room is not active
+    return backNavigation.registerHandler('profile_screen_navigation', 50, () => {
+      // 1. Close any open modals on the profile/app level
+      if (activeVoiceRoom && !isRoomMinimized) {
+        // Voice room screen is open and will handle its own back
+        return;
+      }
+      if (isRechargeModalOpen) {
+        setIsRechargeModalOpen(false);
+        return;
+      }
+      if (isEditModalOpen) {
+        setIsEditModalOpen(false);
+        return;
+      }
+      if (activeStatModal !== null) {
+        setActiveStatModal(null);
+        return;
+      }
+      if (selectedBadge !== null) {
+        setSelectedBadge(null);
+        return;
+      }
+      if (activeServiceModal !== null) {
+        setActiveServiceModal(null);
+        return;
+      }
+      if (isUserProfileModalOpen) {
+        setIsUserProfileModalOpen(false);
+        return;
+      }
+      if (isSettingsModalOpen) {
+        setIsSettingsModalOpen(false);
+        return;
+      }
+      if (isCustomerServiceModalOpen) {
+        setIsCustomerServiceModalOpen(false);
+        return;
+      }
+      if (isSuperAdminModalOpen) {
+        setIsSuperAdminModalOpen(false);
+        return;
+      }
+      if (isAgencyAdminModalOpen) {
+        setIsAgencyAdminModalOpen(false);
+        return;
+      }
+      if (isThemeAdminModalOpen) {
+        setIsThemeAdminModalOpen(false);
+        return;
+      }
+      if (isOfficialAgencyManagerModalOpen) {
+        setIsOfficialAgencyManagerModalOpen(false);
+        return;
+      }
+      if (isAgencyRepModalOpen) {
+        setIsAgencyRepModalOpen(false);
+        return;
+      }
+      if (isModeratorModalOpen) {
+        setIsModeratorModalOpen(false);
+        return;
+      }
+      if (isBrokerCenterModalOpen) {
+        setIsBrokerCenterModalOpen(false);
+        return;
+      }
+      if (isSuperLegendModalOpen) {
+        setIsSuperLegendModalOpen(false);
+        return;
+      }
+      if (isLevelModalOpen) {
+        setIsLevelModalOpen(false);
+        return;
+      }
+      if (isFamilyModalOpen) {
+        setIsFamilyModalOpen(false);
+        return;
+      }
+      if (isBadgesCenterModalOpen) {
+        setIsBadgesCenterModalOpen(false);
+        return;
+      }
+      if (isAppearanceModalOpen) {
+        setIsAppearanceModalOpen(false);
+        return;
+      }
+      if (isVipCenterModalOpen) {
+        setIsVipCenterModalOpen(false);
+        return;
+      }
+      if (isAgencyModalOpen) {
+        setIsAgencyModalOpen(false);
+        return;
+      }
+      if (isRechargeAgencyModalOpen) {
+        setIsRechargeAgencyModalOpen(false);
+        return;
+      }
+      if (isBroadcasterCenterModalOpen) {
+        setIsBroadcasterCenterModalOpen(false);
+        return;
+      }
+      if (isGeniusModalOpen) {
+        setIsGeniusModalOpen(false);
+        return;
+      }
+      if (isFriendlyPointsModalOpen) {
+        setIsFriendlyPointsModalOpen(false);
+        return;
+      }
+      if (isMallModalOpen) {
+        setIsMallModalOpen(false);
+        return;
+      }
+
+      // 2. Navigate back through tab history if we have previous tabs
+      if (tabHistory.length > 1) {
+        const updatedHistory = [...tabHistory];
+        updatedHistory.pop(); // Remove current tab
+        const previousTab = updatedHistory[updatedHistory.length - 1];
+        setTabHistory(updatedHistory);
+        setActiveTabState(previousTab);
+        return;
+      }
+
+      // 3. If on a non-home tab and no history, go to 'home'
+      if (activeTab !== 'home') {
+        setActiveTabState('home');
+        setTabHistory(['home']);
+        return;
+      }
+
+      // 4. We are at root Home tab with no modals open -> Request Exit Confirmation!
+      window.dispatchEvent(new CustomEvent('najm_request_exit_app'));
+    });
+  }, [
+    activeVoiceRoom,
+    isRoomMinimized,
+    isRechargeModalOpen,
+    isEditModalOpen,
+    activeStatModal,
+    selectedBadge,
+    activeServiceModal,
+    isUserProfileModalOpen,
+    isSettingsModalOpen,
+    isCustomerServiceModalOpen,
+    isSuperAdminModalOpen,
+    isAgencyAdminModalOpen,
+    isThemeAdminModalOpen,
+    isOfficialAgencyManagerModalOpen,
+    isAgencyRepModalOpen,
+    isModeratorModalOpen,
+    isBrokerCenterModalOpen,
+    isSuperLegendModalOpen,
+    isLevelModalOpen,
+    isFamilyModalOpen,
+    isBadgesCenterModalOpen,
+    isAppearanceModalOpen,
+    isVipCenterModalOpen,
+    isAgencyModalOpen,
+    isRechargeAgencyModalOpen,
+    isBroadcasterCenterModalOpen,
+    isGeniusModalOpen,
+    isFriendlyPointsModalOpen,
+    isMallModalOpen,
+    tabHistory,
+    activeTab
+  ]);
+
   // Copy ID functionality
   const handleCopyId = () => {
     navigator.clipboard.writeText(profile.userId);
@@ -384,14 +576,28 @@ export const ProfileScreen: React.FC = () => {
 
       {/* Screen Routing Content */}
       {activeTab === 'home' && (
-        <HomeScreen 
-          onOpenRecharge={() => setIsRechargeModalOpen(true)} 
-          onOpenRoom={handleOpenRoom}
-        />
+        <Suspense fallback={<LazyScreenSkeleton title="الرئيسية" />}>
+          <HomeScreen 
+            onOpenRecharge={() => setIsRechargeModalOpen(true)} 
+            onOpenRoom={handleOpenRoom}
+          />
+        </Suspense>
       )}
-      {activeTab === 'explore' && <ExploreScreen />}
-      {activeTab === 'games' && <GamesScreen />}
-      {activeTab === 'messages' && <MessagesScreen />}
+      {activeTab === 'explore' && (
+        <Suspense fallback={<LazyScreenSkeleton title="استكشاف الغرف والمواهب" />}>
+          <ExploreScreen />
+        </Suspense>
+      )}
+      {activeTab === 'games' && (
+        <Suspense fallback={<LazyScreenSkeleton title="ألعاب ومسابقات النجم" />}>
+          <GamesScreen />
+        </Suspense>
+      )}
+      {activeTab === 'messages' && (
+        <Suspense fallback={<LazyScreenSkeleton title="الرسائل والمحادثات" />}>
+          <MessagesScreen />
+        </Suspense>
+      )}
 
       {/* Profile View (Renders when activeTab === 'profile') */}
       {activeTab === 'profile' && (
@@ -1220,7 +1426,7 @@ export const ProfileScreen: React.FC = () => {
           </div>
 
           {/* 6.5 إدارة المتجر وثيمات التطبيق (المستطيل البنفسجي الياقوتي الفاخر مع الشارة البارزة للأعلى) */}
-          {(adminRole === 'theme_admin' || adminRole === 'super_admin' || isOwner) && (
+          {(isThemeAdmin(profile.userId) || adminRole === 'theme_admin' || adminRole === 'super_admin' || isOwner) && (
             <motion.div 
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.98 }}
@@ -1259,87 +1465,91 @@ export const ProfileScreen: React.FC = () => {
           )}
 
           {/* 6.7 مدير الوكالات الرسمية والمندوبين (المستطيل الماسي السيان الملكي الفاخر مع الشارة البارزة للأعلى) */}
-          <motion.div 
-            whileHover={{ scale: 1.015 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setIsOfficialAgencyManagerModalOpen(true)}
-            className="relative my-3 p-[2px] rounded-2xl bg-gradient-to-r from-[#0369A1] via-[#0284C7] to-[#0D9488] shadow-[0_4px_20px_rgba(2,132,199,0.3)] cursor-pointer group transition-all duration-300"
-          >
-            {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
-            <div className="absolute -top-2.5 right-4 z-20">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-sky-700 via-cyan-600 to-teal-700 text-white border border-cyan-300/80 shadow-[0_2px_8px_rgba(2,132,199,0.4)] font-sans tracking-wide">
-                <Sparkles className="w-3 h-3 text-cyan-200 fill-cyan-200 animate-pulse" />
-                <span>الرئاسة الرسمية للوكالات</span>
-              </span>
-            </div>
+          {(isAgencyManager(profile.userId) || adminRole === 'agency_admin' || adminRole === 'super_admin' || isOwner) && (
+            <motion.div 
+              whileHover={{ scale: 1.015 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsOfficialAgencyManagerModalOpen(true)}
+              className="relative my-3 p-[2px] rounded-2xl bg-gradient-to-r from-[#0369A1] via-[#0284C7] to-[#0D9488] shadow-[0_4px_20px_rgba(2,132,199,0.3)] cursor-pointer group transition-all duration-300"
+            >
+              {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+              <div className="absolute -top-2.5 right-4 z-20">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-sky-700 via-cyan-600 to-teal-700 text-white border border-cyan-300/80 shadow-[0_2px_8px_rgba(2,132,199,0.4)] font-sans tracking-wide">
+                  <Sparkles className="w-3 h-3 text-cyan-200 fill-cyan-200 animate-pulse" />
+                  <span>الرئاسة الرسمية للوكالات</span>
+                </span>
+              </div>
 
-            <div className="bg-gradient-to-r from-[#F0F9FF] via-[#E0F2FE] to-[#F0FDFA] rounded-[14px] p-3 flex items-center justify-between border border-[#BAE6FD]/90 group-hover:bg-white transition-all relative overflow-hidden">
-              <div className="flex items-center gap-3 relative z-10">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#0369A1] via-[#0284C7] to-[#38BDF8] flex items-center justify-center text-white shadow-[0_2px_8px_rgba(2,132,199,0.35)] text-lg border border-white/80 shrink-0 group-hover:scale-105 transition-transform">
-                  👑
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black text-[#0C4A6E] tracking-wide">مدير الوكالات الرسمية والمندوبين</span>
-                    <span className="text-[9px] bg-gradient-to-r from-[#0284C7] to-[#0D9488] text-white font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
-                      رئيس الوكالات 💎
-                    </span>
+              <div className="bg-gradient-to-r from-[#F0F9FF] via-[#E0F2FE] to-[#F0FDFA] rounded-[14px] p-3 flex items-center justify-between border border-[#BAE6FD]/90 group-hover:bg-white transition-all relative overflow-hidden">
+                <div className="flex items-center gap-3 relative z-10">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#0369A1] via-[#0284C7] to-[#38BDF8] flex items-center justify-center text-white shadow-[0_2px_8px_rgba(2,132,199,0.35)] text-lg border border-white/80 shrink-0 group-hover:scale-105 transition-transform">
+                    👑
                   </div>
-                  <span className="text-[10px] text-[#0369A1] font-bold block mt-0.5">استدعاء وكالات رسمية، تعيين المندوبين، وفتح وإغلاق الصلاحيات</span>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-[#0C4A6E] tracking-wide">مدير الوكالات الرسمية والمندوبين</span>
+                      <span className="text-[9px] bg-gradient-to-r from-[#0284C7] to-[#0D9488] text-white font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
+                        رئيس الوكالات 💎
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-[#0369A1] font-bold block mt-0.5">استدعاء وكالات رسمية، تعيين المندوبين، وفتح وإغلاق الصلاحيات</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs font-black text-[#0369A1] bg-white/95 border border-[#7DD3FC]/60 px-3 py-1.5 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-[#0284C7] group-hover:to-[#0D9488] group-hover:text-white group-hover:border-transparent transition-all shrink-0 relative z-10">
+                  <span>إدارة</span>
+                  <ChevronLeft className="w-4 h-4" />
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-xs font-black text-[#0369A1] bg-white/95 border border-[#7DD3FC]/60 px-3 py-1.5 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-[#0284C7] group-hover:to-[#0D9488] group-hover:text-white group-hover:border-transparent transition-all shrink-0 relative z-10">
-                <span>إدارة</span>
-                <ChevronLeft className="w-4 h-4" />
-              </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          )}
 
           {/* 6.8 مندوب وكالات (المستطيل الفضي البلاتيني الفاخر مع الشارة البارزة للأعلى) */}
-          <motion.div 
-            whileHover={{ scale: 1.015 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setIsAgencyRepModalOpen(true)}
-            className="relative my-3 p-[2px] rounded-2xl bg-gradient-to-r from-[#334155] via-[#64748B] to-[#94A3B8] shadow-[0_4px_18px_rgba(71,85,105,0.28)] cursor-pointer group transition-all duration-300"
-          >
-            {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
-            <div className="absolute -top-2.5 right-4 z-20">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-slate-700 via-slate-800 to-zinc-800 text-white border border-slate-400/80 shadow-[0_2px_8px_rgba(71,85,105,0.4)] font-sans tracking-wide">
-                <Sparkles className="w-3 h-3 text-amber-300 fill-amber-300 animate-pulse" />
-                <span>لوحة المندوب المعتمد</span>
-              </span>
-            </div>
-
-            <div className="bg-gradient-to-r from-[#F8FAFC] via-[#F1F5F9] to-[#E2E8F0] rounded-[14px] p-3 flex items-center justify-between border border-[#CBD5E1]/90 group-hover:bg-white transition-all relative overflow-hidden">
-              <div className="flex items-center gap-3 relative z-10">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#334155] via-[#64748B] to-[#94A3B8] flex items-center justify-center text-white shadow-[0_2px_8px_rgba(71,85,105,0.35)] text-lg border border-white/80 shrink-0 group-hover:scale-105 transition-transform">
-                  🏛️
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black text-[#1E293B] tracking-wide">مندوب وكالات</span>
-                    <span className="text-[9px] bg-gradient-to-r from-[#475569] to-[#334155] text-white font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
-                      استدعاء وكلاء 🔱
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-[#475569] font-bold block mt-0.5">صلاحية استدعاء وكلاء رسميين ومتابعة الأرباح والعمولات</span>
-                </div>
+          {(isAgencyRepresentative(profile.userId) || adminRole === 'agency_rep' || adminRole === 'agency_admin' || adminRole === 'super_admin' || isOwner) && (
+            <motion.div 
+              whileHover={{ scale: 1.015 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsAgencyRepModalOpen(true)}
+              className="relative my-3 p-[2px] rounded-2xl bg-gradient-to-r from-[#334155] via-[#64748B] to-[#94A3B8] shadow-[0_4px_18px_rgba(71,85,105,0.28)] cursor-pointer group transition-all duration-300"
+            >
+              {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+              <div className="absolute -top-2.5 right-4 z-20">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-slate-700 via-slate-800 to-zinc-800 text-white border border-slate-400/80 shadow-[0_2px_8px_rgba(71,85,105,0.4)] font-sans tracking-wide">
+                  <Sparkles className="w-3 h-3 text-amber-300 fill-amber-300 animate-pulse" />
+                  <span>لوحة المندوب المعتمد</span>
+                </span>
               </div>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsAgencyRepModalOpen(true);
-                }}
-                className="flex items-center gap-1.5 text-xs font-black text-[#334155] bg-white/95 border border-[#94A3B8]/60 px-3 py-1.5 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-[#475569] group-hover:to-[#334155] group-hover:text-white group-hover:border-transparent transition-all shrink-0 relative z-10 cursor-pointer active:scale-95"
-              >
-                <span>إدارة</span>
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-            </div>
-          </motion.div>
+
+              <div className="bg-gradient-to-r from-[#F8FAFC] via-[#F1F5F9] to-[#E2E8F0] rounded-[14px] p-3 flex items-center justify-between border border-[#CBD5E1]/90 group-hover:bg-white transition-all relative overflow-hidden">
+                <div className="flex items-center gap-3 relative z-10">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#334155] via-[#64748B] to-[#94A3B8] flex items-center justify-center text-white shadow-[0_2px_8px_rgba(71,85,105,0.35)] text-lg border border-white/80 shrink-0 group-hover:scale-105 transition-transform">
+                    🏛️
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-[#1E293B] tracking-wide">مندوب وكالات</span>
+                      <span className="text-[9px] bg-gradient-to-r from-[#475569] to-[#334155] text-white font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
+                        استدعاء وكلاء 🔱
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-[#475569] font-bold block mt-0.5">صلاحية استدعاء وكلاء رسميين ومتابعة الأرباح والعمولات</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsAgencyRepModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-black text-[#334155] bg-white/95 border border-[#94A3B8]/60 px-3 py-1.5 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-[#475569] group-hover:to-[#334155] group-hover:text-white group-hover:border-transparent transition-all shrink-0 relative z-10 cursor-pointer active:scale-95"
+                >
+                  <span>إدارة</span>
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              </div>
+            </motion.div>
+          )}
 
           {/* وكالتي (الوكيل الرسمي أو السوبر أدمن) - إدارة المذيعين والوسطاء والعقود - تم نقله ليكون فوق مركز الوسطاء */}
-          {(adminRole === 'official_agent' || adminRole === 'super_admin') && (
+          {(isOfficialAgent(profile.userId) || adminRole === 'official_agent' || adminRole === 'super_admin' || isOwner) && (
             <motion.div 
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.98 }}
@@ -1392,7 +1602,7 @@ export const ProfileScreen: React.FC = () => {
           )}
 
           {/* وكالة شحن (وكيل شحن معتمد - هوية ذهبية برتقالية فاخرة تميز الشحن والكوينزات) */}
-          {(adminRole === 'official_agent' || adminRole === 'super_admin') && (
+          {(isRechargeAgent(profile.userId) || adminRole === 'recharge_agent' || adminRole === 'official_agent' || adminRole === 'super_admin' || isOwner) && (
             <motion.div 
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.98 }}
@@ -1447,41 +1657,43 @@ export const ProfileScreen: React.FC = () => {
           )}
 
           {/* 7. مركز الوسطاء (صلاحية وسيط معتمد ممنوحة من وكالتي لحساب ومتابعة المذيعين وعمولات الوساطة) */}
-          <motion.div 
-            whileHover={{ scale: 1.015 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setIsBrokerCenterModalOpen(true)}
-            className="relative my-3 p-[2px] rounded-2xl bg-gradient-to-r from-[#0D404C] via-[#104D5B] to-[#165F6F] shadow-[0_4px_18px_rgba(16,77,91,0.28)] cursor-pointer group transition-all duration-300"
-          >
-            {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
-            <div className="absolute -top-2.5 right-4 z-20">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-teal-800 via-teal-700 to-cyan-800 text-white border border-teal-300/80 shadow-[0_2px_8px_rgba(16,77,91,0.4)] font-sans tracking-wide">
-                <Sparkles className="w-3 h-3 text-teal-300 fill-teal-300 animate-pulse" />
-                <span>لوحة الوسيط المعتمد (من وكالتي)</span>
-              </span>
-            </div>
+          {(isCertifiedBroker(profile.userId) || adminRole === 'broker' || adminRole === 'official_agent' || adminRole === 'super_admin' || isOwner) && (
+            <motion.div 
+              whileHover={{ scale: 1.015 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsBrokerCenterModalOpen(true)}
+              className="relative my-3 p-[2px] rounded-2xl bg-gradient-to-r from-[#0D404C] via-[#104D5B] to-[#165F6F] shadow-[0_4px_18px_rgba(16,77,91,0.28)] cursor-pointer group transition-all duration-300"
+            >
+              {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+              <div className="absolute -top-2.5 right-4 z-20">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-teal-800 via-teal-700 to-cyan-800 text-white border border-teal-300/80 shadow-[0_2px_8px_rgba(16,77,91,0.4)] font-sans tracking-wide">
+                  <Sparkles className="w-3 h-3 text-teal-300 fill-teal-300 animate-pulse" />
+                  <span>لوحة الوسيط المعتمد (من وكالتي)</span>
+                </span>
+              </div>
 
-            <div className="bg-gradient-to-r from-teal-50/90 via-sky-50/80 to-slate-50/90 rounded-[14px] p-3 flex items-center justify-between border border-teal-200/80 group-hover:bg-white transition-all relative overflow-hidden">
-              <div className="flex items-center gap-3 relative z-10">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#0D404C] via-[#104D5B] to-[#165F6F] flex items-center justify-center text-white shadow-md text-lg shrink-0 group-hover:scale-105 transition-transform">
-                  🤝
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black text-slate-900 tracking-wide">مركز الوسطاء</span>
-                    <span className="text-[9px] bg-[#104D5B] text-white font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
-                      صلاحية وسيط 💎
-                    </span>
+              <div className="bg-gradient-to-r from-teal-50/90 via-sky-50/80 to-slate-50/90 rounded-[14px] p-3 flex items-center justify-between border border-teal-200/80 group-hover:bg-white transition-all relative overflow-hidden">
+                <div className="flex items-center gap-3 relative z-10">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#0D404C] via-[#104D5B] to-[#165F6F] flex items-center justify-center text-white shadow-md text-lg shrink-0 group-hover:scale-105 transition-transform">
+                    🤝
                   </div>
-                  <span className="text-[10px] text-[#104D5B] font-bold block mt-0.5">صلاحية ممنوحة من وكالتي لمتابعة المذيعين التابعين لي، ساعات البث، والعمولات المحسوبة</span>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-slate-900 tracking-wide">مركز الوسطاء</span>
+                      <span className="text-[9px] bg-[#104D5B] text-white font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
+                        صلاحية وسيط 💎
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-[#104D5B] font-bold block mt-0.5">صلاحية ممنوحة من وكالتي لمتابعة المذيعين التابعين لي، ساعات البث، والعمولات المحسوبة</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs font-black text-[#104D5B] bg-white/90 border border-teal-200 px-3 py-1.5 rounded-xl shadow-2xs group-hover:bg-[#104D5B] group-hover:text-white transition-all shrink-0 relative z-10">
+                  <span>إدارة</span>
+                  <ChevronLeft className="w-4 h-4" />
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-xs font-black text-[#104D5B] bg-white/90 border border-teal-200 px-3 py-1.5 rounded-xl shadow-2xs group-hover:bg-[#104D5B] group-hover:text-white transition-all shrink-0 relative z-10">
-                <span>إدارة</span>
-                <ChevronLeft className="w-4 h-4" />
-              </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          )}
 
           {/* 8. مركز المذيعين (بتصميم فاخر وألوان جذابة خفيفة تجمع بين الوردي الناعم واللافندر الهادئ) */}
           <motion.div 
@@ -1623,244 +1835,352 @@ export const ProfileScreen: React.FC = () => {
       </div>
 
       {/* Recharge Top-Up Modal */}
-      <RechargeModal
-        isOpen={isRechargeModalOpen}
-        onClose={() => setIsRechargeModalOpen(false)}
-        onSuccessRecharge={(addedCoins) => {
-          setCoinsBalance((prev) => {
-            const next = prev + addedCoins;
-            try {
-              localStorage.setItem('user_wallet_coins', next.toString());
-              window.dispatchEvent(
-                new CustomEvent('user_coins_updated', {
-                  detail: { coins: next }
-                })
-              );
-            } catch {}
-            return next;
-          });
-        }}
-      />
+      {isRechargeModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="شحن الرصيد والكوينز" />}>
+          <RechargeModal
+            isOpen={isRechargeModalOpen}
+            onClose={() => setIsRechargeModalOpen(false)}
+            onSuccessRecharge={(addedCoins) => {
+              setCoinsBalance((prev) => {
+                const next = prev + addedCoins;
+                try {
+                  localStorage.setItem('user_wallet_coins', next.toString());
+                  window.dispatchEvent(
+                    new CustomEvent('user_coins_updated', {
+                      detail: { coins: next }
+                    })
+                  );
+                } catch {}
+                return next;
+              });
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* Modals & Dialogs */}
-      <StatDetailModal
-        isOpen={activeStatModal !== null}
-        onClose={() => setActiveStatModal(null)}
-        activeStat={activeStatModal}
-        visitors={MOCK_VISITORS}
-        friends={MOCK_FRIENDS}
-        followers={MOCK_FOLLOWERS}
-        likes={MOCK_LIKES}
-      />
+      {activeStatModal !== null && (
+        <Suspense fallback={<LazyModalSkeleton title="تفاصيل البيانات" />}>
+          <StatDetailModal
+            isOpen={activeStatModal !== null}
+            onClose={() => setActiveStatModal(null)}
+            activeStat={activeStatModal}
+            visitors={MOCK_VISITORS}
+            friends={MOCK_FRIENDS}
+            followers={MOCK_FOLLOWERS}
+            likes={MOCK_LIKES}
+          />
+        </Suspense>
+      )}
 
-      <BadgeDetailModal badge={selectedBadge} onClose={() => setSelectedBadge(null)} />
+      {selectedBadge !== null && (
+        <Suspense fallback={<LazyModalSkeleton title="تفاصيل الشارة" />}>
+          <BadgeDetailModal badge={selectedBadge} onClose={() => setSelectedBadge(null)} />
+        </Suspense>
+      )}
 
-      <EditProfileModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        profile={profile}
-        currentUser={{
-          name: profile.name,
-          country: profile.country || 'اليمن',
-          bio: profile.bio,
-          avatar: profile.avatarUrl
-        }}
-        onSave={handleSaveProfile}
-      />
+      {isEditModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="تعديل الملف الشخصي" />}>
+          <EditProfileModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            profile={profile}
+            currentUser={{
+              name: profile.name,
+              country: profile.country || 'اليمن',
+              bio: profile.bio,
+              avatar: profile.avatarUrl
+            }}
+            onSave={handleSaveProfile}
+          />
+        </Suspense>
+      )}
 
       {/* User Profile Detail Modal */}
-      <UserProfileModal
-        isOpen={isUserProfileModalOpen}
-        onClose={() => setIsUserProfileModalOpen(false)}
-        onOpenFamily={() => setIsFamilyModalOpen(true)}
-        userProfile={profile}
-      />
+      {isUserProfileModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="الملف الشخصي" />}>
+          <UserProfileModal
+            isOpen={isUserProfileModalOpen}
+            onClose={() => setIsUserProfileModalOpen(false)}
+            onOpenFamily={() => setIsFamilyModalOpen(true)}
+            userProfile={profile}
+          />
+        </Suspense>
+      )}
 
       {/* Services Modals */}
-      <SettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        onOpenCustomerService={() => setIsCustomerServiceModalOpen(true)}
-      />
+      {isSettingsModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="الإعدادات" />}>
+          <SettingsModal
+            isOpen={isSettingsModalOpen}
+            onClose={() => setIsSettingsModalOpen(false)}
+            onOpenCustomerService={() => setIsCustomerServiceModalOpen(true)}
+          />
+        </Suspense>
+      )}
 
-      <CustomerServiceModal
-        isOpen={isCustomerServiceModalOpen}
-        onClose={() => setIsCustomerServiceModalOpen(false)}
-      />
+      {isCustomerServiceModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="خدمة العملاء والدعم الفني" />}>
+          <CustomerServiceModal
+            isOpen={isCustomerServiceModalOpen}
+            onClose={() => setIsCustomerServiceModalOpen(false)}
+          />
+        </Suspense>
+      )}
 
-      <SuperLegendModal
-        isOpen={isSuperLegendModalOpen}
-        onClose={() => setIsSuperLegendModalOpen(false)}
-        onOpenRecharge={() => setIsRechargeModalOpen(true)}
-      />
+      {isSuperLegendModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="سوبر ليجند" />}>
+          <SuperLegendModal
+            isOpen={isSuperLegendModalOpen}
+            onClose={() => setIsSuperLegendModalOpen(false)}
+            onOpenRecharge={() => setIsRechargeModalOpen(true)}
+          />
+        </Suspense>
+      )}
 
-      <UserLevelModal
-        isOpen={isLevelModalOpen}
-        onClose={() => setIsLevelModalOpen(false)}
-        level={113}
-        userName={profile.name || "(عابر سبيل)"}
-        avatarUrl={profile.avatarUrl}
-      />
+      {isLevelModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="مستوى ورتبة المستخدم" />}>
+          <UserLevelModal
+            isOpen={isLevelModalOpen}
+            onClose={() => setIsLevelModalOpen(false)}
+            level={113}
+            userName={profile.name || "(عابر سبيل)"}
+            avatarUrl={profile.avatarUrl}
+          />
+        </Suspense>
+      )}
 
-      <FamilyModal
-        isOpen={isFamilyModalOpen}
-        onClose={() => setIsFamilyModalOpen(false)}
-      />
+      {isFamilyModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="العائلة والقبيلة" />}>
+          <FamilyModal
+            isOpen={isFamilyModalOpen}
+            onClose={() => setIsFamilyModalOpen(false)}
+          />
+        </Suspense>
+      )}
 
-      <BadgesCenterModal
-        isOpen={isBadgesCenterModalOpen}
-        onClose={() => setIsBadgesCenterModalOpen(false)}
-        userName={profile.name || "(عابر سبيل)"}
-        avatarUrl={profile.avatarUrl}
-        badges={profile.badges}
-        onSelectBadge={(badge) => setSelectedBadge(badge)}
-      />
+      {isBadgesCenterModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="مركز الشارات الملكية" />}>
+          <BadgesCenterModal
+            isOpen={isBadgesCenterModalOpen}
+            onClose={() => setIsBadgesCenterModalOpen(false)}
+            userName={profile.name || "(عابر سبيل)"}
+            avatarUrl={profile.avatarUrl}
+            badges={profile.badges}
+            onSelectBadge={(badge) => setSelectedBadge(badge)}
+          />
+        </Suspense>
+      )}
 
-      <AppearanceModal
-        isOpen={isAppearanceModalOpen}
-        onClose={() => setIsAppearanceModalOpen(false)}
-        avatarUrl={profile.avatarUrl}
-        userName={profile.name || "عابر سبيل"}
-      />
+      {isAppearanceModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="المظهر والخلفيات" />}>
+          <AppearanceModal
+            isOpen={isAppearanceModalOpen}
+            onClose={() => setIsAppearanceModalOpen(false)}
+            avatarUrl={profile.avatarUrl}
+            userName={profile.name || "عابر سبيل"}
+          />
+        </Suspense>
+      )}
 
-      <VipCenterModal
-        isOpen={isVipCenterModalOpen}
-        onClose={() => setIsVipCenterModalOpen(false)}
-        profile={profile}
-        onUpgrade={(newVipLevel) => {
-          const updated = { ...profile, vipLevel: newVipLevel, vipTier: newVipLevel };
-          setProfile(updated);
-          localStorage.setItem('user_profile_data', JSON.stringify({
-            ...updated,
-            avatar: updated.avatarUrl
-          }));
-        }}
-      />
+      {isVipCenterModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="مركز VIP الملكي" />}>
+          <VipCenterModal
+            isOpen={isVipCenterModalOpen}
+            onClose={() => setIsVipCenterModalOpen(false)}
+            profile={profile}
+            onUpgrade={(newVipLevel) => {
+              const updated = { ...profile, vipLevel: newVipLevel, vipTier: newVipLevel };
+              setProfile(updated);
+              localStorage.setItem('user_profile_data', JSON.stringify({
+                ...updated,
+                avatar: updated.avatarUrl
+              }));
+            }}
+          />
+        </Suspense>
+      )}
 
-      <AgencyModal
-        isOpen={isAgencyModalOpen}
-        onClose={() => setIsAgencyModalOpen(false)}
-        userAvatar={profile.avatarUrl}
-        userName={profile.name}
-        agencyGid="30032"
-      />
+      {isAgencyModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="مركز الوكالة" />}>
+          <AgencyModal
+            isOpen={isAgencyModalOpen}
+            onClose={() => setIsAgencyModalOpen(false)}
+            userAvatar={profile.avatarUrl}
+            userName={profile.name}
+            agencyGid="30032"
+          />
+        </Suspense>
+      )}
 
       {/* مودال وكالة شحن */}
-      <RechargeAgencyModal
-        isOpen={isRechargeAgencyModalOpen}
-        onClose={() => setIsRechargeAgencyModalOpen(false)}
-        currentUserCoins={coinsBalance}
-      />
+      {isRechargeAgencyModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="وكالة الشحن المعتمدة" />}>
+          <RechargeAgencyModal
+            isOpen={isRechargeAgencyModalOpen}
+            onClose={() => setIsRechargeAgencyModalOpen(false)}
+            currentUserCoins={coinsBalance}
+          />
+        </Suspense>
+      )}
 
       {/* لوحة السوبر أدمن (المالك والمبرمج) - مشروطة حصراً به */}
-      <SuperAdminControlModal
-        isOpen={isSuperAdminModalOpen}
-        onClose={() => setIsSuperAdminModalOpen(false)}
-        currentUserId={profile.userId}
-        onOpenAgencyModal={() => setIsAgencyAdminModalOpen(true)}
-        onOpenThemeModal={() => setIsThemeAdminModalOpen(true)}
-        onOpenModeratorModal={() => setIsModeratorModalOpen(true)}
-      />
+      {isSuperAdminModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="لوحة التحكم العليا للسوبر أدمن" />}>
+          <SuperAdminControlModal
+            isOpen={isSuperAdminModalOpen}
+            onClose={() => setIsSuperAdminModalOpen(false)}
+            currentUserId={profile.userId}
+            onOpenAgencyModal={() => setIsAgencyAdminModalOpen(true)}
+            onOpenThemeModal={() => setIsThemeAdminModalOpen(true)}
+            onOpenModeratorModal={() => setIsModeratorModalOpen(true)}
+          />
+        </Suspense>
+      )}
 
       {/* لوحة إداري الوكالات */}
-      <AgencyAdminDashboardModal
-        isOpen={isAgencyAdminModalOpen}
-        onClose={() => setIsAgencyAdminModalOpen(false)}
-      />
+      {isAgencyAdminModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="لوحة إداري الوكالات" />}>
+          <AgencyAdminDashboardModal
+            isOpen={isAgencyAdminModalOpen}
+            onClose={() => setIsAgencyAdminModalOpen(false)}
+          />
+        </Suspense>
+      )}
 
       {/* لوحة إداري الثيمات والمتجر ورفع الـ VIP المعتمدة */}
-      <StoreAndThemeAdminModal
-        isOpen={isThemeAdminModalOpen}
-        onClose={() => setIsThemeAdminModalOpen(false)}
-        userId={profile.userId}
-        isSuperAdmin={isOwner || adminRole === 'super_admin'}
-      />
+      {isThemeAdminModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="إدارة الثيمات والمتجر" />}>
+          <StoreAndThemeAdminModal
+            isOpen={isThemeAdminModalOpen}
+            onClose={() => setIsThemeAdminModalOpen(false)}
+            userId={profile.userId}
+            isSuperAdmin={isOwner || adminRole === 'super_admin'}
+          />
+        </Suspense>
+      )}
 
       {/* مركز ولوحة مدير الوكالات الرسمية والمندوبين (فتح الصلاحيات والتوثيق) */}
-      <OfficialAgencyManagerModal
-        isOpen={isOfficialAgencyManagerModalOpen}
-        onClose={() => setIsOfficialAgencyManagerModalOpen(false)}
-        managerId={profile.userId}
-        managerName={profile.nickname || profile.name}
-        managerAvatar={profile.avatarUrl}
-        isSuperAdmin={isOwner || adminRole === 'super_admin'}
-      />
+      {isOfficialAgencyManagerModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="مدير الوكالات الرسمية" />}>
+          <OfficialAgencyManagerModal
+            isOpen={isOfficialAgencyManagerModalOpen}
+            onClose={() => setIsOfficialAgencyManagerModalOpen(false)}
+            managerId={profile.userId}
+            managerName={profile.nickname || profile.name}
+            managerAvatar={profile.avatarUrl}
+            isSuperAdmin={isOwner || adminRole === 'super_admin'}
+          />
+        </Suspense>
+      )}
 
       {/* مركز ولوحة مندوب الوكالات الرسمية (استدعاء الوكلاء والعمولات) */}
-      <AgencyRepresentativeModal
-        isOpen={isAgencyRepModalOpen}
-        onClose={() => setIsAgencyRepModalOpen(false)}
-        repId={profile.userId}
-        repName={profile.nickname || profile.name}
-        repAvatar={profile.avatarUrl}
-        isSuperAdmin={isOwner || adminRole === 'super_admin'}
-      />
+      {isAgencyRepModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="مندوب الوكالات الرسمية" />}>
+          <AgencyRepresentativeModal
+            isOpen={isAgencyRepModalOpen}
+            onClose={() => setIsAgencyRepModalOpen(false)}
+            repId={profile.userId}
+            repName={profile.nickname || profile.name}
+            repAvatar={profile.avatarUrl}
+            isSuperAdmin={isOwner || adminRole === 'super_admin'}
+          />
+        </Suspense>
+      )}
 
       {/* لوحة المراقب العام والدعم */}
-      <ModeratorDashboardModal
-        isOpen={isModeratorModalOpen}
-        onClose={() => setIsModeratorModalOpen(false)}
-        userId={profile.userId}
-      />
+      {isModeratorModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="لوحة المراقب العام" />}>
+          <ModeratorDashboardModal
+            isOpen={isModeratorModalOpen}
+            onClose={() => setIsModeratorModalOpen(false)}
+            userId={profile.userId}
+          />
+        </Suspense>
+      )}
 
       {/* مركز الوساطة والتوظيف للوسطاء */}
-      <BrokerCenterModal
-        isOpen={isBrokerCenterModalOpen}
-        onClose={() => setIsBrokerCenterModalOpen(false)}
-      />
+      {isBrokerCenterModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="مركز الوسطاء والتوظيف" />}>
+          <BrokerCenterModal
+            isOpen={isBrokerCenterModalOpen}
+            onClose={() => setIsBrokerCenterModalOpen(false)}
+          />
+        </Suspense>
+      )}
 
       {/* مركز المذيعين - شاشة كاملة احترافية */}
-      <BroadcasterCenterModal
-        isOpen={isBroadcasterCenterModalOpen}
-        onClose={() => setIsBroadcasterCenterModalOpen(false)}
-        userName={profile.name}
-        userAvatar={profile.avatarUrl}
-        userId={profile.userId}
-      />
+      {isBroadcasterCenterModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="مركز المذيعين" />}>
+          <BroadcasterCenterModal
+            isOpen={isBroadcasterCenterModalOpen}
+            onClose={() => setIsBroadcasterCenterModalOpen(false)}
+            userName={profile.name}
+            userAvatar={profile.avatarUrl}
+            userId={profile.userId}
+          />
+        </Suspense>
+      )}
 
       {/* تميز النجم - الذكاء والتحليلات ولوحة الشرف */}
-      <GeniusNajmModal
-        isOpen={isGeniusModalOpen || activeServiceModal === 'genius'}
-        onClose={() => {
-          setIsGeniusModalOpen(false);
-          if (activeServiceModal === 'genius') setActiveServiceModal(null);
-        }}
-        currentUserName={profile.name}
-        currentUserAvatar={profile.avatarUrl}
-        currentUserId={profile.userId}
-      />
+      {(isGeniusModalOpen || activeServiceModal === 'genius') && (
+        <Suspense fallback={<LazyModalSkeleton title="تميز النجم الذكي" />}>
+          <GeniusNajmModal
+            isOpen={isGeniusModalOpen || activeServiceModal === 'genius'}
+            onClose={() => {
+              setIsGeniusModalOpen(false);
+              if (activeServiceModal === 'genius') setActiveServiceModal(null);
+            }}
+            currentUserName={profile.name}
+            currentUserAvatar={profile.avatarUrl}
+            currentUserId={profile.userId}
+          />
+        </Suspense>
+      )}
 
       {/* نقاط ودية - الرصيد والمزايا والمهام */}
-      <FriendlyPointsModal
-        isOpen={isFriendlyPointsModalOpen || activeServiceModal === 'friendly_points'}
-        onClose={() => {
-          setIsFriendlyPointsModalOpen(false);
-          if (activeServiceModal === 'friendly_points') setActiveServiceModal(null);
-        }}
-        currentUserName={profile.name}
-        currentUserAvatar={profile.avatarUrl}
-      />
+      {(isFriendlyPointsModalOpen || activeServiceModal === 'friendly_points') && (
+        <Suspense fallback={<LazyModalSkeleton title="نقاط ودية ومكافآت" />}>
+          <FriendlyPointsModal
+            isOpen={isFriendlyPointsModalOpen || activeServiceModal === 'friendly_points'}
+            onClose={() => {
+              setIsFriendlyPointsModalOpen(false);
+              if (activeServiceModal === 'friendly_points') setActiveServiceModal(null);
+            }}
+            currentUserName={profile.name}
+            currentUserAvatar={profile.avatarUrl}
+          />
+        </Suspense>
+      )}
 
       {/* المركز التجاري - المتجر الملكي (إطارات، سيارات، فقاعات، ملصقات) */}
-      <MallCenterModal
-        isOpen={isMallModalOpen || activeServiceModal === 'mall'}
-        onClose={() => {
-          setIsMallModalOpen(false);
-          if (activeServiceModal === 'mall') setActiveServiceModal(null);
-        }}
-        userName={profile.name}
-        userAvatar={profile.avatarUrl}
-        coinsBalance={30}
-        onRechargeClick={() => {
-          setIsMallModalOpen(false);
-          setIsRechargeModalOpen(true);
-        }}
-      />
+      {(isMallModalOpen || activeServiceModal === 'mall') && (
+        <Suspense fallback={<LazyModalSkeleton title="المركز التجاري الملكي" />}>
+          <MallCenterModal
+            isOpen={isMallModalOpen || activeServiceModal === 'mall'}
+            onClose={() => {
+              setIsMallModalOpen(false);
+              if (activeServiceModal === 'mall') setActiveServiceModal(null);
+            }}
+            userName={profile.name}
+            userAvatar={profile.avatarUrl}
+            coinsBalance={30}
+            onRechargeClick={() => {
+              setIsMallModalOpen(false);
+              setIsRechargeModalOpen(true);
+            }}
+          />
+        </Suspense>
+      )}
 
-      <ServicesModal
-        activeService={activeServiceModal}
-        onClose={() => setActiveServiceModal(null)}
-      />
+      {activeServiceModal !== null && activeServiceModal !== 'genius' && activeServiceModal !== 'friendly_points' && activeServiceModal !== 'mall' && (
+        <Suspense fallback={<LazyModalSkeleton title="الخدمة المطلوبة" />}>
+          <ServicesModal
+            activeService={activeServiceModal}
+            onClose={() => setActiveServiceModal(null)}
+          />
+        </Suspense>
+      )}
 
       {/* GLOBAL PERSISTENT VOICE ROOM (يبقى محملاً بالخلفية عند اختيار "احتفاظ" لضمان استمرار الصوت والميكروفون والتفاعل دون انقطاع) */}
       {activeVoiceRoom && (
@@ -1872,33 +2192,35 @@ export const ProfileScreen: React.FC = () => {
               : 'opacity-100 pointer-events-auto visible fixed inset-0 z-50'
           }
         >
-          <VoiceRoomScreen
-            roomTitle={activeVoiceRoom.title}
-            hostName={activeVoiceRoom.host}
-            roomId={activeVoiceRoom.id}
-            isOwner={Boolean(activeVoiceRoom.isOwner || activeVoiceRoom.ownerId === profile.userId)}
-            currentUserName={profile.name}
-            currentUserAvatar={profile.avatarUrl}
-            currentUserVip={profile.vipTier || 'VIP6'}
-            onClose={() => {
-              queueMicrotask(() => {
-                setActiveVoiceRoom(null);
-                setIsRoomMinimized(false);
-                exitRoomSession();
-              });
-            }}
-            onMinimize={() => {
-              queueMicrotask(() => {
-                setIsRoomMinimized(true);
-                minimizeRoomSession();
-              });
-            }}
-            onOpenRecharge={() => {
-              queueMicrotask(() => {
-                setIsRechargeModalOpen(true);
-              });
-            }}
-          />
+          <Suspense fallback={<LazyModalSkeleton title="جاري الدخول إلى الغرفة الصوتية..." />}>
+            <VoiceRoomScreen
+              roomTitle={activeVoiceRoom.title}
+              hostName={activeVoiceRoom.host}
+              roomId={activeVoiceRoom.id}
+              isOwner={Boolean(activeVoiceRoom.isOwner || activeVoiceRoom.ownerId === profile.userId)}
+              currentUserName={profile.name}
+              currentUserAvatar={profile.avatarUrl}
+              currentUserVip={profile.vipTier || 'VIP6'}
+              onClose={() => {
+                queueMicrotask(() => {
+                  setActiveVoiceRoom(null);
+                  setIsRoomMinimized(false);
+                  exitRoomSession();
+                });
+              }}
+              onMinimize={() => {
+                queueMicrotask(() => {
+                  setIsRoomMinimized(true);
+                  minimizeRoomSession();
+                });
+              }}
+              onOpenRecharge={() => {
+                queueMicrotask(() => {
+                  setIsRechargeModalOpen(true);
+                });
+              }}
+            />
+          </Suspense>
         </div>
       )}
 

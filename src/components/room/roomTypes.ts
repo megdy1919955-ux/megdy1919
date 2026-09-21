@@ -10,6 +10,7 @@ export interface MicSeat {
   isMuted?: boolean;
   isMutedByAdmin?: boolean;
   isSpeaking?: boolean;
+  audioLevel?: number;
   isEmpty?: boolean;
   isLocked?: boolean;
   isPendingAudioAcceptance?: boolean;
