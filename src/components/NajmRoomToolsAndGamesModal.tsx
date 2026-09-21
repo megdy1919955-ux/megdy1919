@@ -110,11 +110,6 @@ export const NajmRoomToolsAndGamesModal: React.FC<NajmRoomToolsAndGamesModalProp
 
   if (!isOpen) return null;
 
-  const handleGameClick = (title: string, gameKey: string) => {
-    setActiveGameTitle(title);
-    setActiveSubModal(`game_${gameKey}`);
-  };
-
   const handleSpeakerToggle = () => {
     const nextState = !speakerMutedLocal;
     setSpeakerMutedLocal(nextState);
@@ -373,7 +368,7 @@ export const NajmRoomToolsAndGamesModal: React.FC<NajmRoomToolsAndGamesModalProp
             ) : (
               <>
                 {/* ========================================================================= */}
-                {/* SECTION 1: الألعاب التفاعلية (Interactive Games)                           */}
+                {/* SECTION 1: الألعاب التفاعلية (Interactive Games - ربط خارجي عبر الداش بورد) */}
                 {/* ========================================================================= */}
                 <div className="space-y-3">
                   <div className="space-y-0.5">
@@ -381,187 +376,21 @@ export const NajmRoomToolsAndGamesModal: React.FC<NajmRoomToolsAndGamesModalProp
                       الألعاب التفاعلية
                     </h2>
                     <p className="text-xs text-slate-500 font-medium text-right">
-                      يمكن لأصحاب الغرف الحصول على مكافآت إضافية إذا كانت الألعاب مع 💰 مفتوحة.
+                      يتم إدراج الألعاب وتفعيلها مباشرة عبر لوحة التحكم (الداش بورد) الخارجية
                     </p>
                   </div>
 
-                  {/* 4-Columns Grid */}
-                  <div className="grid grid-cols-4 gap-3 pt-1">
-                    {/* 1. Ludo (Top Right) */}
-                    <button
-                      type="button"
-                      onClick={() => handleGameClick('Ludo الملكي', 'ludo')}
-                      className="flex flex-col items-center gap-1.5 group cursor-pointer active:scale-95 transition-transform"
-                    >
-                      <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-sky-500 to-blue-600 p-0.5 shadow-md flex items-center justify-center overflow-visible">
-                        <div className="absolute -top-1.5 -right-1 bg-amber-400 border border-white text-slate-950 text-[9px] font-black px-1 py-0.2 rounded-full shadow-xs flex items-center gap-0.5 z-10">
-                          <span>💰</span>
-                        </div>
-                        <div className="w-full h-full rounded-2xl bg-gradient-to-br from-blue-400 via-sky-500 to-indigo-700 flex flex-col items-center justify-center text-white overflow-hidden relative">
-                          <div className="text-xl">🕌</div>
-                          <span className="text-[10px] font-black tracking-wider text-amber-300 drop-shadow-sm font-sans uppercase">
-                            LUDO
-                          </span>
-                        </div>
-                      </div>
-                      <span className="text-xs font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
-                        Ludo
-                      </span>
-                    </button>
-
-                    {/* 2. صيد (Fishing) */}
-                    <button
-                      type="button"
-                      onClick={() => handleGameClick('صيد الأسماك والقرش الذهبي', 'fishing')}
-                      className="flex flex-col items-center gap-1.5 group cursor-pointer active:scale-95 transition-transform"
-                    >
-                      <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-400 to-blue-500 p-0.5 shadow-md flex items-center justify-center overflow-visible">
-                        <div className="absolute -top-1.5 -right-1 bg-amber-400 border border-white text-slate-950 text-[9px] font-black px-1 py-0.2 rounded-full shadow-xs flex items-center gap-0.5 z-10">
-                          <span>💰</span>
-                        </div>
-                        <div className="w-full h-full rounded-2xl bg-gradient-to-b from-sky-400 via-cyan-500 to-blue-600 flex flex-col items-center justify-center text-white overflow-hidden relative">
-                          <div className="text-2xl filter drop-shadow-sm">🐟</div>
-                          <div className="absolute bottom-0 inset-x-0 h-2 bg-blue-700/50 flex items-center justify-center">
-                            <div className="w-2 h-2 rounded-full bg-orange-400" />
-                          </div>
-                        </div>
-                      </div>
-                      <span className="text-xs font-bold text-slate-700 group-hover:text-cyan-600 transition-colors">
-                        صيد
-                      </span>
-                    </button>
-
-                    {/* 3. الدومينو (Domino) */}
-                    <button
-                      type="button"
-                      onClick={() => handleGameClick('دومينو التحدي المباشر', 'domino')}
-                      className="flex flex-col items-center gap-1.5 group cursor-pointer active:scale-95 transition-transform"
-                    >
-                      <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-teal-400 to-emerald-600 p-0.5 shadow-md flex items-center justify-center overflow-visible">
-                        <div className="absolute -top-1.5 -right-1 bg-amber-400 border border-white text-slate-950 text-[9px] font-black px-1 py-0.2 rounded-full shadow-xs flex items-center gap-0.5 z-10">
-                          <span>💰</span>
-                        </div>
-                        <div className="w-full h-full rounded-2xl bg-gradient-to-br from-emerald-400 via-teal-500 to-teal-700 flex flex-col items-center justify-center text-white overflow-hidden relative">
-                          <div className="text-xl">🁡🁣</div>
-                          <span className="text-[8px] font-black text-amber-200 uppercase font-mono">DOMINO</span>
-                        </div>
-                      </div>
-                      <span className="text-xs font-bold text-slate-700 group-hover:text-emerald-600 transition-colors">
-                        الدومينو
-                      </span>
-                    </button>
-
-                    {/* 4. الفائز الرهيب (Lucky Wheel) */}
-                    <button
-                      type="button"
-                      onClick={() => handleGameClick('عجلة الفائز الرهيب', 'lucky_wheel')}
-                      className="flex flex-col items-center gap-1.5 group cursor-pointer active:scale-95 transition-transform"
-                    >
-                      <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-600 to-indigo-600 p-0.5 shadow-md flex items-center justify-center overflow-visible">
-                        <div className="w-full h-full rounded-2xl bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-700 flex flex-col items-center justify-center text-white overflow-hidden relative">
-                          <div className="w-9 h-9 rounded-full border-2 border-amber-300 bg-gradient-to-tr from-yellow-400 via-rose-500 to-purple-600 flex items-center justify-center shadow-inner animate-spin-slow">
-                            <div className="w-3 h-3 rounded-full bg-amber-300 border border-white shadow-xs" />
-                          </div>
-                          <div className="absolute top-1 text-[8px] text-amber-300">▼</div>
-                        </div>
-                      </div>
-                      <span className="text-xs font-bold text-slate-700 group-hover:text-purple-600 transition-colors">
-                        الفائز الرهيب
-                      </span>
-                    </button>
-
-                    {/* 5. ONO (Cards) */}
-                    <button
-                      type="button"
-                      onClick={() => handleGameClick('لعبة بطاقات ONO', 'ono')}
-                      className="flex flex-col items-center gap-1.5 group cursor-pointer active:scale-95 transition-transform"
-                    >
-                      <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-500 to-indigo-600 p-0.5 shadow-md flex items-center justify-center overflow-visible">
-                        <div className="w-full h-full rounded-2xl bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-700 flex flex-col items-center justify-center text-white overflow-hidden relative">
-                          <div className="text-lg">🃏🎴</div>
-                          <span className="text-[10px] font-black tracking-widest text-yellow-300 bg-red-600 px-1 rounded-sm shadow-xs">
-                            ONO
-                          </span>
-                        </div>
-                      </div>
-                      <span className="text-xs font-bold text-slate-700 group-hover:text-purple-600 transition-colors">
-                        ONO
-                      </span>
-                    </button>
-
-                    {/* 6. مشاهدة فيديو (Watch Video / Cinema Mode) - تظهر لصاحب الروم فقط والمبرمج */}
-                    {(isRoomOwner || isDev) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onClose();
-                          if (onOpenCinemaWatchParty) {
-                            onOpenCinemaWatchParty();
-                          } else {
-                            handleGameClick('مشاهدة فيديو وسينما الروم', 'video');
-                          }
-                        }}
-                        className="flex flex-col items-center gap-1.5 group cursor-pointer active:scale-95 transition-transform"
-                      >
-                        <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-600 p-0.5 shadow-md flex items-center justify-center overflow-visible">
-                          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-purple-700 via-indigo-800 to-slate-900 flex flex-col items-center justify-center text-white overflow-hidden relative">
-                            <div className="text-xl">🎬</div>
-                            <div className="w-4 h-4 rounded-full bg-emerald-400 text-slate-950 flex items-center justify-center text-[8px] font-bold shadow-xs">
-                              ▶
-                            </div>
-                          </div>
-                        </div>
-                        <span className="text-xs font-bold text-slate-700 group-hover:text-purple-600 transition-colors">
-                          مشاهدة فيديو
-                        </span>
-                      </button>
-                    )}
-
-                    {/* 7. مقهى الكاذب (Liar's Cafe) */}
-                    <button
-                      type="button"
-                      onClick={() => handleGameClick('مقهى الكاذب (Liar\'s Cafe)', 'liar_cafe')}
-                      className="flex flex-col items-center gap-1.5 group cursor-pointer active:scale-95 transition-transform"
-                    >
-                      <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-rose-600 to-amber-700 p-0.5 shadow-md flex items-center justify-center overflow-visible">
-                        <div className="absolute -top-1 -left-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full z-20 shadow-xs" />
-                        <div className="absolute -top-1.5 -right-1 bg-amber-400 border border-white text-slate-950 text-[9px] font-black px-1 py-0.2 rounded-full shadow-xs flex items-center gap-0.5 z-10">
-                          <span>💰</span>
-                        </div>
-                        <div className="w-full h-full rounded-2xl bg-gradient-to-br from-rose-700 via-red-800 to-amber-900 flex flex-col items-center justify-center text-white overflow-hidden relative">
-                          <div className="text-xl">🐰🎲</div>
-                          <span className="text-[7.5px] font-black text-amber-300 leading-tight">
-                            LIAR'S CAFE
-                          </span>
-                        </div>
-                      </div>
-                      <span className="text-xs font-bold text-slate-700 group-hover:text-rose-600 transition-colors">
-                        مقهى الكاذب
-                      </span>
-                    </button>
-
-                    {/* 8. الكاروم (Carrom) */}
-                    <button
-                      type="button"
-                      onClick={() => handleGameClick('لعبة الكاروم (CARROM)', 'carrom')}
-                      className="flex flex-col items-center gap-1.5 group cursor-pointer active:scale-95 transition-transform"
-                    >
-                      <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-600 to-rose-700 p-0.5 shadow-md flex items-center justify-center overflow-visible">
-                        <div className="absolute -top-1 -left-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full z-20 shadow-xs" />
-                        <div className="absolute -top-1.5 -right-1 bg-amber-400 border border-white text-slate-950 text-[9px] font-black px-1 py-0.2 rounded-full shadow-xs flex items-center gap-0.5 z-10">
-                          <span>💰</span>
-                        </div>
-                        <div className="w-full h-full rounded-2xl bg-gradient-to-br from-amber-700 via-yellow-800 to-stone-900 flex flex-col items-center justify-center text-white overflow-hidden relative">
-                          <div className="text-xl">🎯</div>
-                          <span className="text-[8px] font-black text-amber-200 uppercase font-sans">
-                            CARROM
-                          </span>
-                        </div>
-                      </div>
-                      <span className="text-xs font-bold text-slate-700 group-hover:text-amber-700 transition-colors">
-                        الكاروم
-                      </span>
-                    </button>
+                  {/* Empty Dashboard Integration Slot */}
+                  <div className="w-full rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/75 p-5 flex flex-col items-center justify-center text-center space-y-2">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-2xl">
+                      🎮
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-bold text-slate-700">لا توجد ألعاب مضافة حالياً</p>
+                      <p className="text-[11px] text-slate-400">
+                        مساحة الربط البرمجي المباشر مع ألعاب الداش بورد جاهزة للاستقبال
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -739,65 +568,8 @@ export const NajmRoomToolsAndGamesModal: React.FC<NajmRoomToolsAndGamesModalProp
         </motion.div>
 
         {/* ========================================================================= */}
-        {/* SUB-MODALS: Interactive popups for all tools and games                    */}
+        {/* SUB-MODALS: Interactive popups for room tools                              */}
         {/* ========================================================================= */}
-
-        {/* 1. Game Player Launcher Sub-Modal */}
-        {activeSubModal && activeSubModal.startsWith('game_') && (
-          <div
-            className="fixed inset-0 z-60 bg-black/75 flex items-center justify-center p-4"
-            onClick={() => setActiveSubModal(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-3xl p-5 text-white space-y-4 shadow-2xl text-center"
-            >
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 mx-auto flex items-center justify-center text-3xl shadow-lg shadow-indigo-500/30">
-                🎮
-              </div>
-
-              <div className="space-y-1">
-                <h3 className="text-lg font-black text-amber-300">{activeGameTitle}</h3>
-                <p className="text-xs text-slate-300">
-                  صالة الألعاب التفاعلية الجماعية المباشرة داخل الروم. العب وتحدَّ أصدقاء المايك الآن!
-                </p>
-              </div>
-
-              <div className="p-3 bg-slate-800/80 rounded-2xl border border-slate-700 flex items-center justify-between text-xs font-bold">
-                <div className="flex items-center gap-1.5 text-amber-400">
-                  <Coins className="w-4 h-4 fill-amber-400" />
-                  <span>رسوم الدخول: 100 كوينز</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-emerald-400">
-                  <Trophy className="w-4 h-4" />
-                  <span>الجائزة: 10,000 كوينز</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  onClick={() => setActiveSubModal(null)}
-                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                >
-                  إلغاء
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveSubModal(null);
-                    onTriggerToast?.(`تم بدء ${activeGameTitle}! استمتع باللعب 🎲✨`);
-                  }}
-                  className="flex-2 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-400 hover:brightness-110 text-slate-950 font-black rounded-xl text-xs shadow-lg shadow-amber-500/20 cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <Play className="w-4 h-4 fill-slate-950" />
-                  <span>بدء اللعبة الآن</span>
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
 
         {/* 2. Lucky Box (صندوق حظ) Sub-Modal */}
         {activeSubModal === 'lucky_box' && (

@@ -8,9 +8,9 @@ export const parseVipNumber = (vip?: string | number): number => {
   return match ? parseInt(match[0], 10) : 0;
 };
 
-// 🌟 YOHO HOST & VIP BADGES COMPONENT (VIP, Heart 39, Crown 111)
+// 🌟 NAJM HOST & VIP BADGES COMPONENT (VIP, Heart 39, Crown 111)
 // Note: Age & Gender are intentionally omitted here and reserved strictly for User Profile and User Card per design guidelines
-export interface HostYoHoBadgesProps {
+export interface NajmHostVipBadgesProps {
   gender?: 'male' | 'female';
   age?: number;
   heartLevel?: number;
@@ -19,7 +19,9 @@ export interface HostYoHoBadgesProps {
   onToggleGender?: () => void;
 }
 
-export const HostYoHoBadges: React.FC<HostYoHoBadgesProps> = ({
+export type HostYoHoBadgesProps = NajmHostVipBadgesProps;
+
+export const NajmHostVipBadges: React.FC<NajmHostVipBadgesProps> = ({
   heartLevel = 39,
   crownLevel = 111,
   vipLevel = 'VIP6',
@@ -83,3 +85,6 @@ export const HostYoHoBadges: React.FC<HostYoHoBadgesProps> = ({
     </div>
   );
 };
+
+export const HostYoHoBadges = NajmHostVipBadges;
+export default NajmHostVipBadges;
