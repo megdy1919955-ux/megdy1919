@@ -1,84 +1,118 @@
-import { createCipheriv, randomBytes } from 'crypto';
+import { createCipheriv } from 'crypto';
 
 export const ZEGO_DEFAULT_APP_ID = 2138622497;
 export const ZEGO_DEFAULT_SECRET = '1b2eeb1e9d219e2b6485b78178c24449';
 
-function makeNonce(): number {
-  const min = -Math.pow(2, 31);
-  const max = Math.pow(2, 31) - 1;
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+enum ErrorCode {
+  success = 0,
+  appIDInvalid = 1,
+  userIDInvalid = 3,
+  secretInvalid = 5,
+  effectiveTimeInSecondsInvalid = 6
 }
 
-function aesEncrypt(plainText: string, key: string, iv: string): Buffer {
-  const cipher = createCipheriv('aes-128-cbc', Buffer.from(key, 'utf8'), Buffer.from(iv, 'utf8'));
+function RndNum(a: number, b: number): number {
+  return Math.ceil((a + (b - a)) * Math.random());
+}
+
+function makeNonce(): number {
+  return RndNum(-2147483648, 2147483647);
+}
+
+function makeRandomIv(): string {
+  const str = '0123456789abcdefghijklmnopqrstuvwxyz';
+  const result: string[] = [];
+  for (let i = 0; i < 16; i++) {
+    const r = Math.floor(Math.random() * str.length);
+    result.push(str.charAt(r));
+  }
+  return result.join('');
+}
+
+function getAlgorithm(keyBase64: string): string {
+  const key = Buffer.from(keyBase64);
+  switch (key.length) {
+    case 16:
+      return 'aes-128-cbc';
+    case 24:
+      return 'aes-192-cbc';
+    case 32:
+      return 'aes-256-cbc';
+  }
+  throw new Error('Invalid key length: ' + key.length);
+}
+
+function aesEncrypt(plainText: string, key: string, iv: string): ArrayBuffer {
+  const cipher = createCipheriv(getAlgorithm(key), key, iv);
   cipher.setAutoPadding(true);
-  return Buffer.concat([cipher.update(plainText, 'utf8'), cipher.final()]);
+  const encrypted = cipher.update(plainText);
+  const final = cipher.final();
+  const out = Buffer.concat([encrypted, final]);
+  return Uint8Array.from(out).buffer;
 }
 
 /**
- * Generate official ZEGOCLOUD Token04
+ * Official ZEGOCLOUD Token04 implementation
  */
 export function generateZegoToken04(
   appId: number,
   userId: string,
   secret: string,
   effectiveTimeInSeconds: number = 86400,
-  payload: string = ''
+  payload?: string
 ): string {
   if (!appId || typeof appId !== 'number') {
-    throw new Error('ZEGOCLOUD appId is invalid');
+    throw {
+      errorCode: ErrorCode.appIDInvalid,
+      errorMessage: 'appID invalid'
+    };
   }
   if (!userId || typeof userId !== 'string') {
-    throw new Error('ZEGOCLOUD userId is invalid');
+    throw {
+      errorCode: ErrorCode.userIDInvalid,
+      errorMessage: 'userId invalid'
+    };
   }
-  if (!secret || typeof secret !== 'string' || secret.length < 16) {
-    throw new Error('ZEGOCLOUD secret must be at least 16 bytes');
+  if (!secret || typeof secret !== 'string' || secret.length !== 32) {
+    throw {
+      errorCode: ErrorCode.secretInvalid,
+      errorMessage: 'secret must be a 32 byte string'
+    };
+  }
+  if (!effectiveTimeInSeconds || typeof effectiveTimeInSeconds !== 'number') {
+    throw {
+      errorCode: ErrorCode.effectiveTimeInSecondsInvalid,
+      errorMessage: 'effectiveTimeInSeconds invalid'
+    };
   }
 
-  // Use exactly 16 bytes of secret for AES-128-CBC encryption key
-  const aesKey = secret.substring(0, 16);
-  // Generate random 16 bytes IV
-  const iv = randomBytes(8).toString('hex'); // 16 chars hex = 16 bytes utf8
-
-  const now = Math.floor(Date.now() / 1000);
-  const expire = now + effectiveTimeInSeconds;
-  const nonce = makeNonce();
-
+  const createTime = Math.floor(new Date().getTime() / 1000);
   const tokenInfo = {
     app_id: appId,
     user_id: userId,
-    nonce: nonce,
-    ctime: now,
-    expire: expire,
-    payload: payload
+    nonce: makeNonce(),
+    ctime: createTime,
+    expire: createTime + effectiveTimeInSeconds,
+    payload: payload || ''
   };
 
-  const plainText = JSON.stringify(tokenInfo);
-  const encrypted = aesEncrypt(plainText, aesKey, iv);
+  const plaintText = JSON.stringify(tokenInfo);
+  const iv: string = makeRandomIv();
+  const encryptBuf = aesEncrypt(plaintText, secret, iv);
 
-  // Pack binary:
-  // [expire (8 bytes, BE)]
-  // [iv length (2 bytes, BE)]
-  // [iv (16 bytes)]
-  // [content length (2 bytes, BE)]
-  // [encrypted content]
-  const expireBuf = Buffer.alloc(8);
-  expireBuf.writeBigInt64BE(BigInt(expire), 0);
+  const [b1, b2, b3] = [new Uint8Array(8), new Uint8Array(2), new Uint8Array(2)];
+  new DataView(b1.buffer).setBigInt64(0, BigInt(tokenInfo.expire), false);
+  new DataView(b2.buffer).setUint16(0, iv.length, false);
+  new DataView(b3.buffer).setUint16(0, encryptBuf.byteLength, false);
 
-  const ivBuf = Buffer.from(iv, 'utf8');
-  const ivLenBuf = Buffer.alloc(2);
-  ivLenBuf.writeUInt16BE(ivBuf.length, 0);
-
-  const contentLenBuf = Buffer.alloc(2);
-  contentLenBuf.writeUInt16BE(encrypted.length, 0);
-
-  const packedBuffer = Buffer.concat([
-    expireBuf,
-    ivLenBuf,
-    ivBuf,
-    contentLenBuf,
-    encrypted
+  const buf = Buffer.concat([
+    Buffer.from(b1),
+    Buffer.from(b2),
+    Buffer.from(iv),
+    Buffer.from(b3),
+    Buffer.from(encryptBuf)
   ]);
 
-  return '04' + packedBuffer.toString('base64');
+  const dv = new DataView(Uint8Array.from(buf).buffer);
+  return '04' + Buffer.from(dv.buffer).toString('base64');
 }

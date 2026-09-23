@@ -135,9 +135,9 @@ export class ZegoVoiceEngine {
 
       const serverCandidate = tokenData.server || this.server;
 
-      // Initialize ZegoExpressEngine
+      // Initialize ZegoExpressEngine with valid StandardChatroom scenario (6)
       this.zg = new ZegoExpressEngine(this.appId, serverCandidate as any, {
-        scenario: 0 // Live / Standard Room Scenario
+        scenario: 6 // 6 = StandardChatroom, 7 = HighQualityChatroom, 3 = Default
       });
 
       this.setupEventListeners();
