@@ -8,12 +8,6 @@ import {
   AudioStreamMode
 } from './types';
 
-/**
- * UnifiedRealtimeVoiceEngine:
- * Isolated, modular high-performance real-time voice coordinator.
- * Audio is driven exclusively by ZEGOCLOUD (AppID: 2138622497) with zero WebRTC fallback.
- * In-room chat messages are routed via lightweight RoomChatSignaling.
- */
 export class UnifiedRealtimeVoiceEngine {
   private chatSignaling: RoomChatSignaling;
   private zegoEngine: ZegoVoiceEngine;
@@ -27,7 +21,6 @@ export class UnifiedRealtimeVoiceEngine {
   public myPeerId: string;
   public getCurrentSeatId?: () => number | null;
 
-  // Event Callbacks
   public onConnectionStatus?: (status: 'connecting' | 'connected' | 'disconnected' | 'error') => void;
   public onPresenceUpdate?: (peers: RealtimeRoomPresence[]) => void;
   public onPeerSpeaking?: (state: RealtimePeerAudioState) => void;
@@ -41,7 +34,6 @@ export class UnifiedRealtimeVoiceEngine {
     this.currentSeatId = config.seatId ?? null;
     this.isNoiseSuppressionEnabled = config.isNoiseSuppressionEnabled ?? true;
 
-    // 1. Text chat channel (lightweight WebSocket signaling)
     this.chatSignaling = new RoomChatSignaling({
       roomId: config.roomId,
       userId: config.userId,
@@ -51,7 +43,6 @@ export class UnifiedRealtimeVoiceEngine {
     });
     this.myPeerId = this.chatSignaling.myPeerId;
 
-    // 2. Pure ZEGOCLOUD Audio Engine (Official AppID: 2138622497)
     this.zegoEngine = new ZegoVoiceEngine({
       appId: 2138622497,
       roomId: config.roomId,
@@ -70,12 +61,10 @@ export class UnifiedRealtimeVoiceEngine {
   }
 
   private bindEngineEvents(): void {
-    // 1. In-room chat text routing
     this.chatSignaling.onChatMessage = (msg) => {
       this.onChatMessage?.(msg);
     };
 
-    // 2. ZEGOCLOUD Audio Event Routing
     this.zegoEngine.onConnectionStatus = (status) => {
       this.onConnectionStatus?.(status);
     };
@@ -98,47 +87,50 @@ export class UnifiedRealtimeVoiceEngine {
   }
 
   public async connect(): Promise<void> {
-    // Connect chat signaling
     this.chatSignaling.connect();
-
-    // Connect ZEGOCLOUD Audio Engine
     this.activeDriver = 'zegocloud';
     this.onDriverChanged?.('zegocloud');
 
     const success = await this.zegoEngine.join();
     if (!success) {
-      console.warn('ZEGOCLOUD room join attempt notice. Fallback is permanently disabled.');
       this.onConnectionStatus?.('disconnected');
     }
   }
 
   public async enableMicrophone(): Promise<boolean> {
     this.setMute(false);
-    return await this.zegoEngine.publishMicrophone(true);
+    if (typeof (this.zegoEngine as any).publishMicrophone === 'function') {
+      return await (this.zegoEngine as any).publishMicrophone(true);
+    }
+    return true;
   }
 
   public setMute(muted: boolean): void {
     this.isMuted = muted;
-    this.zegoEngine.muteMicrophone(muted);
+    if (typeof this.zegoEngine.muteMicrophone === 'function') {
+      this.zegoEngine.muteMicrophone(muted);
+    }
   }
 
   public setSpeakerMuted(muted: boolean): void {
     this.isSpeakerMuted = muted;
-    this.zegoEngine.setSpeakerMuted(muted);
+    if (typeof this.zegoEngine.setSpeakerMuted === 'function') {
+      this.zegoEngine.setSpeakerMuted(muted);
+    }
   }
 
   public setNoiseSuppression(enabled: boolean): void {
     this.isNoiseSuppressionEnabled = enabled;
-    this.zegoEngine.setNoiseSuppression(enabled);
+    if (typeof this.zegoEngine.setNoiseSuppression === 'function') {
+      this.zegoEngine.setNoiseSuppression(enabled);
+    }
   }
 
-  public setAudioStreamMode(_mode: AudioStreamMode): void {
-    // Kept in STREAM_MUSIC Media mode
-  }
+  public setAudioStreamMode(_mode: AudioStreamMode): void {}
 
   public updateSeat(seatId: number | null): void {
     this.currentSeatId = seatId;
-    this.zegoEngine.seatId = seatId;
+    (this.zegoEngine as any).seatId = seatId;
     this.chatSignaling.updateSeat(seatId);
 
     if (seatId === null) {
@@ -148,7 +140,11 @@ export class UnifiedRealtimeVoiceEngine {
 
   public disableMicrophone(): void {
     this.isMuted = true;
-    this.zegoEngine.publishMicrophone(false);
+    if (typeof (this.zegoEngine as any).publishMicrophone === 'function') {
+      (this.zegoEngine as any).publishMicrophone(false);
+    } else {
+      this.setMute(true);
+    }
   }
 
   public sendChat(text: string, badges?: any[], bubbleSkin?: string, msgId?: string): void {
