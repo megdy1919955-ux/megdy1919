@@ -165,19 +165,16 @@ import {
   isDeveloper
 } from '../lib/roleService';
 import {
-  UnifiedRealtimeVoiceEngine
-} from '../lib/unifiedRealtimeVoiceEngine';
-import {
-  RealtimeVoiceEngine,
+  UnifiedRealtimeVoiceEngine,
   AudioStreamMode,
   getSavedAudioStreamMode,
-  saveAudioStreamMode
-} from '../lib/realtimeVoiceService';
-import {
+  saveAudioStreamMode,
   getSavedNoiseSuppressionState,
-  saveNoiseSuppressionState
-} from '../lib/audioNoiseSuppressionProcessor';
-import { RealtimeRoomPresence, RealtimePeerAudioState, RealtimeNetworkQuality } from '../types/realtimeAudio';
+  saveNoiseSuppressionState,
+  RealtimeRoomPresence,
+  RealtimePeerAudioState,
+  RealtimeNetworkQuality
+} from '../audio';
 import {
   MicSeat,
   SpeakingAuraType,

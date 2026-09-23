@@ -1,17 +1,6 @@
 import { ZegoExpressEngine } from 'zego-express-engine-webrtc';
-import { RealtimeRoomPresence, RealtimePeerAudioState, RealtimeNetworkQuality } from '../types/realtimeAudio';
-import { notifyNativeAndroidAudioMode, syncMediaSessionState } from './realtimeVoiceService';
-
-export interface ZegoVoiceEngineOptions {
-  appId?: number;
-  server?: string | string[];
-  roomId: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
-  seatId?: number | null;
-  isNoiseSuppressionEnabled?: boolean;
-}
+import { RealtimeRoomPresence, RealtimePeerAudioState, RealtimeNetworkQuality, ZegoVoiceEngineOptions } from './types';
+import { notifyNativeAndroidAudioMode, syncMediaSessionState } from './nativeAudioBridge';
 
 export class ZegoVoiceEngine {
   public appId: number;
@@ -57,11 +46,11 @@ export class ZegoVoiceEngine {
     this.seatId = options.seatId ?? null;
     this.isNoiseSuppressionEnabled = options.isNoiseSuppressionEnabled ?? true;
 
-    // Build resilient list of fallback WebSocket servers
+    // Resilient list of WebSocket servers
     if (options.server) {
       this.server = options.server;
     } else {
-      const customEnvServer = ((import.meta as any).env?.VITE_ZEGO_SERVER_URL as string) || '';
+      const customEnvServer = (import.meta as any).env?.VITE_ZEGO_SERVER_URL;
       if (customEnvServer) {
         this.server = customEnvServer;
       } else {
@@ -76,27 +65,29 @@ export class ZegoVoiceEngine {
     }
   }
 
-  /**
-   * Fetch secure ZEGOCLOUD Token04 from our server
-   */
-  private async fetchZegoToken(): Promise<{ available?: boolean; token?: string | null; appId?: number; server?: string } | null> {
+  private async fetchZegoToken(): Promise<{ token: string; server?: string } | null> {
     try {
       const res = await fetch(`/api/zego/token?userId=${encodeURIComponent(this.userId)}&roomId=${encodeURIComponent(this.roomId)}`);
       if (!res.ok) {
+        console.warn(`ZEGOCLOUD token request failed: HTTP ${res.status}`);
         return null;
       }
-      return await res.json();
-    } catch {
+      const data = await res.json();
+      if (!data.available || !data.token) {
+        return null;
+      }
+      return {
+        token: data.token,
+        server: data.server
+      };
+    } catch (err) {
+      console.warn('ZEGOCLOUD token fetch error:', err);
       return null;
     }
   }
 
-  /**
-   * Initialize Web Audio Master Playback Engine explicitly in Media Mode (latencyHint: 'playback')
-   * This forces the mobile operating system (Android/iOS) to route ZEGOCLOUD audio through STREAM_MUSIC
-   */
   private initPlaybackAudioContext(): AudioContext | null {
-    if (this.playbackAudioContext) {
+    if (this.playbackAudioContext && this.playbackAudioContext.state !== 'closed') {
       if (this.playbackAudioContext.state === 'suspended') {
         this.playbackAudioContext.resume().catch(() => {});
       }
@@ -104,31 +95,28 @@ export class ZegoVoiceEngine {
     }
 
     try {
-      const AudioCtx =
+      const AudioContextClass =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return null;
 
-      // latencyHint: 'playback' instructs Android/iOS to route audio through the Media Stream
-      this.playbackAudioContext = new AudioCtx({ latencyHint: 'playback' });
+      if (!AudioContextClass) return null;
+
+      // latencyHint: 'playback' ensures Android/iOS OS treats this as Media Playback (STREAM_MUSIC)
+      this.playbackAudioContext = new AudioContextClass({ latencyHint: 'playback' });
       this.masterGainNode = this.playbackAudioContext.createGain();
-      this.masterGainNode.gain.value = this.isSpeakerMuted ? 0 : 1.0;
+      this.masterGainNode.gain.value = this.isSpeakerMuted ? 0.0 : 1.0;
       this.masterGainNode.connect(this.playbackAudioContext.destination);
 
       if (this.playbackAudioContext.state === 'suspended') {
         this.playbackAudioContext.resume().catch(() => {});
       }
-
       return this.playbackAudioContext;
-    } catch (err) {
-      console.warn('ZEGOCLOUD Playback AudioContext initialization warning:', err);
+    } catch (e) {
+      console.warn('Playback AudioContext initialization warning:', e);
       return null;
     }
   }
 
-  /**
-   * Connect to ZEGOCLOUD Voice Room
-   */
   public async join(): Promise<boolean> {
     this.isLeaving = false;
     if (this.reconnectTimer) {
@@ -137,62 +125,56 @@ export class ZegoVoiceEngine {
     }
 
     try {
-      // 1. Fetch token and server configurations
       const tokenData = await this.fetchZegoToken();
-      if (!tokenData || !tokenData.available || !tokenData.token) {
-        // ZEGOCLOUD credentials not configured in environment; gracefully bypass without unauthenticated WebSocket spam
+      if (!tokenData) {
+        console.warn('ZEGOCLOUD is not configured on backend.');
         return false;
-      }
-
-      const token = tokenData.token;
-      if (tokenData.appId) {
-        this.appId = tokenData.appId;
-      }
-      if (tokenData.server) {
-        this.server = tokenData.server;
       }
 
       this.onConnectionStatus?.('connecting');
 
-      // 2. Instantiate ZegoExpressEngine only when valid credentials exist
-      this.zg = new ZegoExpressEngine(this.appId, this.server);
+      const serverCandidate = tokenData.server || this.server;
 
-      // 3. Register Event Handlers
+      // Initialize ZegoExpressEngine
+      this.zg = new ZegoExpressEngine(this.appId, serverCandidate as any, {
+        scenario: 0 // Live / Standard Room Scenario
+      });
+
       this.setupEventListeners();
 
-      // 4. Enable volume monitoring for speaking animations (every 150ms)
-      try {
-        this.zg.setSoundLevelDelegate(true, 150);
-      } catch (err) {
-        console.warn('⚠️ Could not activate sound level delegate:', err);
-      }
-
-      // 5. Login to room
-      this.initPlaybackAudioContext();
-      notifyNativeAndroidAudioMode('media');
-      syncMediaSessionState(`غرفة صوتية ${this.roomId}`, true);
-
+      // Login to Zego Room
       const loginResult = await this.zg.loginRoom(
         this.roomId,
-        token,
-        { userID: this.userId, userName: this.userName },
-        { userUpdate: true, maxMemberCount: 100000 }
+        tokenData.token,
+        {
+          userID: this.userId,
+          userName: this.userName
+        },
+        {
+          userUpdate: true,
+          maxMemberCount: 1000
+        }
       );
 
       if (loginResult) {
         this.isConnected = true;
         this.onConnectionStatus?.('connected');
-        this.onNetworkQuality?.({
-          pingMs: 28,
-          qualityScore: 'excellent',
-          engineMode: 'zegocloud'
-        });
+
+        notifyNativeAndroidAudioMode('media');
+        syncMediaSessionState(`غرفة صوتية ${this.roomId}`, true);
+
+        this.zg.setSoundLevelDelegate(true, 300);
+
+        if (this.seatId !== null) {
+          await this.publishMicrophone(true);
+        }
+
         return true;
       } else {
         throw new Error('ZEGOCLOUD room login returned false');
       }
     } catch (err: any) {
-      console.warn('ZEGOCLOUD room join unvailable:', err?.code, err?.message || err);
+      console.warn('ZEGOCLOUD room join notice:', err?.code, err?.message || err);
       if (this.zg) {
         try {
           this.zg.logoutRoom(this.roomId);
@@ -211,8 +193,7 @@ export class ZegoVoiceEngine {
   private setupEventListeners(): void {
     if (!this.zg) return;
 
-    // Room connection state
-    this.zg.on('roomStateUpdate', (roomID: string, state: string, errorCode: number) => {
+    this.zg.on('roomStateUpdate', (roomID: string, state: 'DISCONNECTED' | 'CONNECTING' | 'CONNECTED', errorCode: number) => {
       console.log(`📡 ZEGOCLOUD Room [${roomID}] state: ${state}, code: ${errorCode}`);
       if (state === 'CONNECTED') {
         this.isConnected = true;
@@ -224,7 +205,6 @@ export class ZegoVoiceEngine {
       } else if (state === 'DISCONNECTED') {
         this.isConnected = false;
         this.onConnectionStatus?.('disconnected');
-        // Strictly persist on ZEGOCLOUD: automatically schedule reconnection without fallback
         if (!this.isLeaving) {
           this.scheduleAutoReconnect();
         }
@@ -233,7 +213,6 @@ export class ZegoVoiceEngine {
       }
     });
 
-    // Remote users update
     this.zg.on('roomUserUpdate', (roomID: string, updateType: 'DELETE' | 'ADD', userList: Array<{ userID: string; userName: string }>) => {
       userList.forEach((u) => {
         if (updateType === 'ADD') {
@@ -245,7 +224,6 @@ export class ZegoVoiceEngine {
       this.syncPresence();
     });
 
-    // Remote audio streams (auto-play when another speaker speaks from mic seats)
     this.zg.on('roomStreamUpdate', async (roomID: string, updateType: 'DELETE' | 'ADD', streamList: Array<{ streamID: string; user: { userID: string; userName?: string } }>) => {
       if (!this.zg) return;
 
@@ -256,7 +234,6 @@ export class ZegoVoiceEngine {
           try {
             const remoteMediaStream = await this.zg.startPlayingStream(stream.streamID);
 
-            // 1. Direct High-Fidelity Web Audio Pipeline in Media Mode (latencyHint: 'playback')
             const playbackCtx = this.initPlaybackAudioContext();
             if (playbackCtx && this.masterGainNode) {
               try {
@@ -281,19 +258,14 @@ export class ZegoVoiceEngine {
               }
             }
 
-            // 2. HTMLAudioElement for mobile background keep-alive & fallback
             const audioEl = new Audio();
             audioEl.srcObject = remoteMediaStream;
             audioEl.autoplay = true;
             (audioEl as any).playsInline = true;
-            // When Web Audio destination is actively playing, mute HTMLAudioElement to prevent double audio
             audioEl.muted = !!playbackCtx || this.isSpeakerMuted;
-            await audioEl.play().catch(() => {
-              // User interaction will resume audio
-            });
+            await audioEl.play().catch(() => {});
             this.playingStreams.set(stream.streamID, audioEl);
 
-            // 3. Keep Android OS volume rocker synced with Media Volume
             notifyNativeAndroidAudioMode('media');
             syncMediaSessionState(`غرفة صوتية ${this.roomId}`, true);
           } catch (playErr) {
@@ -325,13 +297,11 @@ export class ZegoVoiceEngine {
       }
     });
 
-    // Speaking sound levels for remote users
     this.zg.on('soundLevelUpdate', (soundLevelList: Array<{ streamID: string; soundLevel: number; type: string }>) => {
       soundLevelList.forEach((item) => {
         const isSpeaking = item.soundLevel > 12;
         const normalizedLevel = Math.min(100, Math.round((item.soundLevel / 100) * 100));
 
-        // Find user by streamID convention (roomId_userId_audio)
         const parts = item.streamID.split('_');
         const targetUserId = parts.length >= 2 ? parts[1] : item.streamID;
 
@@ -347,7 +317,6 @@ export class ZegoVoiceEngine {
       });
     });
 
-    // Local microphone capture sound level
     this.zg.on('capturedSoundLevelUpdate', (soundLevel: number) => {
       if (this.isMuted) return;
       const isSpeaking = soundLevel > 10;
@@ -362,7 +331,6 @@ export class ZegoVoiceEngine {
       });
     });
 
-    // Network quality metrics
     this.zg.on('publishQualityUpdate', (streamID: string, stats: any) => {
       const rtt = stats?.video?.rtt || stats?.audio?.rtt || 25;
       this.onNetworkQuality?.({
@@ -379,7 +347,7 @@ export class ZegoVoiceEngine {
       peerId: uId,
       userName: data.userName,
       userAvatar: '',
-      seatId: data.seatId ?? null,
+      seatId: data.seatId,
       isMuted: true,
       isSpeaking: false,
       joinedAt: Date.now()
@@ -387,101 +355,87 @@ export class ZegoVoiceEngine {
     this.onPresenceUpdate?.(peers);
   }
 
-  /**
-   * Publish audio stream when ascending mic seat
-   */
   public async publishMicrophone(enable: boolean): Promise<boolean> {
     if (!this.zg || !this.isConnected) return false;
 
-    if (enable && !this.isPublishing) {
+    if (enable) {
       try {
-        this.localStreamId = `${this.roomId}_${this.userId}_audio`;
-        this.localStream = await this.zg.createStream({
-          camera: {
-            audio: true,
-            video: false
-          }
-        });
+        if (!this.localStream) {
+          const micConstraints: MediaTrackConstraints = {
+            echoCancellation: true,
+            noiseSuppression: this.isNoiseSuppressionEnabled,
+            autoGainControl: true
+          };
 
-        await this.zg.startPublishingStream(this.localStreamId, this.localStream);
-        this.isPublishing = true;
+          this.localStream = await this.zg.createStream({
+            camera: {
+              video: false,
+              audio: micConstraints
+            }
+          });
+        }
+
+        const cleanRoom = this.roomId.replace(/[^a-zA-Z0-9_-]/g, '');
+        const cleanUser = this.userId.replace(/[^a-zA-Z0-9_-]/g, '');
+        this.localStreamId = `s_${cleanRoom}_${cleanUser}_${Date.now().toString(36)}`;
+
+        const ok = await this.zg.startPublishingStream(this.localStreamId, this.localStream);
+        this.isPublishing = ok;
         this.isMuted = false;
-        return true;
+
+        this.zg.mutePublishStreamAudio(this.localStream, false);
+        return ok;
       } catch (err: any) {
-        console.error('Failed to publish microphone on ZEGOCLOUD:', err);
+        console.error('ZEGOCLOUD microphone capture failed:', err);
         this.onMicPermissionError?.(err);
         return false;
       }
-    } else if (!enable && this.isPublishing) {
-      try {
-        if (this.localStreamId) {
-          this.zg.stopPublishingStream(this.localStreamId);
-        }
-        if (this.localStream) {
-          try {
-            if (typeof (this.localStream as any).getTracks === 'function') {
-              (this.localStream as any).getTracks().forEach((track: MediaStreamTrack) => {
-                track.stop();
-              });
-            }
-          } catch {}
-          this.zg.destroyStream(this.localStream);
-          this.localStream = null;
-        }
+    } else {
+      if (this.isPublishing && this.localStreamId) {
+        this.zg.stopPublishingStream(this.localStreamId);
         this.isPublishing = false;
-        this.isMuted = true;
-        return true;
-      } catch (err) {
-        console.warn('Error stopping ZEGOCLOUD stream:', err);
-        return false;
       }
+      if (this.localStream) {
+        this.zg.destroyStream(this.localStream);
+        this.localStream = null;
+      }
+      this.isMuted = true;
+      return true;
     }
-    return true;
   }
 
-  /**
-   * Mute or Unmute local microphone
-   */
-  public muteMicrophone(isMuted: boolean): void {
-    this.isMuted = isMuted;
+  public muteMicrophone(muted: boolean): void {
+    this.isMuted = muted;
     if (this.zg && this.localStream) {
-      try {
-        this.zg.mutePublishStreamAudio(this.localStream, isMuted);
-      } catch (err) {
-        console.warn('Error muting ZEGOCLOUD microphone:', err);
-      }
+      this.zg.mutePublishStreamAudio(this.localStream, muted);
     }
   }
 
-  /**
-   * Mute or Unmute room speaker sound
-   */
-  public setSpeakerMuted(isMuted: boolean): void {
-    this.isSpeakerMuted = isMuted;
+  public setSpeakerMuted(muted: boolean): void {
+    this.isSpeakerMuted = muted;
     if (this.masterGainNode && this.playbackAudioContext) {
-      this.masterGainNode.gain.setValueAtTime(
-        isMuted ? 0 : 1.0,
-        this.playbackAudioContext.currentTime
-      );
+      this.masterGainNode.gain.setValueAtTime(muted ? 0.0 : 1.0, this.playbackAudioContext.currentTime);
     }
     this.playingStreams.forEach((audioEl) => {
-      // If Web Audio master gain is active, HTMLAudioElement stays muted to prevent echo
-      if (!this.playbackAudioContext) {
-        audioEl.muted = isMuted;
-      }
+      audioEl.muted = muted;
     });
   }
 
-  /**
-   * Toggle AI noise suppression
-   */
   public setNoiseSuppression(enabled: boolean): void {
     this.isNoiseSuppressionEnabled = enabled;
+    if (this.localStream) {
+      const audioTracks = this.localStream.getAudioTracks();
+      audioTracks.forEach((track) => {
+        try {
+          track.applyConstraints({
+            noiseSuppression: enabled,
+            echoCancellation: true
+          });
+        } catch {}
+      });
+    }
   }
 
-  /**
-   * Schedule automatic reconnection exclusively to ZEGOCLOUD without fallback
-   */
   private scheduleAutoReconnect(): void {
     if (this.isLeaving || this.reconnectTimer) return;
     console.log('🔄 ZEGOCLOUD: Auto-reconnecting in 2.5s (strictly persisting on ZEGOCLOUD)...');
@@ -495,7 +449,7 @@ export class ZegoVoiceEngine {
           await this.publishMicrophone(true);
         }
       } catch (e) {
-        console.warn('ZEGOCLOUD reconnection retry failed, scheduling next attempt:', e);
+        console.warn('ZEGOCLOUD reconnection retry notice:', e);
         if (!this.isLeaving) {
           this.scheduleAutoReconnect();
         }
@@ -503,9 +457,6 @@ export class ZegoVoiceEngine {
     }, 2500);
   }
 
-  /**
-   * Leave room and clean up resources
-   */
   public async leave(): Promise<void> {
     this.isLeaving = true;
     if (this.reconnectTimer) {
@@ -515,53 +466,52 @@ export class ZegoVoiceEngine {
     if (!this.zg) return;
     try {
       if (this.localStream) {
-        try {
-          if (typeof (this.localStream as any).getTracks === 'function') {
-            (this.localStream as any).getTracks().forEach((track: MediaStreamTrack) => {
-              track.stop();
-            });
-          }
-        } catch {}
-        if (this.localStreamId) {
+        if (this.isPublishing && this.localStreamId) {
           this.zg.stopPublishingStream(this.localStreamId);
         }
         this.zg.destroyStream(this.localStream);
         this.localStream = null;
-        this.isPublishing = false;
       }
-
-      // Clean up remote Web Audio sources and gains
-      this.remoteSources.forEach((source) => {
+      this.playingStreams.forEach((audioEl, streamId) => {
         try {
-          source.disconnect();
+          this.zg?.stopPlayingStream(streamId);
+          audioEl.pause();
+          audioEl.srcObject = null;
+        } catch {}
+      });
+      this.playingStreams.clear();
+
+      this.remoteSources.forEach((src) => {
+        try {
+          src.disconnect();
         } catch {}
       });
       this.remoteSources.clear();
 
-      this.remoteGainNodes.forEach((gain) => {
+      this.remoteGainNodes.forEach((gn) => {
         try {
-          gain.disconnect();
+          gn.disconnect();
         } catch {}
       });
       this.remoteGainNodes.clear();
 
       if (this.playbackAudioContext && this.playbackAudioContext.state !== 'closed') {
-        this.playbackAudioContext.close().catch(() => {});
+        try {
+          this.playbackAudioContext.close().catch(() => {});
+        } catch {}
         this.playbackAudioContext = null;
       }
 
-      this.playingStreams.forEach((audioEl, sId) => {
-        this.zg?.stopPlayingStream(sId);
-        audioEl.pause();
-        audioEl.srcObject = null;
-      });
-      this.playingStreams.clear();
-
-      await this.zg.logoutRoom(this.roomId);
-      this.isConnected = false;
-      this.onConnectionStatus?.('disconnected');
+      this.zg.logoutRoom(this.roomId);
+      try {
+        (this.zg as any).destroyEngine?.();
+      } catch {}
+      this.zg = null;
     } catch (err) {
-      console.warn('Error leaving ZEGOCLOUD room:', err);
+      console.warn('Error during ZEGOCLOUD room leave:', err);
+    } finally {
+      this.isConnected = false;
+      this.isPublishing = false;
     }
   }
 }

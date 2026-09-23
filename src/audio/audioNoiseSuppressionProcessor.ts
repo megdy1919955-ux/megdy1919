@@ -2,18 +2,18 @@
  * AudioNoiseSuppressionProcessor:
  * Advanced Client-side Digital Signal Processing (DSP) & Acoustic Noise Cancellation
  * Cleans up microphone audio before transmitting to server and peers:
- *  1. Low-Rumble & Wind Cancellation (High-Pass Biquad Filter @ 95Hz)
- *  2. High-Frequency Hiss & Electric Sizzle Removal (Low-Pass Biquad Filter @ 7800Hz)
- *  3. Human Speech Formant & Intelligibility Boost (Vocal Peaking Filter @ 2500Hz)
+ *  1. Low-Rumble & Wind Cancellation (High-Pass Biquad Filter @ 135Hz)
+ *  2. High-Frequency Hiss & Electric Sizzle Removal (Low-Pass Biquad Filter @ 3600Hz)
+ *  3. Human Speech Formant & Intelligibility Boost (Vocal Peaking Filters @ 550Hz and 2400Hz)
  *  4. Adaptive Real-time Noise Gate & Downward Expander (Smoothly mutes ambient background noise when not talking)
  *  5. Studio Dynamics Compressor & Peak Limiter (Prevents clipping & loud spikes, evens vocal volume)
  */
 
 export interface NoiseProcessorOptions {
-  gateThreshold?: number; // RMS threshold above which gate opens (default: 0.014)
-  gateCloseThreshold?: number; // RMS threshold below which gate closes (default: 0.009)
-  speechHoldMs?: number; // Natural syllable hold duration in ms (default: 100ms)
-  speechReleaseMs?: number; // Smooth fade-out duration in ms (default: 35ms)
+  gateThreshold?: number; // RMS threshold above which gate opens (default: 0.012)
+  gateCloseThreshold?: number; // RMS threshold below which gate closes
+  speechHoldMs?: number; // Natural syllable hold duration in ms (default: 110ms)
+  speechReleaseMs?: number; // Smooth fade-out duration in ms (default: 30ms)
   onGateStateChange?: (isOpen: boolean, audioLevel: number) => void;
 }
 
@@ -22,18 +22,12 @@ export class AudioNoiseSuppressionProcessor {
   private rawStream: MediaStream;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
   
-  // Cascaded 24dB/oct High-Pass Butterworth filters (cuts machinery rumble & bass < 135Hz)
   private highpassFilter1: BiquadFilterNode | null = null;
   private highpassFilter2: BiquadFilterNode | null = null;
-  
-  // Cascaded 24dB/oct Low-Pass Butterworth filters (cuts TV static & high sizzle > 3600Hz)
   private lowpassFilter1: BiquadFilterNode | null = null;
   private lowpassFilter2: BiquadFilterNode | null = null;
-  
-  // Vocal Formant Shaping (Body @ 550Hz + Clarity Presence @ 2400Hz)
   private vocalBodyFilter: BiquadFilterNode | null = null;
   private vocalPresenceFilter: BiquadFilterNode | null = null;
-  
   private gateGainNode: GainNode | null = null;
   private compressorNode: DynamicsCompressorNode | null = null;
   private scriptProcessor: ScriptProcessorNode | null = null;
@@ -51,8 +45,6 @@ export class AudioNoiseSuppressionProcessor {
   private isCurrentlyOpen: boolean = false;
   private processedStream: MediaStream | null = null;
   private currentVolumeLevel: number = 0;
-  
-  // Real-time Adaptive Ambient Noise Floor Estimator (Tracks background equipment/music/traffic floor)
   private adaptiveNoiseFloor: number = 0.008;
 
   constructor(rawStream: MediaStream, enabled: boolean = true, options?: NoiseProcessorOptions) {
@@ -79,18 +71,14 @@ export class AudioNoiseSuppressionProcessor {
         return;
       }
 
-      // Using latencyHint: 'playback' ensures the mobile operating system (Android/iOS)
-      // routes audio through STREAM_MUSIC (Media Mode) rather than the call audio hardware stream.
       this.audioCtx = new AudioContextClass({ latencyHint: 'playback' });
       if (this.audioCtx.state === 'suspended') {
         this.audioCtx.resume().catch(() => {});
       }
 
-      // 1. Source Node from device raw microphone stream
       this.sourceNode = this.audioCtx.createMediaStreamSource(this.rawStream);
 
-      // 2. Dual Cascaded High-Pass Filter @ 135Hz (24dB/oct steep cut)
-      // Eliminates 100% of engine rumble, machinery vibrations, AC hum, and subwoofer music bass
+      // Cascaded High-Pass Filter @ 135Hz
       this.highpassFilter1 = this.audioCtx.createBiquadFilter();
       this.highpassFilter1.type = 'highpass';
       this.highpassFilter1.frequency.value = 135;
@@ -101,8 +89,7 @@ export class AudioNoiseSuppressionProcessor {
       this.highpassFilter2.frequency.value = 135;
       this.highpassFilter2.Q.value = 0.707;
 
-      // 3. Dual Cascaded Low-Pass Filter @ 3600Hz (24dB/oct steep cut)
-      // Cuts out TV high pitch, harsh clatter, screaming machinery, and sibilant room echoes
+      // Cascaded Low-Pass Filter @ 3600Hz
       this.lowpassFilter1 = this.audioCtx.createBiquadFilter();
       this.lowpassFilter1.type = 'lowpass';
       this.lowpassFilter1.frequency.value = 3600;
@@ -113,27 +100,25 @@ export class AudioNoiseSuppressionProcessor {
       this.lowpassFilter2.frequency.value = 3600;
       this.lowpassFilter2.Q.value = 0.707;
 
-      // 4. Vocal Formant Enhancement:
-      // A. Vocal Body Warmth @ 550Hz (+2.5 dB)
+      // Vocal Body Formant @ 550Hz
       this.vocalBodyFilter = this.audioCtx.createBiquadFilter();
       this.vocalBodyFilter.type = 'peaking';
       this.vocalBodyFilter.frequency.value = 550;
       this.vocalBodyFilter.Q.value = 1.0;
       this.vocalBodyFilter.gain.value = 2.5;
 
-      // B. Vocal Consonant Clarity & Speech Presence @ 2400Hz (+4.5 dB)
+      // Vocal Presence Formant @ 2400Hz
       this.vocalPresenceFilter = this.audioCtx.createBiquadFilter();
       this.vocalPresenceFilter.type = 'peaking';
       this.vocalPresenceFilter.frequency.value = 2400;
       this.vocalPresenceFilter.Q.value = 1.2;
       this.vocalPresenceFilter.gain.value = 4.5;
 
-      // 5. Studio Noise Gate Gain Node (Instantly opens on speech, completely silences ambient noise on pause)
+      // Studio Noise Gate Gain Node
       this.gateGainNode = this.audioCtx.createGain();
       this.gateGainNode.gain.value = this.isEnabled ? 0.0 : 1.0;
 
-      // 6. Intelligent Voice Activity Detection (VAD) with Adaptive Noise Floor Tracking
-      // 256 samples buffer gives ~5ms ultra-low latency response in the mobile browser
+      // Intelligent VAD
       this.scriptProcessor = this.audioCtx.createScriptProcessor(256, 1, 1);
       this.scriptProcessor.onaudioprocess = (event) => {
         if (!this.isEnabled) {
@@ -165,7 +150,6 @@ export class AudioNoiseSuppressionProcessor {
         const zcr = zeroCrossings / len;
         const now = performance.now();
 
-        // Dynamically track ambient background noise floor (music, cars, heavy machinery)
         if (rms < this.adaptiveNoiseFloor) {
           this.adaptiveNoiseFloor = this.adaptiveNoiseFloor * 0.95 + rms * 0.05;
         } else {
@@ -173,19 +157,15 @@ export class AudioNoiseSuppressionProcessor {
         }
         this.adaptiveNoiseFloor = Math.max(0.002, Math.min(0.06, this.adaptiveNoiseFloor));
 
-        // Adaptive Speech Threshold: stays above ambient room noise floor
         const dynamicOpenThreshold = Math.max(this.openThreshold, this.adaptiveNoiseFloor * 2.3 + 0.007);
         const dynamicCloseThreshold = dynamicOpenThreshold * 0.65;
 
-        // Human Speech Transient Detection:
-        // Distinguishes dynamic human vocal bursts from steady equipment drone or continuous background music
         const isVoiceCandidate =
           rms >= dynamicOpenThreshold &&
           (crestFactor >= 2.3 || rms >= dynamicOpenThreshold * 1.4) &&
           (zcr >= 0.015 && zcr <= 0.65);
 
         if (isVoiceCandidate) {
-          // Human voice detected - fast smooth 3ms attack
           this.lastSpeechTimestamp = now;
           if (!this.isCurrentlyOpen) {
             this.isCurrentlyOpen = true;
@@ -194,17 +174,14 @@ export class AudioNoiseSuppressionProcessor {
             }
           }
         } else if (this.isCurrentlyOpen && rms >= dynamicCloseThreshold) {
-          // Voice sustained during syllables
           this.lastSpeechTimestamp = now;
         }
 
         const elapsedSinceSpeech = now - this.lastSpeechTimestamp;
 
         if (this.isCurrentlyOpen && elapsedSinceSpeech > this.speechHoldMs) {
-          // Silence or ambient noise - complete zero attenuation clamp
           this.isCurrentlyOpen = false;
           if (this.gateGainNode && this.audioCtx) {
-            // Smooth 15ms release to absolute silence
             this.gateGainNode.gain.setTargetAtTime(0.0, this.audioCtx.currentTime, 0.015);
           }
         }
@@ -218,19 +195,17 @@ export class AudioNoiseSuppressionProcessor {
         }
       };
 
-      // 7. Studio Dynamics Compressor & Limiter (Evens out speech volume and prevents clipping)
+      // Studio Dynamics Compressor & Limiter
       this.compressorNode = this.audioCtx.createDynamicsCompressor();
-      this.compressorNode.threshold.value = -24; // dB
+      this.compressorNode.threshold.value = -24;
       this.compressorNode.knee.value = 8;
       this.compressorNode.ratio.value = 5.5;
-      this.compressorNode.attack.value = 0.002; // 2ms fast attack
-      this.compressorNode.release.value = 0.06; // 60ms release
+      this.compressorNode.attack.value = 0.002;
+      this.compressorNode.release.value = 0.06;
 
-      // 8. MediaStream Destination to emit the cleansed audio stream
       this.destinationNode = this.audioCtx.createMediaStreamDestination();
 
-      // Native Pure Transmission Graph (Direct Hardware Streaming):
-      // Source -> HighPass1 -> HighPass2 -> VocalBody -> VocalPresence -> LowPass1 -> LowPass2 -> GateGain -> Compressor -> Destination
+      // Transmission Graph
       this.sourceNode.connect(this.highpassFilter1);
       this.highpassFilter1.connect(this.highpassFilter2);
       this.highpassFilter2.connect(this.vocalBodyFilter);
@@ -241,9 +216,7 @@ export class AudioNoiseSuppressionProcessor {
       this.gateGainNode.connect(this.compressorNode);
       this.compressorNode.connect(this.destinationNode);
 
-      // Dedicated Sidechain Detector tap (Listens to speech band before gate muting):
-      // NOTE: Connecting directly to this.audioCtx.destination can cause mobile browsers to trigger speaker/call audio mode.
-      // We route the silent VAD tap into this.destinationNode (the MediaStreamDestination) with gain 0.0 to prevent hardware call routing.
+      // Sidechain Detector tap
       this.dummySilentGain = this.audioCtx.createGain();
       this.dummySilentGain.gain.value = 0.0;
       this.lowpassFilter2.connect(this.scriptProcessor);
@@ -257,14 +230,10 @@ export class AudioNoiseSuppressionProcessor {
     }
   }
 
-  /**
-   * Toggle noise suppression state on the fly with immediate DSP effect.
-   */
   public setEnabled(enabled: boolean): void {
     this.isEnabled = enabled;
     if (this.audioCtx && this.gateGainNode) {
       if (!enabled) {
-        // Bypass gate and filter attenuation: pass full gain
         this.gateGainNode.gain.setValueAtTime(1.0, this.audioCtx.currentTime);
       }
     }
@@ -274,9 +243,6 @@ export class AudioNoiseSuppressionProcessor {
     return this.isEnabled;
   }
 
-  /**
-   * Returns the clean, noise-suppressed MediaStream ready for WebRTC transmission.
-   */
   public getProcessedStream(): MediaStream {
     return this.processedStream || this.rawStream;
   }
@@ -289,25 +255,16 @@ export class AudioNoiseSuppressionProcessor {
     return this.currentVolumeLevel;
   }
 
-  /**
-   * Returns true if user voice has opened the noise gate
-   */
   public isGateOpen(): boolean {
     return this.isEnabled ? this.isCurrentlyOpen : true;
   }
 
-  /**
-   * Resume audio context if locked by browser autoplay policy
-   */
   public resume(): void {
     if (this.audioCtx && this.audioCtx.state === 'suspended') {
       this.audioCtx.resume().catch(() => {});
     }
   }
 
-  /**
-   * Cleanup nodes and free Web Audio resources
-   */
   public destroy(): void {
     try {
       if (this.dummySilentGain) {
@@ -355,15 +312,6 @@ export class AudioNoiseSuppressionProcessor {
         this.compressorNode.disconnect();
         this.compressorNode = null;
       }
-      if (this.dummySilentGain) {
-        this.dummySilentGain.disconnect();
-        this.dummySilentGain = null;
-      }
-      if (this.scriptProcessor) {
-        this.scriptProcessor.disconnect();
-        this.scriptProcessor.onaudioprocess = null;
-        this.scriptProcessor = null;
-      }
       if (this.audioCtx && this.audioCtx.state !== 'closed') {
         this.audioCtx.close().catch(() => {});
         this.audioCtx = null;
@@ -375,9 +323,6 @@ export class AudioNoiseSuppressionProcessor {
   }
 }
 
-/**
- * Storage helpers for persisting user's Noise Suppression preference across sessions
- */
 export const NOISE_SUPPRESSION_STORAGE_KEY = 'super_legend_mic_noise_suppression_enabled';
 
 export function getSavedNoiseSuppressionState(): boolean {
@@ -387,7 +332,7 @@ export function getSavedNoiseSuppressionState(): boolean {
       return saved === 'true';
     }
   } catch (e) {}
-  return true; // Default ON for pristine studio clarity
+  return true;
 }
 
 export function saveNoiseSuppressionState(enabled: boolean): void {

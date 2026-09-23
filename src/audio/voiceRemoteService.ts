@@ -70,10 +70,10 @@ export class VoiceRemoteManager {
 
   private checkKeywords(transcript: string) {
     for (const trigger of DEFAULT_VOICE_TRIGGERS) {
-      for (const kw of trigger.keywords) {
-        if (transcript.includes(kw)) {
+      for (const keyword of trigger.keywords) {
+        if (transcript.includes(keyword)) {
           if (this.onTriggerCallback) {
-            this.onTriggerCallback(trigger.emoji, kw);
+            this.onTriggerCallback(trigger.emoji, keyword);
           }
           return;
         }
@@ -81,29 +81,32 @@ export class VoiceRemoteManager {
     }
   }
 
-  public startListening() {
-    this.isListening = true;
-    if (this.recognition) {
+  public start() {
+    if (this.recognition && !this.isListening) {
       try {
         this.recognition.start();
+        this.isListening = true;
       } catch (err) {
-        console.warn('Recognition already started or permission required', err);
+        console.warn('Voice recognition start error:', err);
       }
     }
   }
 
-  public stopListening() {
-    this.isListening = false;
-    if (this.recognition) {
+  public stop() {
+    if (this.recognition && this.isListening) {
       try {
         this.recognition.stop();
+        this.isListening = false;
       } catch (err) {
-        // Handle stop error
+        console.warn('Voice recognition stop error:', err);
       }
     }
   }
 
-  public getIsListening() {
-    return this.isListening;
+  public destroy() {
+    this.stop();
+    this.recognition = null;
+    this.onTriggerCallback = undefined;
+    this.onErrorCallback = undefined;
   }
 }
