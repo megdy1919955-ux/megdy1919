@@ -275,14 +275,15 @@ async function startServer() {
 
   app.get('/api/zego/token', (req, res) => {
     try {
-      const appId = Number(process.env.ZEGO_APP_ID) || ZEGO_DEFAULT_APP_ID;
-      const secret = process.env.ZEGO_SERVER_SECRET || ZEGO_DEFAULT_SECRET;
-      const isConfigured = Boolean(appId && secret);
+      const appId = Number(process.env.ZEGO_APP_ID);
+      const secret = process.env.ZEGO_SERVER_SECRET;
+      const isConfigured = Boolean(appId && secret && secret.length >= 16);
+
       if (!isConfigured) {
         return res.json({
           available: false,
           token: null,
-          message: 'ZEGOCLOUD is not configured with ZEGO_SERVER_SECRET and ZEGO_APP_ID'
+          message: 'ZEGOCLOUD is not configured in environment variables. Real-time audio will seamlessly use native WebRTC.'
         });
       }
 
@@ -312,8 +313,8 @@ async function startServer() {
         token
       });
     } catch (err: any) {
-      console.error('Failed to generate ZEGOCLOUD Token04:', err);
-      res.status(500).json({ available: false, error: err.message || 'Token generation failed' });
+      console.warn('ZEGOCLOUD Token04 generation warning:', err?.message || err);
+      res.json({ available: false, token: null, error: err.message || 'Token generation unavailable' });
     }
   });
 

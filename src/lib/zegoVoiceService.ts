@@ -47,7 +47,7 @@ export class ZegoVoiceEngine {
   public onMicPermissionError?: (err: Error) => void;
 
   constructor(options: ZegoVoiceEngineOptions) {
-    this.appId = options.appId || 2138622497;
+    this.appId = options.appId || 0;
     this.roomId = options.roomId;
     this.userId = options.userId;
     this.userName = options.userName;
@@ -183,10 +183,13 @@ export class ZegoVoiceEngine {
         throw new Error('ZEGOCLOUD room login returned false');
       }
     } catch (err: any) {
-      console.error('❌ ZEGOCLOUD join error details:', err?.code, err?.message || err);
+      console.warn('ZEGOCLOUD room join unvailable:', err?.code, err?.message || err);
       if (this.zg) {
         try {
           this.zg.logoutRoom(this.roomId);
+        } catch {}
+        try {
+          (this.zg as any).destroyEngine?.();
         } catch {}
         this.zg = null;
       }
