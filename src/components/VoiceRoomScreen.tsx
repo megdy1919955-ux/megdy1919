@@ -1262,7 +1262,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       userName: realDisplayName,
       userAvatar: realDisplayAvatar,
       seatId: isOwner ? 1 : null,
-      preferredDriver: 'auto',
+      preferredDriver: 'zegocloud',
       isNoiseSuppressionEnabled
     });
     engine.setNoiseSuppression(isNoiseSuppressionEnabled);

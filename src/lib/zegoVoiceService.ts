@@ -38,6 +38,8 @@ export class ZegoVoiceEngine {
   private masterGainNode: GainNode | null = null;
   private remoteSources: Map<string, MediaStreamAudioSourceNode> = new Map();
   private remoteGainNodes: Map<string, GainNode> = new Map();
+  private isLeaving: boolean = false;
+  private reconnectTimer: any = null;
 
   // Callbacks
   public onConnectionStatus?: (status: 'connecting' | 'connected' | 'disconnected' | 'error') => void;
@@ -128,6 +130,12 @@ export class ZegoVoiceEngine {
    * Connect to ZEGOCLOUD Voice Room
    */
   public async join(): Promise<boolean> {
+    this.isLeaving = false;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
     try {
       // 1. Fetch token and server configurations
       const tokenData = await this.fetchZegoToken();
@@ -208,10 +216,18 @@ export class ZegoVoiceEngine {
       console.log(`📡 ZEGOCLOUD Room [${roomID}] state: ${state}, code: ${errorCode}`);
       if (state === 'CONNECTED') {
         this.isConnected = true;
+        if (this.reconnectTimer) {
+          clearTimeout(this.reconnectTimer);
+          this.reconnectTimer = null;
+        }
         this.onConnectionStatus?.('connected');
       } else if (state === 'DISCONNECTED') {
         this.isConnected = false;
         this.onConnectionStatus?.('disconnected');
+        // Strictly persist on ZEGOCLOUD: automatically schedule reconnection without fallback
+        if (!this.isLeaving) {
+          this.scheduleAutoReconnect();
+        }
       } else if (state === 'CONNECTING') {
         this.onConnectionStatus?.('connecting');
       }
@@ -464,9 +480,38 @@ export class ZegoVoiceEngine {
   }
 
   /**
+   * Schedule automatic reconnection exclusively to ZEGOCLOUD without fallback
+   */
+  private scheduleAutoReconnect(): void {
+    if (this.isLeaving || this.reconnectTimer) return;
+    console.log('🔄 ZEGOCLOUD: Auto-reconnecting in 2.5s (strictly persisting on ZEGOCLOUD)...');
+    this.reconnectTimer = setTimeout(async () => {
+      this.reconnectTimer = null;
+      if (this.isLeaving || this.isConnected) return;
+      try {
+        const wasPublishing = this.isPublishing;
+        const joined = await this.join();
+        if (joined && wasPublishing && !this.isMuted) {
+          await this.publishMicrophone(true);
+        }
+      } catch (e) {
+        console.warn('ZEGOCLOUD reconnection retry failed, scheduling next attempt:', e);
+        if (!this.isLeaving) {
+          this.scheduleAutoReconnect();
+        }
+      }
+    }, 2500);
+  }
+
+  /**
    * Leave room and clean up resources
    */
   public async leave(): Promise<void> {
+    this.isLeaving = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     if (!this.zg) return;
     try {
       if (this.localStream) {
