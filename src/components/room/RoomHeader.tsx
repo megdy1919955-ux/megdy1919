@@ -9,6 +9,8 @@ export interface RoomHeaderProps {
   currentRoomAvatar: string;
   hostSeat: MicSeat;
   isRoomLocked: boolean;
+  isOwner?: boolean;
+  hostDisplayName?: string;
   mainRoomConfig?: MainRoomCustomizerConfig;
   isRegularUser: boolean;
   onOpenRoomInfo: () => void;
@@ -23,6 +25,8 @@ export const RoomHeader: React.FC<RoomHeaderProps> = ({
   currentRoomAvatar,
   hostSeat,
   isRoomLocked,
+  isOwner = false,
+  hostDisplayName,
   mainRoomConfig,
   isRegularUser,
   onOpenRoomInfo,
@@ -41,6 +45,8 @@ export const RoomHeader: React.FC<RoomHeaderProps> = ({
         currentRoomAvatar={currentRoomAvatar}
         hostSeat={hostSeat}
         isRoomLocked={isRoomLocked}
+        isOwner={isOwner}
+        hostDisplayName={hostDisplayName}
         mainRoomConfig={mainRoomConfig}
         onOpenRoomInfo={onOpenRoomInfo}
         onOpenHostProfile={onOpenHostProfile}

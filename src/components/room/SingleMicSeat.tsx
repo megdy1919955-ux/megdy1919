@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Lock, Plus, Mic, MicOff } from 'lucide-react';
 import { MicSeat, formatCounterNumber, getRibbonMilestoneTheme } from './roomTypes';
+import { RoomOwnerBadge } from './RoomOwnerBadge';
 import { MainRoomCustomizerConfig } from '../../types/roomCustomizer';
 import { hexToRgba } from '../../lib/roomCustomizerService';
 import { LottieReactionPlayer } from '../LottieReactionPlayer';
@@ -415,7 +416,7 @@ export const SingleMicSeat: React.FC<SingleMicSeatProps> = React.memo(({
         </div>
       ) : (
         <div className="mt-0.5 px-0.5 py-0.2 bg-transparent text-center max-w-[76px] sm:max-w-[84px] flex flex-col items-center justify-center">
-          <div className="max-w-full truncate flex items-center justify-center">
+          <div className="max-w-full truncate flex items-center justify-center gap-1">
             <span
               className={`text-[9.5px] truncate block leading-tight ${
                 isVip8Plus
@@ -425,6 +426,7 @@ export const SingleMicSeat: React.FC<SingleMicSeatProps> = React.memo(({
             >
               {seat.userName}
             </span>
+            {seat.isOwner && <RoomOwnerBadge size="sm" />}
           </div>
         </div>
       )}

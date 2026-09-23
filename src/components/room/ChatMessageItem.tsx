@@ -4,6 +4,7 @@ import { Crown, CornerUpLeft, MoreVertical } from 'lucide-react';
 import { UserProfileData } from '../AdvancedUserProfileModal';
 import { ChatMessage, BubbleSkinType } from './roomTypes';
 import { HostYoHoBadges } from './HostYoHoBadges';
+import { RoomOwnerBadge } from './RoomOwnerBadge';
 
 // Helper function to return dynamic chat bubble skin styling based on equipped skin item
 export const getBubbleStyles = (skin: BubbleSkinType = 'default', isHost?: boolean, isGift?: boolean) => {
@@ -310,7 +311,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
                   isHost: msg.isHost
                 });
               }}
-              className={`font-black text-[11px] truncate cursor-pointer hover:underline ${
+              className={`font-black text-[11px] truncate cursor-pointer hover:underline flex items-center gap-1 ${
                 msg.isHost
                   ? (typeof msg.vipLevel === 'number'
                       ? msg.vipLevel >= 8
@@ -321,7 +322,8 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
               }`}
               title="انقر لمعاينة بطاقة البروفايل"
             >
-              {msg.userName}
+              <span>{msg.userName}</span>
+              {msg.isOwner && <RoomOwnerBadge size="sm" />}
             </span>
 
             {/* Badges */}

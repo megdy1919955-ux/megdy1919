@@ -262,9 +262,10 @@ async function startServer() {
 
   // ZEGOCLOUD Configuration and Token Generation Endpoints
   app.get('/api/zego/config', (req, res) => {
-    const isConfigured = Boolean(process.env.ZEGO_SERVER_SECRET && process.env.ZEGO_APP_ID);
-    const appId = Number(process.env.ZEGO_APP_ID) || 0;
-    const serverUrl = process.env.ZEGO_SERVER_URL || '';
+    const appId = Number(process.env.ZEGO_APP_ID) || ZEGO_DEFAULT_APP_ID;
+    const serverSecret = process.env.ZEGO_SERVER_SECRET || ZEGO_DEFAULT_SECRET;
+    const serverUrl = process.env.ZEGO_SERVER_URL || `wss://webliveroom${appId}-api.coolzcloud.com/ws`;
+    const isConfigured = Boolean(appId && serverSecret);
     res.json({
       appId,
       server: serverUrl,
@@ -274,7 +275,9 @@ async function startServer() {
 
   app.get('/api/zego/token', (req, res) => {
     try {
-      const isConfigured = Boolean(process.env.ZEGO_SERVER_SECRET && process.env.ZEGO_APP_ID);
+      const appId = Number(process.env.ZEGO_APP_ID) || ZEGO_DEFAULT_APP_ID;
+      const secret = process.env.ZEGO_SERVER_SECRET || ZEGO_DEFAULT_SECRET;
+      const isConfigured = Boolean(appId && secret);
       if (!isConfigured) {
         return res.json({
           available: false,
@@ -285,11 +288,20 @@ async function startServer() {
 
       const userId = (req.query.userId as string) || `user_${Math.floor(Math.random() * 100000)}`;
       const roomId = (req.query.roomId as string) || 'default_room';
-      const appId = Number(process.env.ZEGO_APP_ID);
-      const secret = process.env.ZEGO_SERVER_SECRET!;
       const serverUrl = process.env.ZEGO_SERVER_URL || `wss://webliveroom${appId}-api.coolzcloud.com/ws`;
 
-      const token = generateZegoToken04(appId, userId, secret, 86400);
+      // Privilege 1 = LoginRoom, 2 = PublishStream. Both set to 1 (allow).
+      const payloadObj = {
+        room_id: roomId,
+        privilege: {
+          1: 1,
+          2: 1
+        },
+        stream_id_list: []
+      };
+      const payload = JSON.stringify(payloadObj);
+
+      const token = generateZegoToken04(appId, userId, secret, 86400, payload);
 
       res.json({
         available: true,

@@ -554,7 +554,7 @@ export class RealtimeVoiceEngine {
   private setupAudioAnalysis(stream: MediaStream) {
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      this.audioContext = new AudioCtx();
+      this.audioContext = new AudioCtx({ latencyHint: 'playback' });
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 256;
       this.analyser.smoothingTimeConstant = 0.5;

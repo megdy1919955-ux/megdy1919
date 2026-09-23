@@ -7,6 +7,7 @@ export interface MicSeat {
   userName: string;
   avatar?: string;
   isHost?: boolean;
+  isOwner?: boolean;
   isMuted?: boolean;
   isMutedByAdmin?: boolean;
   isSpeaking?: boolean;
@@ -45,6 +46,7 @@ export interface ChatMessage {
   userColor?: string;
   isGift?: boolean;
   isHost?: boolean;
+  isOwner?: boolean;
   userGender?: 'male' | 'female';
   userAge?: number;
   heartLevel?: number;
@@ -72,6 +74,7 @@ export interface RoomEntranceEvent {
   avatar: string;
   vipLevel: number | string;
   nobleLevel?: string;
+  isOwner?: boolean;
   actionText?: string;
   timestamp?: number;
 }

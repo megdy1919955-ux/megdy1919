@@ -79,7 +79,9 @@ export class AudioNoiseSuppressionProcessor {
         return;
       }
 
-      this.audioCtx = new AudioContextClass({ latencyHint: 'interactive' });
+      // Using latencyHint: 'playback' ensures the mobile operating system (Android/iOS)
+      // routes audio through STREAM_MUSIC (Media Mode) rather than the call audio hardware stream.
+      this.audioCtx = new AudioContextClass({ latencyHint: 'playback' });
       if (this.audioCtx.state === 'suspended') {
         this.audioCtx.resume().catch(() => {});
       }
@@ -240,11 +242,13 @@ export class AudioNoiseSuppressionProcessor {
       this.compressorNode.connect(this.destinationNode);
 
       // Dedicated Sidechain Detector tap (Listens to speech band before gate muting):
+      // NOTE: Connecting directly to this.audioCtx.destination can cause mobile browsers to trigger speaker/call audio mode.
+      // We route the silent VAD tap into this.destinationNode (the MediaStreamDestination) with gain 0.0 to prevent hardware call routing.
       this.dummySilentGain = this.audioCtx.createGain();
       this.dummySilentGain.gain.value = 0.0;
       this.lowpassFilter2.connect(this.scriptProcessor);
       this.scriptProcessor.connect(this.dummySilentGain);
-      this.dummySilentGain.connect(this.audioCtx.destination);
+      this.dummySilentGain.connect(this.destinationNode);
 
       this.processedStream = this.destinationNode.stream;
     } catch (err) {
@@ -350,6 +354,15 @@ export class AudioNoiseSuppressionProcessor {
       if (this.compressorNode) {
         this.compressorNode.disconnect();
         this.compressorNode = null;
+      }
+      if (this.dummySilentGain) {
+        this.dummySilentGain.disconnect();
+        this.dummySilentGain = null;
+      }
+      if (this.scriptProcessor) {
+        this.scriptProcessor.disconnect();
+        this.scriptProcessor.onaudioprocess = null;
+        this.scriptProcessor = null;
       }
       if (this.audioCtx && this.audioCtx.state !== 'closed') {
         this.audioCtx.close().catch(() => {});

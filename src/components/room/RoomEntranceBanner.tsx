@@ -2,10 +2,19 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Crown } from 'lucide-react';
 import { RoomEntranceEvent } from './roomTypes';
+import { RoomOwnerBadge } from './RoomOwnerBadge';
 
 export interface RoomEntranceBannerProps {
   currentEntrance?: RoomEntranceEvent | null;
   entranceQueue?: RoomEntranceEvent[];
+  currentUser?: {
+    userName: string;
+    avatar?: string;
+    vipLevel?: number | string;
+    isOwner?: boolean;
+    isHost?: boolean;
+    actionText?: string;
+  };
   onDismiss?: (id: string) => void;
 }
 
@@ -151,7 +160,7 @@ interface GlidingItemProps {
 
 const GlidingEntranceItem: React.FC<GlidingItemProps> = ({ item, onComplete }) => {
   const theme = getEntranceVipTheme(item.vipLevel);
-  const actionText = 'انضم إلى الغرفة';
+  const actionText = item.actionText || 'تم الانضمام';
 
   return (
     <motion.div
@@ -207,8 +216,9 @@ const GlidingEntranceItem: React.FC<GlidingItemProps> = ({ item, onComplete }) =
           </span>
 
           {/* 3. User Name (مع ظهور الاسم كامل دون اقتصاص) */}
-          <span className={`font-black text-[11px] whitespace-nowrap ${theme.nameColor}`}>
-            {item.userName}
+          <span className={`font-black text-[11px] whitespace-nowrap ${theme.nameColor} flex items-center gap-1`}>
+            <span>{item.userName}</span>
+            {item.isOwner && <RoomOwnerBadge size="sm" />}
           </span>
 
           {/* 4. Action Text ("انضم إلى الغرفة") */}
@@ -227,6 +237,7 @@ const GlidingEntranceItem: React.FC<GlidingItemProps> = ({ item, onComplete }) =
 export const RoomEntranceBanner: React.FC<RoomEntranceBannerProps> = ({
   currentEntrance,
   entranceQueue = [],
+  currentUser,
   onDismiss,
 }) => {
   // Pending queue of items waiting in line
@@ -234,6 +245,28 @@ export const RoomEntranceBanner: React.FC<RoomEntranceBannerProps> = ({
   // Only ONE banner active at any time: بعد أن يمشي الأول يظهر الثاني كالطابور
   const [currentEntranceItem, setCurrentEntranceItem] = useState<RoomEntranceEvent | null>(null);
   const seenIdsRef = useRef<Set<string>>(new Set());
+  const autoTriggeredRef = useRef<boolean>(false);
+
+  // Auto-enqueue entrance banner when entering the room with profile data
+  useEffect(() => {
+    if (currentUser?.userName && !autoTriggeredRef.current) {
+      autoTriggeredRef.current = true;
+      const timer = setTimeout(() => {
+        const welcomeItem: RoomEntranceEvent = {
+          id: `entrance-join-${Date.now()}`,
+          userName: currentUser.userName,
+          avatar: currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+          vipLevel: currentUser.vipLevel || 'VIP 6',
+          isOwner: currentUser.isOwner,
+          actionText: currentUser.actionText || 'تم الانضمام',
+          timestamp: Date.now()
+        };
+        seenIdsRef.current.add(welcomeItem.id);
+        setQueue((prev) => [...prev, welcomeItem]);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [currentUser?.userName]);
 
   // Listen to single incoming currentEntrance with strict deduplication
   useEffect(() => {

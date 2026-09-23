@@ -8,6 +8,7 @@ export * from './SingleMicSeat';
 export * from './RoomHeader';
 export * from './RoomBottomBar';
 export * from './RoomEntranceBanner';
+export * from './RoomOwnerBadge';
 export * from './VipAnnouncementFlyer';
 export * from './VipBroadcastChatInput';
 export * from './RoomTitleHeaderCapsule';

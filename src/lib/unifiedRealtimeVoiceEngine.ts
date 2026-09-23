@@ -57,8 +57,9 @@ export class UnifiedRealtimeVoiceEngine {
 
     const preferred = config.preferredDriver || 'auto';
 
-    // 2. Initialize ZEGOCLOUD Engine only if explicitly requested
-    if (preferred === 'zegocloud') {
+    // 2. Initialize ZEGOCLOUD Engine (Primary real-time cloud engine with AppID 2138622497)
+    // Default or explicitly requested 'zegocloud'
+    if (preferred === 'zegocloud' || preferred === 'auto') {
       this.zegoEngine = new ZegoVoiceEngine({
         appId: 2138622497,
         roomId: config.roomId,
@@ -86,8 +87,8 @@ export class UnifiedRealtimeVoiceEngine {
       this.activeDriver = 'agora';
     }
 
-    // Default to high-fidelity native WebRTC engine
-    if (preferred === 'auto' || preferred === 'webrtc') {
+    // High-fidelity native WebRTC engine when explicitly requested
+    if (preferred === 'webrtc') {
       this.activeDriver = 'webrtc';
     }
 

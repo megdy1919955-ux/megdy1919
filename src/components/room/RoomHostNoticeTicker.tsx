@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Crown, Edit3, Check, X } from 'lucide-react';
+import { RoomOwnerBadge } from './RoomOwnerBadge';
 
 export interface RoomHostNoticeTickerProps {
   roomId?: string;
@@ -66,7 +67,10 @@ export const RoomHostNoticeTicker: React.FC<RoomHostNoticeTickerProps> = React.m
         <div className="flex items-center gap-1.5 font-black text-xs text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]">
           <Crown className="w-4 h-4 text-yellow-400 fill-yellow-400 shrink-0" />
           <span>[دخول المضيف]</span>
-          <span className="text-yellow-300 font-extrabold">{hostName}</span>
+          <span className="text-yellow-300 font-extrabold flex items-center gap-1">
+            <span>{hostName}</span>
+            {isOwner && <RoomOwnerBadge size="sm" />}
+          </span>
         </div>
 
         {isOwner && !isEditing && (

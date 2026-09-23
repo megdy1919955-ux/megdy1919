@@ -3,12 +3,15 @@ import { Lock } from 'lucide-react';
 import { MainRoomCustomizerConfig } from '../../types/roomCustomizer';
 import { hexToRgba } from '../../lib/roomCustomizerService';
 import { MicSeat } from './roomTypes';
+import { RoomOwnerBadge } from './RoomOwnerBadge';
 
 export interface RoomTitleHeaderCapsuleProps {
   currentRoomTitle: string;
   currentRoomAvatar: string;
   hostSeat: MicSeat;
   isRoomLocked: boolean;
+  isOwner?: boolean;
+  hostDisplayName?: string;
   mainRoomConfig?: MainRoomCustomizerConfig;
   onOpenRoomInfo: () => void;
   onOpenHostProfile: () => void;
@@ -23,6 +26,8 @@ export const RoomTitleHeaderCapsule: React.FC<RoomTitleHeaderCapsuleProps> = ({
   currentRoomAvatar,
   hostSeat,
   isRoomLocked,
+  isOwner = false,
+  hostDisplayName,
   mainRoomConfig,
   onOpenRoomInfo,
   onOpenHostProfile
@@ -90,19 +95,25 @@ export const RoomTitleHeaderCapsule: React.FC<RoomTitleHeaderCapsuleProps> = ({
               e.stopPropagation();
               onOpenHostProfile();
             }}
-            className="text-amber-300 font-extrabold truncate hover:underline cursor-pointer"
+            className="text-amber-300 font-extrabold truncate hover:underline cursor-pointer flex items-center gap-1"
             title="عرض الكارت التعريفي للمضيف"
           >
-            {hostSeat.userName}
+            <span>{hostSeat.userName || hostDisplayName || 'مضيف الغرفة'}</span>
+            {isOwner && <RoomOwnerBadge size="sm" />}
           </span>
           {isRoomLocked ? (
             <span title="الغرفة مقفلة برمز 🔒">
               <Lock className="w-3 h-3 text-amber-400 stroke-[2.5] shrink-0 animate-pulse" />
             </span>
-          ) : (
+          ) : isOwner ? (
             <span className="text-[8.5px] text-amber-300 font-bold bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.2 rounded-full shrink-0 flex items-center gap-0.5">
               <span>👑</span>
               <span>المالك</span>
+            </span>
+          ) : (
+            <span className="text-[8.5px] text-slate-300 font-bold bg-slate-700/40 border border-slate-600/30 px-1.5 py-0.2 rounded-full shrink-0 flex items-center gap-0.5">
+              <span>🎙️</span>
+              <span>مضيف</span>
             </span>
           )}
         </span>
