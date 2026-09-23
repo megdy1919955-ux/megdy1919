@@ -360,6 +360,13 @@ export class ZegoVoiceEngine {
 
     if (enable) {
       try {
+        // If already publishing, smoothly unmute without duplicate stream creation
+        if (this.isPublishing && this.localStream) {
+          this.isMuted = false;
+          this.zg.mutePublishStreamAudio(this.localStream, false);
+          return true;
+        }
+
         if (!this.localStream) {
           const micConstraints: MediaTrackConstraints = {
             echoCancellation: true,
@@ -377,7 +384,9 @@ export class ZegoVoiceEngine {
 
         const cleanRoom = this.roomId.replace(/[^a-zA-Z0-9_-]/g, '');
         const cleanUser = this.userId.replace(/[^a-zA-Z0-9_-]/g, '');
-        this.localStreamId = `s_${cleanRoom}_${cleanUser}_${Date.now().toString(36)}`;
+        if (!this.localStreamId) {
+          this.localStreamId = `s_${cleanRoom}_${cleanUser}`;
+        }
 
         const ok = await this.zg.startPublishingStream(this.localStreamId, this.localStream);
         this.isPublishing = ok;
@@ -392,11 +401,15 @@ export class ZegoVoiceEngine {
       }
     } else {
       if (this.isPublishing && this.localStreamId) {
-        this.zg.stopPublishingStream(this.localStreamId);
+        try {
+          this.zg.stopPublishingStream(this.localStreamId);
+        } catch {}
         this.isPublishing = false;
       }
       if (this.localStream) {
-        this.zg.destroyStream(this.localStream);
+        try {
+          this.zg.destroyStream(this.localStream);
+        } catch {}
         this.localStream = null;
       }
       this.isMuted = true;

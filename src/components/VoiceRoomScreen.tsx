@@ -2329,14 +2329,14 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         return;
       }
 
-      // إذا كان المايك مفتوحاً (غير مقفل) والمستخدم ليس مشرفاً يريد إدارة المقعد:
-      // يصعد فوراً إلى المايك ويفتح الصوت روتينياً بدون نوافذ إضافية
-      if (!targetSeat.isLocked && !isOwner && !isCurrentAdmin && currentUserRole !== 'moderator') {
+      const currentSeat = allMicSeats.find(isSeatMine);
+      // الانتقال المباشر والسلس للمايك فوراً دون نوافذ زائدة عند الرغبة في الجلوس أو التبديل
+      if (currentSeat || !targetSeat.isLocked) {
         handleTakeSeat(seatId);
         return;
       }
 
-      // EMPTY SEAT: Show Seat Action Modal so user can invite audience, take seat, lock, etc.
+      // EMPTY SEAT & LOCKED: Show Seat Action Modal for authorized admin options
       setSelectedSeatForAction(seatId);
       setTargetInviteSeatId(seatId);
       setShowSeatActionModal(true);
@@ -2481,7 +2481,6 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       voiceEngineRef.current.updateSeat(targetSeatId);
       if (joinMuted) {
         voiceEngineRef.current.setMute(true);
-        voiceEngineRef.current.disableMicrophone();
       } else {
         voiceEngineRef.current.setMute(false);
         voiceEngineRef.current.enableMicrophone();
