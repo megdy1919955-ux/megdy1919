@@ -3607,7 +3607,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         senderLevel: '1',
         recipientId: targetSeatUser?.userId,
         recipientName: recipient,
-        recipientAvatar: targetSeatUser?.userAvatar,
+        recipientAvatar: targetSeatUser?.avatar,
         giftValue: totalValue
       }).then((updated) => {
         setTotalRoomSupportDiamonds(updated.totalDiamonds);

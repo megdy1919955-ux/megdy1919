@@ -4,7 +4,7 @@ import { Swords, HelpCircle } from 'lucide-react';
 
 interface RoomTeamBattleSectionProps {
   isTeamBattleActive: boolean;
-  teamBattleStatus: 'preparation' | 'running' | 'completed';
+  teamBattleStatus: 'preparation' | 'running' | 'completed' | 'ended';
   teamBattleTimer: number;
   redTeamScore: number;
   blueTeamScore: number;

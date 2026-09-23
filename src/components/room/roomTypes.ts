@@ -75,6 +75,7 @@ export interface RoomEntranceEvent {
   vipLevel: number | string;
   nobleLevel?: string;
   isOwner?: boolean;
+  isHost?: boolean;
   actionText?: string;
   timestamp?: number;
 }
