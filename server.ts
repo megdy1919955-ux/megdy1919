@@ -264,7 +264,7 @@ async function startServer() {
   app.get('/api/zego/config', (req, res) => {
     const appId = Number(process.env.ZEGO_APP_ID) || ZEGO_DEFAULT_APP_ID;
     const serverSecret = process.env.ZEGO_SERVER_SECRET || ZEGO_DEFAULT_SECRET;
-    const serverUrl = process.env.ZEGO_SERVER_URL || `wss://webliveroom${appId}-api.coolzcloud.com/ws`;
+    const serverUrl = process.env.ZEGO_SERVER_URL || `wss://webliveroom${appId}-api.zegocloud.com/ws`;
     const isConfigured = Boolean(appId && serverSecret);
     res.json({
       appId,
@@ -275,32 +275,26 @@ async function startServer() {
 
   app.get('/api/zego/token', (req, res) => {
     try {
-      const appId = Number(process.env.ZEGO_APP_ID);
-      const secret = process.env.ZEGO_SERVER_SECRET;
+      const appId = Number(process.env.ZEGO_APP_ID) || ZEGO_DEFAULT_APP_ID;
+      const secret = process.env.ZEGO_SERVER_SECRET || ZEGO_DEFAULT_SECRET;
       const isConfigured = Boolean(appId && secret && secret.length >= 16);
 
       if (!isConfigured) {
         return res.json({
           available: false,
           token: null,
-          message: 'ZEGOCLOUD is not configured in environment variables. Real-time audio will seamlessly use native WebRTC.'
+          message: 'ZEGOCLOUD is not configured with valid AppID and ServerSecret.'
         });
       }
 
       const userId = (req.query.userId as string) || `user_${Math.floor(Math.random() * 100000)}`;
       const roomId = (req.query.roomId as string) || 'default_room';
-      const serverUrl = process.env.ZEGO_SERVER_URL || `wss://webliveroom${appId}-api.coolzcloud.com/ws`;
+      const serverUrl = process.env.ZEGO_SERVER_URL || `wss://webliveroom${appId}-api.zegocloud.com/ws`;
 
-      // Privilege 1 = LoginRoom, 2 = PublishStream. Both set to 1 (allow).
-      const payloadObj = {
-        room_id: roomId,
-        privilege: {
-          1: 1,
-          2: 1
-        },
-        stream_id_list: []
-      };
-      const payload = JSON.stringify(payloadObj);
+      // Official ZEGOCLOUD Token04 standard:
+      // An empty payload ('') provides full room login and publishing capabilities
+      // without requiring custom privilege activation through ZEGOCLOUD customer support.
+      const payload = typeof req.query.payload === 'string' ? req.query.payload : '';
 
       const token = generateZegoToken04(appId, userId, secret, 86400, payload);
 

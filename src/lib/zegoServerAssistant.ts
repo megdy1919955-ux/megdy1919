@@ -1,7 +1,7 @@
 import { createCipheriv, randomBytes } from 'crypto';
 
-export const ZEGO_DEFAULT_APP_ID = 0;
-export const ZEGO_DEFAULT_SECRET = '';
+export const ZEGO_DEFAULT_APP_ID = 2138622497;
+export const ZEGO_DEFAULT_SECRET = '1b2eeb1e9d219e2b6485b78178c24449';
 
 function makeNonce(): number {
   const min = -Math.pow(2, 31);

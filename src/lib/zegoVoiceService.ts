@@ -47,7 +47,7 @@ export class ZegoVoiceEngine {
   public onMicPermissionError?: (err: Error) => void;
 
   constructor(options: ZegoVoiceEngineOptions) {
-    this.appId = options.appId || 0;
+    this.appId = options.appId || 2138622497;
     this.roomId = options.roomId;
     this.userId = options.userId;
     this.userName = options.userName;
@@ -64,8 +64,9 @@ export class ZegoVoiceEngine {
         this.server = customEnvServer;
       } else {
         this.server = [
+          `wss://webliveroom${this.appId}-api.zegocloud.com/ws`,
+          'wss://webliveroom-api.zegocloud.com/ws',
           `wss://webliveroom${this.appId}-api.coolzcloud.com/ws`,
-          `wss://webliveroom${this.appId}-api.zego.im/ws`,
           'wss://webliveroom-api.coolzcloud.com/ws',
           'wss://webliveroom-api.zego.im/ws'
         ];
