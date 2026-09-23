@@ -377,7 +377,7 @@ export class ZegoVoiceEngine {
           this.localStream = await this.zg.createStream({
             camera: {
               video: false,
-              audio: micConstraints
+              audio: micConstraints as any
             }
           });
         }

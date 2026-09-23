@@ -92,6 +92,10 @@ export class VoiceRemoteManager {
     }
   }
 
+  public startListening() {
+    this.start();
+  }
+
   public stop() {
     if (this.recognition && this.isListening) {
       try {
@@ -101,6 +105,10 @@ export class VoiceRemoteManager {
         console.warn('Voice recognition stop error:', err);
       }
     }
+  }
+
+  public stopListening() {
+    this.stop();
   }
 
   public destroy() {

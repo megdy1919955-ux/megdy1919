@@ -23,8 +23,8 @@ export * from './unifiedVoiceEngine';
 
 // Fast Reload / HMR Self-Acceptance
 // Allows Vite to hot-swap audio logic without re-rendering or rebuilding the whole app
-if (import.meta.hot) {
-  import.meta.hot.accept(() => {
+if ((import.meta as any).hot) {
+  (import.meta as any).hot.accept(() => {
     console.log('⚡ [HMR] Modular Audio Service updated cleanly.');
   });
 }

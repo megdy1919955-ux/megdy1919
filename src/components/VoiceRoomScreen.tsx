@@ -59,19 +59,40 @@ import {
   LogOut
 } from 'lucide-react';
 import { RedCinemaSeat } from './RedCinemaSeat';
-import { CinemaYouTubePickerModal, CinemaVideoItem, VideoSuggestion } from './CinemaYouTubePickerModal';
-import { FamilyModal } from './FamilyModal';
-import { SuperLegendModal } from './SuperLegendModal';
+import type { CinemaVideoItem, VideoSuggestion } from './CinemaYouTubePickerModal';
+const CinemaYouTubePickerModal = lazy(() =>
+  import('./CinemaYouTubePickerModal').then((m) => ({ default: m.CinemaYouTubePickerModal }))
+);
+const FamilyModal = lazy(() =>
+  import('./FamilyModal').then((m) => ({ default: m.FamilyModal }))
+);
+const SuperLegendModal = lazy(() =>
+  import('./SuperLegendModal').then((m) => ({ default: m.SuperLegendModal }))
+);
 import { LeaderboardThemeConfig } from '../types/leaderboardTheme';
 import { getSavedLeaderboardTheme } from '../lib/leaderboardThemeService';
 import { LottieReactionPlayer } from './LottieReactionPlayer';
-import { DevConfigModal } from './DevConfigModal';
+const DevConfigModal = lazy(() =>
+  import('./DevConfigModal').then((m) => ({ default: m.DevConfigModal }))
+);
 import { precacheAllLottieAssets, getStoredEmojiConfigs, EmojiLottieConfig } from '../lib/lottieCache';
-import { HostProfileModal } from './HostProfileModal';
-import { AdvancedUserProfileModal, UserProfileData } from './AdvancedUserProfileModal';
-import { UserProfileModal } from './UserProfileModal';
-import { SeatActionModal } from './SeatActionModal';
-import { MicRequestQueueModal, MicRequestItem } from './MicRequestQueueModal';
+const HostProfileModal = lazy(() =>
+  import('./HostProfileModal').then((m) => ({ default: m.HostProfileModal }))
+);
+import type { UserProfileData } from './AdvancedUserProfileModal';
+const AdvancedUserProfileModal = lazy(() =>
+  import('./AdvancedUserProfileModal').then((m) => ({ default: m.AdvancedUserProfileModal }))
+);
+const UserProfileModal = lazy(() =>
+  import('./UserProfileModal').then((m) => ({ default: m.UserProfileModal }))
+);
+const SeatActionModal = lazy(() =>
+  import('./SeatActionModal').then((m) => ({ default: m.SeatActionModal }))
+);
+import type { MicRequestItem } from './MicRequestQueueModal';
+const MicRequestQueueModal = lazy(() =>
+  import('./MicRequestQueueModal').then((m) => ({ default: m.MicRequestQueueModal }))
+);
 import type { GiftItem } from './ProfessionalGiftPanel';
 const QuickMicOptionsModal = lazy(() =>
   import('./QuickMicOptionsModal').then((m) => ({ default: m.QuickMicOptionsModal }))
@@ -99,8 +120,12 @@ const DigitalCounterControlModal = lazy(() =>
 const RoomBackgroundStoreModal = lazy(() =>
   import('./wallpaper').then((m) => ({ default: m.RoomBackgroundStoreModal }))
 );
-import { NajmRoomMessagesModal, YoHoRoomMessagesModal } from './NajmRoomMessagesModal';
-import { NajmRoomToolsAndGamesModal, YoHoRoomToolsAndGamesModal } from './NajmRoomToolsAndGamesModal';
+const YoHoRoomMessagesModal = lazy(() =>
+  import('./NajmRoomMessagesModal').then((m) => ({ default: m.YoHoRoomMessagesModal }))
+);
+const YoHoRoomToolsAndGamesModal = lazy(() =>
+  import('./NajmRoomToolsAndGamesModal').then((m) => ({ default: m.YoHoRoomToolsAndGamesModal }))
+);
 import type { PKSupporter } from './TeamBattleResultModal';
 import type { NormalRoundResultData } from './NormalRoundResultModal';
 const TeamBattleModal = lazy(() =>
@@ -130,8 +155,13 @@ import {
 } from '../lib/roomThemeFirestoreService';
 import { wakeLockService } from '../lib/wakeLockService';
 import { isVideoResource, isMediaUrl, getCleanGiftEmoji, playGiftAudioEffect } from '../lib/giftCmsService';
-import { LuckyChestModal, LuckyChestConfig } from './LuckyChestModal';
-import { LuckyChestClaimModal } from './LuckyChestClaimModal';
+import type { LuckyChestConfig } from './LuckyChestModal';
+const LuckyChestModal = lazy(() =>
+  import('./LuckyChestModal').then((m) => ({ default: m.LuckyChestModal }))
+);
+const LuckyChestClaimModal = lazy(() =>
+  import('./LuckyChestClaimModal').then((m) => ({ default: m.LuckyChestClaimModal }))
+);
 import { FloatingLuckyChestWidget } from './FloatingLuckyChestWidget';
 import { LuckyChestWinnerToast, LuckyChestWinnerNoticeData } from './LuckyChestWinnersTicker';
 import { LuckyRefundModal } from './LuckyRefundModal';
@@ -1334,8 +1364,9 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     };
 
     engine.onPeerSpeaking = (speakingState) => {
-      setAllMicSeats((prev) =>
-        prev.map((s) => {
+      setAllMicSeats((prev) => {
+        let hasChanged = false;
+        const next = prev.map((s) => {
           const isTargetSeat = (speakingState.seatId && s.id === speakingState.seatId) ||
             (!speakingState.seatId && !s.isEmpty && (
               (speakingState.peerId && s.userId === speakingState.peerId) ||
@@ -1343,15 +1374,23 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             ));
 
           if (isTargetSeat) {
+            const nextSpeaking = Boolean(speakingState.isSpeaking);
+            const nextAudioLevel = nextSpeaking ? Math.max(20, speakingState.audioLevel || 40) : 0;
+            // Prevent micro-rerenders if speaking state is identical and volume difference is trivial
+            if (s.isSpeaking === nextSpeaking && Math.abs((s.audioLevel || 0) - nextAudioLevel) < 8) {
+              return s;
+            }
+            hasChanged = true;
             return {
               ...s,
-              isSpeaking: speakingState.isSpeaking,
-              audioLevel: speakingState.isSpeaking ? Math.max(20, speakingState.audioLevel || 40) : 0
+              isSpeaking: nextSpeaking,
+              audioLevel: nextAudioLevel
             };
           }
           return s;
-        })
-      );
+        });
+        return hasChanged ? next : prev;
+      });
     };
 
     engine.onChatMessage = (incomingMsg) => {
@@ -5218,7 +5257,8 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         currentUserAvatar={myUserAvatar || authUser?.avatar || ''}
       />
 
-      {/* FAMILY MODAL (محمل عند الطلب فقط) */}
+      <Suspense fallback={null}>
+        {/* FAMILY MODAL (محمل عند الطلب فقط) */}
       {showFamilyModal && (
         <FamilyModal
           isOpen={showFamilyModal}
@@ -6526,6 +6566,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           }}
         />
       )}
+      </Suspense>
     </div>
   );
 };

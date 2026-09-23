@@ -66,7 +66,7 @@ export const ProfileStats: React.FC<ProfileStatsProps> = ({
       <motion.div
         whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.95 }}
-        onClick={() => onOpenStatModal('following')}
+        onClick={() => onOpenStatModal('followers')}
         className={`relative p-[1.5px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} transition-all duration-300 cursor-pointer group`}
       >
         <div className={`${curRoyal.innerBg} rounded-[14.5px] p-2 sm:p-2.5 flex flex-col items-center justify-center border ${curRoyal.innerBorder} h-full transition-all duration-300`}>

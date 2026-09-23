@@ -29,6 +29,8 @@ export interface UserProfileData {
   level: number;
   vipTier: string;
   vipLevel?: string;
+  superLegendLevel?: string;
+  nickname?: string;
   badges: BadgeInfo[];
   stats: {
     visitors: number;
