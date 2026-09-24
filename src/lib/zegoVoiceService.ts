@@ -261,13 +261,13 @@ export class ZegoVoiceEngine {
               }
             }
 
-            // 2. HTMLAudioElement for mobile background keep-alive & fallback
+            // 2. HTMLAudioElement ensures crystal-clear playback through Android Media Stream (STREAM_MUSIC)
             const audioEl = new Audio();
             audioEl.srcObject = remoteMediaStream;
             audioEl.autoplay = true;
             (audioEl as any).playsInline = true;
-            // When Web Audio destination is actively playing, mute HTMLAudioElement to prevent double audio
-            audioEl.muted = !!playbackCtx || this.isSpeakerMuted;
+            audioEl.muted = this.isSpeakerMuted;
+            audioEl.volume = 1.0;
             await audioEl.play().catch(() => {
               // User interaction will resume audio
             });
