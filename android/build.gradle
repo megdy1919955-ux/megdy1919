@@ -21,6 +21,8 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        maven { url 'https://maven.zego.im' }
+        maven { url 'https://www.jitpack.io' }
     }
 }
 
