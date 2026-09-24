@@ -57,12 +57,189 @@
         }
       },
       "required": ["roomId", "ownerId", "wallpaperUrl"]
+    },
+    "RoomMessage": {
+      "title": "RoomMessage",
+      "description": "Real-time room chat message sent by users",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique message ID"
+        },
+        "roomId": {
+          "type": "string",
+          "description": "Target room ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Sender User ID"
+        },
+        "userName": {
+          "type": "string",
+          "description": "Sender Display Name"
+        },
+        "avatar": {
+          "type": "string",
+          "description": "Sender Avatar URL"
+        },
+        "text": {
+          "type": "string",
+          "description": "Message content",
+          "maxLength": 500
+        },
+        "userColor": {
+          "type": "string",
+          "description": "Text styling color"
+        },
+        "bubbleSkin": {
+          "type": "string",
+          "description": "Equipped bubble skin"
+        },
+        "isHost": {
+          "type": "boolean",
+          "description": "Whether sender is room host"
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "Unix timestamp in ms"
+        }
+      },
+      "required": ["id", "roomId", "userName", "text", "timestamp"]
+    },
+    "RoomSeat": {
+      "title": "RoomSeat",
+      "description": "State of a mic seat inside the voice room",
+      "type": "object",
+      "properties": {
+        "seatId": {
+          "type": "number",
+          "description": "Mic seat number 1-20"
+        },
+        "roomId": {
+          "type": "string",
+          "description": "Target room ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Occupant User ID"
+        },
+        "userName": {
+          "type": "string",
+          "description": "Occupant Name"
+        },
+        "avatar": {
+          "type": "string",
+          "description": "Occupant Avatar"
+        },
+        "isMuted": {
+          "type": "boolean",
+          "description": "Whether mic is muted"
+        },
+        "isSpeaking": {
+          "type": "boolean",
+          "description": "Whether occupant is speaking"
+        },
+        "isLocked": {
+          "type": "boolean",
+          "description": "Whether seat is locked by host"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Last update timestamp in ms"
+        }
+      },
+      "required": ["seatId", "roomId"]
+    },
+    "RoomCinema": {
+      "title": "RoomCinema",
+      "description": "Synchronized video and cinema watch together state",
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string",
+          "description": "Target room ID"
+        },
+        "videoId": {
+          "type": "string",
+          "description": "Unique video ID"
+        },
+        "videoTitle": {
+          "type": "string",
+          "description": "Video Title"
+        },
+        "youtubeId": {
+          "type": "string",
+          "description": "YouTube Video ID"
+        },
+        "isPlaying": {
+          "type": "boolean",
+          "description": "Playback state"
+        },
+        "currentTime": {
+          "type": "number",
+          "description": "Playback timestamp in seconds"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Last update timestamp in ms"
+        }
+      },
+      "required": ["roomId"]
+    },
+    "RoomSignal": {
+      "title": "RoomSignal",
+      "description": "WebRTC P2P signaling message for audio and video streaming",
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string",
+          "description": "Target room ID"
+        },
+        "fromPeerId": {
+          "type": "string",
+          "description": "Sender Peer ID"
+        },
+        "toPeerId": {
+          "type": "string",
+          "description": "Recipient Peer ID"
+        },
+        "type": {
+          "type": "string",
+          "description": "Signal type: offer, answer, ice-candidate"
+        },
+        "payload": {
+          "type": "string",
+          "description": "JSON serialized SDP or ICE candidate"
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "Signal creation timestamp in ms"
+        }
+      },
+      "required": ["roomId", "fromPeerId", "toPeerId", "type", "payload", "timestamp"]
     }
   },
   "firestore": {
     "/rooms/{roomId}": {
       "schema": "Room",
-      "description": "Collection of voice room documents indexed by roomId with theme and background data editable exclusively by the room owner"
+      "description": "Collection of voice room documents indexed by roomId"
+    },
+    "/rooms/{roomId}/messages/{messageId}": {
+      "schema": "RoomMessage",
+      "description": "Real-time room chat messages"
+    },
+    "/rooms/{roomId}/seats/{seatId}": {
+      "schema": "RoomSeat",
+      "description": "Real-time mic seat allocation and speaking status"
+    },
+    "/rooms/{roomId}/cinema/current": {
+      "schema": "RoomCinema",
+      "description": "Live synchronized cinema video state"
+    },
+    "/rooms/{roomId}/signals/{signalId}": {
+      "schema": "RoomSignal",
+      "description": "Live WebRTC audio signaling packets"
     }
   }
 }

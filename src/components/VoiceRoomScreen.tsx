@@ -217,6 +217,19 @@ import {
 import { useRoomProgressiveHydration } from '../hooks/useRoomProgressiveHydration';
 import { getCurrentAuthUser, OWNER_DEV_ID } from '../lib/authService';
 import { recordGiftSupport, resetRoomStats } from '../services/roomStatsService';
+import {
+  subscribeToRoomMessages,
+  sendRoomChatMessage,
+  subscribeToRoomSeats,
+  updateRoomSeatInFirestore,
+  vacateRoomSeatInFirestore,
+  subscribeToRoomCinema,
+  updateRoomCinemaInFirestore,
+  subscribeToRoomEvents,
+  sendRoomEventToFirestore,
+  RealtimeSeatData
+} from '../lib/roomRealtimeService';
+import { FirestoreWebRTCEngine } from '../lib/firestoreWebRTCEngine';
 
 export type { BadgeItem, MicSeat, ChatMessage, RoomEntranceEvent };
 
@@ -1396,6 +1409,171 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     };
   }, [roomId, currentUserRole, hostName]);
 
+  const firestoreRtcRef = useRef<FirestoreWebRTCEngine | null>(null);
+
+  // --- Real-time Global Sync across devices via Firebase Firestore ---
+  useEffect(() => {
+    const currentRoomId = roomId || 'default-room';
+
+    // 1. Subscribe to Live Firestore Chat Messages
+    const unsubChat = subscribeToRoomMessages(currentRoomId, (msgs) => {
+      if (msgs && msgs.length > 0) {
+        setChatMessages(msgs);
+      }
+    });
+
+    // 2. Initialize Autonomous Firestore-signaled WebRTC Voice Engine
+    const rtcEngine = new FirestoreWebRTCEngine({
+      roomId: currentRoomId,
+      userId: myUserId,
+      userName: myUserName,
+      userAvatar: myUserAvatar,
+      seatId: isOwner ? 1 : null
+    });
+
+    rtcEngine.onPeerSpeaking = (speakingState) => {
+      setAllMicSeats((prev) =>
+        prev.map((s) => {
+          const isTarget = (speakingState.seatId && s.id === speakingState.seatId) ||
+            (speakingState.userName && s.userName === speakingState.userName);
+          if (isTarget) {
+            return {
+              ...s,
+              isSpeaking: speakingState.isSpeaking,
+              audioLevel: speakingState.audioLevel || 35
+            };
+          }
+          return s;
+        })
+      );
+    };
+
+    rtcEngine.connect();
+    firestoreRtcRef.current = rtcEngine;
+
+    // 3. Subscribe to Live Mic Seats in Firestore
+    const unsubSeats = subscribeToRoomSeats(currentRoomId, (remoteSeats) => {
+      setAllMicSeats((prev) =>
+        prev.map((seat) => {
+          const remote = remoteSeats[seat.id];
+          if (!remote) {
+            return seat;
+          }
+
+          // If another remote device occupies this seat, connect P2P WebRTC audio
+          if (!remote.isEmpty && remote.peerId && remote.peerId !== rtcEngine.myPeerId) {
+            rtcEngine.connectToPeer(remote.peerId, true).catch(() => {});
+          }
+
+          const isMe = remote.userId === myUserId || remote.userName === myUserName;
+          if (isMe) {
+            return {
+              ...seat,
+              isEmpty: false,
+              userId: myUserId,
+              userName: myUserName,
+              avatar: myUserAvatar,
+              isMuted: isMyMicMuted,
+              isSpeaking: Boolean(seat.isSpeaking),
+              audioLevel: seat.audioLevel || 0,
+              isHost: seat.id === 1 || isOwner
+            };
+          }
+
+          if (remote.isEmpty) {
+            if (seat.id === 1 && !isOwner) {
+              return {
+                ...seat,
+                isEmpty: false,
+                userName: hostName || 'مضيف الغرفة',
+                avatar: roomAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300',
+                isHost: true
+              };
+            }
+            return {
+              ...seat,
+              isEmpty: true,
+              userId: undefined,
+              userName: '',
+              avatar: '',
+              isSpeaking: false,
+              audioLevel: 0
+            };
+          }
+
+          return {
+            ...seat,
+            isEmpty: false,
+            userId: remote.userId,
+            userName: remote.userName,
+            avatar: remote.avatar || seat.avatar,
+            vipLevel: remote.vipLevel || seat.vipLevel,
+            isMuted: Boolean(remote.isMuted),
+            isSpeaking: Boolean(remote.isSpeaking),
+            audioLevel: remote.audioLevel || 0,
+            isLocked: Boolean(remote.isLocked),
+            isHost: seat.id === 1 || Boolean(remote.isHost)
+          };
+        })
+      );
+    });
+
+    // 4. Subscribe to Live Synchronized Cinema Video
+    const unsubCinema = subscribeToRoomCinema(currentRoomId, (cinema) => {
+      if (cinema && cinema.youtubeId) {
+        setSelectedCinemaVideo({
+          id: cinema.videoId || 'live-cinema',
+          youtubeId: cinema.youtubeId,
+          title: cinema.title || 'فيديو متزامن',
+          author: cinema.author || 'السينما',
+          thumbnail: cinema.thumbnail || '',
+          category: 'cinema'
+        });
+        setIsCinemaWatchMode(true);
+      } else if (cinema === null) {
+        setSelectedCinemaVideo(null);
+        setIsCinemaWatchMode(false);
+      }
+    });
+
+    // 5. Subscribe to Live Room Events (Gifts, Reactions)
+    const unsubEvents = subscribeToRoomEvents(currentRoomId, (event) => {
+      if (event.type === 'gift') {
+        setActiveGiftBanner({
+          sender: event.senderName,
+          senderAvatar: event.senderAvatar,
+          giftName: event.content,
+          target: event.targetName || 'الجميع'
+        });
+        setTimeout(() => setActiveGiftBanner(null), 4000);
+      }
+    });
+
+    // If local user is Owner, occupy Seat 1 in Firestore
+    if (isOwner) {
+      updateRoomSeatInFirestore(currentRoomId, 1, {
+        isEmpty: false,
+        userId: myUserId,
+        userName: myUserName,
+        avatar: myUserAvatar,
+        vipLevel: myVipLevel,
+        isMuted: isMyMicMuted,
+        isSpeaking: false,
+        isHost: true,
+        peerId: rtcEngine.myPeerId
+      }).catch(() => {});
+    }
+
+    return () => {
+      unsubChat();
+      unsubSeats();
+      unsubCinema();
+      unsubEvents();
+      rtcEngine.destroy();
+      firestoreRtcRef.current = null;
+    };
+  }, [roomId, myUserId, myUserName, myUserAvatar, isOwner]);
+
   // Digital Counter States & Protection Logic (منطق إدارة العدادات مع إجراءات الحماية)
   const [showCountersOnMics, setShowCountersOnMics] = useState(true);
   const [isCounterRunning, setIsCounterRunning] = useState<boolean>(true);
@@ -1556,6 +1734,17 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     setSelectedCinemaVideo(suggestion.video);
     setIsCinemaWatchMode(true);
     setShowCinemaVideoPickerModal(false);
+
+    updateRoomCinemaInFirestore(roomId || 'default-room', {
+      videoId: suggestion.video.id,
+      youtubeId: suggestion.video.youtubeId,
+      title: suggestion.video.title,
+      author: suggestion.video.author,
+      thumbnail: suggestion.video.thumbnail,
+      isPlaying: true,
+      updatedBy: myUserName,
+      updatedAt: Date.now()
+    }).catch(() => {});
 
     setVideoSuggestions((prev) => prev.filter((s) => s.id !== suggestion.id));
 
@@ -2405,15 +2594,34 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     const nextMuted = !isMyMicMuted;
     
     // Enable real device mic capture or mute instantly
-    if (!nextMuted && voiceEngineRef.current) {
-      voiceEngineRef.current.setMute(false);
-      const ok = await voiceEngineRef.current.enableMicrophone();
-      if (!ok) {
-        setToastNotification('يرجى السماح بصلاحية الميكروفون في المتصفح لبدء التحدث 🎙️');
-        setTimeout(() => setToastNotification(null), 3000);
+    if (!nextMuted) {
+      if (firestoreRtcRef.current) {
+        await firestoreRtcRef.current.enableMicrophone();
       }
-    } else if (voiceEngineRef.current) {
-      voiceEngineRef.current.setMute(true);
+      if (voiceEngineRef.current) {
+        voiceEngineRef.current.setMute(false);
+        const ok = await voiceEngineRef.current.enableMicrophone();
+        if (!ok && !firestoreRtcRef.current) {
+          setToastNotification('يرجى السماح بصلاحية الميكروفون في المتصفح لبدء التحدث 🎙️');
+          setTimeout(() => setToastNotification(null), 3000);
+        }
+      }
+    } else {
+      if (firestoreRtcRef.current) {
+        firestoreRtcRef.current.disableMicrophone();
+      }
+      if (voiceEngineRef.current) {
+        voiceEngineRef.current.setMute(true);
+      }
+    }
+
+    // Sync state in Firestore so peer devices see mute/unmute status
+    const currentOccupiedSeat = allMicSeats.find(isSeatMine);
+    if (currentOccupiedSeat) {
+      updateRoomSeatInFirestore(roomId || 'default-room', currentOccupiedSeat.id, {
+        isMuted: nextMuted,
+        isSpeaking: false
+      }).catch(() => {});
     }
 
     setUserMuteStates((prev) => ({
@@ -2488,6 +2696,31 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       } else {
         voiceEngineRef.current.setMute(false);
         voiceEngineRef.current.enableMicrophone();
+      }
+    }
+
+    // Sync seat occupancy to Firestore for all mobile peers
+    if (currentSeat && currentSeat.id !== targetSeatId) {
+      vacateRoomSeatInFirestore(roomId || 'default-room', currentSeat.id).catch(() => {});
+    }
+    updateRoomSeatInFirestore(roomId || 'default-room', targetSeatId, {
+      isEmpty: false,
+      userId: myUserId,
+      userName: myUserName,
+      avatar: myUserAvatar,
+      vipLevel: myVipLevel,
+      isMuted: joinMuted,
+      isSpeaking: false,
+      isHost: isOwner && targetSeatId === 1,
+      peerId: firestoreRtcRef.current?.myPeerId
+    }).catch(() => {});
+
+    if (firestoreRtcRef.current) {
+      firestoreRtcRef.current.seatId = targetSeatId;
+      if (!joinMuted) {
+        firestoreRtcRef.current.enableMicrophone().catch(() => {});
+      } else {
+        firestoreRtcRef.current.disableMicrophone();
       }
     }
 
@@ -2595,6 +2828,14 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       voiceEngineRef.current.updateSeat(null);
       voiceEngineRef.current.disableMicrophone();
       voiceEngineRef.current.setMute(true);
+    }
+
+    if (targetId) {
+      vacateRoomSeatInFirestore(roomId || 'default-room', targetId).catch(() => {});
+    }
+    if (firestoreRtcRef.current) {
+      firestoreRtcRef.current.seatId = null;
+      firestoreRtcRef.current.disableMicrophone();
     }
 
     setUserMuteStates((prev) => ({
@@ -3405,14 +3646,60 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     const isUserHost = currentUserRole === 'host' || isOwner;
     const newMsgId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const currentSentText = inputMessage.trim().slice(0, 100);
-    const currentSenderName = isUserHost ? 'أنا (المضيف)' : 'أنا (الزائر)';
+    const realSenderName = myUserName || (isUserHost ? 'مضيف الروم 👑' : 'عضو النجم ⭐');
+    const realSenderAvatar = myUserAvatar;
+
+    // 1. Broadcast immediately to Firebase Firestore so ALL mobile phones receive it
+    sendRoomChatMessage(roomId || 'default-room', {
+      userId: myUserId,
+      userName: realSenderName,
+      avatar: realSenderAvatar,
+      text: currentSentText,
+      userColor: isUserHost
+        ? hostVipLevel >= 8
+          ? 'text-red-500 font-black'
+          : 'text-white font-bold'
+        : 'text-amber-300 font-bold',
+      bubbleSkin: equippedBubbleSkin,
+      isHost: isUserHost,
+      vipLevel: myVipLevel,
+      replyTo: replyingToMessage
+        ? {
+            id: replyingToMessage.id,
+            userName: replyingToMessage.userName,
+            text: replyingToMessage.text
+          }
+        : undefined,
+      badges: isUserHost
+        ? undefined
+        : [
+            {
+              id: 'ub-vip',
+              label: myVipLevel || 'VIP 8',
+              icon: '👑',
+              bgClass: 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black'
+            }
+          ]
+    }).catch((e) => console.warn('Chat send error:', e));
+
+    // 2. Also send to realtime voice engine data channel if connected
+    if (voiceEngineRef.current) {
+      voiceEngineRef.current.sendChatMessage({
+        id: newMsgId,
+        userName: realSenderName,
+        avatar: realSenderAvatar,
+        text: currentSentText,
+        bubbleSkin: equippedBubbleSkin,
+        senderPeerId: voiceEngineRef.current.myPeerId
+      });
+    }
 
     setChatMessages((prev) => [
       ...prev,
       {
         id: newMsgId,
-        userName: currentSenderName,
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+        userName: realSenderName,
+        avatar: realSenderAvatar,
         text: currentSentText,
         userColor: isUserHost
           ? hostVipLevel >= 8
@@ -3423,7 +3710,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         isHost: isUserHost,
         heartLevel: 39,
         crownLevel: 111,
-        vipLevel: isUserHost ? (hostVipLevel >= 8 ? `VIP${hostVipLevel}` : 'VIP6') : 'VIP6',
+        vipLevel: isUserHost ? (hostVipLevel >= 8 ? `VIP${hostVipLevel}` : 'VIP6') : (myVipLevel || 'VIP6'),
         replyTo: replyingToMessage
           ? {
               id: replyingToMessage.id,
@@ -3436,7 +3723,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           : [
               {
                 id: 'ub-vip',
-                label: 'VIP 8',
+                label: myVipLevel || 'VIP 8',
                 icon: '👑',
                 bgClass: 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black'
               },
@@ -3519,6 +3806,16 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   ) => {
     const recipient = targetName || hostSeat.userName;
     const cleanDisplayEmoji = getCleanGiftEmoji(rawGiftName || giftName, giftIcon);
+
+    // Broadcast gift event to Firestore for all mobile peers
+    sendRoomEventToFirestore(roomId || 'default-room', {
+      type: 'gift',
+      senderName: myUserName,
+      senderAvatar: myUserAvatar,
+      targetName: recipient,
+      content: rawGiftName || giftName,
+      timestamp: Date.now()
+    }).catch(() => {});
 
     // Play optional synthesized/custom audio effect
     if (giftItem) {
@@ -4533,6 +4830,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                 if (isOwner) {
                   setIsCinemaWatchMode(false);
                   setSelectedCinemaVideo(null);
+                  updateRoomCinemaInFirestore(roomId || 'default-room', null).catch(() => {});
                   setToastNotification('تم إغلاق وضع سينما الروم والعودة للمقاعد 🎙️');
                   setTimeout(() => setToastNotification(null), 3000);
                 } else {
@@ -6245,6 +6543,16 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           onSelectVideo={(video) => {
             setSelectedCinemaVideo(video);
             setIsCinemaWatchMode(true);
+            updateRoomCinemaInFirestore(roomId || 'default-room', {
+              videoId: video.id,
+              youtubeId: video.youtubeId,
+              title: video.title,
+              author: video.author,
+              thumbnail: video.thumbnail,
+              isPlaying: true,
+              updatedBy: myUserName,
+              updatedAt: Date.now()
+            }).catch(() => {});
           }}
           onSuggestVideo={handleSuggestVideo}
           onAcceptSuggestion={handleAcceptSuggestion}
