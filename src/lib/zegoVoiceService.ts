@@ -47,7 +47,7 @@ export class ZegoVoiceEngine {
   public onMicPermissionError?: (err: Error) => void;
 
   constructor(options: ZegoVoiceEngineOptions) {
-    this.appId = options.appId || 2138622497;
+    this.appId = options.appId || 1662897410;
     this.roomId = options.roomId;
     this.userId = options.userId;
     this.userName = options.userName;

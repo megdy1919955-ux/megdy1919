@@ -1,6 +1,6 @@
 import { createCipheriv, randomBytes } from 'crypto';
 
-export const ZEGO_DEFAULT_APP_ID = 2138622497;
+export const ZEGO_DEFAULT_APP_ID = 1662897410;
 export const ZEGO_DEFAULT_SECRET = '7dbdc499be61213a91940a115dc3869a071a27856c648ff7297377ffa1ad8a23';
 
 function makeNonce(): number {
