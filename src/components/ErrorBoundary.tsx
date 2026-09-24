@@ -1,4 +1,4 @@
-import React, { Component, ReactNode } from 'react';
+import React, { ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -10,7 +10,14 @@ interface State {
   error: Error | null;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
+export class ErrorBoundary extends (React.Component as unknown as {
+  new (props: Props): {
+    props: Props;
+    state: State;
+    setState: (updater: Partial<State> | ((prevState: State) => Partial<State>)) => void;
+    render(): ReactNode;
+  };
+}) {
   constructor(props: Props) {
     super(props);
     this.state = {

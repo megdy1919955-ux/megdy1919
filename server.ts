@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { generateZegoToken04, ZEGO_DEFAULT_APP_ID, ZEGO_DEFAULT_SECRET } from './src/audio/zegoServerAssistant';
+import { generateZegoToken04, ZEGO_DEFAULT_APP_ID, ZEGO_DEFAULT_SECRET } from './src/lib/zegoServerAssistant';
 
 interface ClientConnection {
   ws: WebSocket;
@@ -264,7 +264,7 @@ async function startServer() {
   app.get('/api/zego/config', (req, res) => {
     const appId = Number(process.env.ZEGO_APP_ID) || ZEGO_DEFAULT_APP_ID;
     const serverSecret = process.env.ZEGO_SERVER_SECRET || ZEGO_DEFAULT_SECRET;
-    const serverUrl = process.env.ZEGO_SERVER_URL || `wss://webliveroom${appId}-api.zegocloud.com/ws`;
+    const serverUrl = process.env.ZEGO_SERVER_URL || `wss://webliveroom${appId}-api.coolzcloud.com/ws`;
     const isConfigured = Boolean(appId && serverSecret);
     res.json({
       appId,
@@ -277,24 +277,29 @@ async function startServer() {
     try {
       const appId = Number(process.env.ZEGO_APP_ID) || ZEGO_DEFAULT_APP_ID;
       const secret = process.env.ZEGO_SERVER_SECRET || ZEGO_DEFAULT_SECRET;
-      const isConfigured = Boolean(appId && secret && secret.length >= 16);
-
+      const isConfigured = Boolean(appId && secret);
       if (!isConfigured) {
         return res.json({
           available: false,
           token: null,
-          message: 'ZEGOCLOUD is not configured with valid AppID and ServerSecret.'
+          message: 'ZEGOCLOUD is not configured with ZEGO_SERVER_SECRET and ZEGO_APP_ID'
         });
       }
 
       const userId = (req.query.userId as string) || `user_${Math.floor(Math.random() * 100000)}`;
       const roomId = (req.query.roomId as string) || 'default_room';
-      const serverUrl = process.env.ZEGO_SERVER_URL || `wss://webliveroom${appId}-api.zegocloud.com/ws`;
+      const serverUrl = process.env.ZEGO_SERVER_URL || `wss://webliveroom${appId}-api.coolzcloud.com/ws`;
 
-      // Official ZEGOCLOUD Token04 standard:
-      // An empty payload ('') provides full room login and publishing capabilities
-      // without requiring custom privilege activation through ZEGOCLOUD customer support.
-      const payload = typeof req.query.payload === 'string' ? req.query.payload : '';
+      // Privilege 1 = LoginRoom, 2 = PublishStream. Both set to 1 (allow).
+      const payloadObj = {
+        room_id: roomId,
+        privilege: {
+          1: 1,
+          2: 1
+        },
+        stream_id_list: []
+      };
+      const payload = JSON.stringify(payloadObj);
 
       const token = generateZegoToken04(appId, userId, secret, 86400, payload);
 
@@ -307,8 +312,8 @@ async function startServer() {
         token
       });
     } catch (err: any) {
-      console.warn('ZEGOCLOUD Token04 generation warning:', err?.message || err);
-      res.json({ available: false, token: null, error: err.message || 'Token generation unavailable' });
+      console.error('Failed to generate ZEGOCLOUD Token04:', err);
+      res.status(500).json({ available: false, error: err.message || 'Token generation failed' });
     }
   });
 

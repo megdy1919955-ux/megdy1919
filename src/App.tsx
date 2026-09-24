@@ -1,7 +1,7 @@
 /**
  * تطبيق النجم (Al-Najm Voice Chat)
  * Copyright (c) 2026 Al-Najm. All Rights Reserved.
- * جميع حقوق الملكية الفكرية والعلامة التجارية مسجلة ومحفوظة بالكامل للمالك والمطور.
+ * جميع حقوق الملكية الفكرية والعلامة التجارية مسجلة ومحفوظة بالكامل للمالك والمطور. وتعتبر كافة الأكواد، التصاميم، الهياكل، والشعار الرسمي "النجم (Al-Najm)" ملكية خاصة وحصرية له، ولا يجوز نسخها أو استخدامها دون إذن خطي مسبق.
  */
 
 import React, { useState, useEffect, Suspense } from 'react';
@@ -21,6 +21,7 @@ export default function App() {
     const handleAuthChange = (e: CustomEvent<AuthUserData | null>) => {
       setCurrentUser(e.detail);
     };
+
     window.addEventListener('najm_auth_state_changed' as any, handleAuthChange);
     return () => {
       window.removeEventListener('najm_auth_state_changed' as any, handleAuthChange);
@@ -32,7 +33,7 @@ export default function App() {
       <div className="w-full min-h-screen min-h-[100dvh] h-full bg-[#0F0F17] text-slate-100 flex flex-col select-none overflow-x-hidden relative">
         <FullscreenToggle />
 
-        {/* إذا لم يسجل المستخدم الدخول بعد، تظهر له شاشة تسجيل الدخول والترحيب */}
+        {/* إذا لم يسجل المستخدم الدخول بعد، تظهر له أول شاشة ترحيبية وتسجيل الدخول */}
         {!currentUser ? (
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-amber-400 font-bold">جاري تشغيل التطبيق...</div>}>
             <LoginScreen onLoginSuccess={(user) => setCurrentUser(user)} />

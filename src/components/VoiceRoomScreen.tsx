@@ -59,40 +59,19 @@ import {
   LogOut
 } from 'lucide-react';
 import { RedCinemaSeat } from './RedCinemaSeat';
-import type { CinemaVideoItem, VideoSuggestion } from './CinemaYouTubePickerModal';
-const CinemaYouTubePickerModal = lazy(() =>
-  import('./CinemaYouTubePickerModal').then((m) => ({ default: m.CinemaYouTubePickerModal }))
-);
-const FamilyModal = lazy(() =>
-  import('./FamilyModal').then((m) => ({ default: m.FamilyModal }))
-);
-const SuperLegendModal = lazy(() =>
-  import('./SuperLegendModal').then((m) => ({ default: m.SuperLegendModal }))
-);
+import { CinemaYouTubePickerModal, CinemaVideoItem, VideoSuggestion } from './CinemaYouTubePickerModal';
+import { FamilyModal } from './FamilyModal';
+import { SuperLegendModal } from './SuperLegendModal';
 import { LeaderboardThemeConfig } from '../types/leaderboardTheme';
 import { getSavedLeaderboardTheme } from '../lib/leaderboardThemeService';
 import { LottieReactionPlayer } from './LottieReactionPlayer';
-const DevConfigModal = lazy(() =>
-  import('./DevConfigModal').then((m) => ({ default: m.DevConfigModal }))
-);
+import { DevConfigModal } from './DevConfigModal';
 import { precacheAllLottieAssets, getStoredEmojiConfigs, EmojiLottieConfig } from '../lib/lottieCache';
-const HostProfileModal = lazy(() =>
-  import('./HostProfileModal').then((m) => ({ default: m.HostProfileModal }))
-);
-import type { UserProfileData } from './AdvancedUserProfileModal';
-const AdvancedUserProfileModal = lazy(() =>
-  import('./AdvancedUserProfileModal').then((m) => ({ default: m.AdvancedUserProfileModal }))
-);
-const UserProfileModal = lazy(() =>
-  import('./UserProfileModal').then((m) => ({ default: m.UserProfileModal }))
-);
-const SeatActionModal = lazy(() =>
-  import('./SeatActionModal').then((m) => ({ default: m.SeatActionModal }))
-);
-import type { MicRequestItem } from './MicRequestQueueModal';
-const MicRequestQueueModal = lazy(() =>
-  import('./MicRequestQueueModal').then((m) => ({ default: m.MicRequestQueueModal }))
-);
+import { HostProfileModal } from './HostProfileModal';
+import { AdvancedUserProfileModal, UserProfileData } from './AdvancedUserProfileModal';
+import { UserProfileModal } from './UserProfileModal';
+import { SeatActionModal } from './SeatActionModal';
+import { MicRequestQueueModal, MicRequestItem } from './MicRequestQueueModal';
 import type { GiftItem } from './ProfessionalGiftPanel';
 const QuickMicOptionsModal = lazy(() =>
   import('./QuickMicOptionsModal').then((m) => ({ default: m.QuickMicOptionsModal }))
@@ -120,12 +99,8 @@ const DigitalCounterControlModal = lazy(() =>
 const RoomBackgroundStoreModal = lazy(() =>
   import('./wallpaper').then((m) => ({ default: m.RoomBackgroundStoreModal }))
 );
-const YoHoRoomMessagesModal = lazy(() =>
-  import('./NajmRoomMessagesModal').then((m) => ({ default: m.YoHoRoomMessagesModal }))
-);
-const YoHoRoomToolsAndGamesModal = lazy(() =>
-  import('./NajmRoomToolsAndGamesModal').then((m) => ({ default: m.YoHoRoomToolsAndGamesModal }))
-);
+import { NajmRoomMessagesModal, YoHoRoomMessagesModal } from './NajmRoomMessagesModal';
+import { NajmRoomToolsAndGamesModal, YoHoRoomToolsAndGamesModal } from './NajmRoomToolsAndGamesModal';
 import type { PKSupporter } from './TeamBattleResultModal';
 import type { NormalRoundResultData } from './NormalRoundResultModal';
 const TeamBattleModal = lazy(() =>
@@ -155,13 +130,8 @@ import {
 } from '../lib/roomThemeFirestoreService';
 import { wakeLockService } from '../lib/wakeLockService';
 import { isVideoResource, isMediaUrl, getCleanGiftEmoji, playGiftAudioEffect } from '../lib/giftCmsService';
-import type { LuckyChestConfig } from './LuckyChestModal';
-const LuckyChestModal = lazy(() =>
-  import('./LuckyChestModal').then((m) => ({ default: m.LuckyChestModal }))
-);
-const LuckyChestClaimModal = lazy(() =>
-  import('./LuckyChestClaimModal').then((m) => ({ default: m.LuckyChestClaimModal }))
-);
+import { LuckyChestModal, LuckyChestConfig } from './LuckyChestModal';
+import { LuckyChestClaimModal } from './LuckyChestClaimModal';
 import { FloatingLuckyChestWidget } from './FloatingLuckyChestWidget';
 import { LuckyChestWinnerToast, LuckyChestWinnerNoticeData } from './LuckyChestWinnersTicker';
 import { LuckyRefundModal } from './LuckyRefundModal';
@@ -195,16 +165,19 @@ import {
   isDeveloper
 } from '../lib/roleService';
 import {
-  UnifiedRealtimeVoiceEngine,
+  UnifiedRealtimeVoiceEngine
+} from '../lib/unifiedRealtimeVoiceEngine';
+import {
+  RealtimeVoiceEngine,
   AudioStreamMode,
   getSavedAudioStreamMode,
-  saveAudioStreamMode,
+  saveAudioStreamMode
+} from '../lib/realtimeVoiceService';
+import {
   getSavedNoiseSuppressionState,
-  saveNoiseSuppressionState,
-  RealtimeRoomPresence,
-  RealtimePeerAudioState,
-  RealtimeNetworkQuality
-} from '../audio';
+  saveNoiseSuppressionState
+} from '../lib/audioNoiseSuppressionProcessor';
+import { RealtimeRoomPresence, RealtimePeerAudioState, RealtimeNetworkQuality } from '../types/realtimeAudio';
 import {
   MicSeat,
   SpeakingAuraType,
@@ -1289,7 +1262,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       userName: realDisplayName,
       userAvatar: realDisplayAvatar,
       seatId: isOwner ? 1 : null,
-      preferredDriver: 'zegocloud',
+      preferredDriver: 'auto',
       isNoiseSuppressionEnabled
     });
     engine.setNoiseSuppression(isNoiseSuppressionEnabled);
@@ -1364,9 +1337,8 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     };
 
     engine.onPeerSpeaking = (speakingState) => {
-      setAllMicSeats((prev) => {
-        let hasChanged = false;
-        const next = prev.map((s) => {
+      setAllMicSeats((prev) =>
+        prev.map((s) => {
           const isTargetSeat = (speakingState.seatId && s.id === speakingState.seatId) ||
             (!speakingState.seatId && !s.isEmpty && (
               (speakingState.peerId && s.userId === speakingState.peerId) ||
@@ -1374,23 +1346,15 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             ));
 
           if (isTargetSeat) {
-            const nextSpeaking = Boolean(speakingState.isSpeaking);
-            const nextAudioLevel = nextSpeaking ? Math.max(20, speakingState.audioLevel || 40) : 0;
-            // Prevent micro-rerenders if speaking state is identical and volume difference is trivial
-            if (s.isSpeaking === nextSpeaking && Math.abs((s.audioLevel || 0) - nextAudioLevel) < 8) {
-              return s;
-            }
-            hasChanged = true;
             return {
               ...s,
-              isSpeaking: nextSpeaking,
-              audioLevel: nextAudioLevel
+              isSpeaking: speakingState.isSpeaking,
+              audioLevel: speakingState.isSpeaking ? Math.max(20, speakingState.audioLevel || 40) : 0
             };
           }
           return s;
-        });
-        return hasChanged ? next : prev;
-      });
+        })
+      );
     };
 
     engine.onChatMessage = (incomingMsg) => {
@@ -2368,14 +2332,14 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         return;
       }
 
-      const currentSeat = allMicSeats.find(isSeatMine);
-      // الانتقال المباشر والسلس للمايك فوراً دون نوافذ زائدة عند الرغبة في الجلوس أو التبديل
-      if (currentSeat || !targetSeat.isLocked) {
+      // إذا كان المايك مفتوحاً (غير مقفل) والمستخدم ليس مشرفاً يريد إدارة المقعد:
+      // يصعد فوراً إلى المايك ويفتح الصوت روتينياً بدون نوافذ إضافية
+      if (!targetSeat.isLocked && !isOwner && !isCurrentAdmin && currentUserRole !== 'moderator') {
         handleTakeSeat(seatId);
         return;
       }
 
-      // EMPTY SEAT & LOCKED: Show Seat Action Modal for authorized admin options
+      // EMPTY SEAT: Show Seat Action Modal so user can invite audience, take seat, lock, etc.
       setSelectedSeatForAction(seatId);
       setTargetInviteSeatId(seatId);
       setShowSeatActionModal(true);
@@ -2520,6 +2484,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       voiceEngineRef.current.updateSeat(targetSeatId);
       if (joinMuted) {
         voiceEngineRef.current.setMute(true);
+        voiceEngineRef.current.disableMicrophone();
       } else {
         voiceEngineRef.current.setMute(false);
         voiceEngineRef.current.enableMicrophone();
@@ -3642,7 +3607,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         senderLevel: '1',
         recipientId: targetSeatUser?.userId,
         recipientName: recipient,
-        recipientAvatar: targetSeatUser?.avatar,
+        recipientAvatar: targetSeatUser?.userAvatar,
         giftValue: totalValue
       }).then((updated) => {
         setTotalRoomSupportDiamonds(updated.totalDiamonds);
@@ -5257,8 +5222,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
         currentUserAvatar={myUserAvatar || authUser?.avatar || ''}
       />
 
-      <Suspense fallback={null}>
-        {/* FAMILY MODAL (محمل عند الطلب فقط) */}
+      {/* FAMILY MODAL (محمل عند الطلب فقط) */}
       {showFamilyModal && (
         <FamilyModal
           isOpen={showFamilyModal}
@@ -6566,7 +6530,6 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           }}
         />
       )}
-      </Suspense>
     </div>
   );
 };

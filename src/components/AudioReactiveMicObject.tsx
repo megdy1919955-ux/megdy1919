@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mic, MicOff, Volume2, Radio, Sparkles, Zap, RadioTower, Flame, Music } from 'lucide-react';
-import { VoiceRemoteManager, DEFAULT_VOICE_TRIGGERS } from '../audio';
+import { VoiceRemoteManager, DEFAULT_VOICE_TRIGGERS } from '../lib/voiceRemoteService';
 
 interface AudioReactiveMicObjectProps {
   isMuted: boolean;

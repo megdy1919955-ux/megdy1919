@@ -933,9 +933,9 @@ export const BroadcasterCenterModal: React.FC<BroadcasterCenterModalProps> = ({
                   <div className="text-right">
                     <div className="text-xs font-black text-slate-900 flex items-center justify-end gap-1">
                       {host.name}
-                      {(host as any).role && (
+                      {host.role && (
                         <span className="text-[9px] bg-slate-100 text-slate-700 border border-slate-300 px-1.5 py-0.5 rounded font-bold">
-                          {(host as any).role === 'broker' ? 'وسيط' : 'مذيع'}
+                          {host.role === 'broker' ? 'وسيط' : 'مذيع'}
                         </span>
                       )}
                     </div>

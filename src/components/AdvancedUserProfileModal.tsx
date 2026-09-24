@@ -52,11 +52,9 @@ export interface UserProfileData {
   id: string;
   name: string;
   avatar: string;
-  userId?: string;
-  country?: string;
-  countryFlag?: string;
-  bio?: string;
-  level?: number;
+  userId: string;
+  country: string;
+  countryFlag: string;
   vip?: string;
   vipLevel?: number;
   friendlyPoints?: number;
@@ -72,7 +70,6 @@ export interface UserProfileData {
     avatar: string;
     level: string;
   }>;
-  [key: string]: any;
 }
 
 interface AdvancedUserProfileModalProps {
