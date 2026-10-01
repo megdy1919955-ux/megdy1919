@@ -19,6 +19,7 @@ import { lazyWithRetry } from '../lib/lazyWithRetry';
 import { roomComponentApi } from '../lib/roomComponentApi';
 import { processGiftSupportEvent } from '../lib/levelService';
 import { AudioEngineService } from '../audio/audioEngineService';
+import { LiveKitAudioEngine } from '../audio/liveKitAudioEngine';
 import { MicLogicController } from '../audio/micLogicController';
 import { PresenceLifecycleService, RoomPresencePeer } from '../audio/presenceLifecycleService';
 
@@ -365,6 +366,12 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       userName: myUserName
     });
 
+    // 1.1 تهيئة محرك LiveKit Cloud WebRTC
+    const livekitEngine = LiveKitAudioEngine.getInstance();
+    livekitEngine.joinRoom(roomId, myUserId, myUserName).catch((lkErr) => {
+      console.warn('[VoiceRoomScreen] LiveKit join room notice:', lkErr);
+    });
+
     // 2. إشارة الحضور الخفيفة مع تسجيل الروم الحقيقي وبياناته في السيرفر
     presenceService.enterRoom(roomId, {
       userId: myUserId,
@@ -550,6 +557,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       unsubUserLeft();
       // دالة الفصل الحقيقية والتحرير التام للمايك ومسح جلسة السيرفر
       presenceService.disconnectAndCleanup();
+      livekitEngine.leaveRoom().catch(() => {});
     };
   }, [roomId, myUserId, myUserName, myUserAvatar, isOwner]);
 

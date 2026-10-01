@@ -3,7 +3,12 @@ import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
+import { AccessToken } from 'livekit-server-sdk';
 import { generateZegoToken04, ZEGO_DEFAULT_APP_ID, ZEGO_DEFAULT_SECRET } from './src/audio/zegoServerAssistant';
+
+const LIVEKIT_DEFAULT_URL = process.env.LIVEKIT_URL || 'wss://ai-najm-iu3onztq.livekit.cloud';
+const LIVEKIT_DEFAULT_API_KEY = process.env.LIVEKIT_API_KEY || 'APIKFNSQVK84kTA';
+const LIVEKIT_DEFAULT_API_SECRET = process.env.LIVEKIT_API_SECRET || 'f7V0rIyeawpRYiAV7UG05SExgLLnedk0xts65F6mLhfC';
 
 interface ClientConnection {
   ws: WebSocket;
@@ -482,6 +487,61 @@ async function startServer() {
     } catch (err: any) {
       console.warn('ZEGOCLOUD Token04 generation warning:', err?.message || err);
       res.json({ available: false, token: null, error: err.message || 'Token generation unavailable' });
+    }
+  });
+
+  // LiveKit Cloud Configuration & Token Generation Endpoints
+  app.get('/api/livekit/config', (req, res) => {
+    res.json({
+      url: LIVEKIT_DEFAULT_URL,
+      available: Boolean(LIVEKIT_DEFAULT_URL && LIVEKIT_DEFAULT_API_KEY && LIVEKIT_DEFAULT_API_SECRET)
+    });
+  });
+
+  app.get('/api/livekit/token', async (req, res) => {
+    try {
+      const room = (req.query.room as string) || (req.query.roomId as string) || 'default-room';
+      const identity = (req.query.identity as string) || (req.query.userId as string) || `user_${Math.floor(Math.random() * 100000)}`;
+      const name = (req.query.name as string) || (req.query.userName as string) || identity;
+
+      if (!LIVEKIT_DEFAULT_API_KEY || !LIVEKIT_DEFAULT_API_SECRET) {
+        return res.status(500).json({
+          available: false,
+          error: 'LiveKit API credentials are not configured.'
+        });
+      }
+
+      // Create an Access Token for LiveKit WebRTC Voice Room
+      const at = new AccessToken(LIVEKIT_DEFAULT_API_KEY, LIVEKIT_DEFAULT_API_SECRET, {
+        identity,
+        name,
+        ttl: '24h'
+      });
+
+      at.addGrant({
+        room,
+        roomJoin: true,
+        canPublish: true,
+        canSubscribe: true,
+        canPublishData: true
+      });
+
+      const token = await at.toJwt();
+
+      res.json({
+        available: true,
+        serverUrl: LIVEKIT_DEFAULT_URL,
+        room,
+        identity,
+        name,
+        token
+      });
+    } catch (err: any) {
+      console.warn('[LiveKit Token Error]:', err?.message || err);
+      res.status(500).json({
+        available: false,
+        error: err?.message || 'Failed to generate LiveKit token'
+      });
     }
   });
 

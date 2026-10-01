@@ -9,6 +9,7 @@
  */
 
 import { AudioEngineService } from './audioEngineService';
+import { LiveKitAudioEngine } from './liveKitAudioEngine';
 import { AudioNoiseSuppressionProcessor, getSavedNoiseSuppressionState } from './audioNoiseSuppressionProcessor';
 import { PresenceLifecycleService } from './presenceLifecycleService';
 
@@ -252,7 +253,17 @@ export class MicLogicController {
 
       const processedStream = this.noiseProcessor.getProcessedStream();
 
-      // 3. البث إلى المحرك الصوتي ZEGOCLOUD إن وجد
+      // 3. البث إلى المحرك الصوتي LiveKit Cloud WebRTC
+      try {
+        const livekitEngine = LiveKitAudioEngine.getInstance();
+        if (livekitEngine.status === 'connected') {
+          await livekitEngine.publishMicrophone(processedStream);
+        }
+      } catch (lkErr) {
+        console.warn('[MicLogicController] LiveKit publish notice:', lkErr);
+      }
+
+      // 4. البث إلى المحرك الصوتي ZEGOCLOUD إن وجد
       const audioEngine = AudioEngineService.getInstance();
       const zg = audioEngine.getZegoInstance();
 
@@ -285,7 +296,11 @@ export class MicLogicController {
    * تحرير وإغلاق لاقط الميكروفون على مستوى العتاد تماماً (Hardware Release)
    */
   public releaseHardwareMicrophone(): void {
-    // 1. إيقاف البث عبر محرك الصوت
+    // 1. إيقاف البث عبر محرك الصوت LiveKit و Zego
+    try {
+      LiveKitAudioEngine.getInstance().unpublishMicrophone().catch(() => {});
+    } catch {}
+
     const audioEngine = AudioEngineService.getInstance();
     const zg = audioEngine.getZegoInstance();
 
