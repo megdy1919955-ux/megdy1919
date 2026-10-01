@@ -1088,7 +1088,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             isOpen={Boolean(reportingMessage)}
             message={reportingMessage}
             onClose={() => setReportingMessage(null)}
-            onSubmitReport={(msg, reason) => {
+            onSubmitReport={(msg: any, reason: any) => {
               showToast(`تم إرسال البلاغ بنجاح: ${reason} 🛡️`);
             }}
           />
@@ -1107,7 +1107,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             hostName={hostName}
             isRoomOwner={isOwner}
             userRole={isOwner ? 'owner' : 'guest'}
-            onUpdateRoomTitle={(newTitle) => {
+            onUpdateRoomTitle={(newTitle: string) => {
               setCurrentRoomTitle(newTitle);
               try {
                 localStorage.setItem(`super_legend_room_title_${roomId}`, newTitle);
@@ -1116,7 +1116,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
               } catch {}
               showToast(`✓ تم تحديث اسم الغرفة إلى "${newTitle}"`);
             }}
-            onUpdateRoomAvatar={(newAvatar) => {
+            onUpdateRoomAvatar={(newAvatar: string) => {
               setCurrentRoomAvatar(newAvatar);
               try {
                 localStorage.setItem(`super_legend_room_avatar_${roomId}`, newAvatar);
@@ -1202,7 +1202,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
             attendees={realAttendees}
             isRoomOwner={isOwner}
             isCurrentAdmin={isOwner}
-            onSelectUser={(u) => {
+            onSelectUser={(u: any) => {
               setShowAudienceModal(false);
               roomComponentApi.profile.openProfile({
                 id: u.id,
@@ -1218,7 +1218,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
                 isMuted: u.isMuted
               });
             }}
-            onInviteToMic={(u) => {
+            onInviteToMic={(u: any) => {
               showToast(`تم إرسال دعوة للمايك إلى ${u.name} 🎙️`);
             }}
           />
@@ -1231,7 +1231,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           <RoomEmojiPickerModal
             isOpen={showEmojiPicker}
             onClose={() => setShowEmojiPicker(false)}
-            onSelectEmoji={(emojiItem) => {
+            onSelectEmoji={(emojiItem: any) => {
               // تحديد مقعد المستخدم المعرف على المايك لإظهار التفاعل فوق بروفايله مباشرة
               const mySeat = micSeats.find((s) => s.userId === myUserId || (s.isHost && isOwner)) || micSeats[0];
               const targetSeatId = mySeat ? mySeat.id : 1;
@@ -1265,7 +1265,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
           <RoomGiftBoxModal
             isOpen={showGiftBox}
             onClose={() => setShowGiftBox(false)}
-            onSendGift={async (gift, comboCount, recipientSeatId) => {
+            onSendGift={async (gift: any, comboCount: number, recipientSeatId: any) => {
               const targetSeat = recipientSeatId ? micSeats.find((s) => s.id === recipientSeatId) : undefined;
               const receiverId = targetSeat && !targetSeat.isEmpty ? targetSeat.userId : undefined;
               const receiverName = targetSeat && !targetSeat.isEmpty ? targetSeat.userName : undefined;

@@ -169,7 +169,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
           onOpenUserProfile?.({
             id: msg.id,
             name: msg.userName,
-            avatar: msg.avatar,
+            avatar: msg.avatar || '',
             userId: `884${msg.id.slice(-4)}`,
             country: 'السعودية',
             countryFlag: '🇸🇦'

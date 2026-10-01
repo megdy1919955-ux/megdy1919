@@ -355,15 +355,6 @@ export class AudioNoiseSuppressionProcessor {
         this.compressorNode.disconnect();
         this.compressorNode = null;
       }
-      if (this.dummySilentGain) {
-        this.dummySilentGain.disconnect();
-        this.dummySilentGain = null;
-      }
-      if (this.scriptProcessor) {
-        this.scriptProcessor.disconnect();
-        this.scriptProcessor.onaudioprocess = null;
-        this.scriptProcessor = null;
-      }
       if (this.audioCtx && this.audioCtx.state !== 'closed') {
         this.audioCtx.close().catch(() => {});
         this.audioCtx = null;

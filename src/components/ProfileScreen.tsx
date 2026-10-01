@@ -2050,7 +2050,7 @@ export const ProfileScreen: React.FC = () => {
           <RechargeModal
             isOpen={isRechargeModalOpen}
             onClose={() => setIsRechargeModalOpen(false)}
-            onSuccessRecharge={(addedCoins) => {
+            onSuccessRecharge={(addedCoins: number) => {
               setCoinsBalance((prev) => {
                 const next = prev + addedCoins;
                 try {
@@ -2183,7 +2183,7 @@ export const ProfileScreen: React.FC = () => {
             userName={profile.name || "(عابر سبيل)"}
             avatarUrl={profile.avatarUrl}
             badges={profile.badges}
-            onSelectBadge={(badge) => setSelectedBadge(badge)}
+            onSelectBadge={(badge: any) => setSelectedBadge(badge)}
           />
         </Suspense>
       )}
@@ -2205,7 +2205,7 @@ export const ProfileScreen: React.FC = () => {
             isOpen={isVipCenterModalOpen}
             onClose={() => setIsVipCenterModalOpen(false)}
             profile={profile}
-            onUpgrade={(newVipLevel) => {
+            onUpgrade={(newVipLevel: any) => {
               const updated = { ...profile, vipLevel: newVipLevel, vipTier: newVipLevel };
               setProfile(updated);
               localStorage.setItem('user_profile_data', JSON.stringify({

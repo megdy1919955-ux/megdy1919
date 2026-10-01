@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import Lottie from 'lottie-react';
+import * as LottieModule from 'lottie-react';
+const Lottie = ((LottieModule as any).Lottie || (LottieModule as any).default || LottieModule) as any;
 import {
   X,
   Radio,

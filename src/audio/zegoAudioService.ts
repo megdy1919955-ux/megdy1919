@@ -213,10 +213,10 @@ export class ZegoVoiceEngine {
       }
     });
 
-    this.zg.on('roomUserUpdate', (roomID: string, updateType: 'DELETE' | 'ADD', userList: Array<{ userID: string; userName: string }>) => {
+    this.zg.on('roomUserUpdate', (roomID: string, updateType: 'DELETE' | 'ADD', userList: any[]) => {
       userList.forEach((u) => {
         if (updateType === 'ADD') {
-          this.onlineUsers.set(u.userID, { userName: u.userName });
+          this.onlineUsers.set(u.userID, { userName: u.userName || '' });
         } else {
           this.onlineUsers.delete(u.userID);
         }
