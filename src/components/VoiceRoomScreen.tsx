@@ -27,49 +27,40 @@ import { PresenceLifecycleService, RoomPresencePeer } from '../audio/presenceLif
 // التحميل الكسول المستقل عند الطلب فقط (Lazy On-Demand Components)
 // لا يتم تحميل كود أي نافذة أو مكون فرعي إلى الذاكرة إلا عند ضغط المستخدم فعلياً
 // ============================================================================
-const AdvancedUserProfileModal = lazyWithRetry(
-  () => import('./AdvancedUserProfileModal').then((m) => ({ default: m.AdvancedUserProfileModal })),
-  'AdvancedUserProfileModal'
+const AdvancedUserProfileModal = React.lazy(() =>
+  import('./AdvancedUserProfileModal').then((m) => ({ default: m.AdvancedUserProfileModal || m.default }))
 );
 
-const TopOptionsMenuModal = lazyWithRetry(
-  () => import('./TopOptionsMenuModal').then((m) => ({ default: m.TopOptionsMenuModal })),
-  'TopOptionsMenuModal'
+const TopOptionsMenuModal = React.lazy(() =>
+  import('./TopOptionsMenuModal').then((m) => ({ default: m.TopOptionsMenuModal || m.default }))
 );
 
-const RoomAudienceModal = lazyWithRetry(
-  () => import('./room/RoomAudienceModal').then((m) => ({ default: m.RoomAudienceModal })),
-  'RoomAudienceModal'
+const RoomAudienceModal = React.lazy(() =>
+  import('./room/RoomAudienceModal').then((m) => ({ default: m.RoomAudienceModal || m.default }))
 );
 
-const RoomEmojiPickerModal = lazyWithRetry(
-  () => import('./room/RoomEmojiPickerModal').then((m) => ({ default: m.RoomEmojiPickerModal })),
-  'RoomEmojiPickerModal'
+const RoomEmojiPickerModal = React.lazy(() =>
+  import('./room/RoomEmojiPickerModal').then((m) => ({ default: m.RoomEmojiPickerModal || m.default }))
 );
 
-const RoomGiftBoxModal = lazyWithRetry(
-  () => import('./room/RoomGiftBoxModal').then((m) => ({ default: m.RoomGiftBoxModal })),
-  'RoomGiftBoxModal'
+const RoomGiftBoxModal = React.lazy(() =>
+  import('./room/RoomGiftBoxModal').then((m) => ({ default: m.RoomGiftBoxModal || m.default }))
 );
 
-const RoomInfoModal = lazyWithRetry(
-  () => import('./RoomInfoModal').then((m) => ({ default: m.RoomInfoModal })),
-  'RoomInfoModal'
+const RoomInfoModal = React.lazy(() =>
+  import('./RoomInfoModal').then((m) => ({ default: m.RoomInfoModal || m.default }))
 );
 
-const RoomExitSection = lazyWithRetry(
-  () => import('./room/modals/RoomExitSection').then((m) => ({ default: m.RoomExitSection })),
-  'RoomExitSection'
+const RoomExitSection = React.lazy(() =>
+  import('./room/modals/RoomExitSection').then((m) => ({ default: m.RoomExitSection || m.default }))
 );
 
-const RoomChatInputModal = lazyWithRetry(
-  () => import('./room/RoomChatInputModal').then((m) => ({ default: m.RoomChatInputModal })),
-  'RoomChatInputModal'
+const RoomChatInputModal = React.lazy(() =>
+  import('./room/RoomChatInputModal').then((m) => ({ default: m.RoomChatInputModal || m.default }))
 );
 
-const RoomChatReportModal = lazyWithRetry(
-  () => import('./room/RoomChatReportModal').then((m) => ({ default: m.RoomChatReportModal })),
-  'RoomChatReportModal'
+const RoomChatReportModal = React.lazy(() =>
+  import('./room/RoomChatReportModal').then((m) => ({ default: m.RoomChatReportModal || m.default }))
 );
 
 export type { MicSeat, ChatMessage };
