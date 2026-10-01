@@ -7,7 +7,9 @@
  *  - يتواصل مع النظام عبر إشارات خفيفة (Stream Triggers & Event Emitters).
  */
 
-import { ZegoExpressEngine } from 'zego-express-engine-webrtc';
+import * as ZegoModule from 'zego-express-engine-webrtc';
+const ZegoExpressEngine = ((ZegoModule as any)?.ZegoExpressEngine || (ZegoModule as any)?.default || ZegoModule) as any;
+type ZegoExpressEngine = any;
 import { notifyNativeAndroidAudioMode, syncMediaSessionState } from './nativeAudioBridge';
 import { RealtimePeerAudioState, RealtimeNetworkQuality, AudioStreamMode } from './types';
 

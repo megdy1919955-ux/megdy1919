@@ -457,8 +457,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRo
       return;
     }
 
-    // 2. إذا كان الروم مقفلاً وغير تابع للمالك، اطلب الرمز للدخول كمضيف/زائر عادي
-    const isLocked = room.isLocked || (globalLockData.isLocked && room.id === 'room-1');
+    // 2. إذا كان الروم مقفلاً بكلمة سر وغير تابع للمالك، اطلب الرمز للدخول
+    const isLocked = Boolean(room.isLocked || (room.password && room.password.length > 0));
     if (isLocked) {
       setRoomToJoinPending(room);
       setShowEnterPinModal(true);
@@ -967,7 +967,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRo
 
                     {/* Bottom Action Button "ابدأ الآن" */}
                     <div className="relative z-10">
-                      <button className="w-full py-1.5 bg-white text-blue-900 font-black text-xs rounded-xl shadow-md hover:bg-blue-50 transition-all cursor-pointer">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAttemptJoinRoom(room);
+                        }}
+                        className="w-full py-1.5 bg-white text-blue-900 font-black text-xs rounded-xl shadow-md hover:bg-blue-50 transition-all cursor-pointer"
+                      >
                         ابدأ الآن
                       </button>
                     </div>
@@ -978,12 +984,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRo
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => {
-                      const isLocked = room.isLocked || (room.id === 'room-1' && globalLockData.isLocked);
-                      if (isLocked) {
-                        handleAttemptJoinRoom(room);
-                      } else {
-                        setSelectedRoomModal(room);
-                      }
+                      handleAttemptJoinRoom(room);
                     }}
                     className="relative aspect-[4/5] w-full bg-slate-900 rounded-3xl overflow-hidden shadow-sm border border-slate-200/80 cursor-pointer group"
                   >

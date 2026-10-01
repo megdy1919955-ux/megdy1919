@@ -2171,6 +2171,22 @@ export const ProfileScreen: React.FC = () => {
           <FamilyModal
             isOpen={isFamilyModalOpen}
             onClose={() => setIsFamilyModalOpen(false)}
+            onSelectRoom={(roomId: string) => {
+              setIsFamilyModalOpen(false);
+              handleOpenRoom({
+                id: roomId,
+                title: 'روم العائلة 👑',
+                host: profile.name || 'مضيف العائلة',
+                listenersCount: 15,
+                countryName: 'اليمن',
+                countryCode: 'YE',
+                flag: '🇾🇪',
+                ownerId: profile.userId,
+                isOwner: true,
+                image: profile.avatarUrl,
+                avatars: [profile.avatarUrl]
+              });
+            }}
           />
         </Suspense>
       )}
