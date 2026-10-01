@@ -1,0 +1,245 @@
+{
+  "entities": {
+    "Room": {
+      "title": "Room",
+      "description": "Voice room visual styling, theme configurations, and background wallpaper tied to roomId",
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string",
+          "description": "Unique identifier of the voice room",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Identifier of the room owner with exclusive theme edit rights",
+          "maxLength": 128
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Display name of the room owner",
+          "maxLength": 100
+        },
+        "roomTitle": {
+          "type": "string",
+          "description": "Title of the voice room",
+          "maxLength": 150
+        },
+        "roomAvatar": {
+          "type": "string",
+          "description": "Avatar image URL of the voice room",
+          "maxLength": 5000000
+        },
+        "wallpaperUrl": {
+          "type": "string",
+          "description": "URL of the room background wallpaper",
+          "maxLength": 5000000
+        },
+        "wallpaperName": {
+          "type": "string",
+          "description": "Name of the equipped wallpaper theme",
+          "maxLength": 100
+        },
+        "themeConfig": {
+          "type": "object",
+          "description": "Comprehensive visual styling parameters for top bar, bottom bar, mics, seats, glow, and darkness"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp",
+          "format": "date-time"
+        }
+      },
+      "required": ["roomId", "ownerId", "wallpaperUrl"]
+    },
+    "EmojiSlot": {
+      "title": "EmojiSlot",
+      "description": "Dynamic emoji box slot configured from dashboard and stored on server",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique slot identifier"
+        },
+        "slotIndex": {
+          "type": "number",
+          "description": "Grid box order index"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of emoji"
+        },
+        "emoji": {
+          "type": "string",
+          "description": "Emoji character or symbol"
+        },
+        "iconUrl": {
+          "type": "string",
+          "description": "Optional image or animation URL"
+        },
+        "category": {
+          "type": "string",
+          "description": "Tab category: classic, energy, vip, games"
+        },
+        "badge": {
+          "type": "string",
+          "description": "Optional badge like VIP, HOT, NEW"
+        },
+        "isVip": {
+          "type": "boolean",
+          "description": "Whether emoji requires VIP"
+        },
+        "animationType": {
+          "type": "string",
+          "description": "Animation preset for floating display"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["id", "slotIndex", "emoji"]
+    },
+    "SyncMetadata": {
+      "title": "SyncMetadata",
+      "description": "Lightweight signal metadata for silent background sync of emojis, cards, etc.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Signal identifier e.g. emojis_sync or cards_sync"
+        },
+        "version": {
+          "type": "number",
+          "description": "Incremental version tag"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp of modification"
+        }
+      },
+      "required": ["id", "version"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account profile with live synchronized wallet balance, coins, diamonds, and VIP tier",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "User unique identifier e.g. 1919955 or Google UID",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "description": "User display name",
+          "maxLength": 100
+        },
+        "avatar": {
+          "type": "string",
+          "description": "Avatar URL",
+          "maxLength": 5000000
+        },
+        "email": {
+          "type": "string",
+          "description": "Optional email address",
+          "maxLength": 200
+        },
+        "phone": {
+          "type": "string",
+          "description": "Optional phone number",
+          "maxLength": 50
+        },
+        "age": {
+          "type": "number",
+          "description": "User age in years"
+        },
+        "country": {
+          "type": "string",
+          "description": "User country e.g. اليمن, السعودية",
+          "maxLength": 100
+        },
+        "hasCompletedOnboarding": {
+          "type": "boolean",
+          "description": "Whether user completed initial profile onboarding"
+        },
+        "googleUid": {
+          "type": "string",
+          "description": "Google UID from Firebase Auth",
+          "maxLength": 128
+        },
+        "coins": {
+          "type": "number",
+          "description": "Current coins balance in wallet"
+        },
+        "diamonds": {
+          "type": "number",
+          "description": "Current diamonds balance in wallet"
+        },
+        "level": {
+          "type": "number",
+          "description": "Account level"
+        },
+        "sender_exp": {
+          "type": "number",
+          "description": "Total supporter/sender experience points accumulated from sending gifts"
+        },
+        "sender_level": {
+          "type": "number",
+          "description": "Supporter/sender level based on sender_exp"
+        },
+        "receiver_exp": {
+          "type": "number",
+          "description": "Total receiver/charm experience points accumulated from receiving gifts"
+        },
+        "receiver_level": {
+          "type": "number",
+          "description": "Receiver/charm level based on receiver_exp"
+        },
+        "vipTier": {
+          "type": "string",
+          "description": "VIP level tier e.g. VIP8",
+          "maxLength": 20
+        },
+        "role": {
+          "type": "string",
+          "description": "Access role e.g. super_admin or regular_user",
+          "maxLength": 50
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["id", "name", "coins"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Collection of user account profiles and live balances synchronized with Firebase Console and external dashboard"
+    },
+    "/rooms/{roomId}": {
+      "schema": "Room",
+      "description": "Collection of voice room documents indexed by roomId with theme and background data editable exclusively by the room owner"
+    },
+    "/app_emojis/{slotId}": {
+      "schema": "EmojiSlot",
+      "description": "Collection of emoji slots managed by dashboard and synced in real-time to voice room"
+    },
+    "/app_meta/{metaDoc}": {
+      "schema": "SyncMetadata",
+      "description": "Lightweight signals for silent background sync (emojis, cards, etc.)"
+    }
+  }
+}
