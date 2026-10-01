@@ -22,6 +22,7 @@ export * from './voiceRemoteService';
 export * from './audioEngineService';
 export * from './micLogicController';
 export * from './presenceLifecycleService';
+export * from './liveKitAudioEngine';
 export * from './unifiedVoiceEngine';
 
 // Fast Reload / HMR Self-Acceptance

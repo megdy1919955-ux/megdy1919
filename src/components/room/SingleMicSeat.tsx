@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Lock, Plus, Mic, MicOff } from 'lucide-react';
 import { MicSeat, formatCounterNumber, getRibbonMilestoneTheme, getSpeakingAuraStyles } from './roomTypes';
 import { RoomOwnerBadge } from './RoomOwnerBadge';
+import { SpeakingAura } from './SpeakingAura';
 import { MainRoomCustomizerConfig } from '../../types/roomCustomizer';
 import { hexToRgba } from '../../lib/roomCustomizerService';
 import { LottieReactionPlayer } from '../LottieReactionPlayer';
@@ -157,54 +158,19 @@ export const SingleMicSeat: React.FC<SingleMicSeatProps> = React.memo(({
           </div>
         ) : (
           <div className="relative flex items-center justify-center overflow-visible">
-            {isSpeaking && (
-              <>
-                {/* 1. Subtle Vibrating Core Ring with Micro-Jitter (Less than half thickness, soft gentle glow) */}
-                <motion.div
-                  animate={{
-                    scale: [1, dynamicScaleTarget, 1.01, dynamicScaleTarget, 1],
-                    x: [-jitterDistance, jitterDistance, -jitterDistance * 0.5, jitterDistance * 0.5, 0],
-                    y: [jitterDistance * 0.5, -jitterDistance * 0.5, -jitterDistance, jitterDistance, 0],
-                    opacity: [0.75, 0.95, 0.8, 0.95, 0.75],
-                  }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: dynamicPulseDuration,
-                    ease: 'easeInOut',
-                  }}
-                  className={`absolute -inset-1 ${seatShapeRounded} pointer-events-none z-0 overflow-visible`}
-                  style={{
-                    boxShadow: `0 0 ${dynamicGlowIntensity}px ${dynamicGlowColor}`,
-                    border: `${dynamicRingWidth}px solid ${dynamicRingColor}`
-                  }}
-                />
-
-                {/* 2. Soft Delicate Acoustic Wave */}
-                <motion.div
-                  animate={{
-                    scale: [1, 1.18 + normLevel * 0.12],
-                    opacity: [0.4, 0],
-                  }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: Math.max(0.85, 1.25 - normLevel * 0.2),
-                    ease: 'easeOut',
-                  }}
-                  className={`absolute -inset-1 ${seatShapeRounded} pointer-events-none z-0 overflow-visible`}
-                  style={{
-                    border: `${Math.max(0.75, dynamicRingWidth * 0.8)}px solid ${dynamicRingColor}`,
-                    boxShadow: `0 0 ${Math.round(dynamicGlowIntensity * 0.5)}px ${dynamicGlowColor}`
-                  }}
-                />
-
-                {/* 3. Delicate Soft Rotating Shimmer Ring */}
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 5, ease: 'linear' }}
-                  className={`absolute -inset-1.5 ${seatShapeRounded} pointer-events-none z-0 overflow-visible ${auraStyle.ring3Class}`}
-                />
-              </>
-            )}
+            <SpeakingAura
+              isSpeaking={isSpeaking}
+              theme={config.speakingAuraTheme || 'default'}
+              seatShapeRounded={seatShapeRounded}
+              dynamicScaleTarget={dynamicScaleTarget}
+              jitterDistance={jitterDistance}
+              dynamicPulseDuration={dynamicPulseDuration}
+              dynamicGlowIntensity={dynamicGlowIntensity}
+              dynamicGlowColor={dynamicGlowColor}
+              dynamicRingWidth={dynamicRingWidth}
+              dynamicRingColor={dynamicRingColor}
+              normLevel={normLevel}
+            />
 
             <motion.div
               animate={isSpeaking ? {

@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Lock, Plus, Mic, MicOff } from 'lucide-react';
 import { MicSeat } from './roomTypes';
+import { SpeakingAura } from './SpeakingAura';
 
 export interface SeatReactionData {
   id: string;
@@ -80,61 +81,77 @@ export const RoomSingleMic: React.FC<RoomSingleMicProps> = ({
           </div>
         ) : (
           // المقعد المشغول بمستخدم (ثابت بدون اهتزاز)
-          <div className="relative w-13 h-13 sm:w-14 sm:h-14 rounded-full p-0.5 overflow-hidden">
-            <img
-              src={
-                seat.avatar ||
-                'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200'
-              }
-              alt={seat.userName}
-              className={`w-full h-full rounded-full object-cover border-2 shadow-md ${
-                seat.isSpeaking
-                  ? 'border-amber-400 ring-2 ring-amber-400/60'
-                  : seat.isHost
-                  ? 'border-amber-400/90'
-                  : 'border-slate-400/70'
-              }`}
+          <div className="relative w-13 h-13 sm:w-14 sm:h-14 rounded-full flex items-center justify-center overflow-visible">
+            <SpeakingAura
+              isSpeaking={Boolean(seat.isSpeaking)}
+              theme="default"
+              seatShapeRounded="rounded-full"
+              dynamicScaleTarget={1.12}
+              jitterDistance={0.4}
+              dynamicPulseDuration={0.85}
+              dynamicGlowIntensity={12}
+              dynamicGlowColor="rgba(245, 158, 11, 0.65)"
+              dynamicRingWidth={2}
+              dynamicRingColor="#f59e0b"
+              normLevel={0.6}
             />
 
-            {/* تفاعل الإيموجي في وسط البروفايل تماماً، ملء البروفايل، بدون كتابة وبدون تنطيط */}
-            <AnimatePresence>
-              {activeReaction && (
-                <motion.div
-                  key={activeReaction.id}
-                  initial={{ scale: 0.2, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  transition={{ duration: 0.2, ease: 'easeOut' }}
-                  className="absolute inset-0 z-30 flex items-center justify-center rounded-full bg-black/55 backdrop-blur-[0.5px] pointer-events-none"
-                >
-                  <div className="w-full h-full flex items-center justify-center text-3xl sm:text-4xl select-none leading-none drop-shadow-md">
-                    {activeReaction.iconUrl ? (
-                      <img
-                        src={activeReaction.iconUrl}
-                        alt="emoji"
-                        className="w-10 h-10 object-contain drop-shadow"
-                      />
-                    ) : (
-                      <span>{activeReaction.emoji}</span>
-                    )}
-                  </div>
-                </motion.div>
+            <div className="relative w-full h-full rounded-full p-0.5 overflow-hidden z-10">
+              <img
+                src={
+                  seat.avatar ||
+                  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200'
+                }
+                alt={seat.userName}
+                className={`w-full h-full rounded-full object-cover border-2 shadow-md ${
+                  seat.isSpeaking
+                    ? 'border-amber-400 ring-2 ring-amber-400/60'
+                    : seat.isHost
+                    ? 'border-amber-400/90'
+                    : 'border-slate-400/70'
+                }`}
+              />
+
+              {/* تفاعل الإيموجي في وسط البروفايل تماماً، ملء البروفايل، بدون كتابة وبدون تنطيط */}
+              <AnimatePresence>
+                {activeReaction && (
+                  <motion.div
+                    key={activeReaction.id}
+                    initial={{ scale: 0.2, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                    className="absolute inset-0 z-30 flex items-center justify-center rounded-full bg-black/55 backdrop-blur-[0.5px] pointer-events-none"
+                  >
+                    <div className="w-full h-full flex items-center justify-center text-3xl sm:text-4xl select-none leading-none drop-shadow-md">
+                      {activeReaction.iconUrl ? (
+                        <img
+                          src={activeReaction.iconUrl}
+                          alt="emoji"
+                          className="w-10 h-10 object-contain drop-shadow"
+                        />
+                      ) : (
+                        <span>{activeReaction.emoji}</span>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* شارة كتم المايك */}
+              {seat.isMuted && (
+                <div className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 rounded-full bg-rose-600 border-1.5 border-[#0B0D17] flex items-center justify-center shadow">
+                  <MicOff className="w-2.5 h-2.5 text-white stroke-[2.8]" />
+                </div>
               )}
-            </AnimatePresence>
 
-            {/* شارة كتم المايك */}
-            {seat.isMuted && (
-              <div className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 rounded-full bg-rose-600 border-1.5 border-[#0B0D17] flex items-center justify-center shadow">
-                <MicOff className="w-2.5 h-2.5 text-white stroke-[2.8]" />
-              </div>
-            )}
-
-            {/* شارة التحدث */}
-            {seat.isSpeaking && (
-              <div className="absolute -bottom-0.5 -left-0.5 w-4.5 h-4.5 rounded-full bg-emerald-500 border-1.5 border-[#0B0D17] flex items-center justify-center shadow">
-                <Mic className="w-2.5 h-2.5 text-white stroke-[2.8]" />
-              </div>
-            )}
+              {/* شارة التحدث */}
+              {seat.isSpeaking && (
+                <div className="absolute -bottom-0.5 -left-0.5 w-4.5 h-4.5 rounded-full bg-emerald-500 border-1.5 border-[#0B0D17] flex items-center justify-center shadow">
+                  <Mic className="w-2.5 h-2.5 text-white stroke-[2.8]" />
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

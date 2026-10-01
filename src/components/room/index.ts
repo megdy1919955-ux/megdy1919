@@ -10,6 +10,7 @@ export * from './RoomHeader';
 export * from './RoomTitleCapsule';
 export * from './RoomBottomBar';
 export * from './RoomEntranceBanner';
+export * from './SpeakingAura';
 export * from './RoomOwnerBadge';
 export * from './VipAnnouncementFlyer';
 export { RoomVipBroadcastBanner } from './RoomVipBroadcastBanner';
