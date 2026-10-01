@@ -135,6 +135,9 @@ export class AudioEngineService {
     }
   }
 
+  private isLoggingIn: boolean = false;
+  private currentZegoRoom: string = '';
+
   /**
    * تهيئة واستقبال الصوت فقط دون تشغيل المايك
    * وضع المستمع التام (Subscriber Mode)
@@ -145,6 +148,10 @@ export class AudioEngineService {
     userId: string;
     userName: string;
   }): Promise<boolean> {
+    if (this.isLoggingIn) {
+      return false;
+    }
+
     this.roomId = options.roomId;
     this.userId = options.userId;
     this.userName = options.userName;
@@ -152,64 +159,89 @@ export class AudioEngineService {
     this.setStatus('connecting');
     this.enforceMediaAudioOutput();
 
+    // إذا كان متصلاً بالفعل بنفس الغرفة
+    if (this.zg && this.currentZegoRoom === this.roomId && this.status === 'connected') {
+      return true;
+    }
+
+    this.isLoggingIn = true;
+
     try {
       // 1. إذا كان المحرك مسجلاً في غرفة سابقة أو متصلاً، نقوم بتسجيل الخروج أولاً لتجنب 'state error'
-      if (this.zg) {
+      if (this.zg && this.currentZegoRoom && this.currentZegoRoom !== this.roomId) {
         try {
-          if (this.roomId) {
-            await this.zg.logoutRoom(this.roomId);
-          }
+          await this.zg.logoutRoom(this.currentZegoRoom);
         } catch (logoutPrevErr) {
           console.warn('[AudioEngineService] Previous room logout notice:', logoutPrevErr);
         }
+        this.currentZegoRoom = '';
       }
 
       // جلب توكن ZEGOCLOUD الرسمي من السيرفر
       const tokenRes = await fetch(`/api/zego/token?userId=${encodeURIComponent(options.userId)}&roomId=${encodeURIComponent(options.roomId)}`);
       if (!tokenRes.ok) {
         this.setStatus('disconnected');
+        this.isLoggingIn = false;
         return false;
       }
       const tokenData = await tokenRes.json();
       if (!tokenData.available || !tokenData.token) {
         this.setStatus('disconnected');
+        this.isLoggingIn = false;
         return false;
       }
 
       const appId = options.appId || tokenData.appId || 2138622497;
-      const server = tokenData.server || `wss://webliveroom${appId}-api.zegocloud.com/ws`;
+      // قائمة خوادم احتياطية موثوقة لـ ZEGOCLOUD لمنع network timeout
+      const serverCandidates = [
+        tokenData.server,
+        `wss://webliveroom${appId}-api.zegocloud.com/ws`,
+        'wss://webliveroom-api.zegocloud.com/ws',
+        `wss://webliveroom${appId}-api.coolzcloud.com/ws`,
+        'wss://webliveroom-api.coolzcloud.com/ws'
+      ].filter(Boolean);
 
       // إعادة إنشاء المحرك أو استخدام المحرك الحالي بأمان
       if (!this.zg) {
-        this.zg = new ZegoExpressEngine(appId, server, {
+        this.zg = new ZegoExpressEngine(appId, serverCandidates as any, {
           scenario: 6
         });
         this.bindZegoEvents();
       }
 
-      // تسجيل الدخول كمستمع (Subscriber) فقط - دون أي طلب للميكروفون
-      const loginOk = await this.zg.loginRoom(
+      // تسجيل الدخول مع ضبط timeout لحماية التطبيق من التعليق
+      const loginPromise = this.zg.loginRoom(
         this.roomId,
         tokenData.token,
         { userID: this.userId, userName: this.userName },
         { userUpdate: true, maxMemberCount: 1000 }
       );
 
+      const timeoutPromise = new Promise<boolean>((resolve) => {
+        setTimeout(() => resolve(false), 9000);
+      });
+
+      const loginOk = await Promise.race([loginPromise, timeoutPromise]);
+
       if (loginOk) {
+        this.currentZegoRoom = this.roomId;
         this.setStatus('connected');
         try {
           this.zg.setSoundLevelDelegate(true, 300);
         } catch {}
         this.enforceMediaAudioOutput();
+        this.isLoggingIn = false;
         return true;
       } else {
         this.setStatus('disconnected');
+        this.isLoggingIn = false;
         return false;
       }
     } catch (err: any) {
       console.warn('[AudioEngineService] Subscriber initialization notice:', err?.message || err);
-      // تجنب إسقاط الواجهة في حال كان الخطأ حالة عابرة في الغرفة
+      // معالجة هادئة لخطأ timeout أو إغلاق السوكيت مع إبقاء التطبيق يعمل عبر الـ presence
       this.setStatus('disconnected');
+      this.isLoggingIn = false;
       return false;
     }
   }
@@ -412,6 +444,8 @@ export class AudioEngineService {
         this.zg = null;
       }
 
+      this.currentZegoRoom = '';
+      this.isLoggingIn = false;
       this.setStatus('disconnected');
       this.listeners.clear();
     } catch (err) {
