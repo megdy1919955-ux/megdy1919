@@ -98,6 +98,31 @@ service cloud.firestore {
 
       // Deletion: Restricted
       allow delete: if isValidId(roomId) && isSignedIn();
+
+      // Real-time Chat Messages
+      match /messages/{messageId} {
+        allow read, write: if isValidId(roomId);
+      }
+
+      // Real-time Mic Seats (Who is on which seat, muted, speaking)
+      match /seats/{seatId} {
+        allow read, write: if isValidId(roomId);
+      }
+
+      // Real-time Cinema Video Watch Together
+      match /cinema/{cinemaDoc} {
+        allow read, write: if isValidId(roomId);
+      }
+
+      // Real-time WebRTC Audio & Video Signaling
+      match /signals/{signalId} {
+        allow read, write: if isValidId(roomId);
+      }
+
+      // Real-time Room Events (Gifts, Reactions, Entrance)
+      match /events/{eventId} {
+        allow read, write: if isValidId(roomId);
+      }
     }
 
     // Dashboard Managed Emojis Collection (Live synced with Voice Room)

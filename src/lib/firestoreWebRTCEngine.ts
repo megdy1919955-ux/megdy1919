@@ -138,8 +138,10 @@ export class FirestoreWebRTCEngine {
 
     this.onPeerSpeaking?.({
       peerId: this.myPeerId,
-      seatId: this.seatId || undefined,
+      seatId: this.seatId ?? undefined,
       userName: this.userName,
+      userAvatar: this.userAvatar,
+      isMuted: true,
       isSpeaking: false,
       audioLevel: 0
     });
@@ -178,8 +180,10 @@ export class FirestoreWebRTCEngine {
             lastSpeakingState = false;
             this.onPeerSpeaking?.({
               peerId: this.myPeerId,
-              seatId: this.seatId || undefined,
+              seatId: this.seatId ?? undefined,
               userName: this.userName,
+              userAvatar: this.userAvatar,
+              isMuted: true,
               isSpeaking: false,
               audioLevel: 0
             });
@@ -206,8 +210,10 @@ export class FirestoreWebRTCEngine {
           lastSpeakingState = isSpeaking;
           this.onPeerSpeaking?.({
             peerId: this.myPeerId,
-            seatId: this.seatId || undefined,
+            seatId: this.seatId ?? undefined,
             userName: this.userName,
+            userAvatar: this.userAvatar,
+            isMuted: this.isMuted,
             isSpeaking,
             audioLevel: isSpeaking ? Math.min(100, Math.round(avg * 1.5)) : 0
           });

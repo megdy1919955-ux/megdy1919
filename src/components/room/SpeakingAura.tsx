@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { getSpeakingAuraStyles, SpeakingAuraType } from './roomTypes';
 
 export interface SpeakingAuraProps {
   isSpeaking: boolean;
@@ -14,19 +15,6 @@ export interface SpeakingAuraProps {
   dynamicRingColor?: string;
   normLevel?: number;
 }
-
-export const getSpeakingAuraStyles = (theme?: string) => {
-  switch (theme) {
-    case 'cosmic_gold':
-      return { ring3Class: 'border border-dashed border-amber-200/60' };
-    case 'cyber_neon':
-      return { ring3Class: 'border border-dashed border-emerald-300/60' };
-    case 'royal_ruby':
-      return { ring3Class: 'border border-dashed border-pink-300/60' };
-    default:
-      return { ring3Class: 'border-[0.75px] border-dashed border-emerald-300/35' };
-  }
-};
 
 export const SpeakingAura: React.FC<SpeakingAuraProps> = ({
   isSpeaking,
@@ -43,7 +31,7 @@ export const SpeakingAura: React.FC<SpeakingAuraProps> = ({
 }) => {
   if (!isSpeaking) return null;
 
-  const auraStyle = getSpeakingAuraStyles(theme);
+  const auraStyle = getSpeakingAuraStyles(theme as SpeakingAuraType);
 
   return (
     <>
