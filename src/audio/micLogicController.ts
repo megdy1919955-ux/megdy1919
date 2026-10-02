@@ -39,8 +39,6 @@ export class MicLogicController {
 
   private rawMediaStream: MediaStream | null = null;
   private noiseProcessor: AudioNoiseSuppressionProcessor | null = null;
-  private localPublishStreamId: string = '';
-  private isPublishingToZego: boolean = false;
   private roomId: string = '';
   private userId: string = '';
 
@@ -253,7 +251,7 @@ export class MicLogicController {
 
       const processedStream = this.noiseProcessor.getProcessedStream();
 
-      // 3. البث إلى المحرك الصوتي LiveKit Cloud WebRTC
+      // 3. البث المباشر الفوري إلى المحرك الصوتي LiveKit Cloud WebRTC
       try {
         const livekitEngine = LiveKitAudioEngine.getInstance();
         if (livekitEngine.status === 'connected') {
@@ -261,24 +259,6 @@ export class MicLogicController {
         }
       } catch (lkErr) {
         console.warn('[MicLogicController] LiveKit publish notice:', lkErr);
-      }
-
-      // 4. البث إلى المحرك الصوتي ZEGOCLOUD إن وجد
-      const audioEngine = AudioEngineService.getInstance();
-      const zg = audioEngine.getZegoInstance();
-
-      if (zg && this.roomId && this.userId) {
-        const cleanRoom = this.roomId.replace(/[^a-zA-Z0-9_-]/g, '');
-        const cleanUser = this.userId.replace(/[^a-zA-Z0-9_-]/g, '');
-        this.localPublishStreamId = `s_${cleanRoom}_${cleanUser}`;
-
-        try {
-          await zg.startPublishingStream(this.localPublishStreamId, processedStream);
-          this.isPublishingToZego = true;
-          zg.mutePublishStreamAudio(processedStream, false);
-        } catch (publishErr) {
-          console.warn('[MicLogicController] Zego stream publish notice:', publishErr);
-        }
       }
 
       this.isHardwareMuted = false;
@@ -296,24 +276,10 @@ export class MicLogicController {
    * تحرير وإغلاق لاقط الميكروفون على مستوى العتاد تماماً (Hardware Release)
    */
   public releaseHardwareMicrophone(): void {
-    // 1. إيقاف البث عبر محرك الصوت LiveKit و Zego
+    // 1. إيقاف البث عبر محرك الصوت LiveKit Cloud WebRTC
     try {
       LiveKitAudioEngine.getInstance().unpublishMicrophone().catch(() => {});
     } catch {}
-
-    const audioEngine = AudioEngineService.getInstance();
-    const zg = audioEngine.getZegoInstance();
-
-    if (zg && this.localPublishStreamId && this.isPublishingToZego) {
-      try {
-        if (audioEngine.status === 'connected') {
-          zg.stopPublishingStream(this.localPublishStreamId);
-        }
-      } catch (stopErr) {
-        console.warn('[MicLogicController] stopPublishingStream notice:', stopErr);
-      }
-      this.isPublishingToZego = false;
-    }
 
     // 2. تدمير معالج بوابة الضوضاء
     if (this.noiseProcessor) {

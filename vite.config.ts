@@ -7,7 +7,7 @@ export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
     optimizeDeps: {
-      include: ['zego-express-engine-webrtc'],
+      include: ['livekit-client'],
     },
     resolve: {
       alias: {

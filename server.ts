@@ -4,7 +4,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { AccessToken } from 'livekit-server-sdk';
-import { generateZegoToken04, ZEGO_DEFAULT_APP_ID, ZEGO_DEFAULT_SECRET } from './src/audio/zegoServerAssistant';
+
 
 const LIVEKIT_DEFAULT_URL = process.env.LIVEKIT_URL || 'wss://ai-najm-iu3onztq.livekit.cloud';
 const LIVEKIT_DEFAULT_API_KEY = process.env.LIVEKIT_API_KEY || 'APIKFNSQVK84kTA';
@@ -438,56 +438,20 @@ async function startServer() {
     }
   });
 
-  // ZEGOCLOUD Configuration and Token Generation Endpoints
+  // ZEGOCLOUD (Disabled in favor of LiveKit Cloud)
   app.get('/api/zego/config', (req, res) => {
-    const appId = Number(process.env.ZEGO_APP_ID) || ZEGO_DEFAULT_APP_ID;
-    const serverSecret = process.env.ZEGO_SERVER_SECRET || ZEGO_DEFAULT_SECRET;
-    const serverUrl = process.env.ZEGO_SERVER_URL || `wss://webliveroom${appId}-api.zegocloud.com/ws`;
-    const isConfigured = Boolean(appId && serverSecret);
     res.json({
-      appId,
-      server: serverUrl,
-      isConfigured
+      available: false,
+      message: 'ZEGOCLOUD is disabled. LiveKit Cloud is the active real-time WebRTC audio provider.'
     });
   });
 
   app.get('/api/zego/token', (req, res) => {
-    try {
-      const appId = Number(process.env.ZEGO_APP_ID) || ZEGO_DEFAULT_APP_ID;
-      const secret = process.env.ZEGO_SERVER_SECRET || ZEGO_DEFAULT_SECRET;
-      const isConfigured = Boolean(appId && secret && secret.length >= 16);
-
-      if (!isConfigured) {
-        return res.json({
-          available: false,
-          token: null,
-          message: 'ZEGOCLOUD is not configured with valid AppID and ServerSecret.'
-        });
-      }
-
-      const userId = (req.query.userId as string) || `user_${Math.floor(Math.random() * 100000)}`;
-      const roomId = (req.query.roomId as string) || 'default_room';
-      const serverUrl = process.env.ZEGO_SERVER_URL || `wss://webliveroom${appId}-api.zegocloud.com/ws`;
-
-      // Official ZEGOCLOUD Token04 standard:
-      // An empty payload ('') provides full room login and publishing capabilities
-      // without requiring custom privilege activation through ZEGOCLOUD customer support.
-      const payload = typeof req.query.payload === 'string' ? req.query.payload : '';
-
-      const token = generateZegoToken04(appId, userId, secret, 86400, payload);
-
-      res.json({
-        available: true,
-        appId,
-        userId,
-        roomId,
-        server: serverUrl,
-        token
-      });
-    } catch (err: any) {
-      console.warn('ZEGOCLOUD Token04 generation warning:', err?.message || err);
-      res.json({ available: false, token: null, error: err.message || 'Token generation unavailable' });
-    }
+    res.json({
+      available: false,
+      token: null,
+      message: 'ZEGOCLOUD is disabled. LiveKit Cloud is active.'
+    });
   });
 
   // LiveKit Cloud Configuration & Token Generation Endpoints
