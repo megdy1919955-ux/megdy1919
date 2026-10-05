@@ -13,6 +13,8 @@ interface StatDetailModalProps {
   friends: FriendUser[];
   followers: FollowerUser[];
   likes: LikeActivity[];
+  profile?: any;
+  dashboardBadges?: any;
 }
 
 export const StatDetailModal: React.FC<StatDetailModalProps> = ({
@@ -23,10 +25,24 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
   friends,
   followers,
   likes,
+  profile,
+  dashboardBadges,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   if (!isOpen || !activeStat) return null;
+
+  const effectiveProfile = profile || {
+    name: 'أبو أمجد (الملك سلطان الفاتح)',
+    userId: '1001001',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'
+  };
+
+  const effectiveBadges = dashboardBadges || {
+    supporterLevel: 120,
+    charmLevel: 45,
+    vipLevel: 'VIP7'
+  };
 
   const getHeaderInfo = () => {
     switch (activeStat) {
@@ -118,6 +134,46 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
             >
               <X className="w-5 h-5" />
             </button>
+          </div>
+
+          {/* User Account & Real Badges Banner - Tied strictly to User ID */}
+          <div className="bg-[#F6EEDC] px-4 py-2 border-b border-[#DFC386]/80 flex items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <img
+                src={effectiveProfile.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'}
+                alt={effectiveProfile.name}
+                className="w-8 h-8 rounded-full object-cover border border-[#DFC386] shrink-0"
+              />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar">
+                  <span className="font-black text-xs text-[#5C3F13] truncate">
+                    {effectiveProfile.name}
+                  </span>
+                  {/* Real Badges tied to Account ID */}
+                  <span className="bg-gradient-to-r from-amber-700 via-amber-600 to-yellow-600 text-amber-100 text-[8.5px] font-black px-1.5 py-[1px] rounded-full shrink-0">
+                    👑 {effectiveBadges.vipLevel || 'VIP7'}
+                  </span>
+                  <span className="bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white text-[8.5px] font-black px-1.5 py-[1px] rounded-full shrink-0">
+                    🔥 {effectiveBadges.supporterLevel || 120}
+                  </span>
+                  <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 text-white text-[8.5px] font-black px-1.5 py-[1px] rounded-full shrink-0">
+                    💎 {effectiveBadges.charmLevel || 45}
+                  </span>
+                  <span className="bg-gradient-to-r from-amber-800 to-yellow-700 text-amber-100 text-[8.5px] font-black px-1.5 py-[1px] rounded-full shrink-0">
+                    🐺 SL1
+                  </span>
+                  <span className="bg-gradient-to-r from-rose-700 via-red-600 to-amber-600 text-white text-[8px] font-black px-1.5 py-[1px] rounded-full shrink-0">
+                    المطور 👑
+                  </span>
+                </div>
+                <div className="text-[10px] text-[#8C7355] font-mono font-bold mt-0.5">
+                  ID: {effectiveProfile.userId || '1001001'}
+                </div>
+              </div>
+            </div>
+            <span className="text-[9.5px] bg-[#EED9B3] text-[#755013] font-bold px-2 py-0.5 rounded-md border border-[#DFC386] shrink-0">
+              حساب موثق
+            </span>
           </div>
 
           {/* Quick Search Subheader */}

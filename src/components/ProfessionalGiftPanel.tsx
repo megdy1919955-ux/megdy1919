@@ -90,6 +90,7 @@ interface ProfessionalGiftPanelProps {
   seats?: SeatUser[];
   initialSelectedSeatIds?: number[];
   listeners?: ListenerUser[];
+  roomId?: string;
 }
 
 const GIFT_CATEGORIES = [
@@ -115,7 +116,8 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
   onSendGift,
   seats = [],
   initialSelectedSeatIds = [1],
-  listeners = []
+  listeners = [],
+  roomId
 }) => {
   // Live Reactive Database & Roles
   const [giftsList, setGiftsList] = useState<GiftItem[]>(() => getGiftsDatabase());
@@ -198,9 +200,10 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
   >([]);
 
   // ================= CONSECUTIVE SENDING (COMBO) STATE & REFS =================
-  const [isPanelVisible, setIsPanelVisible] = useState<boolean>(false);
+  const [isCatalogOpen, setIsCatalogOpen] = useState<boolean>(false);
+  const [isBarOpen, setIsBarOpen] = useState<boolean>(false);
   const [isComboActive, setIsComboActive] = useState<boolean>(false);
-  const [comboCount, setComboCount] = useState<number>(1);
+  const [comboCount, setComboCount] = useState<number>(0);
   const [comboProgress, setComboProgress] = useState<number>(1); // 1.0 down to 0.0
   const [comboFloatingBursts, setComboFloatingBursts] = useState<Array<{ id: number; text: string; x: number }>>([]);
   
@@ -264,63 +267,68 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
     setLocalCoins(parseCoins(userCoins));
   }, [userCoins]);
 
-  const prevIsOpenRef = useRef(false);
-
-  // Sync initialSelectedSeatIds and panel visibility ONLY when panel transitions to open
+  // ================= 4. RESET ON ROOM SWITCH (Requirement 4) =================
+  const prevRoomIdRef = useRef<string | undefined>(roomId);
   useEffect(() => {
-    if (isOpen && !prevIsOpenRef.current) {
-      setIsPanelVisible(true);
-      setIsComboActive(false);
-      if (comboAnimFrameRef.current) {
-        cancelAnimationFrame(comboAnimFrameRef.current);
-        comboAnimFrameRef.current = null;
-      }
+    if (roomId && prevRoomIdRef.current && prevRoomIdRef.current !== roomId) {
+      // Room Switch Detected! Reset automatically to default (first occupied person & first gift & qty 1)
       setSelectedTab('استرداد');
       setSelectedSubTab('الكل');
       const defaultFirstGift = giftsList.find((g) => g.category === 'استرداد' || isRefundGift(g)) || giftsList[0];
       if (defaultFirstGift) {
         setSelectedGift(defaultFirstGift);
       }
+      setGiftQuantity(1);
       const activeOccupied = seats.filter((s) => !s.isEmpty);
-      const validInitial = (initialSelectedSeatIds || []).filter((id) =>
-        activeOccupied.some((s) => s.id === id)
-      );
-      if (validInitial.length > 0) {
-        setSelectedSeatIds(validInitial);
-      } else if (activeOccupied.length > 0) {
-        // Pre-select the first occupied speaker if none specified
-        setSelectedSeatIds([activeOccupied[0].id]);
-      } else {
-        setSelectedSeatIds([]);
-      }
+      setSelectedSeatIds(activeOccupied.length > 0 ? [activeOccupied[0].id] : [1]);
       setSelectedListenerIds([]);
       setIsAllSelected(false);
-    } else if (!isOpen && prevIsOpenRef.current) {
-      setIsPanelVisible(false);
-      // When transitioning from open to closed (and combo not active), clean up state
-      if (!isComboActive) {
-        setSelectedSeatIds([]);
-        setSelectedListenerIds([]);
-        setIsAllSelected(false);
-        setTotalSentCount(0);
-        setShowSuccessCheck(false);
-        setFlyingParticles([]);
-        setGiftQuantity(1);
-        setShowQuantityMenu(false);
-        setShowCustomQtyInput(false);
-        setShowRecipientDropdown(false);
-        setShowRoleSelector(false);
-        if (comboAnimFrameRef.current) {
-          cancelAnimationFrame(comboAnimFrameRef.current);
-          comboAnimFrameRef.current = null;
+      setComboCount(0);
+    }
+    prevRoomIdRef.current = roomId;
+  }, [roomId, giftsList, seats]);
+
+  const prevIsOpenRef = useRef(false);
+
+  // Sync open state without wiping user selections (Requirement 3: Selection Persistence)
+  useEffect(() => {
+    if (isOpen && !prevIsOpenRef.current) {
+      setIsCatalogOpen(true);
+      setIsBarOpen(true);
+      setIsComboActive(false);
+      if (comboAnimFrameRef.current) {
+        cancelAnimationFrame(comboAnimFrameRef.current);
+        comboAnimFrameRef.current = null;
+      }
+      // Keep persistent selection; only fallback to first person if no valid target currently selected
+      const activeOccupied = seats.filter((s) => !s.isEmpty);
+      setSelectedSeatIds((prev) => {
+        const stillValid = prev.filter((id) => activeOccupied.some((s) => s.id === id));
+        if (stillValid.length > 0) return stillValid;
+        if (initialSelectedSeatIds && initialSelectedSeatIds.length > 0) {
+          const validInitial = initialSelectedSeatIds.filter((id) => activeOccupied.some((s) => s.id === id));
+          if (validInitial.length > 0) return validInitial;
         }
+        return activeOccupied.length > 0 ? [activeOccupied[0].id] : [1];
+      });
+
+      // Keep persistent gift selection; fallback to first refund gift only if null
+      setSelectedGift((prev) => {
+        if (prev && giftsList.some((g) => g.id === prev.id)) return prev;
+        const defaultFirstGift = giftsList.find((g) => g.category === 'استرداد' || isRefundGift(g)) || giftsList[0];
+        return defaultFirstGift || prev;
+      });
+    } else if (!isOpen && prevIsOpenRef.current) {
+      if (!isComboActive) {
+        setIsCatalogOpen(false);
+        setIsBarOpen(false);
       }
     }
     prevIsOpenRef.current = isOpen;
-  }, [isOpen, isComboActive]);
+  }, [isOpen, isComboActive, seats, initialSelectedSeatIds, giftsList]);
 
-  // ================= 4-SECOND COUNTDOWN COMBO ANIMATION FRAME =================
-  const COMBO_DURATION_MS = 4000;
+  // ================= 5-SECOND INACTIVITY COUNTDOWN (Requirement 1) =================
+  const COMBO_DURATION_MS = 5000;
 
   const startOrResetComboTimer = () => {
     comboEndTimeRef.current = Date.now() + COMBO_DURATION_MS;
@@ -342,12 +350,13 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
       if (remaining <= 0) {
         setComboProgress(0);
         setIsComboActive(false);
-        setIsPanelVisible(false);
+        setIsCatalogOpen(false);
+        setIsBarOpen(false);
         if (comboAnimFrameRef.current) {
           cancelAnimationFrame(comboAnimFrameRef.current);
           comboAnimFrameRef.current = null;
         }
-        onClose(); // Auto-dismiss completely and notify parent
+        onClose(); // Automatically dismiss both rectangles after 5s of inactivity
       } else {
         setComboProgress(Math.max(0, Math.min(1, remaining / COMBO_DURATION_MS)));
         comboAnimFrameRef.current = requestAnimationFrame(updateComboCountdown);
@@ -364,68 +373,19 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
     };
   }, [isComboActive, onClose]);
 
-  // ================= CONSECUTIVE TAP SEND HANDLER =================
-  const handleComboTap = () => {
-    const cost = lastTotalCostRef.current;
-    if (localCoins < cost) {
-      setBroadcastNotice('⚠️ رصيدك لا يكفي للإرسال المتتالي!');
-      setTimeout(() => setBroadcastNotice(null), 2500);
-      return;
-    }
-
-    // Deduct coins for this consecutive hit
-    setLocalCoins((prev) => Math.max(0, prev - cost));
-
-    // Play sound effect
-    if (lastSentGiftRef.current) {
-      playGiftAudioEffect(lastSentGiftRef.current);
-    }
-
-    // Trigger onSendGift in parent room
-    if (onSendGift && lastSentGiftRef.current) {
-      onSendGift(
-        lastSentGiftRef.current,
-        lastQuantityRef.current,
-        lastTargetNamesRef.current,
-        lastTargetSeatIdsRef.current,
-        lastListenerNamesRef.current
-      );
-    }
-
-    // Reset 3-second clock back to full 3.0s!
-    startOrResetComboTimer();
-
-    const newCount = comboCount + 1;
-    setComboCount(newCount);
-    setTotalSentCount((prev) => prev + lastQuantityRef.current);
-
-    // Dynamic floating multiplier burst particle
-    const burstId = Date.now() + Math.random();
-    setComboFloatingBursts((prev) => [
-      ...prev.slice(-6),
-      { id: burstId, text: `+${lastQuantityRef.current} (x${newCount}) 🔥`, x: (Math.random() - 0.5) * 24 }
-    ]);
-    setTimeout(() => {
-      setComboFloatingBursts((prev) => prev.filter((b) => b.id !== burstId));
-    }, 900);
-  };
-
+  // Clean close without clearing persistent selections
   const handleClose = () => {
-    setIsPanelVisible(false);
+    setIsCatalogOpen(false);
+    setIsBarOpen(false);
     setIsComboActive(false);
-    setSelectedSeatIds([]);
-    setSelectedListenerIds([]);
-    setIsAllSelected(false);
-    setTotalSentCount(0);
-    setFlyingParticles([]);
-    setShowSuccessCheck(false);
-    setGiftQuantity(1);
     setShowQuantityMenu(false);
     setShowCustomQtyInput(false);
     setShowRecipientDropdown(false);
     setShowRoleSelector(false);
-    setSelectedTab('استرداد');
-    setSelectedSubTab('الكل');
+    if (comboAnimFrameRef.current) {
+      cancelAnimationFrame(comboAnimFrameRef.current);
+      comboAnimFrameRef.current = null;
+    }
     onClose();
   };
 
@@ -648,12 +608,12 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
       setShowSuccessCheck(false);
     }, 1200);
 
-    // HIDE MAIN GIFT PANEL & ACTIVATE 5-SECOND CONSECUTIVE COMBO BUTTON
-    setIsPanelVisible(false);
+    // HIDE MAIN GIFT CATALOG ONLY & PERSIST SEND & TOP-UP BAR FOR 5 SECONDS (Requirement 1)
+    setIsCatalogOpen(false);
+    setIsBarOpen(true);
     setIsComboActive(true);
-    setComboCount(1);
+    setComboCount((prev) => prev + 1);
     startOrResetComboTimer();
-    onClose(); // Reset showGiftDrawer in parent so user can reopen gifts anytime
   };
 
   const handleApplyCustomQty = () => {
@@ -683,12 +643,12 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
 
       {/* ================= 1. MAIN EXPANDED GIFT PANEL ================= */}
       <AnimatePresence>
-        {isPanelVisible && (
+        {isCatalogOpen && (
           <div 
             onClick={(e) => {
               if (e.target === e.currentTarget) handleClose();
             }}
-            className="fixed inset-0 z-50 bg-transparent flex items-end justify-center dir-rtl select-none"
+            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-end justify-center dir-rtl select-none"
           >
             <motion.div
               initial={{ y: '100%', opacity: 0 }}
@@ -1139,147 +1099,123 @@ export const ProfessionalGiftPanel: React.FC<ProfessionalGiftPanelProps> = ({
       )}
       </AnimatePresence>
 
-      {/* ================= 2. CONSECUTIVE COMBO BUTTON WITH 5-SECOND COUNTDOWN RING ================= */}
+      {/* ================= 2. PERSISTENT SEND & TOP-UP BAR (When Catalog is Collapsed - Requirement 1) ================= */}
       <AnimatePresence>
-        {isComboActive && (
-          <motion.div
-            initial={{ scale: 0, opacity: 0, y: 30 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0, opacity: 0, y: 20 }}
-            transition={{ type: 'spring', damping: 20, stiffness: 350 }}
-            className="fixed bottom-4 sm:bottom-6 left-16 sm:left-[64px] z-[9999] pointer-events-auto flex flex-col items-center select-none drop-shadow-2xl"
-          >
-            {/* Floating Combo Burst Badges */}
-            <div className="absolute -top-8 left-1/2 -translate-x-1/2 pointer-events-none whitespace-nowrap z-20">
-              <AnimatePresence>
-                {comboFloatingBursts.map((burst) => (
-                  <motion.div
-                    key={burst.id}
-                    initial={{ opacity: 1, y: 0, scale: 0.8, x: burst.x }}
-                    animate={{ opacity: 0, y: -45, scale: 1.35 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.75, ease: 'easeOut' }}
-                    className="font-black text-[11px] font-mono text-amber-300 drop-shadow-[0_0_10px_rgba(245,158,11,0.9)] bg-black/85 px-2.5 py-0.5 rounded-full border border-amber-400/60 shadow-xl"
-                  >
-                    {burst.text}
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
+        {!isCatalogOpen && isBarOpen && (
+          <>
+            {/* Clickable backdrop catcher to dismiss upon clicking the room above */}
+            <div
+              onClick={handleClose}
+              className="fixed inset-0 z-40 bg-transparent select-none"
+            />
 
-            {/* Main Interactive Circular Button with 4s Clockwise Countdown Border */}
-            <motion.button
-              id="consecutive-combo-gift-btn"
-              whileTap={{ scale: 0.86 }}
-              whileHover={{ scale: 1.06 }}
-              onClick={handleComboTap}
-              className="relative w-20 h-20 flex items-center justify-center cursor-pointer rounded-full group focus:outline-hidden"
-              title="اضغط للإرسال المتتالي (خلال 4 ثوانٍ)"
+            {/* Floating Persistent Bar Container */}
+            <motion.div
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 50, opacity: 0 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 360 }}
+              className="fixed bottom-2.5 sm:bottom-4 left-0 right-0 z-50 px-2 sm:px-6 pointer-events-none flex justify-center dir-rtl select-none"
             >
-              {/* Outer Radiant Glow Halo */}
-              <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-amber-500 via-orange-500 to-yellow-300 opacity-70 blur-md group-hover:opacity-100 animate-pulse transition-opacity" />
-
-              {/* Clockwise SVG Border Countdown Ring (4-Second Countdown like Clock Hands) */}
-              <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 80 80">
-                <defs>
-                  <linearGradient id="comboTimerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#f59e0b" />
-                    <stop offset="50%" stopColor="#fbbf24" />
-                    <stop offset="100%" stopColor="#fde047" />
-                  </linearGradient>
-                </defs>
-                {/* Background Border Track Circle */}
-                <circle
-                  cx="40"
-                  cy="40"
-                  r="35"
-                  stroke="rgba(255, 255, 255, 0.2)"
-                  strokeWidth="4"
-                  fill="none"
-                />
-                {/* Active Circular Countdown Line (Decreases Clockwise like Clock hands over 4 seconds) */}
-                <circle
-                  cx="40"
-                  cy="40"
-                  r="35"
-                  stroke="url(#comboTimerGradient)"
-                  strokeWidth="4.5"
-                  strokeLinecap="round"
-                  fill="none"
-                  strokeDasharray={219.91}
-                  strokeDashoffset={219.91 * (1 - comboProgress)}
-                  className="transition-[stroke-dashoffset] duration-75"
-                />
-              </svg>
-
-              {/* Inner Solid Interactive Button */}
-              <div className="relative w-15 h-15 rounded-full bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 border-2 border-amber-200/80 shadow-[inset_0_2px_5px_rgba(255,255,255,0.6),0_4px_15px_rgba(0,0,0,0.6)] flex flex-col items-center justify-center overflow-hidden">
-                {/* Gift Icon / Media Preview */}
-                <div className="relative flex items-center justify-center">
-                  {isVideoResource(lastSentGiftRef.current?.icon || '') || lastSentGiftRef.current?.videoUrl ? (
-                    <video
-                      src={lastSentGiftRef.current?.videoUrl || lastSentGiftRef.current?.icon}
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      className="w-7 h-7 object-contain pointer-events-none"
-                    />
-                  ) : isMediaUrl(lastSentGiftRef.current?.icon || '') ? (
-                    <img
-                      src={lastSentGiftRef.current?.icon}
-                      alt={lastSentGiftRef.current?.name}
-                      className="w-7 h-7 object-contain pointer-events-none"
-                    />
-                  ) : (
-                    <span className="text-xl select-none">
-                      {getCleanGiftEmoji(lastSentGiftRef.current?.name || '', lastSentGiftRef.current?.icon || '🎁')}
-                    </span>
-                  )}
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-lg bg-[#090D18]/95 backdrop-blur-md border border-cyan-500/40 rounded-2xl p-2 px-3 shadow-[0_8px_32px_rgba(0,0,0,0.85)] pointer-events-auto flex items-center justify-between gap-2"
+                dir="rtl"
+              >
+                {/* Floating Combo Burst Badges */}
+                <div className="absolute -top-7 left-1/2 -translate-x-1/2 pointer-events-none whitespace-nowrap z-20">
+                  <AnimatePresence>
+                    {comboFloatingBursts.map((burst) => (
+                      <motion.div
+                        key={burst.id}
+                        initial={{ opacity: 1, y: 0, scale: 0.8, x: burst.x }}
+                        animate={{ opacity: 0, y: -35, scale: 1.3 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.7, ease: 'easeOut' }}
+                        className="font-black text-[11px] font-mono text-amber-300 bg-black/90 px-2.5 py-0.5 rounded-full border border-amber-400/60 shadow-xl"
+                      >
+                        {burst.text}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
 
-                {/* Dynamic Combo Label & Consecutive Count */}
-                <div className="bg-slate-950/90 px-1.5 py-0.2 rounded-full border border-amber-400/50 text-[8.5px] font-black font-mono text-amber-300 tracking-tight leading-none mt-0.5 flex items-center gap-0.5 shadow-sm">
-                  <span>إرسال</span>
-                  <span className="text-yellow-400 font-extrabold">x{comboCount}</span>
+                {/* Right Side (اليد اليمين): مستطيل الشحن (Recharge / Coins Display) */}
+                <div
+                  onClick={onOpenRecharge}
+                  className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/10 hover:from-amber-500/30 hover:to-yellow-500/20 border border-amber-400/40 px-2.5 py-1.5 rounded-full cursor-pointer transition-all shadow-xs"
+                  title="شحن الكوينز"
+                >
+                  <span className="text-amber-400 text-xs">🪙</span>
+                  <span className="font-mono font-black text-xs text-amber-300">
+                    {localCoins.toLocaleString()}
+                  </span>
+                  <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.5 rounded-full shadow-xs">
+                    شحن
+                  </span>
+                </div>
+
+                {/* Left Side (اليد الشمال): مستطيل زر الإرسال مع العدد (Send + Multiplier + 5s countdown) */}
+                <div className="flex items-center gap-1.5 relative" dir="ltr">
+                  {/* Multiplier pill button with current count */}
+                  <button
+                    onClick={() => {
+                      setIsCatalogOpen(true);
+                      setShowQuantityMenu(true);
+                    }}
+                    className="bg-white/10 hover:bg-white/20 text-white font-mono font-bold text-[10px] px-2.5 py-1.5 rounded-full border border-white/10 flex items-center gap-1 transition-colors cursor-pointer"
+                    title="تغيير العدد"
+                  >
+                    <span>x{giftQuantity}</span>
+                    <ChevronDown className="w-2.5 h-2.5" />
+                  </button>
+
+                  {/* Send Button with Consecutive Counter and 5s Countdown Timer */}
+                  <motion.button
+                    id="consecutive-combo-gift-btn"
+                    whileTap={{ scale: 0.92 }}
+                    onClick={handleSend}
+                    className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-500 text-slate-950 font-black text-xs px-4 sm:px-5 py-1.5 rounded-full shadow-md transition-all flex items-center gap-1.5 cursor-pointer relative overflow-hidden active:scale-95 hover:brightness-110"
+                    title="اضغط للإرسال المتتالي (خلال 5 ثوانٍ)"
+                  >
+                    {/* 5-second countdown progress bar along the bottom of the send button */}
+                    <div
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-300 transition-all duration-75"
+                      style={{ width: `${comboProgress * 100}%` }}
+                    />
+
+                    {/* Small Gift Thumbnail / Emoji */}
+                    <span className="text-sm select-none">
+                      {getCleanGiftEmoji(selectedGift?.name || '', selectedGift?.icon || '🎁')}
+                    </span>
+
+                    <span>إرسال</span>
+
+                    {/* Combo Count Badge */}
+                    {comboCount > 0 && (
+                      <span className="bg-slate-950/85 text-amber-300 text-[10px] font-black font-mono px-1.5 py-0.2 rounded-full border border-amber-400/50 shadow-xs">
+                        x{comboCount}
+                      </span>
+                    )}
+
+                    {/* Countdown seconds indicator */}
+                    <span className="text-[9px] font-mono font-black text-slate-950 bg-white/40 px-1.5 py-0.2 rounded-full">
+                      {(comboProgress * 5).toFixed(1)}s
+                    </span>
+                  </motion.button>
+
+                  {/* Re-expand full gift catalog button */}
+                  <button
+                    onClick={() => setIsCatalogOpen(true)}
+                    className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-cyan-300 transition-colors cursor-pointer"
+                    title="فتح قائمة الهدايا كاملة"
+                  >
+                    <Menu className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
-            </motion.button>
-
-            {/* Remaining Seconds Clock Countdown Badge */}
-            <div className="mt-1 px-2.5 py-0.5 rounded-full bg-slate-950/85 border border-amber-500/40 text-[9px] font-mono font-black text-amber-300 flex items-center gap-1 shadow-md">
-              <Sparkles className="w-2.5 h-2.5 text-amber-400 animate-spin" />
-              <span>{(comboProgress * 4).toFixed(1)}s</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ================= 3. CONSECUTIVE COMBO WALLET BALANCE (Exact Designated Right Position During Combo) ================= */}
-      <AnimatePresence>
-        {isComboActive && (
-          <motion.div
-            initial={{ scale: 0, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0, opacity: 0, y: 20 }}
-            transition={{ type: 'spring', damping: 20, stiffness: 350 }}
-            className="fixed bottom-4 sm:bottom-6 right-3 sm:right-4 z-[9999] pointer-events-auto select-none drop-shadow-2xl"
-            dir="rtl"
-          >
-            <div
-              onClick={onOpenRecharge}
-              className="flex items-center gap-1.5 bg-[#0A0E1A] bg-gradient-to-r from-amber-500/25 via-yellow-500/15 to-amber-500/20 hover:from-amber-500/35 hover:to-yellow-500/30 border border-amber-400/50 px-3 py-1.5 rounded-full cursor-pointer transition-all shadow-[0_4px_20px_rgba(0,0,0,0.7)] ring-1 ring-amber-400/30"
-              title="شحن الكوينز"
-            >
-              <span className="text-amber-400 text-xs animate-bounce">🪙</span>
-              <span className="font-mono font-black text-xs text-amber-300 tracking-tight">
-                {localCoins.toLocaleString()}
-              </span>
-              <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-2 py-0.5 rounded-full shadow-xs hover:bg-amber-300 transition-colors">
-                شحن
-              </span>
-            </div>
-          </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </>

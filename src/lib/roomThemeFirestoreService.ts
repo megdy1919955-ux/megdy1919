@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from './firebase';
+import { db, handleFirestoreError, OperationType, IS_CLOUD_SYNC_DISABLED } from './firebase';
 import { MainRoomCustomizerConfig } from '../types/roomCustomizer';
 import { DEFAULT_MAIN_ROOM_CONFIG } from './roomCustomizerService';
 
@@ -63,6 +63,9 @@ export function setRoomThemeToCache(roomId: string, data: RoomFirestoreData): vo
  * Fetch room theme & wallpaper directly from Firestore
  */
 export async function fetchRoomThemeFromFirestore(roomId: string): Promise<RoomFirestoreData | null> {
+  if (IS_CLOUD_SYNC_DISABLED) {
+    return getRoomThemeFromCache(roomId);
+  }
   const path = `rooms/${roomId}`;
   try {
     const docRef = doc(db, 'rooms', roomId);
@@ -156,6 +159,35 @@ export async function saveRoomThemeAndWallpaperToFirestore({
     payload.roomAvatar = resolvedAvatar;
   }
 
+  if (IS_CLOUD_SYNC_DISABLED) {
+    // 100% Isolated Offline Sandbox Mode: Save exclusively to local cache, zero cloud writes
+    setRoomThemeToCache(roomId, payload);
+    if (typeof window !== 'undefined') {
+      if (payload.themeConfig) {
+        window.dispatchEvent(
+          new CustomEvent('main_room_theme_updated', {
+            detail: { config: payload.themeConfig, roomId }
+          })
+        );
+      }
+      if (payload.wallpaperUrl) {
+        window.dispatchEvent(
+          new CustomEvent('room_wallpaper_updated', {
+            detail: { wallpaperUrl: payload.wallpaperUrl, wallpaperName: payload.wallpaperName, roomId }
+          })
+        );
+      }
+      if (payload.roomAvatar || payload.roomTitle) {
+        window.dispatchEvent(
+          new CustomEvent('room_metadata_updated', {
+            detail: { roomId, roomAvatar: payload.roomAvatar, roomTitle: payload.roomTitle }
+          })
+        );
+      }
+    }
+    return { success: true, data: payload };
+  }
+
   try {
     const docRef = doc(db, 'rooms', roomId);
     const writeData = sanitizeFirestorePayload({
@@ -214,6 +246,11 @@ export function subscribeToRoomThemeFromFirestore(
   onUpdate: (data: RoomFirestoreData) => void,
   onError?: (err: unknown) => void
 ): () => void {
+  if (IS_CLOUD_SYNC_DISABLED) {
+    const cached = getRoomThemeFromCache(roomId);
+    if (cached) onUpdate(cached);
+    return () => {};
+  }
   const path = `rooms/${roomId}`;
   const docRef = doc(db, 'rooms', roomId);
 

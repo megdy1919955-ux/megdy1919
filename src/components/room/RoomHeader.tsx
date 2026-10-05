@@ -1,88 +1,99 @@
 import React from 'react';
 import { Users, MoreHorizontal, Power } from 'lucide-react';
-import { RoomTitleCapsule } from './RoomTitleCapsule';
+import { MainRoomCustomizerConfig } from '../../types/roomCustomizer';
+import { MicSeat } from './roomTypes';
+import { RoomTitleHeaderCapsule } from './RoomTitleHeaderCapsule';
 
 export interface RoomHeaderProps {
-  // بيانات العنوان والمضيف
-  roomTitle: string;
-  roomAvatar: string;
-  hostName: string;
-  roomId?: string;
+  currentRoomTitle: string;
+  currentRoomAvatar: string;
+  hostSeat: MicSeat;
+  isRoomLocked: boolean;
   isOwner?: boolean;
-  isRoomLocked?: boolean;
-  listenerCount?: number;
-
-  // توجيهات الأزرار (مفصولة تماماً بدون أي أوامر داخلية)
-  onOpenRoomInfo?: () => void;
-  onOpenHostProfile?: () => void;
-  onOpenAudienceList?: () => void;
-  onOpenSettingsMenu?: () => void;
-  onExitRoom?: () => void;
+  hostDisplayName?: string;
+  mainRoomConfig?: MainRoomCustomizerConfig;
+  isRegularUser: boolean;
+  audienceCount?: number;
+  onOpenRoomInfo: () => void;
+  onOpenHostProfile: () => void;
+  onOpenAudienceModal: () => void;
+  onOpenOptionsMenu: () => void;
+  onOpenExitModal: () => void;
 }
 
-/**
- * هيدر الغرفة (RoomHeader)
- * يجمع كبسولة العنوان المنفصلة مع أزرار التحكم العلوية المستقلة
- */
 export const RoomHeader: React.FC<RoomHeaderProps> = ({
-  roomTitle,
-  roomAvatar,
-  hostName,
-  roomId = '',
-  isOwner = true,
-  isRoomLocked = false,
-  listenerCount = 1,
+  currentRoomTitle,
+  currentRoomAvatar,
+  hostSeat,
+  isRoomLocked,
+  isOwner = false,
+  hostDisplayName,
+  mainRoomConfig,
+  isRegularUser,
+  audienceCount = 1,
   onOpenRoomInfo,
   onOpenHostProfile,
-  onOpenAudienceList,
-  onOpenSettingsMenu,
-  onExitRoom
+  onOpenAudienceModal,
+  onOpenOptionsMenu,
+  onOpenExitModal
 }) => {
+  const config = mainRoomConfig || ({} as MainRoomCustomizerConfig);
+
   return (
-    <div
-      id="room-top-header"
-      className="w-full flex items-center justify-between gap-2 px-3 py-1.5 select-none"
-    >
-      {/* 1. كبسولة عنوان الغرفة المنفصلة تماماً (كما كانت سابقاً بدقة) */}
-      <RoomTitleCapsule
-        roomTitle={roomTitle}
-        roomAvatar={roomAvatar}
-        hostName={hostName}
-        roomId={roomId}
-        isOwner={isOwner}
+    <div className="flex items-center justify-between gap-1.5 w-full select-none">
+      {/* Right Section (in RTL: 1st in DOM): Decoupled Room Title & Host Profile Capsule */}
+      <RoomTitleHeaderCapsule
+        currentRoomTitle={currentRoomTitle}
+        currentRoomAvatar={currentRoomAvatar}
+        hostSeat={hostSeat}
         isRoomLocked={isRoomLocked}
+        isOwner={isOwner}
+        hostDisplayName={hostDisplayName}
+        mainRoomConfig={mainRoomConfig}
         onOpenRoomInfo={onOpenRoomInfo}
         onOpenHostProfile={onOpenHostProfile}
       />
 
-      {/* 2. الأزرار العلوية المستقلة (الحضور، الخيارات، الخروج) */}
-      <div className="flex items-center gap-1.5 shrink-0">
-        {/* زر عدد المستمعين والجمهور */}
+      {/* Left Section (in RTL: 2nd in DOM): Listener Count, 3-Dots Options Menu, Power */}
+      <div className="flex items-center gap-1 shrink-0">
+        {/* Listener Count Pill */}
         <button
-          onClick={onOpenAudienceList}
-          title="قائمة الحضور"
-          className="flex items-center gap-1 bg-[#1A2132]/90 hover:bg-slate-700/80 border border-white/10 px-2.5 py-1.5 rounded-full text-slate-200 text-xs active:scale-95 transition-all shadow-sm"
+          id="room-top-audience"
+          onClick={onOpenAudienceModal}
+          style={{
+            backgroundColor: config.topAudiencePillBg || '#1A2132'
+          }}
+          className="hover:brightness-125 border border-white/10 px-2 py-1 rounded-full flex items-center gap-1 text-[11px] font-bold text-slate-200 shadow-xs cursor-pointer transition-colors active:scale-95"
+          title="انقر لعرض قائمة الحضور والمستمعين"
         >
-          <Users className="w-3.5 h-3.5 text-amber-400" />
-          <span className="font-bold font-mono text-[11px]">{listenerCount}</span>
+          <Users className="w-3 h-3 text-indigo-400" />
+          <span className="font-mono text-[11px] text-white">{audienceCount}</span>
         </button>
 
-        {/* زر خيارات وإعدادات الغرفة */}
+        {/* Three-Dots Options Menu Button */}
         <button
-          onClick={onOpenSettingsMenu}
-          title="خيارات الغرفة"
-          className="w-8 h-8 rounded-full bg-[#1A2132]/90 hover:bg-slate-700/80 border border-white/10 flex items-center justify-center text-slate-300 hover:text-white active:scale-95 transition-all shadow-sm"
+          id="room-top-more-options"
+          onClick={onOpenOptionsMenu}
+          style={{
+            backgroundColor: config.topMoreBtnBg || '#1A2132'
+          }}
+          className="w-7.5 h-7.5 rounded-full hover:brightness-125 border border-white/10 flex items-center justify-center text-slate-200 cursor-pointer relative transition-colors active:scale-95 shadow-xs"
+          title="خيارات وإعدادات الغرفة"
         >
           <MoreHorizontal className="w-4 h-4" />
+          <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-red-500 ring-1.5 ring-[#0B0E17]" />
         </button>
 
-        {/* زر الخروج من الغرفة */}
+        {/* Power/Close Button */}
         <button
-          onClick={onExitRoom}
-          title="مغادرة الغرفة"
-          className="w-8 h-8 rounded-full bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 flex items-center justify-center text-rose-400 active:scale-95 transition-all shadow-sm"
+          onClick={onOpenExitModal}
+          style={{
+            backgroundColor: config.topPowerBtnBg || '#1A2132'
+          }}
+          className="w-7.5 h-7.5 rounded-full hover:bg-red-900/50 border border-white/10 flex items-center justify-center text-slate-200 cursor-pointer transition-colors shadow-xs active:scale-95"
+          title="مغادرة / إغلاق الغرفة"
         >
-          <Power className="w-4 h-4" />
+          <Power className="w-3.5 h-3.5 stroke-[2.5]" />
         </button>
       </div>
     </div>

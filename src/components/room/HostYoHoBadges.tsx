@@ -13,73 +13,123 @@ export const parseVipNumber = (vip?: string | number): number => {
 export interface NajmHostVipBadgesProps {
   gender?: 'male' | 'female';
   age?: number;
-  heartLevel?: number;
-  crownLevel?: number;
+  heartLevel?: number; // الداعم (Supporter Level)
+  crownLevel?: number; // المدعوم (Charm Level)
+  supporterLevel?: number;
+  charmLevel?: number;
   vipLevel?: string | number;
+  sharesLevel?: number | string; // الشاير إن وجدت
+  isSuperAdmin?: boolean; // المطور الأساسي
+  showVipBadge?: boolean;
+  showSupporterBadge?: boolean;
+  showCharmBadge?: boolean;
+  supporterBadgeDesign?: string;
+  charmBadgeDesign?: string;
+  vipDesignStyle?: string;
   onToggleGender?: () => void;
 }
 
 export type HostYoHoBadgesProps = NajmHostVipBadgesProps;
 
 export const NajmHostVipBadges: React.FC<NajmHostVipBadgesProps> = ({
-  heartLevel = 39,
-  crownLevel = 111,
-  vipLevel = 'VIP6',
+  heartLevel,
+  crownLevel,
+  supporterLevel,
+  charmLevel,
+  vipLevel,
+  sharesLevel,
+  isSuperAdmin,
+  showVipBadge = true,
+  showSupporterBadge = true,
+  showCharmBadge = true,
+  supporterBadgeDesign = 'royal_dragon_flame',
+  charmBadgeDesign = 'diamond_rose_5star',
+  vipDesignStyle = 'royal_gold_3d'
 }) => {
+  // Resolve actual levels
+  const realSupporter = supporterLevel !== undefined ? supporterLevel : heartLevel;
+  const realCharm = charmLevel !== undefined ? charmLevel : crownLevel;
   const vipNum = parseVipNumber(vipLevel);
-  const isVip8Plus = vipNum >= 8;
-  const displayVip = typeof vipLevel === 'string' && vipLevel.startsWith('VIP') ? vipLevel : `VIP${vipNum || 6}`;
+  const displayVip = typeof vipLevel === 'string' && vipLevel.startsWith('VIP') ? vipLevel : (vipNum > 0 ? `VIP${vipNum}` : (vipLevel ? String(vipLevel) : ''));
+
+  // Design styles
+  const supporterBg = supporterBadgeDesign === 'golden_flame'
+    ? 'bg-gradient-to-r from-amber-500 to-yellow-600 border-amber-300 text-amber-950'
+    : supporterBadgeDesign === 'ruby_fire'
+    ? 'bg-gradient-to-r from-rose-700 to-red-800 border-rose-300 text-white'
+    : 'bg-gradient-to-r from-[#DC2626] via-[#EA580C] to-[#D97706] border-red-300/60 text-white';
+
+  const charmBg = charmBadgeDesign === 'sapphire_bloom'
+    ? 'bg-gradient-to-r from-blue-600 to-cyan-500 border-cyan-300 text-white'
+    : charmBadgeDesign === 'crystal_star'
+    ? 'bg-gradient-to-r from-emerald-600 to-teal-500 border-teal-300 text-white'
+    : 'bg-gradient-to-r from-[#9333EA] via-[#C026D3] to-[#EC4899] border-pink-300/60 text-white';
 
   return (
     <div className="inline-flex items-center gap-1 flex-nowrap align-middle shrink-0 select-none py-0.5" dir="ltr">
-      {/* 1. VIP Capsule Badge (Ruby Red & Gold for VIP 8+, Royal Gold for < 8) */}
-      <div
-        className={`inline-flex items-center px-1.5 py-[1.5px] rounded-full shrink-0 border shadow-xs ${
-          isVip8Plus
-            ? 'bg-gradient-to-r from-[#991B1B] via-[#DC2626] to-[#7F1D1D] border-[#FCA5A5] ring-1 ring-red-400/50 shadow-[0_1px_4px_rgba(220,38,38,0.5)]'
-            : 'bg-gradient-to-b from-[#2D261B] via-[#1A160F] to-[#0D0B08] border-[#D4AF37] ring-1 ring-[#FFE599]/40 shadow-[0_1px_4px_rgba(212,175,55,0.4)]'
-        }`}
-        title={`عضوية النخبة ${displayVip}`}
-      >
-        <span
-          className={`italic font-black text-[9px] tracking-tight font-sans ${
-            isVip8Plus ? 'text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]' : 'text-[#F7E7BE] drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]'
-          }`}
-        >
-          {displayVip}
-        </span>
-      </div>
-
-      {/* 2. Heart / Romance Capsule Badge (39 + Heart - Red to Coral gradient) */}
-      {heartLevel > 0 && (
+      {/* 1. VIP Capsule Badge */}
+      {showVipBadge && displayVip && (
         <div
-          className="inline-flex items-center gap-0.5 px-1.5 py-[2px] rounded-full bg-gradient-to-r from-[#FF3B30] via-[#FF453A] to-[#FF2D55] text-white shadow-[0_1px_3px_rgba(255,59,48,0.4)] shrink-0 border border-white/15"
-          title={`مستوى الدعم: ${heartLevel} ❤️`}
+          className={`inline-flex items-center gap-0.5 px-1.5 py-[1px] rounded-full shrink-0 border shadow-2xs ${
+            vipDesignStyle === 'royal_gold_3d'
+              ? 'bg-gradient-to-r from-[#78350F] via-[#B45309] to-[#D97706] text-amber-200 border-amber-300/50 shadow-[0_1px_4px_rgba(217,119,6,0.35)]'
+              : 'bg-gradient-to-r from-purple-800 to-indigo-900 text-purple-200 border-purple-400/50'
+          }`}
+          title={`عضوية النخبة ${displayVip}`}
         >
-          <span className="font-black italic text-[9px] leading-none text-white tracking-tight drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)] font-sans">
-            {heartLevel}
+          <span className="text-[8.5px] leading-none">👑</span>
+          <span className="italic font-black text-[8.5px] tracking-tight font-sans leading-none">
+            {displayVip}
           </span>
-          <svg
-            className="w-2.5 h-2.5 text-white fill-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)] ml-0.5 shrink-0"
-            viewBox="0 0 24 24"
-          >
-            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-          </svg>
         </div>
       )}
 
-      {/* 3. Crown / Glory Level Capsule Badge (111 + Crown - Magenta to Orange gradient) */}
-      {crownLevel > 0 && (
+      {/* 2. Supporter Capsule Badge (الداعم الحقيقي) */}
+      {showSupporterBadge && typeof realSupporter === 'number' && realSupporter > 0 && (
         <div
-          className="inline-flex items-center gap-0.5 px-1.5 py-[2px] rounded-full bg-gradient-to-r from-[#FF007A] via-[#FF1493] to-[#FF8C00] text-white shadow-[0_1px_3px_rgba(255,0,122,0.4)] shrink-0 border border-white/15"
-          title={`مستوى الكراون: ${crownLevel} 👑`}
+          className={`inline-flex items-center gap-0.5 px-1.5 py-[1px] rounded-full text-white shadow-2xs shrink-0 border border-white/20 ${supporterBg}`}
+          title={`مستوى الداعم: ${realSupporter} 🔥`}
         >
-          <span className="font-black italic text-[9px] leading-none text-white tracking-tight drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)] font-sans">
-            {crownLevel}
+          <span className="text-[8.5px] leading-none">🔥</span>
+          <span className="font-black italic text-[8.5px] leading-none text-white tracking-tight font-sans">
+            {realSupporter}
           </span>
-          <span className="text-[9.5px] leading-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)] ml-0.5 filter">
-            👑
+        </div>
+      )}
+
+      {/* 3. Charm / Broadcaster Level Capsule Badge (المدعوم الحقيقي) */}
+      {showCharmBadge && typeof realCharm === 'number' && realCharm > 0 && (
+        <div
+          className={`inline-flex items-center gap-0.5 px-1.5 py-[1px] rounded-full text-white shadow-2xs shrink-0 border border-white/20 ${charmBg}`}
+          title={`مستوى المدعوم/الكاريزما: ${realCharm} 💎`}
+        >
+          <span className="text-[8.5px] leading-none">💎</span>
+          <span className="font-black italic text-[8.5px] leading-none text-white tracking-tight font-sans">
+            {realCharm}
           </span>
+        </div>
+      )}
+
+      {/* 4. Shares Badge (الشاير إن وجدت) */}
+      {sharesLevel !== undefined && Number(sharesLevel) > 0 && (
+        <div
+          className="inline-flex items-center gap-0.5 px-1.5 py-[1px] rounded-full bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-2xs shrink-0 border border-emerald-300/40"
+          title={`شارة المشاركة (الشاير): ${sharesLevel} 🔄`}
+        >
+          <span className="text-[8.5px] leading-none">🔄</span>
+          <span className="font-black italic text-[8.5px] leading-none text-white tracking-tight font-sans">
+            {sharesLevel}
+          </span>
+        </div>
+      )}
+
+      {/* 5. Super Admin / Developer Badge */}
+      {isSuperAdmin && (
+        <div
+          className="inline-flex items-center gap-0.5 px-1.5 py-[1px] rounded-full bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white shadow-2xs shrink-0 border border-amber-300/60"
+          title="المطور الأساسي والسوبر أدمن 👑"
+        >
+          <span className="text-[8.5px] leading-none">👑</span>
         </div>
       )}
     </div>

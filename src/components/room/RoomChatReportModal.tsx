@@ -1,154 +1,144 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, Send, X, ShieldAlert } from 'lucide-react';
-import { ChatMessage } from './roomTypes';
+import { X, CheckCircle2 } from 'lucide-react';
 
 export interface RoomChatReportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  message: ChatMessage | null;
-  onSubmitReport: (message: ChatMessage, reason: string) => void;
+  targetUserName: string;
+  targetMessageText?: string;
+  onSubmitReport: (reason: string, details?: string) => void;
 }
 
-/**
- * نافذة الإبلاغ المنفصلة تماماً (RoomChatReportModal)
- * - منفصلة 100% ومستقلة عن أي كود
- * - تعرض الرسالة المبلغ عنها واسم المرسل
- * - تتيح كتابة أو اختيار ملاحظة الإبلاغ
- * - تحتوي على زرين محددين:
- *   1. الزر الأول: إرسال البلاغ
- *   2. الزر الثاني: إغلاق النافذة
- */
+export const REPORT_REASONS = [
+  'اباحية',
+  'السب الكيدي',
+  'احتيال',
+  'العنف والدم والدم',
+  'إعلانات',
+  'مضايقة',
+  'سلامة الطفل',
+] as const;
+
 export const RoomChatReportModal: React.FC<RoomChatReportModalProps> = ({
   isOpen,
   onClose,
-  message,
-  onSubmitReport
+  targetUserName,
+  targetMessageText,
+  onSubmitReport,
 }) => {
-  const [reportNote, setReportNote] = useState('');
-  const [selectedReason, setSelectedReason] = useState('محتوى غير لائق أو سب');
+  const [selectedReason, setSelectedReason] = useState<string>('السب الكيدي');
+  const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
 
-  if (!isOpen || !message) return null;
+  if (!isOpen) return null;
   if (typeof document === 'undefined') return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const finalReason = reportNote.trim()
-      ? `${selectedReason} - ${reportNote.trim()}`
-      : selectedReason;
-    onSubmitReport(message, finalReason);
-    setReportNote('');
-    onClose();
+  const handleSubmit = () => {
+    onSubmitReport(selectedReason, targetMessageText);
+    setIsSubmitted(true);
+    setTimeout(() => {
+      setIsSubmitted(false);
+      onClose();
+    }, 1200);
   };
 
-  const reasons = [
-    'محتوى غير لائق أو سب',
-    'إعلانات ومحتوى عشوائي (Spam)',
-    'تحرش أو مضايقة',
-    'احتيال أو انتحال شخصية'
-  ];
-
-  return createPortal(
-    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 pointer-events-auto select-none" dir="rtl">
-      {/* خلفية معتمة خفيفة */}
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-xs p-0 sm:p-4 select-none animate-fadeIn"
+      dir="rtl"
+      onClick={onClose}
+    >
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
-        onClick={onClose}
-      />
-
-      {/* نافذة التبليغ المستقلة */}
-      <div
-        className="relative z-10 w-full max-w-sm overflow-hidden rounded-3xl bg-[#0f1422] border border-rose-500/40 shadow-[0_16px_48px_rgba(0,0,0,0.9)] p-4 text-white flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-150"
+        className="w-full max-w-md bg-white text-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-slideUp"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* رأس النافذة */}
-        <div className="flex items-center justify-between pb-2 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center">
-              <ShieldAlert className="w-4.5 h-4.5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-black text-rose-200">إبلاغ عن رسالة</h3>
-              <p className="text-[10px] text-slate-400">سيتم مراجعة البلاغ من قِبل إدارة الغرفة</p>
-            </div>
-          </div>
-
+        {/* Header */}
+        <div className="relative flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <button
             type="button"
             onClick={onClose}
-            className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-slate-400 hover:text-white transition-all cursor-pointer"
+            className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
+          <h2 className="text-base font-black text-slate-900 absolute left-1/2 -translate-x-1/2">
+            البلاغ
+          </h2>
+          <div className="w-5" />
         </div>
 
-        {/* عرض الرسالة المبلغ عنها */}
-        <div className="rounded-2xl bg-black/40 border border-white/10 p-2.5 flex flex-col gap-1">
-          <span className="text-[10.5px] font-bold text-amber-300">
-            الرسالة المبلغ عنها (من @{message.userName}):
-          </span>
-          <p className="text-xs text-slate-200 bg-white/5 rounded-lg p-2 leading-relaxed [overflow-wrap:anywhere]">
-            "{message.text}"
+        {/* Orange / Amber Header Bar exactly matching Image 3 */}
+        <div className="bg-amber-500 text-white px-5 py-2.5 font-bold text-sm flex items-center justify-between shadow-xs">
+          <span>بلاغ ضد: {targetUserName}</span>
+          <span className="text-xs opacity-90 font-mono">كما</span>
+        </div>
+
+        {/* Instruction Subtext */}
+        <div className="px-5 py-3 bg-slate-50 border-b border-slate-100">
+          <p className="text-xs font-medium text-slate-500">
+            الرجاء إخبارنا لماذا تريد الإبلاغ عن هذا المستخدم:
           </p>
         </div>
 
-        {/* أسباب الإبلاغ السريعة */}
-        <div className="flex flex-col gap-1">
-          <label className="text-[11px] font-bold text-slate-300">سبب الإبلاغ:</label>
-          <div className="grid grid-cols-2 gap-1.5">
-            {reasons.map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setSelectedReason(r)}
-                className={`text-[10px] p-2 rounded-xl border text-right transition-all font-semibold ${
-                  selectedReason === r
-                    ? 'border-rose-400 bg-rose-500/25 text-rose-200 shadow-sm'
-                    : 'border-white/10 bg-slate-900/60 text-slate-400 hover:text-slate-200'
-                }`}
+        {/* Reasons List matching Image 3 */}
+        <div className="flex-1 overflow-y-auto px-5 py-2 divide-y divide-slate-100">
+          {REPORT_REASONS.map((reason) => {
+            const isSelected = selectedReason === reason;
+            return (
+              <label
+                key={reason}
+                onClick={() => setSelectedReason(reason)}
+                className="flex items-center justify-between py-3.5 px-1 cursor-pointer hover:bg-slate-50/80 rounded-xl transition-colors select-none"
               >
-                {r}
+                {/* Reason Text */}
+                <span className={`text-sm font-bold ${isSelected ? 'text-slate-950 font-black' : 'text-slate-800'}`}>
+                  {reason}
+                </span>
+
+                {/* Radio Circle */}
+                <div
+                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                    isSelected
+                      ? 'border-amber-500 bg-amber-500'
+                      : 'border-slate-300 bg-transparent'
+                  }`}
+                >
+                  {isSelected && <div className="w-2 h-2 rounded-full bg-white shadow-xs" />}
+                </div>
+              </label>
+            );
+          })}
+        </div>
+
+        {/* Bottom Actions */}
+        <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center gap-3">
+          {isSubmitted ? (
+            <div className="w-full py-3 rounded-xl bg-emerald-600 text-white font-black text-xs flex items-center justify-center gap-2 shadow-md">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>تم استلام البلاغ وسيتم اتخاذ الإجراء اللازم فوراً</span>
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                إلغاء
               </button>
-            ))}
-          </div>
-        </div>
-
-        {/* حقل ملاحظة الإبلاغ */}
-        <div className="flex flex-col gap-1">
-          <label className="text-[11px] font-bold text-slate-300">ملاحظة إضافية (اختياري):</label>
-          <textarea
-            value={reportNote}
-            onChange={(e) => setReportNote(e.target.value)}
-            placeholder="اكتب تفاصيل إضافية عن سبب الإبلاغ..."
-            rows={2}
-            className="w-full text-xs rounded-xl bg-slate-900/80 border border-white/15 p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-rose-400 resize-none transition-colors"
-          />
-        </div>
-
-        {/* الزرين المطلوبين: 1. إرسال البلاغ | 2. إغلاق النافذة */}
-        <div className="grid grid-cols-2 gap-2 pt-1">
-          {/* الزر الأول: إرسال البلاغ */}
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 active:scale-95 text-white font-bold text-xs shadow-lg shadow-rose-900/40 transition-all cursor-pointer"
-          >
-            <Send className="w-3.5 h-3.5" />
-            <span>إرسال البلاغ</span>
-          </button>
-
-          {/* الزر الثاني: إغلاق النافذة */}
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 active:scale-95 border border-white/10 text-slate-300 hover:text-white font-bold text-xs transition-all cursor-pointer"
-          >
-            <X className="w-3.5 h-3.5" />
-            <span>إغلاق النافذة</span>
-          </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 font-black text-xs shadow-md transition-all cursor-pointer"
+              >
+                إرسال البلاغ
+              </button>
+            </>
+          )}
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   );
+
+  return createPortal(modalContent, document.body);
 };

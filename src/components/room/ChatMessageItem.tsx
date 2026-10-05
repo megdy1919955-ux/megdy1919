@@ -100,14 +100,14 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
           onClick={(e) => {
             e.stopPropagation();
             onOpenUserProfile?.({
-              id: msg.id,
+              id: msg.userId || msg.id,
               name: msg.userName,
               avatar:
                 msg.avatar ||
                 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
-              userId: `884${msg.id.slice(-4)}`,
-              country: 'السعودية',
-              countryFlag: '🇸🇦',
+              userId: msg.userId || msg.id,
+              country: 'اليمن',
+              countryFlag: '🇾🇪',
               isHost: msg.isHost
             });
           }}
@@ -131,14 +131,14 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
           onClick={(e) => {
             e.stopPropagation();
             onOpenUserProfile?.({
-              id: msg.id,
+              id: msg.userId || msg.id,
               name: msg.userName,
               avatar:
                 msg.avatar ||
                 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
-              userId: `884${msg.id.slice(-4)}`,
-              country: 'السعودية',
-              countryFlag: '🇸🇦',
+              userId: msg.userId || msg.id,
+              country: 'اليمن',
+              countryFlag: '🇾🇪',
               isHost: msg.isHost
             });
           }}
@@ -148,7 +148,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
         </span>
 
         <span className="text-[10.5px] text-amber-100 font-bold whitespace-nowrap">
-          انضم إلى الغرفة
+          {msg.text && msg.text.includes('انضم') ? msg.text : `انضم إلى الروم 🌟`}
         </span>
 
         <span className="text-[12px] animate-pulse shrink-0">✨</span>
@@ -167,12 +167,12 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
         exit={{ opacity: 0, scale: 0.9 }}
         onClick={() => {
           onOpenUserProfile?.({
-            id: msg.id,
+            id: msg.userId || msg.id,
             name: msg.userName,
-            avatar: msg.avatar || '',
-            userId: `884${msg.id.slice(-4)}`,
-            country: 'السعودية',
-            countryFlag: '🇸🇦'
+            avatar: msg.avatar,
+            userId: msg.userId || msg.id,
+            country: 'اليمن',
+            countryFlag: '🇾🇪'
           });
         }}
         className="my-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-950/90 via-slate-950/95 to-amber-950/90 border border-amber-400/80 flex items-center gap-2 w-fit max-w-[95%] shadow-[0_2px_12px_rgba(245,158,11,0.25)] select-none cursor-pointer backdrop-blur-md"
@@ -261,14 +261,14 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
           onClick={(e) => {
             e.stopPropagation();
             onOpenUserProfile?.({
-              id: msg.id,
+              id: msg.userId || msg.id,
               name: msg.userName,
               avatar:
                 msg.avatar ||
                 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
-              userId: `884${msg.id.slice(-4)}`,
-              country: 'السعودية',
-              countryFlag: '🇸🇦',
+              userId: msg.userId || msg.id,
+              country: 'اليمن',
+              countryFlag: '🇾🇪',
               isHost: msg.isHost
             });
           }}
@@ -294,61 +294,36 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
 
         {/* Content Column */}
         <div className="flex flex-col min-w-0 flex-1">
-          {/* User Header */}
-          <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+          {/* 1. السطر الأول في الأعلى: اسم المستخدم وأزرار الخيارات */}
+          <div className="flex items-center justify-between gap-1 mb-0.5 max-w-full">
             <span
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenUserProfile?.({
-                  id: msg.id,
+                  id: msg.userId || msg.id,
                   name: msg.userName,
                   avatar:
                     msg.avatar ||
                     'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
-                  userId: `884${msg.id.slice(-4)}`,
-                  country: 'السعودية',
-                  countryFlag: '🇸🇦',
+                  userId: msg.userId || msg.id,
+                  country: 'اليمن',
+                  countryFlag: '🇾🇪',
                   isHost: msg.isHost
                 });
               }}
               className={`font-black text-[11px] truncate cursor-pointer hover:underline flex items-center gap-1 ${
-                msg.isHost
-                  ? (typeof msg.vipLevel === 'number'
-                      ? msg.vipLevel >= 8
-                      : parseInt((msg.vipLevel || 'VIP6').toString().match(/\d+/)?.[0] || '6', 10) >= 8)
-                    ? 'text-red-500 font-black drop-shadow-[0_1px_2px_rgba(239,68,68,0.6)]'
-                    : 'text-white font-bold'
+                msg.isHost || msg.userId === '1001001'
+                  ? 'text-red-500 font-black drop-shadow-[0_1px_2px_rgba(239,68,68,0.6)]'
                   : (msg.userColor || 'text-slate-200')
               }`}
               title="انقر لمعاينة بطاقة البروفايل"
             >
               <span>{msg.userName}</span>
-              {msg.isOwner && <RoomOwnerBadge size="sm" />}
+              {(msg.isOwner || msg.userId === '1001001') && <RoomOwnerBadge size="sm" />}
             </span>
 
-            {/* Badges */}
-            {msg.isHost ? (
-              <HostYoHoBadges
-                heartLevel={msg.heartLevel || 39}
-                crownLevel={msg.crownLevel || 111}
-                vipLevel={typeof msg.vipLevel === 'string' ? msg.vipLevel : (msg.vipLevel ? `VIP${msg.vipLevel}` : 'VIP6')}
-              />
-            ) : msg.badges && msg.badges.length > 0 ? (
-              <div className="flex items-center gap-1 flex-wrap">
-                {msg.badges.map((badge, bIdx) => (
-                  <span
-                    key={`${badge.id || 'badge'}-${bIdx}`}
-                    className={`text-[8.5px] px-1.5 py-0.2 rounded-full font-black flex items-center gap-0.5 shadow-2xs shrink-0 ${badge.bgClass}`}
-                  >
-                    {badge.icon && <span className="text-[9px]">{badge.icon}</span>}
-                    <span>{badge.label}</span>
-                  </span>
-                ))}
-              </div>
-            ) : null}
-
             {/* Actions: Quick Reply Button & Options Menu Button */}
-            <div className="mr-auto flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"
                 onClick={(e) => {
@@ -378,6 +353,17 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
                 <CornerUpLeft className="w-3 h-3" />
               </button>
             </div>
+          </div>
+
+          {/* 2. السطر الثاني: الشارات تحت الاسم مباشرة */}
+          <div className="flex items-center gap-1 flex-nowrap overflow-x-auto no-scrollbar mb-1 select-none py-0.5" dir="ltr">
+            <HostYoHoBadges
+              supporterLevel={msg.supporterLevel ?? (msg.userId === '1001001' ? 120 : msg.heartLevel)}
+              charmLevel={msg.charmLevel ?? (msg.userId === '1001001' ? 45 : msg.crownLevel)}
+              vipLevel={typeof msg.vipLevel === 'string' ? msg.vipLevel : (msg.vipLevel ? `VIP${msg.vipLevel}` : (msg.userId === '1001001' ? 'VIP7' : undefined))}
+              sharesLevel={msg.sharesLevel}
+              isSuperAdmin={msg.isSuperAdmin || msg.isOwner || msg.userId === '1001001'}
+            />
           </div>
 
           {/* Dynamic Bubble - يدعم النقر المباشر والضغط المطول والزر الأيمن */}
@@ -432,7 +418,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = React.memo(({
             <div className="flex flex-wrap items-center gap-1.5 break-words [overflow-wrap:anywhere] [word-break:break-word] max-w-full">
               <span
                 className={`font-bold break-words [overflow-wrap:anywhere] [word-break:break-word] leading-relaxed ${
-                  msg.userColor === '#EF4444' || msg.text.includes('قام بطرد')
+                  msg.userColor === '#EF4444' || Boolean(msg.text?.includes('قام بطرد'))
                     ? 'text-rose-500 font-black text-xs'
                     : msg.isGift
                     ? 'text-pink-100 text-[10.5px]'

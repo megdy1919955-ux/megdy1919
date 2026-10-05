@@ -17,30 +17,130 @@ import {
   Star, 
   Download, 
   RefreshCw, 
-  PhoneCall, 
-  Mail, 
   Sparkles,
   Layers,
-  BarChart3
+  BarChart3,
+  Sliders,
+  Save,
+  Plus,
+  Trash2
 } from 'lucide-react';
+import { 
+  fetchDashboardConfig, 
+  updateDashboardConfig, 
+  fetchAgencyTargetsTiers, 
+  updateAgencyTargetsTiers, 
+  AgencyTargetTier 
+} from '../lib/serverRewardsService';
 
 interface AgencyAdminDashboardModalProps {
   isOpen: boolean;
   onClose: () => void;
   userId?: string;
-  userName?: string;
 }
 
 export const AgencyAdminDashboardModal: React.FC<AgencyAdminDashboardModalProps> = ({
   isOpen,
   onClose,
-  userId = 'MGR-9901',
-  userName = 'أبو أمجد'
+  userId = 'AG9901'
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'agencies' | 'requests' | 'targets'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'agencies' | 'requests' | 'targets' | 'exchange_control'>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'verified' | 'pending'>('all');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  // Exchange rate & controls state
+  const [exchangeRateInput, setExchangeRateInput] = useState<number>(13500);
+  const [qualifiedDaysInput, setQualifiedDaysInput] = useState<number>(15);
+  const [streamHoursInput, setStreamHoursInput] = useState<number>(30);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+
+  // Targets tiers state
+  const [tiersList, setTiersList] = useState<AgencyTargetTier[]>([]);
+  const [isSavingTiers, setIsSavingTiers] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchDashboardConfig().then((cfg) => {
+        if (cfg) {
+          if (cfg.exchangeRateDiamondsPerUsd) setExchangeRateInput(cfg.exchangeRateDiamondsPerUsd);
+          if (cfg.qualifiedDaysTarget) setQualifiedDaysInput(cfg.qualifiedDaysTarget);
+          if (cfg.streamHoursTarget) setStreamHoursInput(cfg.streamHoursTarget);
+        }
+      });
+      fetchAgencyTargetsTiers().then((tiers) => {
+        if (tiers && tiers.length > 0) {
+          setTiersList(tiers);
+        }
+      });
+    }
+
+    const handleTiersUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && Array.isArray(customEvent.detail)) {
+        setTiersList(customEvent.detail);
+      }
+    };
+    window.addEventListener('agency_targets_tiers_updated', handleTiersUpdated);
+    return () => window.removeEventListener('agency_targets_tiers_updated', handleTiersUpdated);
+  }, [isOpen]);
+
+  const handleTierChange = (index: number, field: keyof AgencyTargetTier, value: any) => {
+    setTiersList((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
+  const handleAddTierRow = () => {
+    const nextIdx = tiersList.length + 1;
+    const lastTier = tiersList[tiersList.length - 1];
+    const newTier: AgencyTargetTier = {
+      id: `T${nextIdx}`,
+      levelName: `LV.${nextIdx}`,
+      targetDiamonds: (lastTier?.targetDiamonds || 0) * 2 || 10000,
+      requiredDays: qualifiedDaysInput || 15,
+      requiredHours: streamHoursInput || 30,
+      salaryUsd: (lastTier?.salaryUsd || 0) * 2 || 20,
+      agencyCommissionPercent: 15
+    };
+    setTiersList((prev) => [...prev, newTier]);
+  };
+
+  const handleRemoveTierRow = (index: number) => {
+    setTiersList((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleSaveTiers = async () => {
+    setIsSavingTiers(true);
+    const ok = await updateAgencyTargetsTiers(tiersList, {
+      defaultDaysTarget: qualifiedDaysInput,
+      defaultHoursTarget: streamHoursInput,
+      exchangeRateDiamondsPerUsd: exchangeRateInput
+    });
+    setIsSavingTiers(false);
+    if (ok) {
+      showToast('تم تحديث جدول تارجتات الوكالات والشروط على السيرفر المركزي بنجاح! 🎯');
+    } else {
+      showToast('تعذر حفظ جدول التارجتات في السيرفر، يرجى التحقق من الاتصال');
+    }
+  };
+
+  const handleSaveExchangeConfig = async () => {
+    setIsSavingConfig(true);
+    const ok = await updateDashboardConfig({
+      exchangeRateDiamondsPerUsd: Number(exchangeRateInput),
+      qualifiedDaysTarget: Number(qualifiedDaysInput),
+      streamHoursTarget: Number(streamHoursInput)
+    });
+    setIsSavingConfig(false);
+    if (ok) {
+      showToast(`تم حفظ وتطبيق سعر الصرف (${Number(exchangeRateInput).toLocaleString()} 💎 = 1$) بنجاح على السيرفر! 🚀`);
+    } else {
+      showToast('تعذر الحفظ في السيرفر، يرجى المحاولة ثانية');
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -106,18 +206,12 @@ export const AgencyAdminDashboardModal: React.FC<AgencyAdminDashboardModalProps>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-black text-white">مدير الإدارة (لوحة تحكم الوكالات)</h3>
-                <span className="text-[10px] bg-blue-500/20 text-blue-300 font-extrabold px-2.5 py-0.5 rounded-full border border-blue-400/40 font-mono">
-                  {userId}
+                <h3 className="text-base sm:text-lg font-black text-white">لوحة تحكم إداري الوكالات</h3>
+                <span className="text-[10px] bg-blue-500/20 text-blue-300 font-extrabold px-2.5 py-0.5 rounded-full border border-blue-400/40">
+                  صلاحية خاصة 🏛️
                 </span>
               </div>
-              <p className="text-[11px] text-slate-300 flex items-center gap-1.5 mt-0.5">
-                <span>المدير العام:</span>
-                <span className="text-amber-300 font-black">{userName}</span>
-                <span className="text-slate-500">•</span>
-                <span className="text-slate-400">كود الإدارة:</span>
-                <span className="text-cyan-300 font-mono font-bold">{userId}</span>
-              </p>
+              <p className="text-[11px] text-slate-300">متابعة واعتماد الوكالات، مراقبة التارغت والوسطاء</p>
             </div>
           </div>
 
@@ -133,6 +227,7 @@ export const AgencyAdminDashboardModal: React.FC<AgencyAdminDashboardModalProps>
         <div className="flex items-center gap-2 px-4 pt-3 border-b border-slate-800/80 bg-slate-900/60 overflow-x-auto no-scrollbar">
           {[
             { id: 'overview', title: 'نظرة عامة وإحصائيات', icon: BarChart3 },
+            { id: 'exchange_control', title: 'سعر الصرف والتحكم المركزي', icon: DollarSign },
             { id: 'agencies', title: 'دليل الوكالات المعتمدة', icon: Building2 },
             { id: 'requests', title: 'طلبات التوثيق والاعتماد', icon: FileText },
             { id: 'targets', title: 'مراقبة التارغت الشهري', icon: TrendingUp },
@@ -327,24 +422,256 @@ export const AgencyAdminDashboardModal: React.FC<AgencyAdminDashboardModalProps>
             </div>
           )}
 
-          {/* Tab 4: Targets */}
+          {/* Tab 4: Targets & Tiers Management */}
           {activeTab === 'targets' && (
-            <div className="space-y-3">
-              <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-3">
-                <h4 className="text-xs font-black text-white flex items-center gap-1.5">
-                  <TrendingUp className="w-4 h-4 text-emerald-400" />
-                  <span>متابعة التارغت والحوافز الشهرية (فبراير 2026)</span>
-                </h4>
-                <div className="space-y-2">
-                  <div className="p-3 bg-slate-950 rounded-xl space-y-1.5">
-                    <div className="flex justify-between text-xs font-bold">
-                      <span className="text-slate-300">تارغت الوكالات العام للشبكة</span>
-                      <span className="text-amber-400 font-mono">42.5M / 50.0M 💎 (85%)</span>
-                    </div>
-                    <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full" style={{ width: '85%' }} />
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                      <TrendingUp className="w-5 h-5" />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-black text-white">جدول تارجتات الوكالات والشروط والأيام (المعتمد على السيرفر)</h4>
+                      <p className="text-[11px] text-slate-400">
+                        يتم جلب هذه البيانات من السيرفر، وأي تعديل يُرسل لمسار <code className="text-purple-300 font-mono">POST /api/agency-targets-tiers</code> ليحدث مركز المذيعين لحظياً.
+                      </p>
                     </div>
                   </div>
+                  <span className="text-[10px] font-mono bg-purple-500/20 text-purple-300 px-2.5 py-1 rounded-full border border-purple-500/30 font-bold">
+                    {tiersList.length} مستويات نشطة
+                  </span>
+                </div>
+
+                {/* Tiers Interactive Table */}
+                <div className="overflow-x-auto border border-slate-800 rounded-2xl bg-slate-950">
+                  <table className="w-full text-right text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800 bg-slate-900/80 text-slate-400 font-bold">
+                        <th className="py-2.5 px-3">المستوى</th>
+                        <th className="py-2.5 px-3">الماس المطلوب 💎</th>
+                        <th className="py-2.5 px-3">الأيام المؤهلة 📅</th>
+                        <th className="py-2.5 px-3">الساعات المطلوبة ⏳</th>
+                        <th className="py-2.5 px-3">الراتب الأساسي ($)</th>
+                        <th className="py-2.5 px-3">عمولة الوكالة (%)</th>
+                        <th className="py-2.5 px-2 text-center">إجراء</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 font-mono font-bold text-slate-200">
+                      {tiersList.map((tier, idx) => (
+                        <tr key={tier.id || idx} className="hover:bg-slate-900/50 transition-colors">
+                          <td className="py-2 px-3">
+                            <input
+                              type="text"
+                              value={tier.levelName}
+                              onChange={(e) => handleTierChange(idx, 'levelName', e.target.value)}
+                              className="w-16 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-center text-amber-300 font-black text-xs"
+                            />
+                          </td>
+                          <td className="py-2 px-3">
+                            <input
+                              type="number"
+                              value={tier.targetDiamonds}
+                              step="5000"
+                              onChange={(e) => handleTierChange(idx, 'targetDiamonds', Number(e.target.value))}
+                              className="w-28 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-white font-mono text-xs text-left"
+                              dir="ltr"
+                            />
+                          </td>
+                          <td className="py-2 px-3">
+                            <input
+                              type="number"
+                              value={tier.requiredDays}
+                              min="1"
+                              max="31"
+                              onChange={(e) => handleTierChange(idx, 'requiredDays', Number(e.target.value))}
+                              className="w-16 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-blue-300 text-center text-xs"
+                            />
+                          </td>
+                          <td className="py-2 px-3">
+                            <input
+                              type="number"
+                              value={tier.requiredHours}
+                              min="1"
+                              max="200"
+                              onChange={(e) => handleTierChange(idx, 'requiredHours', Number(e.target.value))}
+                              className="w-16 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-cyan-300 text-center text-xs"
+                            />
+                          </td>
+                          <td className="py-2 px-3">
+                            <input
+                              type="number"
+                              value={tier.salaryUsd}
+                              min="0"
+                              step="5"
+                              onChange={(e) => handleTierChange(idx, 'salaryUsd', Number(e.target.value))}
+                              className="w-20 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-emerald-400 font-mono text-xs text-left"
+                              dir="ltr"
+                            />
+                          </td>
+                          <td className="py-2 px-3">
+                            <input
+                              type="number"
+                              value={tier.agencyCommissionPercent || 10}
+                              min="1"
+                              max="100"
+                              onChange={(e) => handleTierChange(idx, 'agencyCommissionPercent', Number(e.target.value))}
+                              className="w-16 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-purple-300 text-center text-xs"
+                            />
+                          </td>
+                          <td className="py-2 px-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTierRow(idx)}
+                              className="p-1 text-rose-400 hover:text-rose-200 hover:bg-rose-500/20 rounded-lg transition-colors cursor-pointer"
+                              title="حذف هذا المستوى"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Table Bottom Actions */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleAddTierRow}
+                    className="w-full sm:w-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4 text-emerald-400" />
+                    <span>إضافة مستوى تارغت جديد ➕</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveTiers}
+                    disabled={isSavingTiers}
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-600 hover:opacity-95 active:scale-95 text-white font-black text-xs shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingTiers ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>جاري الحفظ على السيرفر...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        <span>حفظ وتحديث جدول التارجتات في السيرفر المركزي (POST) 🚀</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab 5: Exchange Rate & Controls */}
+          {activeTab === 'exchange_control' && (
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                      <DollarSign className="w-5 h-5" />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-black text-white">التحكم المركزي بسعر صرف الألماس والرواتب</h4>
+                      <p className="text-[11px] text-slate-400">أي تعديل هنا يتم حفظه مباشرة في السيرفر وتحديث شاشات المذيعين لحظياً</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full border border-emerald-500/30 font-bold">
+                    نشط على السيرفر
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                  {/* Exchange rate input */}
+                  <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+                    <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
+                      <span>سعر الصرف (عدد الماسات لكل 1 دولار):</span>
+                      <span className="text-amber-400 font-mono font-black">{exchangeRateInput.toLocaleString()} 💎</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="number"
+                        min="100"
+                        step="100"
+                        value={exchangeRateInput}
+                        onChange={(e) => setExchangeRateInput(Number(e.target.value))}
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-sm focus:outline-hidden focus:border-blue-400 text-left"
+                        dir="ltr"
+                      />
+                      <span className="text-xs font-bold text-slate-400">💎 / $1</span>
+                    </div>
+                    {/* Quick Presets */}
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <span className="text-[10px] text-slate-400 font-bold">خيارات سريعة:</span>
+                      {[
+                        { label: '13,500 (المعتمد)', val: 13500 },
+                        { label: '10,000', val: 10000 },
+                        { label: '15,000', val: 15000 },
+                      ].map((preset) => (
+                        <button
+                          key={preset.val}
+                          type="button"
+                          onClick={() => setExchangeRateInput(preset.val)}
+                          className={`text-[10px] px-2 py-0.5 rounded-lg border font-bold transition-all cursor-pointer ${
+                            exchangeRateInput === preset.val
+                              ? 'bg-amber-500/30 border-amber-400 text-amber-200'
+                              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Qualified days target */}
+                  <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+                    <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
+                      <span>أيام البث المؤهلة (تذكير الأيام):</span>
+                      <span className="text-blue-400 font-mono font-black">{qualifiedDaysInput} يوماً</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={qualifiedDaysInput}
+                        onChange={(e) => setQualifiedDaysInput(Number(e.target.value))}
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-sm focus:outline-hidden focus:border-blue-400 text-left"
+                        dir="ltr"
+                      />
+                      <span className="text-xs font-bold text-slate-400">يوماً / شهر</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400">المعيار المعتمد رسمياً: 15 يوماً مؤهلة</p>
+                  </div>
+                </div>
+
+                {/* Save Button */}
+                <div className="pt-2 flex justify-end">
+                  <button
+                    onClick={handleSaveExchangeConfig}
+                    disabled={isSavingConfig}
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-600 hover:opacity-95 active:scale-95 text-white font-black text-xs shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingConfig ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>جاري الحفظ على السيرفر...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        <span>حفظ وتطبيق التغييرات على السيرفر المركزي 🚀</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             </div>

@@ -86,14 +86,12 @@ export class AgoraVoiceEngine {
 
       // Join Channel
       // For token: null is accepted during development/testing with App ID without certificate
-      if (this.client) {
-        await this.client.join(this.appId, this.roomId, null, this.userId);
-        this.isJoined = true;
-        this.onConnectionStatus?.('connected');
+      await this.client.join(this.appId, this.roomId, null, this.userId);
+      this.isJoined = true;
+      this.onConnectionStatus?.('connected');
 
-        // Enable Real-time Audio Volume Indication (Interval: 200ms, Smooth: 3)
-        this.client.enableAudioVolumeIndicator();
-      }
+      // Enable Real-time Audio Volume Indication (Interval: 200ms, Smooth: 3)
+      this.client.enableAudioVolumeIndicator();
 
       return true;
     } catch (err) {
@@ -197,14 +195,12 @@ export class AgoraVoiceEngine {
         });
       }
 
-      if (!this.isPublishing && this.client && this.localAudioTrack) {
+      if (!this.isPublishing) {
         await this.client.publish(this.localAudioTrack);
         this.isPublishing = true;
       }
 
-      if (this.localAudioTrack) {
-        await this.localAudioTrack.setMuted(this.isMuted);
-      }
+      await this.localAudioTrack.setMuted(this.isMuted);
       return true;
     } catch (err) {
       console.warn('Microphone permission error or device unavailable:', err);

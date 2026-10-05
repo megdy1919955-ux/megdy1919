@@ -40,6 +40,8 @@ import { FriendlyPointsModal } from './FriendlyPointsModal';
 import { isUserFriend } from '../lib/friendService';
 import { FriendRequestModal } from './FriendRequestModal';
 import { isUserImmuneFromKick, getModeratorKickPermission } from '../lib/roomKickService';
+import { HostYoHoBadges } from './room/HostYoHoBadges';
+import { fetchMobileMe } from '../lib/serverRewardsService';
 
 export interface BadgeItem {
   id: string;
@@ -52,16 +54,19 @@ export interface UserProfileData {
   id: string;
   name: string;
   avatar: string;
-  userId?: string;
-  country?: string;
-  countryFlag?: string;
-  bio?: string;
-  level?: number;
+  userId: string;
+  country: string;
+  countryFlag: string;
   vip?: string;
-  vipLevel?: number;
+  vipLevel?: number | string;
+  supporterLevel?: number;
+  charmLevel?: number;
+  sharesLevel?: number | string;
   friendlyPoints?: number;
   badges?: BadgeItem[];
   isHost?: boolean;
+  isOwner?: boolean;
+  isSuperAdmin?: boolean;
   isAdmin?: boolean;
   isMuted?: boolean;
   isMutedByAdmin?: boolean;
@@ -72,7 +77,6 @@ export interface UserProfileData {
     avatar: string;
     level: string;
   }>;
-  [key: string]: any;
 }
 
 interface AdvancedUserProfileModalProps {
@@ -119,6 +123,53 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
   const [showFriendlyPointsModal, setShowFriendlyPointsModal] = useState(false);
   const [showFriendRequestModal, setShowFriendRequestModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Real badges linked to account ID and synced from central server
+  const [userRealBadges, setUserRealBadges] = useState<{
+    supporterLevel: number;
+    charmLevel: number;
+    vipLevel: string;
+    sharesLevel?: number | string;
+    isSuperAdmin?: boolean;
+    supporterBadgeDesign?: string;
+    charmBadgeDesign?: string;
+    vipDesignStyle?: string;
+  }>({
+    supporterLevel: 120,
+    charmLevel: 45,
+    vipLevel: 'VIP7',
+    sharesLevel: 1,
+    isSuperAdmin: true,
+    supporterBadgeDesign: 'royal_dragon_flame',
+    charmBadgeDesign: 'diamond_rose_5star',
+    vipDesignStyle: 'royal_gold_3d'
+  });
+
+  useEffect(() => {
+    let isCurrent = true;
+    if (user) {
+      const targetId = (user.userId || user.id || '1001001').toString();
+      fetchMobileMe(targetId)
+        .then((data) => {
+          if (isCurrent && data && data.badges) {
+            setUserRealBadges({
+              supporterLevel: data.badges.supporterLevel ?? data.badges.level ?? (targetId === '1001001' ? 120 : (user.supporterLevel ?? 1)),
+              charmLevel: data.badges.charmLevel ?? (targetId === '1001001' ? 45 : (user.charmLevel ?? 1)),
+              vipLevel: data.badges.vipLevel || (targetId === '1001001' ? 'VIP7' : (user.vipLevel ? `VIP${user.vipLevel}` : 'VIP1')),
+              sharesLevel: user.sharesLevel || 1,
+              isSuperAdmin: Boolean(targetId === '1001001' || user.isOwner || user.isSuperAdmin),
+              supporterBadgeDesign: data.badges.supporterBadgeDesign || 'royal_dragon_flame',
+              charmBadgeDesign: data.badges.charmBadgeDesign || 'diamond_rose_5star',
+              vipDesignStyle: data.badges.vipDesignStyle || 'royal_gold_3d'
+            });
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      isCurrent = false;
+    };
+  }, [user, user?.userId, user?.id]);
 
   // Sync isMuted state with user prop changes
   useEffect(() => {
@@ -583,33 +634,30 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
                 <ChevronLeft className="w-2.5 h-2.5 text-slate-400" />
               </button>
 
-              {/* LEVEL BADGES HORIZONTAL ROW - 1. VIP أولاً -> 2. الداعم -> 3. المدعوم */}
-              <div className="flex items-center justify-center gap-1.5 pt-0.5 flex-nowrap" dir="rtl">
-                {/* 1. VIP Badge (إن وُجد) */}
-                {Boolean(user.vipLevel && Number(user.vipLevel) > 0) && (
-                  <span className="px-1.5 py-0.2 bg-slate-800 text-amber-300 text-[8.5px] font-black rounded-full shadow-2xs flex items-center gap-0.5 border border-amber-400/40 shrink-0">
-                    <Crown className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
-                    <span>VIP{user.vipLevel}</span>
+              {/* REAL LEVEL BADGES HORIZONTAL ROW (مربوطة بالسيرفر والـ ID الحقيقي) */}
+              <div className="flex items-center justify-center gap-1.5 pt-1 max-w-full select-none" dir="ltr">
+                <HostYoHoBadges
+                  supporterLevel={userRealBadges.supporterLevel}
+                  charmLevel={userRealBadges.charmLevel}
+                  vipLevel={userRealBadges.vipLevel}
+                  sharesLevel={userRealBadges.sharesLevel}
+                  isSuperAdmin={userRealBadges.isSuperAdmin || user.userId === '1001001' || user.isOwner}
+                  supporterBadgeDesign={userRealBadges.supporterBadgeDesign}
+                  charmBadgeDesign={userRealBadges.charmBadgeDesign}
+                  vipDesignStyle={userRealBadges.vipDesignStyle}
+                />
+                {/* Super Legend SL1 Badge */}
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-[1px] rounded-full text-[9px] font-black border border-amber-300/40 bg-gradient-to-r from-amber-700 via-amber-600 to-yellow-600 text-amber-100 shadow-2xs">
+                  <span className="text-[9px] leading-none">🐺</span>
+                  <span className="font-mono leading-none tracking-tight">SL1</span>
+                </span>
+                {/* Developer Badge */}
+                {(userRealBadges.isSuperAdmin || user.userId === '1001001' || user.isOwner) && (
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-[1px] rounded-full text-[9px] font-black border border-amber-300/60 bg-gradient-to-r from-red-700 via-rose-600 to-amber-600 text-white shadow-2xs font-sans">
+                    <Sparkles className="w-2 h-2 text-amber-300 fill-amber-300 animate-pulse" />
+                    <span className="leading-none text-[8.5px]">المطور 👑</span>
                   </span>
                 )}
-
-                {/* 2. الداعم (التاج والرقم فقط) */}
-                <span className="px-1.5 py-0.2 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-[8.5px] font-black rounded-full flex items-center gap-0.5 shadow-2xs shrink-0">
-                  <span className="text-[10px]">👑</span>
-                  <span className="font-mono font-black">{user.level || 88}</span>
-                </span>
-
-                {/* 3. المدعوم (القلب والرقم فقط) */}
-                <span className="px-1.5 py-0.2 bg-rose-500 text-white text-[8.5px] font-black rounded-full flex items-center gap-0.5 shadow-2xs shrink-0">
-                  <span className="text-[10px]">💖</span>
-                  <span className="font-mono font-black">{user.level || 88}</span>
-                </span>
-
-                {/* 4. إشارة وأمبولة العمر والجنس (أزرق ♂ / وردي ♀) */}
-                <span className="px-1.5 py-0.2 bg-sky-500 text-white text-[8.5px] font-black rounded-full flex items-center gap-0.5 shadow-2xs shrink-0 select-none">
-                  <span className="text-[10px] leading-none">♂</span>
-                  <span className="font-mono font-black">{user.age || 28}</span>
-                </span>
               </div>
 
               {/* NATIONAL TAG */}

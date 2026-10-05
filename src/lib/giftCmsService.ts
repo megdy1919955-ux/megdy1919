@@ -7,6 +7,7 @@ import { canManageGifts } from './roleService';
 import { tempMediaCacheManager } from './tempMediaCacheManager';
 import { persistentMediaStorage } from './persistentMediaStorage';
 import { evictCachedGift } from './giftOnDemandLoader';
+import { playRealisticGiftAudio } from './realisticAudioService';
 
 export interface GiftItem {
   id: string;
@@ -351,9 +352,8 @@ function openGiftsIndexedDB(): Promise<IDBDatabase | null> {
 }
 
 async function saveGiftsToIndexedDB(gifts: GiftItem[]): Promise<void> {
-  let db: IDBDatabase | null = null;
   try {
-    db = await openGiftsIndexedDB();
+    const db = await openGiftsIndexedDB();
     if (!db) return;
     const tx = db.transaction(IDB_STORE_NAME, 'readwrite');
     const store = tx.objectStore(IDB_STORE_NAME);
@@ -363,10 +363,6 @@ async function saveGiftsToIndexedDB(gifts: GiftItem[]): Promise<void> {
     }
   } catch (err) {
     console.warn('Failed saving gifts to IndexedDB:', err);
-  } finally {
-    if (db) {
-      try { db.close(); } catch {}
-    }
   }
 }
 
@@ -718,192 +714,8 @@ export function subscribeToCmsRole(callback: (role: CmsRole) => void): () => voi
 }
 
 /**
- * Synthesizes & plays high-impact audio effects in browser via Web Audio API or custom audio element
+ * Plays high-fidelity realistic acoustic sound effects for gifts
  */
 export function playGiftAudioEffect(gift: GiftItem): void {
-  if (typeof window === 'undefined') return;
-  if (!gift.hasSound) return;
-
-  // 1. If custom audio URL exists, play via HTML5 Audio
-  if (gift.soundUrl) {
-    try {
-      const audio = new Audio(gift.soundUrl);
-      audio.volume = gift.soundVolume !== undefined ? gift.soundVolume : 0.8;
-      audio.play().catch((err) => {
-        console.warn('Audio play failed (maybe blocked by browser policy):', err);
-        // Fallback to Web Audio synthesis
-        synthesizeAudioPreset(gift.soundPreset || 'fanfare', gift.soundVolume);
-      });
-      return;
-    } catch (e) {
-      console.warn('Custom sound failed, using synthesizer', e);
-    }
-  }
-
-  // 2. Synthesize audio preset using Web Audio API
-  synthesizeAudioPreset(gift.soundPreset || 'fanfare', gift.soundVolume);
-}
-
-/**
- * Web Audio API procedural sound synthesizer for immediate lag-free sound effects
- */
-function synthesizeAudioPreset(preset: string, volume = 0.8): void {
-  try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(volume * 0.4, ctx.currentTime);
-    masterGain.connect(ctx.destination);
-
-    const now = ctx.currentTime;
-
-    switch (preset) {
-      case 'lion_roar': {
-        // Low rumble frequency with noise
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(140, now);
-        osc.frequency.exponentialRampToValueAtTime(45, now + 1.2);
-        gain.gain.setValueAtTime(0.6, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
-        osc.connect(gain);
-        gain.connect(masterGain);
-        osc.start(now);
-        osc.stop(now + 1.2);
-        break;
-      }
-      case 'jackpot_bells': {
-        // Rapid coin bell chimes
-        [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98].forEach((freq, idx) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          const t = now + idx * 0.1;
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(freq, t);
-          gain.gain.setValueAtTime(0.5, t);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-          osc.connect(gain);
-          gain.connect(masterGain);
-          osc.start(t);
-          osc.stop(t + 0.5);
-        });
-        break;
-      }
-      case 'magic_sparkle': {
-        // Shimmering arpeggios
-        [440, 554.37, 659.25, 880, 1108.73, 1318.51, 1760].forEach((freq, idx) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          const t = now + idx * 0.08;
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(freq, t);
-          gain.gain.setValueAtTime(0.4, t);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
-          osc.connect(gain);
-          gain.connect(masterGain);
-          osc.start(t);
-          osc.stop(t + 0.6);
-        });
-        break;
-      }
-      case 'supercar': {
-        // Accelerating pitch with harmonics
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(80, now);
-        osc.frequency.exponentialRampToValueAtTime(520, now + 1.4);
-        gain.gain.setValueAtTime(0.4, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 1.4);
-        osc.connect(gain);
-        gain.connect(masterGain);
-        osc.start(now);
-        osc.stop(now + 1.4);
-        break;
-      }
-      case 'laser': {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(1800, now);
-        osc.frequency.exponentialRampToValueAtTime(120, now + 0.4);
-        gain.gain.setValueAtTime(0.5, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-        osc.connect(gain);
-        gain.connect(masterGain);
-        osc.start(now);
-        osc.stop(now + 0.4);
-        break;
-      }
-      case 'kiss': {
-        // Sweet pop sound
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(600, now);
-        osc.frequency.exponentialRampToValueAtTime(1200, now + 0.15);
-        gain.gain.setValueAtTime(0.6, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-        osc.connect(gain);
-        gain.connect(masterGain);
-        osc.start(now);
-        osc.stop(now + 0.35);
-        break;
-      }
-      case 'boom': {
-        // Low sub bass boom
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(180, now);
-        osc.frequency.exponentialRampToValueAtTime(30, now + 0.8);
-        gain.gain.setValueAtTime(0.8, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
-        osc.connect(gain);
-        gain.connect(masterGain);
-        osc.start(now);
-        osc.stop(now + 0.8);
-        break;
-      }
-      case 'applause': {
-        // Burst of celebratory high chords
-        [400, 600, 800, 1000].forEach((f, i) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(f, now + i * 0.05);
-          gain.gain.setValueAtTime(0.3, now + i * 0.05);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
-          osc.connect(gain);
-          gain.connect(masterGain);
-          osc.start(now + i * 0.05);
-          osc.stop(now + 0.8);
-        });
-        break;
-      }
-      case 'fanfare':
-      default: {
-        // Royal fanfare triad: C5 - E5 - G5 - C6
-        const notes = [523.25, 659.25, 783.99, 1046.5];
-        notes.forEach((freq, idx) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          const t = now + idx * 0.12;
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(freq, t);
-          gain.gain.setValueAtTime(0.5, t);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
-          osc.connect(gain);
-          gain.connect(masterGain);
-          osc.start(t);
-          osc.stop(t + 0.7);
-        });
-        break;
-      }
-    }
-  } catch (err) {
-    console.warn('Audio synthesis error:', err);
-  }
+  playRealisticGiftAudio(gift);
 }

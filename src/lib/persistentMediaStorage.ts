@@ -49,21 +49,13 @@ class PersistentMediaStorage {
             db.createObjectStore(MEDIA_STORE_NAME, { keyPath: 'id' });
           }
         };
-        request.onsuccess = () => {
-          const db = request.result;
-          db.onclose = () => {
-            this.dbPromise = null;
-          };
-          resolve(db);
-        };
+        request.onsuccess = () => resolve(request.result);
         request.onerror = (err) => {
           console.warn('Persistent Media DB open failed:', err);
-          this.dbPromise = null;
           resolve(null);
         };
       } catch (err) {
         console.warn('Error opening Persistent Media DB:', err);
-        this.dbPromise = null;
         resolve(null);
       }
     });

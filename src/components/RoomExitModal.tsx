@@ -140,7 +140,7 @@ export const RoomExitModal: React.FC<RoomExitModalProps> = ({
                 id="room-exit-dissolve-btn"
                 onClick={handleDissolveClick}
                 className="w-[76px] h-[76px] sm:w-[84px] sm:h-[84px] rounded-full bg-white hover:bg-slate-100 active:scale-90 transition-transform shadow-[0_10px_30px_rgba(0,0,0,0.6)] flex items-center justify-center text-slate-900 cursor-pointer"
-                title="إحالة الغرفة"
+                title="إحالة الروم (طرد جميع من بالداخل)"
               >
                 {/* House with X icon */}
                 <svg
@@ -157,8 +157,11 @@ export const RoomExitModal: React.FC<RoomExitModalProps> = ({
                   <line x1="14.5" y1="12" x2="9.5" y2="17" />
                 </svg>
               </button>
-              <span className="text-white text-base sm:text-lg font-bold tracking-wide mt-2.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                إحالة الغرفة
+              <span className="text-white text-base sm:text-lg font-bold tracking-wide mt-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                إحالة الروم
+              </span>
+              <span className="text-amber-300 text-[11px] font-semibold drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+                (طرد الجميع)
               </span>
             </motion.div>
           )}

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import * as LottieModule from 'lottie-react';
-const Lottie = ((LottieModule as any).Lottie || (LottieModule as any).default || LottieModule) as any;
+import Lottie from 'lottie-react';
 import { getCachedLottieSchema, getStoredEmojiConfigs, fetchAndCacheNetworkLottie } from '../lib/lottieCache';
 
 interface LottieReactionPlayerProps {

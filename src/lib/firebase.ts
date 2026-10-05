@@ -2,34 +2,47 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   getFirestore,
   initializeFirestore,
-  memoryLocalCache
+  persistentLocalCache,
+  persistentMultipleTabManager
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { getAnalytics, isSupported, Analytics } from 'firebase/analytics';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Initialize Firebase App instance safely
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firestore with robust memory caching to prevent any IndexedDB closing/hidden errors in iframes & background tabs
-const rawDbId = (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId;
-const dbId = rawDbId && rawDbId !== '(default)' ? rawDbId : undefined;
-
-let db: ReturnType<typeof getFirestore>;
-try {
-  db = initializeFirestore(
-    app,
-    {
-      experimentalAutoDetectLongPolling: true,
-      localCache: memoryLocalCache()
-    },
-    dbId
-  );
-} catch (e) {
-  // Fallback to getFirestore with explicit databaseId
-  db = dbId ? getFirestore(app, dbId) : getFirestore(app);
+// Initialize Analytics safely on supported browser environments
+let analytics: Analytics | null = null;
+if (typeof window !== 'undefined') {
+  isSupported()
+    .then((supported) => {
+      if (supported) {
+        analytics = getAnalytics(app);
+      }
+    })
+    .catch((err) => {
+      console.warn('Firebase Analytics not supported in this context:', err);
+    });
 }
 
-const auth = getAuth(app);
+// Initialize Firestore with robust local caching
+export let db: ReturnType<typeof getFirestore>;
+try {
+  db = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  });
+} catch {
+  db = getFirestore(app);
+}
+
+// Cloud synchronization flag (Enabled for live ainajm Firebase backend)
+export const IS_CLOUD_SYNC_DISABLED = false;
+
+export const auth = getAuth(app);
 
 export enum OperationType {
   CREATE = 'create',
@@ -65,17 +78,13 @@ export function handleFirestoreError(
   const err = error as { code?: string; message?: string };
   const errMessage = error instanceof Error ? error.message : String(err?.message || error);
 
-  // If client is offline, closing, hidden or unavailable, log softly without breaking the application
   if (
     errMessage.includes('unavailable') ||
     errMessage.includes('offline') ||
     errMessage.includes('Could not reach Cloud Firestore') ||
-    errMessage.includes('closing') ||
-    errMessage.includes('hidden') ||
-    errMessage.includes('connection is closing') ||
     err?.code === 'unavailable'
   ) {
-    console.warn(`[Firestore Status] Operation: ${operationType} on path: ${path}. Operating smoothly with local state.`);
+    console.warn(`[Firestore Offline/Unavailable] Operation: ${operationType} on path: ${path}. Operating with local persistence cache.`);
   } else {
     console.error(`[Firestore Error] Operation: ${operationType} on path: ${path}`, err);
   }
@@ -100,4 +109,12 @@ export function handleFirestoreError(
   return errInfo;
 }
 
-export { app, db, auth };
+export function isFirebaseReady(): boolean {
+  try {
+    return Boolean(app && db && auth);
+  } catch {
+    return false;
+  }
+}
+
+export { app, analytics };

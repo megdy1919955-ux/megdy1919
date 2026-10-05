@@ -60,360 +60,292 @@ export const SeatActionModal: React.FC<SeatActionModalProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-[80] flex items-end justify-center p-0 sm:p-4 bg-transparent transition-all pointer-events-auto select-none"
+        className="fixed inset-0 z-[80] flex items-end justify-center p-3 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] bg-transparent pointer-events-auto select-none"
         onClick={onClose}
       >
         <motion.div
           initial={{ y: '100%', opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
-          transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-sm bg-[#121929] border-t-2 border-amber-500/60 border-x border-b border-amber-500/20 rounded-t-[2.5rem] sm:rounded-3xl shadow-[0_-12px_60px_rgba(0,0,0,0.85)] overflow-hidden text-white relative flex flex-col dir-rtl"
+          className="w-full max-w-md bg-transparent border-0 shadow-none text-white relative flex flex-col dir-rtl pointer-events-auto"
           dir="rtl"
         >
-          {/* BottomSheet Drag Indicator Pill */}
-          <div className="pt-2.5 pb-1 flex justify-center shrink-0">
-            <div className="w-10 h-1 rounded-full bg-white/25" />
-          </div>
-
-          {/* Modal Header */}
-          <div className="px-4 pb-3 pt-1 bg-gradient-to-r from-amber-500/15 via-purple-900/20 to-transparent border-b border-white/10 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 font-bold">
-                <Armchair className="w-4 h-4" />
-              </div>
-              <div className="text-right">
-                <h3 className="text-sm font-black text-white">التحكم بالمقعد رقم ({seatId})</h3>
-                <p className="text-[10px] text-amber-300 font-bold">
-                  {isInvitationPending
-                    ? `دعوة صعود المايك: ${seatUserName} ⏳`
-                    : isOccupied
-                    ? `المستخدم الحالي: ${seatUserName}`
-                    : 'المقعد فارغ حالياً'}
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-slate-300 hover:text-white transition-colors cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Action Items List */}
-          <div className="p-4 space-y-2.5">
+          {/* Action Items List (أفقي ومصغر وأنيق لا يغطي الشاشة) */}
+          <div className="w-full">
             {/* PENDING INVITATION MANAGEMENT OPTIONS */}
             {isInvitationPending ? (
-              <>
-                <div className="p-3 bg-amber-500/15 border border-amber-500/40 rounded-2xl flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-amber-500/20 border border-amber-400 flex items-center justify-center shrink-0">
-                    <Mic className="w-5 h-5 text-amber-300" />
-                  </div>
-                  <div className="text-right flex-1 min-w-0">
-                    <span className="text-[11px] font-black text-amber-300 block">دعوة صعود المايك معلقة ⏳</span>
-                    <span className="text-xs text-white font-bold truncate block">{seatUserName}</span>
-                  </div>
-                </div>
-
-                {/* Accept & Open Mic (موافقة وفتح المايك) */}
+              <div className="w-full bg-[#121928]/95 backdrop-blur-md border border-white/15 rounded-2xl p-1.5 shadow-2xl grid grid-cols-3 gap-1.5">
+                {/* 1. موافقة وفتح المايك */}
                 <button
                   onClick={() => {
                     triggerToast('تمت الموافقة وفتح المايك بنجاح! 🎙️');
                     onAcceptInvitation?.(seatId);
                     setTimeout(onClose, 400);
                   }}
-                  className="w-full p-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-white font-black rounded-2xl flex items-center justify-between shadow-lg shadow-emerald-500/20 cursor-pointer transition-all active:scale-95"
+                  className="py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 hover:border-emerald-300 transition-all active:scale-95 shadow-sm cursor-pointer"
+                  title="موافقة وفتح المايك"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <Mic className="w-5 h-5" />
-                    <span className="text-sm">موافقة وفتح المايك (فتح الصوت)</span>
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                    <Mic className="w-4 h-4 text-emerald-400" />
                   </div>
-                  <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-lg">موافقة ✓</span>
+                  <span className="text-[10px] font-black whitespace-nowrap">موافقة وفتح</span>
                 </button>
 
-                {/* Cancel Invitation (إلغاء الدعوة وتفريغ المقعد) */}
+                {/* 2. إلغاء الدعوة */}
                 <button
                   onClick={() => {
                     triggerToast('تم إلغاء الدعوة وتفريغ المقعد ❌');
                     onCancelInvitation?.(seatId);
                     setTimeout(onClose, 400);
                   }}
-                  className="w-full p-3 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-bold rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-95"
+                  className="py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:border-rose-400 transition-all active:scale-95 shadow-sm cursor-pointer"
+                  title="إلغاء الدعوة"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <X className="w-5 h-5 text-rose-400" />
-                    <span className="text-sm">إلغاء الدعوة وتفريغ المقعد</span>
+                  <div className="w-7 h-7 rounded-lg bg-rose-500/20 flex items-center justify-center">
+                    <X className="w-4 h-4 text-rose-400" />
                   </div>
-                  <span className="text-[10px] text-rose-400">إلغاء</span>
+                  <span className="text-[10px] font-black whitespace-nowrap">إلغاء وتفريغ</span>
                 </button>
 
-                {/* View Profile */}
+                {/* 3. الملف الشخصي */}
                 <button
                   onClick={() => {
                     onViewProfile?.(seatId);
                     onClose();
                   }}
-                  className="w-full p-3 bg-[#1D273D] hover:bg-[#263452] border border-white/10 text-cyan-300 font-bold rounded-2xl flex items-center justify-between cursor-pointer transition-all"
+                  className="py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 bg-purple-500/20 border border-purple-400/40 text-purple-200 hover:border-purple-300 transition-all active:scale-95 shadow-sm cursor-pointer"
+                  title="الملف الشخصي"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <Eye className="w-5 h-5 text-cyan-400" />
-                    <span className="text-sm">عرض البطاقة الشخصية (البروفايل)</span>
+                  <div className="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                    <Eye className="w-4 h-4 text-purple-300" />
                   </div>
-                  <span className="text-[10px] text-cyan-400">الملف الشخصي</span>
+                  <span className="text-[10px] font-black whitespace-nowrap">الملف الشخصي</span>
                 </button>
-              </>
+              </div>
             ) : isOccupied ? (
-              <>
-                {/* 1. Mute/Unmute Mic (كتم المايك / فتح المايك - متاح فقط للإداريين والمالك) */}
-                {(isCurrentAdmin || isRoomOwner) && (() => {
-                  const isHostSeat = seatId === 1 || seatUserName?.includes('المضيف') || seatUserName?.includes('مالك');
-                  const isSelf = currentUserSeatId === seatId || seatUserName?.includes('أنا');
-                  const isModRestricted = isHostSeat && !isRoomOwner && !isSelf;
-
-                  return (
-                    <button
-                      onClick={() => {
-                        if (isModRestricted) {
-                          triggerToast('لا تملك صلاحية تعديل أو إلغاء كتم ميكروفون مالك الغرفة 👑');
-                          return;
-                        }
-                        triggerToast(isSeatMuted ? 'تم فتح المايك للمتحدث 🎙️' : 'تم كتم ميكروفون المتحدث 🔇');
-                        onToggleMuteSeat?.(seatId);
-                      }}
-                      className={`w-full p-3 font-bold rounded-2xl flex items-center justify-between transition-all border shadow-md ${
-                        isModRestricted
-                          ? 'opacity-60 bg-slate-800/40 border-slate-700 text-slate-400 cursor-not-allowed'
-                          : isSeatMuted
-                          ? 'bg-rose-600/35 hover:bg-rose-600/50 border-rose-500 text-rose-200 shadow-rose-500/20 cursor-pointer'
-                          : 'bg-emerald-600/25 hover:bg-emerald-600/40 border-emerald-500/60 text-emerald-200 shadow-emerald-500/10 cursor-pointer'
-                      }`}
-                      title={isModRestricted ? 'محمي بصلاحيات مالك الغرفة 👑' : undefined}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        {isSeatMuted ? (
-                          <MicOff className="w-5 h-5 text-rose-400 stroke-[2.2]" />
-                        ) : (
-                          <Mic className="w-5 h-5 text-emerald-400 stroke-[2.2]" />
-                        )}
-                        <span className="text-sm font-black">
-                          {isSeatMuted ? 'فتح المايك (Unmute)' : 'كتم المايك (Mute)'}
-                        </span>
-                      </div>
-                      <span className={`text-[10.5px] font-black px-2.5 py-1 rounded-xl border ${
-                        isModRestricted
-                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                          : isSeatMuted
-                          ? 'bg-rose-500/30 text-rose-200 border-rose-400/60'
-                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                      }`}>
-                        {isModRestricted ? 'محمي 👑' : isSeatMuted ? 'مكتوم 🔇' : 'مفتوح 🎙️'}
-                      </span>
-                    </button>
-                  );
-                })()}
-
-                {/* 2. Remove From Mic to Audience (النزول إلى الجمهور) */}
-                {isCurrentAdmin && (
-                  <button
-                    onClick={() => {
-                      const isHostSeat = seatId === 1 || seatUserName?.includes('المضيف') || seatUserName?.includes('مالك');
-                      if (isHostSeat && !isRoomOwner) {
-                        triggerToast('لا يمكن للمشرف إنزال مالك الغرفة من المايك 👑');
-                        return;
-                      }
-                      triggerToast(`تم إنزال ${seatUserName} إلى الجمهور! ⬇️`);
-                      onRemoveFromMic?.(seatId);
-                      setTimeout(onClose, 600);
-                    }}
-                    className="w-full p-3 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-bold rounded-2xl flex items-center justify-between cursor-pointer transition-all"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <UserMinus className="w-5 h-5 text-rose-400" />
-                      <span className="text-sm">إنزال إلى الجمهور (Remove From Mic)</span>
-                    </div>
-                    <span className="text-[10px] text-rose-400 font-bold">طرد من المايك</span>
-                  </button>
-                )}
-
-                {/* 3. View Profile (عرض البروفايل) */}
+              /* OCCUPIED SEAT MANAGEMENT - COMPACT HORIZONTAL BAR */
+              <div className="w-full bg-[#121928]/95 backdrop-blur-md border border-white/15 rounded-2xl p-1.5 shadow-2xl grid grid-cols-4 gap-1.5">
+                {/* 1. تكتم المايك / فتح المايك */}
                 <button
                   onClick={() => {
-                    onViewProfile?.(seatId);
-                    onClose();
-                  }}
-                  className="w-full p-3 bg-[#1D273D] hover:bg-[#263452] border border-white/10 text-cyan-300 font-bold rounded-2xl flex items-center justify-between cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Eye className="w-5 h-5 text-cyan-400" />
-                    <span className="text-sm">عرض البطاقة الشخصية (View Profile)</span>
-                  </div>
-                  <span className="text-[10px] text-cyan-400">الملف الشخصي</span>
-                </button>
-
-                {/* 4. Open/Lock Seat */}
-                {isCurrentAdmin && (
-                  <button
-                    onClick={() => {
-                      triggerToast(isSeatLocked ? 'تم فتح المقعد 🔓' : 'تم قفل المقعد 🔒');
-                      onToggleLockSeat?.(seatId);
-                    }}
-                    className="w-full p-3 bg-[#1D273D] hover:bg-[#263452] border border-white/10 text-indigo-300 font-bold rounded-2xl flex items-center justify-between cursor-pointer transition-all"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      {isSeatLocked ? <Unlock className="w-5 h-5 text-emerald-400" /> : <Lock className="w-5 h-5 text-indigo-400" />}
-                      <span className="text-sm">{isSeatLocked ? 'فتح المقعد' : 'قفل المقعد (Lock Seat)'}</span>
-                    </div>
-                    <span className="text-[10px] text-indigo-300">قفل الإدارة</span>
-                  </button>
-                )}
-              </>
-            ) : (
-              /* EMPTY SEAT MANAGEMENT OPTIONS */
-              <>
-                {/* 1. Take Seat / Transfer to Seat */}
-                <button
-                  onClick={() => {
-                    if (isSeatLocked && !canClimbLocked) {
-                      triggerToast('عذراً! هذا المايك مغلق أو مقفل حالياً 🔒 لا يمكن الصعود عليه.');
+                    const isHostSeat = seatId === 1 || seatUserName?.includes('المضيف') || seatUserName?.includes('مالك');
+                    const isSelf = currentUserSeatId === seatId || seatUserName?.includes('أنا');
+                    if (isHostSeat && !isRoomOwner && !isSelf) {
+                      triggerToast('لا تملك صلاحية تعديل مايك مالك الغرفة 👑');
                       return;
                     }
-                    if (currentUserSeatId) {
-                      triggerToast('جاري نقل المضيف والعداد تلقائياً... 🔄');
-                    } else if (isSeatLocked) {
-                      triggerToast('تم الجلوس على المايك المغلق بنجاح! 🪑🔒');
-                    } else {
-                      triggerToast('تم جلوسك على المقعد بنجاح! 🪑');
-                    }
-                    onTakeSeat?.(seatId);
-                    setTimeout(onClose, 600);
+                    triggerToast(isSeatMuted ? 'تم فتح المايك للمتحدث 🎙️' : 'تم كتم ميكروفون المتحدث 🔇');
+                    onToggleMuteSeat?.(seatId);
                   }}
-                  disabled={isSeatLocked && !canClimbLocked}
-                  className={`w-full p-3 rounded-2xl flex items-center justify-between shadow-lg transition-all ${
-                    isSeatLocked && !canClimbLocked
-                      ? 'bg-slate-800/80 border border-slate-700 text-slate-400 opacity-60 cursor-not-allowed'
-                      : isSeatLocked && canClimbLocked
-                      ? 'bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-500 hover:brightness-110 text-white font-black shadow-amber-500/25 cursor-pointer border border-amber-400/50'
-                      : 'bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:brightness-110 text-slate-950 font-black shadow-amber-500/20 cursor-pointer'
+                  className={`py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm border ${
+                    isSeatMuted
+                      ? 'bg-rose-500/20 border-rose-400/40 text-rose-200 hover:border-rose-300'
+                      : 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200 hover:border-emerald-300'
                   }`}
-                  title={isSeatLocked && !canClimbLocked ? 'المايك مقفل حالياً 🔒' : undefined}
+                  title={isSeatMuted ? 'فتح المايك' : 'تكتم المايك'}
                 >
-                  <div className="flex items-center gap-2.5">
-                    {isSeatLocked && !canClimbLocked ? (
-                      <Lock className="w-5 h-5 text-slate-400" />
-                    ) : isSeatLocked ? (
-                      <Lock className="w-5 h-5 text-amber-200" />
-                    ) : (
-                      <Armchair className="w-5 h-5 fill-slate-950" />
-                    )}
-                    <span className="text-sm font-black">
-                      {isSeatLocked && !canClimbLocked
-                        ? 'المايك مغلق/مقفل 🔒 (متاح للمالك والمشرفين)'
-                        : isSeatLocked
-                        ? currentUserSeatId
-                          ? 'انتقال المضيف للمايك المغلق (نقل العداد 🔄)'
-                          : 'الصعود والجلوس على المقعد المغلق 🪑🔒'
-                        : currentUserSeatId
-                        ? 'انتقال المضيف للمايك (نقل العداد تلقائياً 🔄)'
-                        : 'اجلس على المقعد (Take Seat)'}
-                    </span>
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                    isSeatMuted ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'
+                  }`}>
+                    {isSeatMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                   </div>
-                  {isSeatLocked ? (
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border ${
-                      canClimbLocked
-                        ? 'bg-amber-400/30 text-amber-200 border-amber-300/60'
-                        : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                    }`}>
-                      {canClimbLocked ? 'مغلق (مخول للصعود 👑)' : 'مقفل 🔒'}
-                    </span>
-                  ) : (
-                    <Sparkles className="w-4 h-4" />
-                  )}
+                  <span className="text-[10px] font-black whitespace-nowrap">
+                    {isSeatMuted ? 'فتح المايك' : 'تكتم المايك'}
+                  </span>
                 </button>
 
-                {/* 2. Mute/Unmute Mic for Owner & Moderator, or Request Mic for Audience */}
-                {isCurrentAdmin ? (
+                {/* 2. إنزال من المايك */}
+                <button
+                  onClick={() => {
+                    const isHostSeat = seatId === 1 || seatUserName?.includes('المضيف') || seatUserName?.includes('مالك');
+                    if (isHostSeat && !isRoomOwner) {
+                      triggerToast('لا يمكن إنزال مالك الغرفة من المايك 👑');
+                      return;
+                    }
+                    triggerToast(`تم إنزال ${seatUserName} إلى الجمهور! ⬇️`);
+                    onRemoveFromMic?.(seatId);
+                    setTimeout(onClose, 500);
+                  }}
+                  className="py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:border-rose-400 transition-all active:scale-95 shadow-sm cursor-pointer"
+                  title="إنزال"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-rose-500/20 flex items-center justify-center">
+                    <UserMinus className="w-4 h-4 text-rose-400" />
+                  </div>
+                  <span className="text-[10px] font-black text-rose-200 whitespace-nowrap">
+                    إنزال
+                  </span>
+                </button>
+
+                {/* 3. الملف الشخصي */}
+                <button
+                  onClick={() => {
+                    onViewProfile?.(seatId);
+                    onClose();
+                  }}
+                  className="py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 bg-purple-500/20 border border-purple-400/40 text-purple-200 hover:border-purple-300 transition-all active:scale-95 shadow-sm cursor-pointer"
+                  title="الملف الشخصي"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                    <Eye className="w-4 h-4 text-purple-300" />
+                  </div>
+                  <span className="text-[10px] font-black text-purple-200 whitespace-nowrap">
+                    الملف الشخصي
+                  </span>
+                </button>
+
+                {/* 4. إقفال المايك */}
+                <button
+                  onClick={() => {
+                    triggerToast(isSeatLocked ? 'تم فتح المقعد 🔓' : 'تم إقفال المايك 🔒');
+                    onToggleLockSeat?.(seatId);
+                  }}
+                  className={`py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm border ${
+                    isSeatLocked
+                      ? 'bg-amber-500/20 border-amber-400/40 text-amber-200'
+                      : 'bg-indigo-500/20 border-indigo-400/40 text-indigo-200'
+                  }`}
+                  title={isSeatLocked ? 'فتح المايك' : 'إقفال المايك'}
+                >
+                  <div className="w-7 h-7 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                    {isSeatLocked ? <Unlock className="w-4 h-4 text-emerald-300" /> : <Lock className="w-4 h-4 text-indigo-300" />}
+                  </div>
+                  <span className="text-[10px] font-black text-indigo-200 whitespace-nowrap">
+                    {isSeatLocked ? 'فتح المايك' : 'إقفال المايك'}
+                  </span>
+                </button>
+              </div>
+            ) : (
+              /* EMPTY SEAT MANAGEMENT OPTIONS - COMPACT HORIZONTAL BAR */
+              isCurrentAdmin ? (
+                <div className="w-full bg-[#121928]/95 backdrop-blur-md border border-white/15 rounded-2xl p-1.5 shadow-2xl grid grid-cols-4 gap-1.5">
+                  {/* 1. انتقال */}
+                  <button
+                    onClick={() => {
+                      if (isSeatLocked && !canClimbLocked) {
+                        triggerToast('عذراً! هذا المايك مغلق حالياً 🔒');
+                        return;
+                      }
+                      if (currentUserSeatId) {
+                        triggerToast('جاري انتقال المضيف والعداد تلقائياً... 🔄');
+                      } else {
+                        triggerToast('تم الصعود على المقعد بنجاح! 🪑');
+                      }
+                      onTakeSeat?.(seatId);
+                      setTimeout(onClose, 500);
+                    }}
+                    disabled={isSeatLocked && !canClimbLocked}
+                    className={`py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm border ${
+                      isSeatLocked && !canClimbLocked
+                        ? 'bg-slate-800/60 border-slate-700/50 text-slate-500 opacity-60 cursor-not-allowed'
+                        : isSeatLocked && canClimbLocked
+                        ? 'bg-gradient-to-b from-amber-600/30 to-amber-700/40 border-amber-400/50 text-amber-200 hover:border-amber-300'
+                        : 'bg-gradient-to-b from-amber-500/25 to-yellow-600/20 border-amber-400/40 text-amber-200 hover:border-amber-300'
+                    }`}
+                    title="انتقال"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                      <Armchair className="w-4 h-4 text-amber-300" />
+                    </div>
+                    <span className="text-[10px] font-black text-amber-200 whitespace-nowrap">
+                      انتقال
+                    </span>
+                  </button>
+
+                  {/* 2. تكتم المايك */}
                   <button
                     onClick={() => {
                       triggerToast(isSeatMuted ? 'تم فتح المايك للمقعد 🎙️' : 'تم كتم المايك للمقعد 🔇');
                       onToggleMuteSeat?.(seatId);
                     }}
-                    className={`w-full p-3 font-bold rounded-2xl flex items-center justify-between cursor-pointer transition-all border shadow-md ${
+                    className={`py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm border ${
                       isSeatMuted
-                        ? 'bg-rose-600/35 hover:bg-rose-600/50 border-rose-500 text-rose-200 shadow-rose-500/20'
-                        : 'bg-emerald-600/25 hover:bg-emerald-600/40 border-emerald-500/60 text-emerald-200 shadow-emerald-500/10'
+                        ? 'bg-rose-500/20 border-rose-400/40 text-rose-200 hover:border-rose-300'
+                        : 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200 hover:border-emerald-300'
                     }`}
+                    title={isSeatMuted ? 'فتح المايك' : 'تكتم المايك'}
                   >
-                    <div className="flex items-center gap-2.5">
-                      {isSeatMuted ? (
-                        <MicOff className="w-5 h-5 text-rose-400 stroke-[2.2]" />
-                      ) : (
-                        <Mic className="w-5 h-5 text-emerald-400 stroke-[2.2]" />
-                      )}
-                      <span className="text-sm font-black">
-                        {isSeatMuted ? 'فتح المايك (Unmute Seat)' : 'كتم المايك (Mute Seat)'}
-                      </span>
-                    </div>
-                    <span className={`text-[10.5px] font-black px-2.5 py-1 rounded-xl border ${
-                      isSeatMuted
-                        ? 'bg-rose-500/30 text-rose-200 border-rose-400/60'
-                        : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                      isSeatMuted ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'
                     }`}>
-                      {isSeatMuted ? 'مكتوم 🔇' : 'مفتوح 🎙️'}
+                      {isSeatMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                    </div>
+                    <span className={`text-[10px] font-black whitespace-nowrap ${
+                      isSeatMuted ? 'text-rose-200' : 'text-emerald-200'
+                    }`}>
+                      {isSeatMuted ? 'فتح المايك' : 'تكتم المايك'}
                     </span>
                   </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      triggerToast('تم ارسال طلب المايك للإدارة! ✋');
-                      onRequestMic?.(seatId);
-                      setTimeout(onClose, 600);
-                    }}
-                    className="w-full p-3 bg-[#1D273D] hover:bg-[#263452] border border-white/10 text-cyan-300 font-bold rounded-2xl flex items-center justify-between cursor-pointer transition-all"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Mic className="w-5 h-5 text-cyan-400" />
-                      <span className="text-sm">تقديم طلب صعود للمايك (Request Mic)</span>
-                    </div>
-                    <span className="text-[10px] text-cyan-400 font-bold">طابور الانتظار ✋</span>
-                  </button>
-                )}
 
-                {/* 3. Open/Lock Seat (فتح/قفل المقعد) */}
-                {isCurrentAdmin && (
+                  {/* 3. إقفال المايك */}
                   <button
                     onClick={() => {
-                      triggerToast(isSeatLocked ? 'تم فتح المقعد للجميع 🔓' : 'تم قفل المقعد 🔒');
+                      triggerToast(isSeatLocked ? 'تم فتح المقعد 🔓' : 'تم إقفال المايك 🔒');
                       onToggleLockSeat?.(seatId);
                     }}
-                    className="w-full p-3 bg-[#1D273D] hover:bg-[#263452] border border-white/10 text-indigo-300 font-bold rounded-2xl flex items-center justify-between cursor-pointer transition-all"
+                    className={`py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm border ${
+                      isSeatLocked
+                        ? 'bg-amber-500/20 border-amber-400/40 text-amber-200 hover:border-amber-300'
+                        : 'bg-indigo-500/20 border-indigo-400/40 text-indigo-200 hover:border-indigo-300'
+                    }`}
+                    title={isSeatLocked ? 'فتح المايك' : 'إقفال المايك'}
                   >
-                    <div className="flex items-center gap-2.5">
-                      {isSeatLocked ? <Unlock className="w-5 h-5 text-emerald-400" /> : <Lock className="w-5 h-5 text-indigo-400" />}
-                      <span className="text-sm">{isSeatLocked ? 'فتح المقعد (Open Seat)' : 'قفل المقعد (Lock Seat)'}</span>
+                    <div className="w-7 h-7 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                      {isSeatLocked ? (
+                        <Unlock className="w-4 h-4 text-emerald-300" />
+                      ) : (
+                        <Lock className="w-4 h-4 text-indigo-300" />
+                      )}
                     </div>
-                    <span className="text-[10px] text-indigo-300">التحكم بالشواغر</span>
+                    <span className="text-[10px] font-black text-indigo-200 whitespace-nowrap">
+                      {isSeatLocked ? 'فتح المايك' : 'إقفال المايك'}
+                    </span>
                   </button>
-                )}
 
-                {/* 4. Invite Audience (دعوة شخص للصعود على هذا المايك) */}
-                {isCurrentAdmin && (
+                  {/* 4. قائمة المتواجدين */}
                   <button
                     onClick={() => {
                       onInviteAudience?.(seatId);
+                      onClose();
                     }}
-                    className="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-700 hover:brightness-110 text-white font-bold rounded-2xl flex items-center justify-between shadow-md cursor-pointer transition-all active:scale-95"
+                    className="py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 bg-purple-500/20 border border-purple-400/40 hover:border-purple-300 text-purple-200 transition-all active:scale-95 shadow-sm cursor-pointer"
+                    title="قائمة المتواجدين"
                   >
-                    <div className="flex items-center gap-2.5">
-                      <Users className="w-5 h-5 text-purple-200" />
-                      <span className="text-sm">دعوة شخص من الجمهور للصعود (مايك #{seatId})</span>
+                    <div className="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                      <Users className="w-4 h-4 text-purple-300" />
                     </div>
-                    <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-lg text-purple-100">قائمة المتواجدين</span>
+                    <span className="text-[10px] font-black text-purple-200 whitespace-nowrap">
+                      قائمة المتواجدين
+                    </span>
                   </button>
-                )}
-              </>
+                </div>
+              ) : (
+                /* Audience compact action button */
+                <button
+                  onClick={() => {
+                    if (isSeatLocked && !canClimbLocked) {
+                      triggerToast('عذراً! هذا المايك مغلق حالياً 🔒');
+                      return;
+                    }
+                    if (isSeatLocked) {
+                      triggerToast('تم ارسال طلب المايك للإدارة! ✋');
+                      onRequestMic?.(seatId);
+                    } else {
+                      triggerToast('تم جلوسك على المقعد بنجاح! 🪑');
+                      onTakeSeat?.(seatId);
+                    }
+                    setTimeout(onClose, 500);
+                  }}
+                  className="w-full py-2.5 px-3 bg-[#121928]/95 backdrop-blur-md border border-cyan-500/40 hover:border-cyan-400 text-cyan-200 font-bold rounded-2xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xl active:scale-95"
+                >
+                  <Armchair className="w-4 h-4 text-cyan-300" />
+                  <span className="text-xs font-black">
+                    {isSeatLocked ? 'طلب الصعود للمايك ✋' : 'الصعود على المقعد 🪑'}
+                  </span>
+                </button>
+              )
             )}
           </div>
 

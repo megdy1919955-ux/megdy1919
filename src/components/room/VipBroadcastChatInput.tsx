@@ -1,5 +1,5 @@
-import React from 'react';
-import { Cloud, AlertCircle } from 'lucide-react';
+import React, { useRef, useEffect } from 'react';
+import { Cloud } from 'lucide-react';
 
 export const VIP_BROADCAST_STORAGE_KEY = 'super_legend_vip_broadcast_remaining';
 export const CHAT_MAX_CHARACTERS = 100;
@@ -34,9 +34,8 @@ export interface VipBroadcastChatInputProps {
 
 /**
  * VipBroadcastChatInput:
- * كود مستقل ومخصص بالكامل لمستطيل إدخال رسائل الشات.
- * مقيد بـ 100 حرف كحد أقصى لكل رسالة، مع عداد لحظي وتنبيه عند الوصول للحد الأقصى
- * ليقوم المستخدم أو المضيف بإرسالها وكتابة ما تبقى في رسالة أخرى.
+ * مستطيل إدخال صافي وأنيق بدون حشو نصوص أو عدادات متداخلة.
+ * خط كتابة كبير وواضح مع تمدد مرن للأعلى والأسفل عند امتلاء النص لقراءة سلسة ومريحة.
  */
 export const VipBroadcastChatInput: React.FC<VipBroadcastChatInputProps> = React.memo(({
   inputMessage,
@@ -46,15 +45,20 @@ export const VipBroadcastChatInput: React.FC<VipBroadcastChatInputProps> = React
   onToggleVipBroadcast,
   vipBroadcastRemaining,
   onSendMessage,
-  isHost = true,
 }) => {
-  const currentLength = inputMessage.length;
-  const isMaxLengthReached = currentLength >= CHAT_MAX_CHARACTERS;
-  const isNearLimit = currentLength >= 85;
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // مرونة التمدد للأعلى والأسفل تلقائياً مع حجم النص المكتوب
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const scrollH = textareaRef.current.scrollHeight;
+      textareaRef.current.style.height = `${Math.min(Math.max(scrollH, 44), 120)}px`;
+    }
+  }, [inputMessage]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const rawVal = e.target.value;
-    // Strict 100 character limit enforcement
     if (rawVal.length <= CHAT_MAX_CHARACTERS) {
       setInputMessage(rawVal);
     } else {
@@ -62,8 +66,18 @@ export const VipBroadcastChatInput: React.FC<VipBroadcastChatInputProps> = React
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+      onSendMessage(e);
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-1 w-full" dir="rtl">
+    <div className="flex flex-col w-full" dir="rtl">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -72,25 +86,23 @@ export const VipBroadcastChatInput: React.FC<VipBroadcastChatInputProps> = React
           }
           onSendMessage(e);
         }}
-        className="flex items-center gap-2 w-full"
+        className="flex items-end gap-2 w-full"
       >
-        {/* Chat input box rectangle (المستطيل الواحد للرسائل) */}
+        {/* Chat input box rectangle (مستطيل صافي بدون أي حشو) */}
         <div
-          className={`relative flex-1 flex items-center border rounded-xl transition-all ${
-            isMaxLengthReached
-              ? 'bg-[#181a24] border-amber-400 ring-1 ring-amber-400/50'
-              : isVipBroadcastActive
-                ? 'bg-[#131b2e] border-cyan-500/70 ring-1 ring-cyan-500/40'
-                : canUserType
-                  ? 'bg-[#1A2132] border-white/10 focus-within:border-amber-400'
-                  : 'bg-slate-900 border-rose-500/30 text-slate-500'
+          className={`relative flex-1 flex items-end border rounded-2xl transition-all ${
+            isVipBroadcastActive
+              ? 'bg-[#131b2e] border-cyan-500/70 ring-1 ring-cyan-500/40'
+              : canUserType
+                ? 'bg-[#1A2132] border-white/10 focus-within:border-amber-400'
+                : 'bg-slate-900 border-rose-500/30 text-slate-500'
           }`}
         >
-          {/* Micro VIP Cloud with 'N' button - Positioned on the LEFT side inside the rectangle */}
+          {/* Micro VIP Cloud with 'N' button - مثبت على اليسار داخل المستطيل */}
           <button
             type="button"
             onClick={onToggleVipBroadcast}
-            className={`absolute left-1.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer select-none shrink-0 ${
+            className={`absolute left-2 bottom-2 px-1.5 py-0.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer select-none shrink-0 z-10 ${
               isVipBroadcastActive
                 ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-[0_0_10px_rgba(59,130,246,0.8)] ring-1.5 ring-cyan-300'
                 : 'bg-white/5 hover:bg-white/10 text-slate-400 border border-white/10'
@@ -108,14 +120,14 @@ export const VipBroadcastChatInput: React.FC<VipBroadcastChatInputProps> = React
               </span>
             </div>
 
-            {/* Small remaining VIP quota count */}
+            {/* عداد رصيد الـ N المتبقي */}
             <span className={`text-[8.5px] font-mono font-black ${
               isVipBroadcastActive ? 'text-cyan-100' : 'text-amber-300'
             }`}>
               {vipBroadcastRemaining}
             </span>
 
-            {/* Blue Active Signal Indicator when active */}
+            {/* إشارة النبض الزرقاء عند تفعيل الـ N */}
             {isVipBroadcastActive && (
               <span className="absolute -top-1 -right-0.5 flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
@@ -124,56 +136,29 @@ export const VipBroadcastChatInput: React.FC<VipBroadcastChatInputProps> = React
             )}
           </button>
 
-          {/* Input Box - pl-14 for the micro N button on the left, pr-3.5 for RTL text, max 100 characters */}
-          <input
-            type="text"
+          {/* مساحة كتابة مرنة، خط كبير وواضح، تتمدد تلقائياً للأعلى والأسفل عند الامتلاء */}
+          <textarea
+            ref={textareaRef}
+            rows={1}
             autoFocus
             maxLength={CHAT_MAX_CHARACTERS}
             disabled={!canUserType}
             value={inputMessage}
             onChange={handleInputChange}
-            placeholder={
-              canUserType
-                ? isVipBroadcastActive
-                  ? "اكتب رسالة الإعلان المتحرك VIP (حد 100 حرف)..."
-                  : isHost
-                    ? "اكتب رسالة كـ مضيف (حد 100 حرف)..."
-                    : "إرسال رسالة للشات (حد 100 حرف)..."
-                : "الدردشة مقفلة، اطلب المايك للكتابة 🔒"
-            }
-            className="w-full bg-transparent pl-14 pr-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-hidden"
+            onKeyDown={handleKeyDown}
+            className="w-full bg-transparent pl-16 pr-3.5 py-2.5 text-[15px] sm:text-base font-bold text-white focus:outline-hidden resize-none leading-relaxed overflow-y-auto max-h-[120px]"
+            style={{ minHeight: '44px' }}
           />
-
-          {/* Character counter pill inside right side of the rectangle */}
-          <div
-            className={`absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold select-none pointer-events-none transition-colors ${
-              isMaxLengthReached
-                ? 'bg-amber-500/20 text-yellow-300 border border-yellow-400/40'
-                : isNearLimit
-                  ? 'bg-amber-500/10 text-amber-300'
-                  : 'text-slate-400'
-            }`}
-          >
-            {currentLength}/{CHAT_MAX_CHARACTERS}
-          </div>
         </div>
 
-        {/* Send button */}
+        {/* زر الإرسال */}
         <button
           type="submit"
-          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs cursor-pointer shadow-md hover:brightness-105 active:scale-95 transition-transform shrink-0"
+          className="h-[44px] px-4 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs cursor-pointer shadow-md hover:brightness-105 active:scale-95 transition-transform shrink-0 flex items-center justify-center"
         >
           إرسال
         </button>
       </form>
-
-      {/* Guidance note when reaching or nearing limit */}
-      {isMaxLengthReached && (
-        <div className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold text-yellow-300/90 animate-fadeIn select-none">
-          <AlertCircle className="w-3 h-3 text-yellow-400 shrink-0" />
-          <span>وصلت للحد الأقصى (100 حرف). أرسل الرسالة وتابع ما تبقى في رسالة جديدة.</span>
-        </div>
-      )}
     </div>
   );
 });

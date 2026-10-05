@@ -103,40 +103,34 @@ const openRomMusicDB = (): Promise<IDBDatabase> => {
 };
 
 const saveRomMp3ToIndexedDB = async (item: StoredRomMp3Item): Promise<void> => {
-  let db: IDBDatabase | null = null;
   try {
-    db = await openRomMusicDB();
+    const db = await openRomMusicDB();
     const tx = db.transaction(ROM_MUSIC_STORE_NAME, 'readwrite');
     const store = tx.objectStore(ROM_MUSIC_STORE_NAME);
     store.put(item);
-    await new Promise<void>((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
   } catch (err) {
-    console.warn('Notice: MP3 storage in IndexedDB skipped or closed:', err);
-  } finally {
-    if (db) {
-      try { db.close(); } catch {}
-    }
+    console.error('Failed to save MP3 to ROM IndexedDB storage:', err);
   }
 };
 
 const loadRomMp3FromIndexedDB = async (): Promise<TrackItem[]> => {
-  let db: IDBDatabase | null = null;
   try {
-    db = await openRomMusicDB();
+    const db = await openRomMusicDB();
     const tx = db.transaction(ROM_MUSIC_STORE_NAME, 'readonly');
     const store = tx.objectStore(ROM_MUSIC_STORE_NAME);
     const request = store.getAll();
-    const tracks = await new Promise<TrackItem[]>((resolve) => {
+    return new Promise((resolve) => {
       request.onsuccess = () => {
         const items = request.result as StoredRomMp3Item[];
         if (!items || !Array.isArray(items)) {
           resolve([]);
           return;
         }
-        const mapped: TrackItem[] = items.map((item) => {
+        const tracks: TrackItem[] = items.map((item) => {
           let objectUrl = '';
           try {
             objectUrl = URL.createObjectURL(item.blob);
@@ -153,34 +147,24 @@ const loadRomMp3FromIndexedDB = async (): Promise<TrackItem[]> => {
             isCustom: true,
           };
         }).filter((t) => !!t.src);
-        resolve(mapped);
+        resolve(tracks);
       };
       request.onerror = () => resolve([]);
     });
-    return tracks;
   } catch (err) {
-    console.warn('Notice: Failed loading MP3s from IndexedDB:', err);
+    console.error('Failed to load MP3s from ROM IndexedDB storage:', err);
     return [];
-  } finally {
-    if (db) {
-      try { db.close(); } catch {}
-    }
   }
 };
 
 const deleteRomMp3FromIndexedDB = async (id: string): Promise<void> => {
-  let db: IDBDatabase | null = null;
   try {
-    db = await openRomMusicDB();
+    const db = await openRomMusicDB();
     const tx = db.transaction(ROM_MUSIC_STORE_NAME, 'readwrite');
     const store = tx.objectStore(ROM_MUSIC_STORE_NAME);
     store.delete(id);
   } catch (err) {
-    console.warn('Notice: Failed to delete MP3 from IndexedDB:', err);
-  } finally {
-    if (db) {
-      try { db.close(); } catch {}
-    }
+    console.error('Failed to delete MP3 from ROM IndexedDB storage:', err);
   }
 };
 

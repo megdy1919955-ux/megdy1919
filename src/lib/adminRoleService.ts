@@ -128,8 +128,8 @@ export interface ModerationReport {
   createdAt: string;
 }
 
-export const OWNER_DEV_ID = 'YE1330000';
-export const OFFICIAL_SUPER_ADMIN_IDS = [OWNER_DEV_ID, '1001001', 'MGR-9901'];
+export const OWNER_DEV_ID = '1001001';
+export const OFFICIAL_SUPER_ADMIN_IDS = [OWNER_DEV_ID, '1001001', 'YE1330000', 'MGR-9901', 'megdy1919@gmail.com', 'MEGDY1919@GMAIL.COM'];
 
 const ADMIN_ROLES_STORAGE_KEY = 'super_legend_assigned_admins_v4';
 const AGENCY_REQUESTS_KEY = 'super_legend_agency_requests_v3';
@@ -142,12 +142,12 @@ const CURRENT_ACTIVE_USER_ID_KEY = 'super_legend_current_active_user_id';
 const DEFAULT_ASSIGNED_ADMINS: AssignedAdmin[] = [
   {
     id: '1001001',
-    name: 'أبو أمجد',
+    name: 'المبرمج والمالك العام (MGR-9901)',
     avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=400',
     role: 'super_admin',
     assignedAt: '2026-01-01',
     assignedBy: 'النظام الجذري (Root)',
-    notes: 'أبو أمجد - المعرف الموحد 1001001 - مدير الإدارة والوكالة الرسمية (MGR-9901)',
+    notes: 'المعرف الموحد 1001001 - الكود الوظيفي MGR-9901 - صلاحيات السوبر أدمن والمالك الشاملة والسيادية',
     status: 'active'
   },
   {
@@ -162,12 +162,12 @@ const DEFAULT_ASSIGNED_ADMINS: AssignedAdmin[] = [
   },
   {
     id: 'MGR-9901',
-    name: 'أبو أمجد (مدير الإدارة والوكالة الرسمية)',
+    name: 'مدير الإدارة العام (MGR-9901)',
     avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=400',
     role: 'super_admin',
     assignedAt: '2026-01-01',
     assignedBy: 'النظام الجذري (Root)',
-    notes: 'كود الإدارة MGR-9901 للمدير أبو أمجد (1001001)',
+    notes: 'رمز الصلاحيات MGR-9901 (الحساب 1001001)',
     status: 'active'
   },
   {

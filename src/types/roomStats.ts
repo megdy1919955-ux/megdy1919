@@ -35,8 +35,10 @@ export interface RoomClubMember {
 export interface RoomStatsData {
   roomId: string;
   totalDiamonds: number;
-  supporters: RoomSupporter[];
-  charmReceivers: RoomCharmReceiver[];
+  supporters: RoomSupporter[]; // All-time cumulative (top 30 only)
+  supporters24h: RoomSupporter[]; // Rolling 24-hour active supporters (expires per person individually)
+  charmReceivers: RoomCharmReceiver[]; // All-time cumulative (top 30 only)
+  charmReceivers24h: RoomCharmReceiver[]; // Rolling 24-hour active charm receivers (expires per person individually)
   clubMembers: RoomClubMember[];
   updatedAt: number;
 }

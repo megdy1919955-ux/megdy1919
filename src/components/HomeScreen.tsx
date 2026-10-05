@@ -1,9 +1,14 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FloatingRoomWidget } from './FloatingRoomWidget';
-import { subscribeToRoomSession } from '../lib/roomSessionService';
-import { getCurrentAuthUser } from '../lib/authService';
-import { subscribeToLiveRooms, ActiveLiveRoomDTO, getMyCustomRoomConfig } from '../lib/liveRoomsService';
+import {
+  subscribeToRoomSession,
+  isRoomLive,
+  subscribeToRoomLiveStatus,
+  setRoomLiveStatus,
+  setActiveRoomSession,
+  exitRoomSession
+} from '../lib/roomSessionService';
 import { LuckyChestConfig } from './LuckyChestModal';
 import { ThreeDLuckyChest } from './ThreeDLuckyChest';
 import { PWAInstallBanner } from './PWAInstallBanner';
@@ -11,6 +16,7 @@ import { LazyModalSkeleton } from './common/LazyModalSkeleton';
 import { lazyWithRetry } from '../lib/lazyWithRetry';
 
 const VoiceRoomScreen = lazyWithRetry(() => import('./VoiceRoomScreen'), 'VoiceRoomScreen');
+import { getCurrentAuthUser } from '../lib/authService';
 import {
   Search,
   Crown,
@@ -112,6 +118,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRo
   const [isRoomMinimized, setIsRoomMinimized] = useState<boolean>(false);
 
   const openRoom = (room: RoomData) => {
+    if (room.id === 'my-own-room-7798' || room.isOwner || room.ownerId === currentUserId) {
+      setRoomLiveStatus(room.id, true, {
+        ownerId: currentUserId,
+        ownerName: currentUserProfile.name,
+        listenerCount: 1
+      });
+      setActiveRoomSession({
+        roomId: room.id,
+        roomTitle: room.title,
+        hostName: currentUserProfile.name,
+        roomAvatar: currentUserProfile.avatar,
+        isOwner: true,
+        ownerId: currentUserId,
+        listenerCount: 1,
+        isMinimized: false
+      });
+    }
     if (onOpenRoom) {
       onOpenRoom(room);
     } else {
@@ -396,59 +419,90 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRo
     };
   }, []);
 
-  const authUser = getCurrentAuthUser();
-  const currentUserId = authUser?.id || '1001001'; // ID المستخدم الواقعي المالك
-  const currentUserName = authUser?.name || 'أبو أمجد';
-  const currentUserAvatar = authUser?.avatar || 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=400';
-
-  // جلب اسم وصورة الروم المخصصين للمستخدم من الذاكرة المحلية (قابل للتعديل بحرية دون التقيد باسم المستخدم الشخصي)
-  const [customRoomConfig, setCustomRoomConfig] = useState(() => getMyCustomRoomConfig(currentUserId, currentUserName));
+  // Dynamic User Profile for Owner's Room
+  const [currentUserProfile, setCurrentUserProfile] = useState(() => {
+    let name = 'مجدي';
+    let avatar = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=400';
+    let userId = '88492011';
+    let country = 'اليمن';
+    try {
+      const saved = localStorage.getItem('user_profile_data');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.name) name = parsed.name;
+        if (parsed.avatarUrl) avatar = parsed.avatarUrl;
+        if (parsed.userId) userId = parsed.userId;
+        if (parsed.country) country = parsed.country;
+      }
+    } catch {}
+    const auth = getCurrentAuthUser();
+    if (auth) {
+      if (auth.name && name === 'مجدي') name = auth.name;
+      if (auth.avatar) avatar = auth.avatar;
+      if (auth.id) userId = auth.id;
+      if (auth.country) country = auth.country;
+    }
+    return { name, avatar, userId, country };
+  });
 
   useEffect(() => {
-    const handleCfgUpdate = () => {
-      setCustomRoomConfig(getMyCustomRoomConfig(currentUserId, currentUserName));
+    const handleProfileUpdate = () => {
+      try {
+        const saved = localStorage.getItem('user_profile_data');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setCurrentUserProfile((prev) => ({
+            ...prev,
+            name: parsed.name || prev.name,
+            avatar: parsed.avatarUrl || prev.avatar,
+            userId: parsed.userId || prev.userId,
+            country: parsed.country || prev.country
+          }));
+        }
+      } catch {}
     };
-    window.addEventListener('my_room_config_updated', handleCfgUpdate);
-    window.addEventListener('storage', handleCfgUpdate);
+    window.addEventListener('user_profile_updated', handleProfileUpdate);
+    window.addEventListener('storage', handleProfileUpdate);
     return () => {
-      window.removeEventListener('my_room_config_updated', handleCfgUpdate);
-      window.removeEventListener('storage', handleCfgUpdate);
+      window.removeEventListener('user_profile_updated', handleProfileUpdate);
+      window.removeEventListener('storage', handleProfileUpdate);
     };
-  }, [currentUserId, currentUserName]);
-
-  // الرومات الحية النشطة فعلياً من السيرفر (لا تظهر أي غرفة إلا إذا كان هناك بث حقيقي ومستخدمون متواجدون)
-  const [serverLiveRooms, setServerLiveRooms] = useState<ActiveLiveRoomDTO[]>([]);
-
-  useEffect(() => {
-    const unsubscribe = subscribeToLiveRooms((liveRooms) => {
-      setServerLiveRooms(liveRooms);
-    });
-    return unsubscribe;
   }, []);
 
-  // بيانات رومك الخاص (البث المباشر) بحسابك الواقعي الكامل وبالعنوان المخصص
-  const resolvedMyTitle = customRoomConfig.title || `روم ${currentUserName} 🎙️👑`;
-  const resolvedMyAvatar = customRoomConfig.image || currentUserAvatar;
+  const currentUserId = currentUserProfile.userId;
 
+  // بيانات رومك الخاص (البث المباشر) تظهر باسمك وصورتك الحقيقية
   const MY_ROOM_DATA: RoomData = {
-    id: `room-${currentUserId}`,
-    title: resolvedMyTitle,
-    host: currentUserName,
+    id: 'my-own-room-7798',
+    title: `روم ${currentUserProfile.name} (البث المباشر) 🎙️`,
+    host: `${currentUserProfile.name} (المالك 👑)`,
     listenersCount: 1,
-    countryName: 'اليمن',
-    countryCode: 'YE',
-    flag: '🇾🇪',
+    countryName: currentUserProfile.country || 'اليمن',
+    countryCode: currentUserProfile.country === 'السعودية' ? 'SA' : 'YE',
+    flag: currentUserProfile.country === 'السعودية' ? '🇸🇦' : '🇾🇪',
     ownerId: currentUserId,
     isOwner: true,
-    image: resolvedMyAvatar,
+    image: currentUserProfile.avatar,
     badge: {
       type: 'text',
-      content: 'رومك الخاص',
-      bgColor: 'bg-amber-500',
-      textColor: 'text-slate-950'
+      content: 'بثك المباشر 🔴',
+      bgColor: 'bg-rose-500',
+      textColor: 'text-white'
     },
-    avatars: [currentUserAvatar]
+    avatars: [currentUserProfile.avatar]
   };
+
+  // Dynamic Real-time Live Room State: checks if the user's room is currently live
+  const [isMyRoomLive, setIsMyRoomLive] = useState<boolean>(() => {
+    return isRoomLive('my-own-room-7798');
+  });
+
+  useEffect(() => {
+    const unsub = subscribeToRoomLiveStatus('my-own-room-7798', (isLive) => {
+      setIsMyRoomLive(isLive);
+    });
+    return unsub;
+  }, []);
 
   const handleAttemptJoinRoom = (room: RoomData) => {
     // 1. إذا كان المستخدم الحالي هو مالك الروم الخاص به، اسمح له بالدخول فوراً بصلاحيات المالك
@@ -457,8 +511,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRo
       return;
     }
 
-    // 2. إذا كان الروم مقفلاً بكلمة سر وغير تابع للمالك، اطلب الرمز للدخول
-    const isLocked = Boolean(room.isLocked || (room.password && room.password.length > 0));
+    // 2. إذا كان الروم مقفلاً وغير تابع للمالك، اطلب الرمز للدخول كمضيف/زائر عادي
+    const isLocked = room.isLocked || (globalLockData.isLocked && room.id === 'room-1');
     if (isLocked) {
       setRoomToJoinPending(room);
       setShowEnterPinModal(true);
@@ -644,29 +698,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRo
     }
   ];
 
-  // قائمة الرومات الحية النشطة فعلياً من الخادم 100% (Real Presence & Active Broadcasts Only)
-  // لا تظهر أي غرفة إلا إذا كان هناك بث حقيقي ومستخدمون متواجدون فعلياً
-  const combinedRooms: RoomData[] = serverLiveRooms.map((sr) => ({
-    id: sr.id,
-    title: sr.title,
-    host: sr.host,
-    listenersCount: sr.listenersCount,
-    image: sr.image,
-    countryName: sr.countryName,
-    countryCode: sr.countryCode,
-    flag: sr.flag,
-    ownerId: sr.ownerId,
-    isOwner: sr.ownerId === currentUserId,
-    badge: sr.badge || {
-      type: 'text',
-      content: 'مباشر LIVE',
-      bgColor: 'bg-emerald-600',
-      textColor: 'text-white'
-    },
-    topTag: sr.topTag || 'بث مباشر 🔥',
-    avatars: sr.avatars || []
-  }));
-
   // Function to resolve dynamically edited title and avatar for any room from cache or storage
   const getDynamicRoomData = (room: RoomData): RoomData => {
     let dynamicTitle = room.title;
@@ -686,9 +717,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRo
     };
   };
 
+  // Dynamically include MY_ROOM_DATA only when it is actively live!
+  // When closed, it is not shown in the live rooms list so it doesn't appear as a fake broadcast when empty
+  const fullRoomList: RoomData[] = isMyRoomLive
+    ? [MY_ROOM_DATA, ...roomList]
+    : roomList;
+
   // Filter rooms by country & search query with dynamic titles/avatars
-  const filteredRooms = combinedRooms.map(getDynamicRoomData).filter((room) => {
-    const matchesCountry = selectedCountry === 'all' || room.countryName === selectedCountry || room.countryCode === selectedCountry;
+  const filteredRooms = fullRoomList.map(getDynamicRoomData).filter((room) => {
+    const matchesCountry = selectedCountry === 'all' || room.countryName === selectedCountry || room.countryCode === selectedCountry || Boolean(room.isOwner);
     const matchesSearch = searchQuery.trim() === '' ||
       room.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       room.host.toLowerCase().includes(searchQuery.toLowerCase());
@@ -706,14 +743,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRo
             onClick={() => {
               openRoom(MY_ROOM_DATA);
             }}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 text-white shadow-sm hover:shadow-md active:scale-95 transition-all cursor-pointer border border-emerald-400/30"
-            title="دخول البث المباشر الخاص بك (رومك المالك 👑)"
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl transition-all cursor-pointer border shadow-sm hover:shadow-md active:scale-95 ${
+              isMyRoomLive
+                ? 'bg-gradient-to-r from-rose-600 via-red-600 to-amber-600 text-white border-rose-400/50 shadow-rose-950/20'
+                : 'bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 text-white border-emerald-400/30'
+            }`}
+            title={isMyRoomLive ? `رومك في بث مباشر نشط الآن 🔴 (${currentUserProfile.name})` : `بدء البث المباشر الخاص بك (${currentUserProfile.name} 🎙️)`}
           >
-            <div className="relative flex items-center justify-center">
-              <Radio className="w-4 h-4 text-white animate-pulse" />
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white animate-ping" />
-            </div>
-            <span className="text-xs font-black tracking-wide">رومك (البث المباشر)</span>
+            {isMyRoomLive ? (
+              <div className="relative flex items-center justify-center">
+                <Radio className="w-4 h-4 text-white animate-pulse" />
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-400 rounded-full ring-2 ring-white animate-ping" />
+              </div>
+            ) : (
+              <Radio className="w-4 h-4 text-emerald-100" />
+            )}
+            <span className="text-xs font-black tracking-wide">
+              {isMyRoomLive ? `روم ${currentUserProfile.name} (مباشر نشط 🔴)` : `ابدأ بثك المباشر 🎙️`}
+            </span>
           </button>
 
           {/* 2nd ON RIGHT: عدسة البحث */}
@@ -747,6 +794,46 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRo
               </>
             )}
           </button>
+        </div>
+
+        {/* User Account Identity & Real Badges Ribbon (الصفحة الرئيسية) */}
+        <div className="mt-2 px-3 py-1.5 rounded-2xl bg-gradient-to-r from-amber-50 via-white to-amber-50/80 border border-amber-200/80 flex items-center justify-between gap-2 shadow-2xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <img
+              src={currentUserProfile.avatar}
+              alt={currentUserProfile.name}
+              className="w-7 h-7 rounded-full object-cover border border-amber-300 shrink-0"
+            />
+            <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar">
+              <span className="font-black text-xs text-slate-900 truncate">
+                {currentUserProfile.name}
+              </span>
+              {/* Real Badges on Home page */}
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-[1px] rounded-full text-[9px] font-black border border-amber-400/50 bg-gradient-to-r from-[#78350F] via-[#B45309] to-[#D97706] text-amber-200 shrink-0" dir="ltr">
+                <Crown className="w-2.5 h-2.5 text-amber-300 fill-amber-300 shrink-0" />
+                <span className="font-mono">VIP7</span>
+              </span>
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-[1px] rounded-full text-[9px] font-black border border-red-300/60 bg-gradient-to-r from-[#DC2626] via-[#EA580C] to-[#D97706] text-white shrink-0" dir="ltr">
+                <span>🔥</span>
+                <span className="font-mono">120</span>
+              </span>
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-[1px] rounded-full text-[9px] font-black border border-pink-300/60 bg-gradient-to-r from-[#9333EA] via-[#C026D3] to-[#EC4899] text-white shrink-0" dir="ltr">
+                <span>💎</span>
+                <span className="font-mono">45</span>
+              </span>
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-[1px] rounded-full text-[9px] font-black border border-amber-300/40 bg-gradient-to-r from-amber-700 via-amber-600 to-yellow-600 text-amber-100 shrink-0" dir="ltr">
+                <span>🐺</span>
+                <span className="font-mono">SL1</span>
+              </span>
+              <span className="inline-flex items-center gap-1 px-1.5 py-[1px] rounded-full text-[9px] font-black border border-amber-300/60 bg-gradient-to-r from-red-700 via-rose-600 to-amber-600 text-white shrink-0 font-sans">
+                <Sparkles className="w-2.5 h-2.5 text-amber-300 fill-amber-300 shrink-0 animate-pulse" />
+                <span>المطور 👑</span>
+              </span>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono font-bold text-slate-500 shrink-0">
+            ID:{currentUserProfile.userId || '1001001'}
+          </span>
         </div>
 
         {/* Dynamic Search Input Drawer */}
@@ -899,34 +986,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRo
 
         {/* 4. ROOMS GRID: 2 PARALLEL COLUMNS WITH GLASSMORPHISM OVERLAY ON ROOM CARDS */}
         {filteredRooms.length === 0 ? (
-          <div className="py-12 text-center bg-white border border-slate-200 rounded-3xl p-6 space-y-3">
-            <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto text-emerald-600 border border-emerald-200">
-              <Radio className="w-7 h-7 animate-pulse" />
-            </div>
-            <h4 className="text-sm font-black text-slate-800">لا توجد غرف بث نشطة حالياً</h4>
-            <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
-              القائمة تعتمد 100% على البثوث الحقيقية. كن أول من يبدأ بثاً حياً بالضغط على زر "رومك (البث المباشر)" بالأعلى 🎙️
-            </p>
-            <div className="pt-2 flex justify-center gap-2">
-              <button
-                onClick={() => openRoom(MY_ROOM_DATA)}
-                className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-xs rounded-xl shadow-xs hover:from-emerald-700 hover:to-teal-700 transition-all cursor-pointer flex items-center gap-1.5"
-              >
-                <Mic className="w-3.5 h-3.5" />
-                <span>افتح رومك الآن</span>
-              </button>
-              {(selectedCountry !== 'all' || searchQuery) && (
-                <button
-                  onClick={() => {
-                    setSelectedCountry('all');
-                    setSearchQuery('');
-                  }}
-                  className="px-3.5 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-200 transition-all cursor-pointer"
-                >
-                  إعادة ضبط التصفية
-                </button>
-              )}
-            </div>
+          <div className="py-12 text-center bg-white border border-slate-200 rounded-3xl p-6 space-y-2">
+            <Globe className="w-10 h-10 text-slate-400 mx-auto animate-pulse" />
+            <h4 className="text-xs font-black text-slate-800">لا توجد رومات متاحة حالياً وفق التصفية المختارة</h4>
+            <p className="text-[10px] text-slate-500">جرب اختيار "جميع الدول" أو إزالة كلمة البحث</p>
+            <button
+              onClick={() => {
+                setSelectedCountry('all');
+                setSearchQuery('');
+              }}
+              className="mt-2 px-4 py-1.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xs hover:bg-emerald-700 transition-all cursor-pointer"
+            >
+              إعادة ضبط الفلتر
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3.5 w-full max-w-full overflow-x-hidden">
@@ -967,13 +1039,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRo
 
                     {/* Bottom Action Button "ابدأ الآن" */}
                     <div className="relative z-10">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAttemptJoinRoom(room);
-                        }}
-                        className="w-full py-1.5 bg-white text-blue-900 font-black text-xs rounded-xl shadow-md hover:bg-blue-50 transition-all cursor-pointer"
-                      >
+                      <button className="w-full py-1.5 bg-white text-blue-900 font-black text-xs rounded-xl shadow-md hover:bg-blue-50 transition-all cursor-pointer">
                         ابدأ الآن
                       </button>
                     </div>
@@ -984,7 +1050,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRo
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => {
-                      handleAttemptJoinRoom(room);
+                      if (room.isOwner || room.ownerId === currentUserId) {
+                        openRoom(room);
+                        return;
+                      }
+                      const isLocked = room.isLocked || (room.id === 'room-1' && globalLockData.isLocked);
+                      if (isLocked) {
+                        handleAttemptJoinRoom(room);
+                      } else {
+                        setSelectedRoomModal(room);
+                      }
                     }}
                     className="relative aspect-[4/5] w-full bg-slate-900 rounded-3xl overflow-hidden shadow-sm border border-slate-200/80 cursor-pointer group"
                   >
@@ -1373,6 +1448,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRo
         <FloatingRoomWidget
           onExpand={() => setIsRoomMinimized(false)}
           onExit={() => {
+            if (activeVoiceRoom.id === 'my-own-room-7798' || activeVoiceRoom.isOwner || activeVoiceRoom.ownerId === currentUserId) {
+              setRoomLiveStatus(activeVoiceRoom.id, false);
+            }
+            exitRoomSession();
             setActiveVoiceRoom(null);
             setIsRoomMinimized(false);
           }}
@@ -1388,12 +1467,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenRecharge, onOpenRo
               hostName={activeVoiceRoom.host}
               roomId={activeVoiceRoom.id}
               isOwner={Boolean(activeVoiceRoom.isOwner || activeVoiceRoom.ownerId === currentUserId)}
-              currentUserId={currentUserId}
-              currentUserName={currentUserName}
-              currentUserAvatar={currentUserAvatar}
-              currentUserVip={authUser?.vipTier || 'VIP8'}
-              roomAvatar={activeVoiceRoom.image || currentUserAvatar}
               onClose={() => {
+                if (activeVoiceRoom.id === 'my-own-room-7798' || activeVoiceRoom.isOwner || activeVoiceRoom.ownerId === currentUserId) {
+                  setRoomLiveStatus(activeVoiceRoom.id, false);
+                }
+                exitRoomSession();
                 setActiveVoiceRoom(null);
                 setIsRoomMinimized(false);
               }}

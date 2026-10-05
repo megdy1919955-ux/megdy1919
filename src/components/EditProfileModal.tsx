@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { ChevronRight, ChevronLeft, Plus, Camera, X } from 'lucide-react';
+import { requestProfileUpdate } from '../lib/serverRewardsService';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -10,8 +11,6 @@ interface EditProfileModalProps {
     bio?: string;
     userId?: string;
     avatarUrl?: string;
-    age?: number;
-    gender?: 'male' | 'female';
     album?: any;
   };
   currentUser?: {
@@ -19,8 +18,6 @@ interface EditProfileModalProps {
     country: string;
     bio: string;
     avatar?: string;
-    age?: number;
-    gender?: 'male' | 'female';
     album?: any;
   };
   onSave?: (updatedData: any) => void;
@@ -32,8 +29,6 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
   const [name, setName] = useState(initialData?.name || 'عابر سبيل');
   const [bio, setBio] = useState(initialData?.bio || 'كسلان، لا توقيع الآن');
   const [country, setCountry] = useState(initialData?.country || 'اليمن');
-  const [age, setAge] = useState<number>(initialData?.age || 28);
-  const [gender, setGender] = useState<'male' | 'female'>(initialData?.gender || 'male');
   const [birthDate] = useState('2001-01-01');
   
   // حالات لتخزين الصور المختارة من الاستديو
@@ -61,16 +56,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
         setName(freshData.name || 'عابر سبيل');
         setBio(freshData.bio || 'كسلان، لا توقيع الآن');
         setCountry(freshData.country || 'اليمن');
-        if (typeof freshData.age === 'number') setAge(freshData.age);
-        if (freshData.gender) setGender(freshData.gender);
         setAvatarImage(currentUser?.avatar || profile?.avatarUrl || null);
       }
       const savedData = localStorage.getItem('user_profile_data');
       if (savedData) {
         try {
           const parsed = JSON.parse(savedData);
-          if (typeof parsed.age === 'number') setAge(parsed.age);
-          if (parsed.gender) setGender(parsed.gender);
           if (Array.isArray(parsed.album)) {
             setAlbumImages(parsed.album);
           } else if (parsed.album && typeof parsed.album === 'object') {
@@ -118,23 +109,17 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
   };
 
   const handleSave = () => {
-    const finalAge = Math.min(100, Math.max(12, Number(age) || 28));
-    const finalGender: 'male' | 'female' = gender === 'female' ? 'female' : 'male';
+    const targetUserId = profile?.userId || '1001001';
+    // إرسال طلب التعديل إلى السيرفر المركزي للمراجعة والاعتماد بالداشبورد
+    requestProfileUpdate(targetUserId, {
+      name: name?.trim(),
+      avatar: avatarImage || undefined,
+      bio: bio?.trim()
+    }).catch(() => {});
+
     if (onSave) {
-      onSave({ 
-        name, 
-        bio, 
-        country, 
-        age: finalAge, 
-        gender: finalGender, 
-        avatar: avatarImage, 
-        album: albumImages 
-      });
+      onSave({ name, bio, country, avatar: avatarImage, album: albumImages });
     }
-    // إرسال إشارة حية مستقلة لتحديث أمبولة العمر والجنس فورياً
-    window.dispatchEvent(new CustomEvent('user_age_gender_signal', {
-      detail: { age: finalAge, gender: finalGender }
-    }));
     onClose();
   };
 
@@ -263,53 +248,6 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
               onChange={(e) => setName(e.target.value)}
               maxLength={30}
               className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
-            />
-          </div>
-
-          {/* 3.1 الجنس والأمبولة (ذكر ♂ / أنثى ♀) */}
-          <div className="space-y-1.5">
-            <span className="text-xs text-slate-400">الجنس (لتحديد لون الأمبولة ♂ / ♀)</span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setGender('male')}
-                className={`py-2 px-3 rounded-xl border flex items-center justify-center gap-1.5 text-xs font-bold transition-all cursor-pointer ${
-                  gender === 'male'
-                    ? 'bg-sky-500/20 border-sky-400 text-sky-300 shadow-sm ring-1 ring-sky-400/40'
-                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:bg-slate-900'
-                }`}
-              >
-                <span className="text-sm">♂</span>
-                <span>ذكر (أزرق)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setGender('female')}
-                className={`py-2 px-3 rounded-xl border flex items-center justify-center gap-1.5 text-xs font-bold transition-all cursor-pointer ${
-                  gender === 'female'
-                    ? 'bg-pink-500/20 border-pink-400 text-pink-300 shadow-sm ring-1 ring-pink-400/40'
-                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:bg-slate-900'
-                }`}
-              >
-                <span className="text-sm">♀</span>
-                <span>أنثى (وردي)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 3.2 العمر */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-400">العمر (يظهر وسط الأمبولة)</span>
-              <span className="text-[10px] text-amber-400 font-mono font-bold">{age} سنة</span>
-            </div>
-            <input 
-              type="number" 
-              min={12}
-              max={100}
-              value={age} 
-              onChange={(e) => setAge(parseInt(e.target.value, 10) || 18)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-amber-500"
             />
           </div>
 

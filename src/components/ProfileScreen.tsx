@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Copy,
@@ -34,8 +34,13 @@ import {
   Heart,
   Sun,
   Moon,
-  Palette
+  Palette,
+  RefreshCw,
+  Smartphone,
+  Download
 } from 'lucide-react';
+import { DownloadApkModal } from './DownloadApkModal';
+import { PullToRefreshIndicator } from './PullToRefreshIndicator';
 import { UserProfileData, StatItem, BadgeInfo } from '../types';
 import { lazyWithRetry } from '../lib/lazyWithRetry';
 import { INITIAL_USER_PROFILE, MOCK_VISITORS, MOCK_FRIENDS, MOCK_FOLLOWERS, MOCK_LIKES } from '../data/mockData';
@@ -65,41 +70,40 @@ import {
   BroadcasterCenter3DIcon,
   RechargeAgency3DIcon
 } from './profile/RealisticIcons';
-import { NajmLogo } from './common/NajmLogo';
 import { FloatingRoomWidget } from './FloatingRoomWidget';
 import { LazyModalSkeleton } from './common/LazyModalSkeleton';
 import { LazyScreenSkeleton } from './common/LazyScreenSkeleton';
+import { ErrorBoundary } from './ErrorBoundary';
 import type { ServiceType } from './ServicesModal';
 import type { RoomData } from './HomeScreen';
 
 // On-Demand Lazy Loaded Components (تحميل فوري حسب الطلب فقط لتخفيف التطبيق وسرعة الفتح الفائقة)
-const StatDetailModal = React.lazy(() => import('./StatDetailModal').then(m => ({ default: (m.StatDetailModal || (m as any).default) as React.ComponentType<any> })));
-const BadgeDetailModal = React.lazy(() => import('./BadgeDetailModal').then(m => ({ default: (m.BadgeDetailModal || (m as any).default) as React.ComponentType<any> })));
-const EditProfileModal = React.lazy(() => import('./EditProfileModal').then(m => ({ default: (m.EditProfileModal || (m as any).default) as React.ComponentType<any> })));
-const UserLevelModal = React.lazy(() => import('./UserLevelModal').then(m => ({ default: (m.UserLevelModal || (m as any).default) as React.ComponentType<any> })));
-const FamilyModal = React.lazy(() => import('./FamilyModal').then(m => ({ default: (m.FamilyModal || (m as any).default) as React.ComponentType<any> })));
-const BadgesCenterModal = React.lazy(() => import('./BadgesCenterModal').then(m => ({ default: (m.BadgesCenterModal || (m as any).default) as React.ComponentType<any> })));
-const AppearanceModal = React.lazy(() => import('./AppearanceModal').then(m => ({ default: (m.AppearanceModal || (m as any).default) as React.ComponentType<any> })));
-const ServicesModal = React.lazy(() => import('./ServicesModal').then(m => ({ default: (m.ServicesModal || (m as any).default) as React.ComponentType<any> })));
-const RechargeAgencyModal = React.lazy(() => import('./RechargeAgencyModal').then(m => ({ default: (m.RechargeAgencyModal || (m as any).default) as React.ComponentType<any> })));
-const RechargeModal = React.lazy(() => import('./RechargeModal').then(m => ({ default: (m.RechargeModal || (m as any).default) as React.ComponentType<any> })));
-const SuperLegendModal = React.lazy(() => import('./SuperLegendModal').then(m => ({ default: (m.SuperLegendModal || (m as any).default) as React.ComponentType<any> })));
-const SettingsModal = React.lazy(() => import('./SettingsModal').then(m => ({ default: (m.SettingsModal || (m as any).default) as React.ComponentType<any> })));
-const CustomerServiceModal = React.lazy(() => import('./CustomerServiceModal').then(m => ({ default: (m.CustomerServiceModal || (m as any).default) as React.ComponentType<any> })));
-const UserProfileModal = React.lazy(() => import('./UserProfileModal').then(m => ({ default: (m.UserProfileModal || (m as any).default) as React.ComponentType<any> })));
-const VipCenterModal = React.lazy(() => import('./VipCenterModal').then(m => ({ default: (m.VipCenterModal || (m as any).default) as React.ComponentType<any> })));
-const AgencyModal = React.lazy(() => import('./AgencyModal').then(m => ({ default: (m.AgencyModal || (m as any).default) as React.ComponentType<any> })));
-const BrokerCenterModal = React.lazy(() => import('./BrokerCenterModal').then(m => ({ default: (m.BrokerCenterModal || (m as any).default) as React.ComponentType<any> })));
-const SuperAdminControlModal = React.lazy(() => import('./SuperAdminControlModal').then(m => ({ default: (m.SuperAdminControlModal || (m as any).default) as React.ComponentType<any> })));
-const AgencyAdminDashboardModal = React.lazy(() => import('./AgencyAdminDashboardModal').then(m => ({ default: (m.AgencyAdminDashboardModal || (m as any).default) as React.ComponentType<any> })));
-const StoreAndThemeAdminModal = React.lazy(() => import('./StoreAndThemeAdminModal').then(m => ({ default: (m.StoreAndThemeAdminModal || (m as any).default) as React.ComponentType<any> })));
-const OfficialAgencyManagerModal = React.lazy(() => import('./OfficialAgencyManagerModal').then(m => ({ default: (m.OfficialAgencyManagerModal || (m as any).default) as React.ComponentType<any> })));
-const AgencyRepresentativeModal = React.lazy(() => import('./AgencyRepresentativeModal').then(m => ({ default: (m.AgencyRepresentativeModal || (m as any).default) as React.ComponentType<any> })));
-const ModeratorDashboardModal = React.lazy(() => import('./ModeratorDashboardModal').then(m => ({ default: (m.ModeratorDashboardModal || (m as any).default) as React.ComponentType<any> })));
-const BroadcasterCenterModal = React.lazy(() => import('./BroadcasterCenterModal').then(m => ({ default: (m.BroadcasterCenterModal || (m as any).default) as React.ComponentType<any> })));
-const GeniusNajmModal = React.lazy(() => import('./GeniusNajmModal').then(m => ({ default: (m.GeniusNajmModal || (m as any).default) as React.ComponentType<any> })));
-const FriendlyPointsModal = React.lazy(() => import('./FriendlyPointsModal').then(m => ({ default: (m.FriendlyPointsModal || (m as any).default) as React.ComponentType<any> })));
-const MallCenterModal = React.lazy(() => import('./MallCenterModal').then(m => ({ default: (m.MallCenterModal || (m as any).default) as React.ComponentType<any> })));
+const StatDetailModal = React.lazy(() => import('./StatDetailModal').then(m => ({ default: m.StatDetailModal || (m as any).default })));
+const BadgeDetailModal = React.lazy(() => import('./BadgeDetailModal').then(m => ({ default: m.BadgeDetailModal || (m as any).default })));
+const EditProfileModal = React.lazy(() => import('./EditProfileModal').then(m => ({ default: m.EditProfileModal || (m as any).default })));
+const UserLevelModal = React.lazy(() => import('./UserLevelModal').then(m => ({ default: m.UserLevelModal || (m as any).default })));
+const FamilyModal = React.lazy(() => import('./FamilyModal').then(m => ({ default: m.FamilyModal || (m as any).default })));
+const BadgesCenterModal = React.lazy(() => import('./BadgesCenterModal').then(m => ({ default: m.BadgesCenterModal || (m as any).default })));
+const AppearanceModal = React.lazy(() => import('./AppearanceModal').then(m => ({ default: m.AppearanceModal || (m as any).default })));
+const ServicesModal = React.lazy(() => import('./ServicesModal').then(m => ({ default: m.ServicesModal || (m as any).default })));
+const RechargeAgencyModal = React.lazy(() => import('./RechargeAgencyModal').then(m => ({ default: m.RechargeAgencyModal || (m as any).default })));
+const RechargeModal = React.lazy(() => import('./RechargeModal').then(m => ({ default: m.RechargeModal || (m as any).default })));
+const SuperLegendModal = React.lazy(() => import('./SuperLegendModal').then(m => ({ default: m.SuperLegendModal || (m as any).default })));
+const SettingsModal = React.lazy(() => import('./SettingsModal').then(m => ({ default: m.SettingsModal || (m as any).default })));
+const CustomerServiceModal = React.lazy(() => import('./CustomerServiceModal').then(m => ({ default: m.CustomerServiceModal || (m as any).default })));
+const UserProfileModal = React.lazy(() => import('./UserProfileModal').then(m => ({ default: m.UserProfileModal || (m as any).default })));
+const VipCenterModal = React.lazy(() => import('./VipCenterModal').then(m => ({ default: m.VipCenterModal || (m as any).default })));
+const AgencyModal = React.lazy(() => import('./AgencyModal').then(m => ({ default: m.AgencyModal || (m as any).default })));
+const BrokerCenterModal = React.lazy(() => import('./BrokerCenterModal').then(m => ({ default: m.BrokerCenterModal || (m as any).default })));
+const AgencyAdminDashboardModal = React.lazy(() => import('./AgencyAdminDashboardModal').then(m => ({ default: m.AgencyAdminDashboardModal || (m as any).default })));
+const StoreAndThemeAdminModal = React.lazy(() => import('./StoreAndThemeAdminModal').then(m => ({ default: m.StoreAndThemeAdminModal || (m as any).default })));
+const OfficialAgencyManagerModal = React.lazy(() => import('./OfficialAgencyManagerModal').then(m => ({ default: m.OfficialAgencyManagerModal || (m as any).default })));
+const AgencyRepresentativeModal = React.lazy(() => import('./AgencyRepresentativeModal').then(m => ({ default: m.AgencyRepresentativeModal || (m as any).default })));
+const ModeratorDashboardModal = React.lazy(() => import('./ModeratorDashboardModal').then(m => ({ default: m.ModeratorDashboardModal || (m as any).default })));
+const BroadcasterCenterModal = React.lazy(() => import('./BroadcasterCenterModal').then(m => ({ default: m.BroadcasterCenterModal || (m as any).default })));
+const GeniusNajmModal = React.lazy(() => import('./GeniusNajmModal').then(m => ({ default: m.GeniusNajmModal || (m as any).default })));
+const FriendlyPointsModal = React.lazy(() => import('./FriendlyPointsModal').then(m => ({ default: m.FriendlyPointsModal || (m as any).default })));
+const MallCenterModal = React.lazy(() => import('./MallCenterModal').then(m => ({ default: m.MallCenterModal || (m as any).default })));
 
 // Tabs / screens loaded on demand (بحسب الطلب)
 const HomeScreen = lazyWithRetry(() => import('./HomeScreen'), 'HomeScreen');
@@ -128,18 +132,15 @@ import {
   isRechargeAgent,
   isCertifiedBroker
 } from '../lib/adminRoleService';
-import { fetchHierarchyPermissions } from '../lib/hierarchyPermissionsService';
-import { RolesSummary, DEFAULT_LOCKED_ROLES_SUMMARY } from '../types/hierarchyPermissions';
+import { 
+  RolesSummary, 
+  DEFAULT_ROLES_SUMMARY, 
+  fetchUserHierarchyPermissions 
+} from '../lib/hierarchyService';
+import { syncUserServerInvitations } from '../lib/agencyInvitationService';
 import { backNavigation } from '../lib/backNavigation';
 import { getCurrentAuthUser } from '../lib/authService';
-import {
-  calculateLevelFromExp,
-  getSupporterTierInfo,
-  getCharmTierInfo,
-  listenToUserLevels,
-  UserLevelSnapshot,
-  UserVipDesign
-} from '../lib/levelService';
+import { fetchUserWallet, fetchMobileMe } from '../lib/serverRewardsService';
 
 export const ProfileScreen: React.FC = () => {
   // State Management
@@ -149,15 +150,14 @@ export const ProfileScreen: React.FC = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.id === 'YE1330000' || parsed.name === '(عابرسبيل)') {
+        if (parsed.id === 'YE1330000') {
           parsed.id = '1001001';
-          parsed.name = 'أبو أمجد';
           localStorage.setItem('user_profile_data', JSON.stringify(parsed));
         }
-        if (parsed.id && (!authUser || parsed.id === authUser.id)) {
+        if (parsed.id && (!authUser || parsed.id === authUser.id || parsed.id === '1001001')) {
           return {
             ...INITIAL_USER_PROFILE,
-            userId: parsed.id,
+            userId: parsed.id || '1001001',
             name: parsed.name || (authUser ? authUser.name : INITIAL_USER_PROFILE.name),
             bio: parsed.bio || (authUser ? authUser.bio : INITIAL_USER_PROFILE.bio),
             country: parsed.country || (authUser ? authUser.country : INITIAL_USER_PROFILE.country),
@@ -174,7 +174,7 @@ export const ProfileScreen: React.FC = () => {
     if (authUser) {
       return {
         ...INITIAL_USER_PROFILE,
-        userId: authUser.id,
+        userId: authUser.id === 'YE1330000' ? '1001001' : (authUser.id || '1001001'),
         name: authUser.name,
         bio: authUser.bio,
         country: authUser.country,
@@ -188,24 +188,17 @@ export const ProfileScreen: React.FC = () => {
   });
 
   const handleSaveProfile = (updatedData: any) => {
-    const nextAge = typeof updatedData.age === 'number' ? updatedData.age : userAge;
-    const nextGender = updatedData.gender || userGender;
-
     const newProfile = {
       ...profile,
       name: updatedData.name ?? profile.name,
       bio: updatedData.bio ?? profile.bio,
       country: updatedData.country ?? profile.country,
-      age: nextAge,
-      gender: nextGender,
       avatarUrl: updatedData.avatar ?? updatedData.avatarUrl ?? profile.avatarUrl,
     };
     const dataToSave = {
       name: newProfile.name,
       id: newProfile.userId,
       country: newProfile.country,
-      age: nextAge,
-      gender: nextGender,
       followers: 5365,
       following: 120,
       bio: newProfile.bio,
@@ -216,8 +209,6 @@ export const ProfileScreen: React.FC = () => {
     };
     localStorage.setItem('user_profile_data', JSON.stringify(dataToSave));
     setProfile(newProfile);
-    setUserAge(nextAge);
-    setUserGender(nextGender);
     window.dispatchEvent(new Event('user_profile_updated'));
   };
 
@@ -256,6 +247,7 @@ export const ProfileScreen: React.FC = () => {
   const [selectedBadge, setSelectedBadge] = useState<BadgeInfo | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeTab, setActiveTabState] = useState<'home' | 'explore' | 'games' | 'messages' | 'profile'>('home');
+  const [isDownloadApkOpen, setIsDownloadApkOpen] = useState(false);
   const [tabHistory, setTabHistory] = useState<('home' | 'explore' | 'games' | 'messages' | 'profile')[]>(['home']);
 
   const setActiveTab = (tab: 'home' | 'explore' | 'games' | 'messages' | 'profile') => {
@@ -271,12 +263,19 @@ export const ProfileScreen: React.FC = () => {
       const saved = localStorage.getItem('user_wallet_coins');
       if (saved) {
         const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed) && parsed > 0) return Math.max(parsed, 100000000);
+        if (!isNaN(parsed) && parsed >= 0) return parsed;
       }
     } catch {}
     return 100000000;
   });
-  const [diamondsBalance, setDiamondsBalance] = useState<number>(8377);
+  const [diamondsBalance, setDiamondsBalance] = useState<number>(0);
+
+  // Pull-to-refresh state for ProfileScreen
+  const [profilePullDistance, setProfilePullDistance] = useState(0);
+  const [isProfileRefreshing, setIsProfileRefreshing] = useState(false);
+  const [profileRefreshSuccess, setProfileRefreshSuccess] = useState(false);
+  const profileTouchStartY = useRef(0);
+  const isProfilePulling = useRef(false);
 
   // Synchronize coinsBalance with global user_coins_updated event
   useEffect(() => {
@@ -306,11 +305,200 @@ export const ProfileScreen: React.FC = () => {
     };
   }, []);
 
+  // شارات الداعم والمدعوم وVIP المقررة ديناميكياً من لوحة التحكم الخارجية (الداشبورد)
+  const [dashboardBadges, setDashboardBadges] = useState({
+    showVipBadge: true,
+    showSupporterBadge: true,
+    showCharmBadge: true,
+    supporterLevel: 120,
+    charmLevel: 45,
+    vipLevel: 'VIP7',
+    vipDesignStyle: 'royal_gold_3d',
+    supporterBadgeDesign: 'royal_dragon_flame',
+    charmBadgeDesign: 'diamond_rose_5star'
+  });
+
+  // Dynamic background style for Supporter Badge from server:
+  const getSupporterBadgeStyle = () => {
+    switch (dashboardBadges.supporterBadgeDesign) {
+      case 'golden_flame':
+        return 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 border-amber-300 text-amber-950 shadow-[0_1px_5px_rgba(245,158,11,0.35)]';
+      case 'ruby_fire':
+        return 'bg-gradient-to-r from-rose-700 via-red-600 to-rose-900 border-rose-300 text-white shadow-[0_1px_5px_rgba(225,29,72,0.35)]';
+      case 'royal_dragon_flame':
+      default:
+        return 'bg-gradient-to-r from-[#DC2626] via-[#EA580C] to-[#D97706] border-red-300/60 text-white shadow-[0_1px_5px_rgba(234,88,12,0.35)]';
+    }
+  };
+
+  // Dynamic background style for Charm Badge from server:
+  const getCharmBadgeStyle = () => {
+    switch (dashboardBadges.charmBadgeDesign) {
+      case 'sapphire_bloom':
+        return 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 border-cyan-300 text-white shadow-[0_1px_5px_rgba(37,99,235,0.35)]';
+      case 'crystal_star':
+        return 'bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-600 border-teal-300 text-white shadow-[0_1px_5px_rgba(13,148,136,0.35)]';
+      case 'diamond_rose_5star':
+      default:
+        return 'bg-gradient-to-r from-[#9333EA] via-[#C026D3] to-[#EC4899] border-pink-300/60 text-white shadow-[0_1px_5px_rgba(192,38,211,0.35)]';
+    }
+  };
+
+  // 🌟 Central Rule: صفحة «أنا» في التطبيق والمتصفح تقرأ بياناتها حصراً من GET /api/hosts/{hostId}/mobile-me
+  useEffect(() => {
+    let isCurrent = true;
+    const syncFromCentralServer = async () => {
+      const targetId = profile.userId || '1001001';
+      try {
+        const meData = await fetchMobileMe(targetId);
+        if (isCurrent && meData && meData.status === 'success') {
+          // 1. مزامنة الألماس والكوينز من السيرفر المركزي الحاكم
+          if (typeof meData.wallet?.diamonds === 'number') {
+            setDiamondsBalance(meData.wallet.diamonds);
+          }
+          if (typeof meData.wallet?.coins === 'number' && meData.wallet.coins >= 0) {
+            setCoinsBalance(meData.wallet.coins);
+            localStorage.setItem('user_wallet_coins', meData.wallet.coins.toString());
+          }
+
+          // 2. مزامنة الاسم المعتمد والصورة الحقيقية المعتمدة من الداشبورد
+          if (meData.profile) {
+            setProfile((prev) => ({
+              ...prev,
+              name: meData.profile.name || prev.name,
+              avatarUrl: meData.profile.avatar || prev.avatarUrl,
+              bio: meData.profile.bio || prev.bio,
+              country: meData.profile.country || prev.country
+            }));
+          }
+
+          // 3. مزامنة قرارات وتصاميم الشارات من لوحة التحكم الخارجية
+          if (meData.badges) {
+            setDashboardBadges({
+              showVipBadge: meData.badges.showVipBadge ?? true,
+              showSupporterBadge: meData.badges.showSupporterBadge ?? true,
+              showCharmBadge: meData.badges.showCharmBadge ?? true,
+              supporterLevel: meData.badges.supporterLevel ?? meData.badges.level ?? 120,
+              charmLevel: meData.badges.charmLevel ?? 45,
+              vipLevel: meData.badges.vipLevel || 'VIP7',
+              vipDesignStyle: meData.badges.vipDesignStyle || 'royal_gold_3d',
+              supporterBadgeDesign: meData.badges.supporterBadgeDesign || 'royal_dragon_flame',
+              charmBadgeDesign: meData.badges.charmBadgeDesign || 'diamond_rose_5star'
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Error syncing mobile-me from central server:', e);
+      }
+    };
+
+    syncFromCentralServer();
+
+    // الاستماع الفوري لإشارات السيرفر والداشبورد اللحظية
+    const handleDiamondsUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (typeof customEvent.detail?.diamonds === 'number') {
+        const targetUserId = customEvent.detail?.userId;
+        if (!targetUserId || targetUserId === profile.userId || targetUserId === '1001001') {
+          setDiamondsBalance(customEvent.detail.diamonds);
+        }
+      }
+    };
+
+    const handleProfileUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (!customEvent.detail?.userId || customEvent.detail.userId === profile.userId || customEvent.detail.userId === '1001001') {
+        syncFromCentralServer();
+      }
+    };
+
+    const handleDashboardConfigUpdated = () => {
+      syncFromCentralServer();
+    };
+
+    window.addEventListener('user_diamonds_updated', handleDiamondsUpdate);
+    window.addEventListener('profile_updated_by_dashboard', handleProfileUpdated);
+    window.addEventListener('dashboard_config_updated', handleDashboardConfigUpdated);
+    window.addEventListener('user_levels_tiers_updated', handleDashboardConfigUpdated);
+
+    return () => {
+      isCurrent = false;
+      window.removeEventListener('user_diamonds_updated', handleDiamondsUpdate);
+      window.removeEventListener('profile_updated_by_dashboard', handleProfileUpdated);
+      window.removeEventListener('dashboard_config_updated', handleDashboardConfigUpdated);
+      window.removeEventListener('user_levels_tiers_updated', handleDashboardConfigUpdated);
+    };
+  }, [profile.userId]);
+
+  // Handler for manual and gesture pull-to-refresh
+  const handleProfileManualRefresh = async () => {
+    setIsProfileRefreshing(true);
+    setProfilePullDistance(50);
+    try {
+      const targetId = profile.userId || '1001001';
+      const meData = await fetchMobileMe(targetId);
+      if (meData && meData.status === 'success') {
+        if (typeof meData.wallet?.diamonds === 'number') setDiamondsBalance(meData.wallet.diamonds);
+        if (typeof meData.wallet?.coins === 'number' && meData.wallet.coins >= 0) {
+          setCoinsBalance(meData.wallet.coins);
+          localStorage.setItem('user_wallet_coins', meData.wallet.coins.toString());
+        }
+        if (meData.profile) {
+          setProfile((prev) => ({
+            ...prev,
+            name: meData.profile.name || prev.name,
+            avatarUrl: meData.profile.avatar || prev.avatarUrl,
+            bio: meData.profile.bio || prev.bio,
+            country: meData.profile.country || prev.country
+          }));
+        }
+      }
+      setProfileRefreshSuccess(true);
+      setTimeout(() => {
+        setProfileRefreshSuccess(false);
+        setProfilePullDistance(0);
+        setIsProfileRefreshing(false);
+      }, 700);
+    } catch {
+      setProfilePullDistance(0);
+      setIsProfileRefreshing(false);
+    }
+  };
+
+  const handleProfileTouchStart = (e: React.TouchEvent) => {
+    if (window.scrollY <= 4) {
+      profileTouchStartY.current = e.touches[0].clientY;
+      isProfilePulling.current = true;
+    }
+  };
+
+  const handleProfileTouchMove = (e: React.TouchEvent) => {
+    if (!isProfilePulling.current || isProfileRefreshing) return;
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - profileTouchStartY.current;
+    if (diff > 0 && window.scrollY <= 4) {
+      const damping = 0.45;
+      const distance = Math.min(85, diff * damping);
+      setProfilePullDistance(distance);
+    } else {
+      setProfilePullDistance(0);
+    }
+  };
+
+  const handleProfileTouchEnd = async () => {
+    if (!isProfilePulling.current) return;
+    isProfilePulling.current = false;
+    if (profilePullDistance > 45 && !isProfileRefreshing) {
+      await handleProfileManualRefresh();
+    } else {
+      setProfilePullDistance(0);
+    }
+  };
+
   // Services Row Modals State
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isCustomerServiceModalOpen, setIsCustomerServiceModalOpen] = useState(false);
-  const [isSuperAdminModalOpen, setIsSuperAdminModalOpen] = useState(false);
   const [isAgencyAdminModalOpen, setIsAgencyAdminModalOpen] = useState(false);
   const [isThemeAdminModalOpen, setIsThemeAdminModalOpen] = useState(false);
   const [isOfficialAgencyManagerModalOpen, setIsOfficialAgencyManagerModalOpen] = useState(false);
@@ -319,83 +507,6 @@ export const ProfileScreen: React.FC = () => {
   const [isBrokerCenterModalOpen, setIsBrokerCenterModalOpen] = useState(false);
   const [isSuperLegendModalOpen, setIsSuperLegendModalOpen] = useState(false);
   const [isLevelModalOpen, setIsLevelModalOpen] = useState(false);
-  const [levelModalMode, setLevelModalMode] = useState<'supporter' | 'charm'>('supporter');
-  const [senderExp, setSenderExp] = useState<number>(() => {
-    const authUser = getCurrentAuthUser();
-    const isOwnerUser = profile.userId === OWNER_DEV_ID || profile.userId === '1001001';
-    return authUser?.sender_exp ?? (isOwnerUser ? 2475000 : 0);
-  });
-  const [receiverExp, setReceiverExp] = useState<number>(() => {
-    const authUser = getCurrentAuthUser();
-    const isOwnerUser = profile.userId === OWNER_DEV_ID || profile.userId === '1001001';
-    return authUser?.receiver_exp ?? (isOwnerUser ? 1914000 : 0);
-  });
-
-  const [horizontalScale, setHorizontalScale] = useState<number>(0.5);
-  const [serverVipDesign, setServerVipDesign] = useState<UserVipDesign | null>(null);
-  const [userAge, setUserAge] = useState<number>(() => {
-    const auth = getCurrentAuthUser();
-    const isOwner = profile.userId === OWNER_DEV_ID || profile.userId === '1001001';
-    return profile.age || auth?.age || (isOwner ? 32 : 25);
-  });
-  const [userGender, setUserGender] = useState<'male' | 'female'>(() => {
-    const auth = getCurrentAuthUser();
-    return profile.gender || auth?.gender || 'male';
-  });
-
-  const senderCalc = calculateLevelFromExp(senderExp);
-  const receiverCalc = calculateLevelFromExp(receiverExp);
-  const senderTier = getSupporterTierInfo(senderCalc.level);
-  const receiverTier = getCharmTierInfo(receiverCalc.level);
-
-  // استماع لحظي لمستويات الداعم والجاذبية وتصميم الـ VIP وأبعاد المقاسات وإشارة العمر من السيرفر
-  useEffect(() => {
-    if (!profile.userId) return;
-    const unsub = listenToUserLevels(profile.userId, (snapshot: UserLevelSnapshot) => {
-      setSenderExp(snapshot.senderExp);
-      setReceiverExp(snapshot.receiverExp);
-      if (typeof snapshot.horizontalScale === 'number') {
-        setHorizontalScale(snapshot.horizontalScale);
-      }
-      if (snapshot.vipDesign) {
-        setServerVipDesign(snapshot.vipDesign);
-      }
-      if (typeof snapshot.age === 'number') {
-        setUserAge(snapshot.age);
-      }
-      if (snapshot.gender) {
-        setUserGender(snapshot.gender);
-      }
-    });
-
-    const handleLevelSync = () => {
-      const freshUser = getCurrentAuthUser();
-      if (freshUser) {
-        if (typeof freshUser.sender_exp === 'number') setSenderExp(freshUser.sender_exp);
-        if (typeof freshUser.receiver_exp === 'number') setReceiverExp(freshUser.receiver_exp);
-        if (typeof freshUser.age === 'number') setUserAge(freshUser.age);
-        if (freshUser.gender) setUserGender(freshUser.gender);
-      }
-    };
-
-    const handleAgeGenderSignal = (e: any) => {
-      if (e?.detail) {
-        if (typeof e.detail.age === 'number') setUserAge(e.detail.age);
-        if (e.detail.gender) setUserGender(e.detail.gender);
-      }
-    };
-
-    window.addEventListener('support_event_processed', handleLevelSync);
-    window.addEventListener('user_profile_updated', handleLevelSync);
-    window.addEventListener('user_age_gender_signal', handleAgeGenderSignal);
-
-    return () => {
-      unsub();
-      window.removeEventListener('support_event_processed', handleLevelSync);
-      window.removeEventListener('user_profile_updated', handleLevelSync);
-      window.removeEventListener('user_age_gender_signal', handleAgeGenderSignal);
-    };
-  }, [profile.userId]);
   const [isFamilyModalOpen, setIsFamilyModalOpen] = useState(false);
   const [isBadgesCenterModalOpen, setIsBadgesCenterModalOpen] = useState(false);
   const [isAppearanceModalOpen, setIsAppearanceModalOpen] = useState(false);
@@ -410,19 +521,62 @@ export const ProfileScreen: React.FC = () => {
   const [activeVoiceRoom, setActiveVoiceRoom] = useState<RoomData | null>(null);
   const [isRoomMinimized, setIsRoomMinimized] = useState<boolean>(false);
 
+  // السيرفر المركزي هو المرجع الحصري لإدارة وتوزيع الصلاحيات (Roles Summary Engine)
+  const [rolesSummary, setRolesSummary] = useState<RolesSummary>(DEFAULT_ROLES_SUMMARY);
+
+  useEffect(() => {
+    let isCurrent = true;
+    const syncServerPermissions = async () => {
+      const targetId = profile.userId || '1001001';
+      try {
+        const perms = await fetchUserHierarchyPermissions(targetId);
+        if (isCurrent) {
+          setRolesSummary(perms);
+        }
+        await syncUserServerInvitations(targetId);
+      } catch (err) {
+        console.error('Failed to sync server permissions:', err);
+      }
+    };
+
+    syncServerPermissions();
+
+    const handlePermissionsUpdated = () => {
+      syncServerPermissions();
+    };
+    window.addEventListener('hierarchy_permissions_updated', handlePermissionsUpdated);
+    window.addEventListener('agency_invitations_updated', handlePermissionsUpdated);
+    return () => {
+      isCurrent = false;
+      window.removeEventListener('hierarchy_permissions_updated', handlePermissionsUpdated);
+      window.removeEventListener('agency_invitations_updated', handlePermissionsUpdated);
+    };
+  }, [profile.userId]);
+
   useEffect(() => {
     const unsub = subscribeToRoomSession((session) => {
       queueMicrotask(() => {
         setMinimizedRoomSession(session && session.isMinimized ? session : null);
-        if (!session) {
-          setActiveVoiceRoom(null);
-          setIsRoomMinimized(false);
-        } else {
+        if (session) {
           setIsRoomMinimized(Boolean(session.isMinimized));
         }
       });
     });
-    return unsub;
+
+    const handleExplicitExit = () => {
+      setActiveVoiceRoom(null);
+      setIsRoomMinimized(false);
+      setMinimizedRoomSession(null);
+    };
+
+    window.addEventListener('room_exited', handleExplicitExit);
+    window.addEventListener('room_dissolved_by_owner', handleExplicitExit);
+
+    return () => {
+      unsub();
+      window.removeEventListener('room_exited', handleExplicitExit);
+      window.removeEventListener('room_dissolved_by_owner', handleExplicitExit);
+    };
   }, []);
 
   const handleOpenRoom = (room: RoomData) => {
@@ -463,47 +617,21 @@ export const ProfileScreen: React.FC = () => {
 
   // Dynamic Role State
   const [adminRole, setAdminRole] = useState<AdminRole>(() => getAdminRoleForUser(profile.userId));
-  
-  // الصلاحيات الحصرية المستقاة من السيرفر المركزي GET /api/hierarchy/permissions/:userId
-  // مخفية ومغلقة افتراضياً بالكامل حتى يرد السيرفر
-  const [rolesSummary, setRolesSummary] = useState<RolesSummary>(DEFAULT_LOCKED_ROLES_SUMMARY);
 
   useEffect(() => {
-    let isMounted = true;
     setAdminRole(getAdminRoleForUser(profile.userId));
-
-    // جلب الصلاحيات فوراً عند فتح صفحة (أنا) من السيرفر المركزي
-    fetchHierarchyPermissions(profile.userId).then((res) => {
-      if (isMounted) {
-        setRolesSummary(res);
-      }
-    });
-
     const unsubscribe = subscribeToAdminRoles(() => {
       queueMicrotask(() => {
         setAdminRole(getAdminRoleForUser(profile.userId));
       });
-      fetchHierarchyPermissions(profile.userId).then((res) => {
-        if (isMounted) {
-          setRolesSummary(res);
-        }
-      });
     });
-
     const handlePersonaSwitched = () => {
       queueMicrotask(() => {
         setAdminRole(getAdminRoleForUser(profile.userId));
       });
-      fetchHierarchyPermissions(profile.userId).then((res) => {
-        if (isMounted) {
-          setRolesSummary(res);
-        }
-      });
     };
-
     window.addEventListener('testing_user_switched', handlePersonaSwitched);
     return () => {
-      isMounted = false;
       unsubscribe();
       window.removeEventListener('testing_user_switched', handlePersonaSwitched);
     };
@@ -551,10 +679,6 @@ export const ProfileScreen: React.FC = () => {
       }
       if (isCustomerServiceModalOpen) {
         setIsCustomerServiceModalOpen(false);
-        return;
-      }
-      if (isSuperAdminModalOpen) {
-        setIsSuperAdminModalOpen(false);
         return;
       }
       if (isAgencyAdminModalOpen) {
@@ -661,7 +785,6 @@ export const ProfileScreen: React.FC = () => {
     isUserProfileModalOpen,
     isSettingsModalOpen,
     isCustomerServiceModalOpen,
-    isSuperAdminModalOpen,
     isAgencyAdminModalOpen,
     isThemeAdminModalOpen,
     isOfficialAgencyManagerModalOpen,
@@ -748,10 +871,22 @@ export const ProfileScreen: React.FC = () => {
 
       {/* Profile View (Renders when activeTab === 'profile') */}
       {activeTab === 'profile' && (
-        <>
-              {/* Top Header Background with Soft Pastel Tint */}
-              <div className="bg-gradient-to-b from-[#E2F1ED] via-[#EDF5F2] to-[#F3F6F9] px-4 pt-3 pb-2">
-            {/* Top Header Controls: Settings & Headphones Icons on the right, Super Admin button in center/left if owner, 7:35 on the left */}
+        <div 
+          onTouchStart={handleProfileTouchStart}
+          onTouchMove={handleProfileTouchMove}
+          onTouchEnd={handleProfileTouchEnd}
+          className="relative w-full"
+        >
+          {/* Pull to refresh visual indicator */}
+          <PullToRefreshIndicator 
+            pullDistance={profilePullDistance}
+            isRefreshing={isProfileRefreshing}
+            refreshSuccess={profileRefreshSuccess}
+          />
+
+          {/* Top Header Background with Soft Pastel Tint */}
+          <div className="bg-gradient-to-b from-[#E2F1ED] via-[#EDF5F2] to-[#F3F6F9] px-4 pt-3 pb-2">
+            {/* Top Header Controls: Settings, Refresh & Headphones Icons on the right */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <button
@@ -762,11 +897,27 @@ export const ProfileScreen: React.FC = () => {
                   <Settings className="w-5 h-5 text-slate-700" />
                 </button>
                 <button
+                  onClick={handleProfileManualRefresh}
+                  disabled={isProfileRefreshing}
+                  className="p-2 rounded-full bg-white/80 shadow-xs hover:bg-white text-slate-700 transition-all cursor-pointer"
+                  title="تحديث البيانات اللحظية من السيرفر"
+                >
+                  <RefreshCw className={`w-5 h-5 text-slate-700 ${isProfileRefreshing ? 'animate-spin text-amber-500' : ''}`} />
+                </button>
+                <button
                   onClick={() => setIsCustomerServiceModalOpen(true)}
                   className="p-2 rounded-full bg-white/80 shadow-xs hover:bg-white text-slate-700 transition-all cursor-pointer"
                   title="خدمة العملاء والإنصات"
                 >
                   <Headphones className="w-5 h-5 text-slate-700" />
+                </button>
+                <button
+                  onClick={() => setIsDownloadApkOpen(true)}
+                  className="px-2.5 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 shadow-xs hover:bg-emerald-500/25 text-emerald-800 font-black text-[11px] flex items-center gap-1 transition-all cursor-pointer"
+                  title="تنزيل وتثبيت تطبيق الأندرويد APK"
+                >
+                  <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>تطبيق APK 📲</span>
                 </button>
 
                 {/* زر تبديل النمط الملكي الموحد (زر واحد: ضغطة 1 -> أبيض نقي | ضغطة 2 -> ليلي فاخر | ضغطة 3 -> ذهبي ملكي) */}
@@ -797,19 +948,6 @@ export const ProfileScreen: React.FC = () => {
                   </span>
                 </motion.button>
 
-                {/* زر السوبر أدمن (المبرمج / المالك): مشروط حصراً بـ currentUser.id === ownerId ومخفي تماماً عن غيره */}
-                {isOwner && (
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setIsSuperAdminModalOpen(true)}
-                    className="px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-slate-950 text-xs font-black shadow-md border border-amber-200 flex items-center gap-1.5 cursor-pointer animate-pulse"
-                    title="لوحة تحكم السوبر أدمن (المالك والمبرمج)"
-                  >
-                    <Crown className="w-4 h-4 fill-slate-950 text-slate-950" />
-                    <span>لوحة السوبر أدمن 👑</span>
-                  </motion.button>
-                )}
               </div>
               <span className="text-xs font-mono font-medium text-slate-500">7:35</span>
             </div>
@@ -835,103 +973,91 @@ export const ProfileScreen: React.FC = () => {
 
               {/* User Info (Name, Badges, ID) - Center/Right aligned */}
               <div className="flex-1 mr-3 text-right flex flex-col justify-center space-y-1.5">
-                {/* User Name & ID Row (الـ ID جنب الاسم في صفحة أنا) */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* User Name in Red */}
-                  <h1 
-                    onClick={() => setIsUserProfileModalOpen(true)}
-                    className="text-xl sm:text-2xl font-black text-[#E53E3E] tracking-tight cursor-pointer hover:underline"
-                  >
-                    {profile.name}
-                  </h1>
+                {/* User Name in Red */}
+                <h1 
+                  onClick={() => setIsUserProfileModalOpen(true)}
+                  className="text-xl sm:text-2xl font-black text-[#E53E3E] tracking-tight cursor-pointer hover:underline"
+                >
+                  {profile.name}
+                </h1>
 
-                  {/* ID + Copy Icon (جنب الاسم مباشرة) */}
+                {/* Badges Row - Crisp, Solid & Stable Micro-Capsules without Jitter */}
+                <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar py-0.5 select-none max-w-full" dir="ltr">
+                  {/* 1. VIP Micro-Capsule */}
+                  {dashboardBadges.showVipBadge && (
+                    <span
+                      onClick={() => setIsVipCenterModalOpen(true)}
+                      className={`inline-flex items-center gap-1 px-2 py-[2px] rounded-full text-[10px] font-black border shadow-2xs cursor-pointer shrink-0 active:scale-95 transition-transform ${
+                        dashboardBadges.vipDesignStyle === 'royal_gold_3d'
+                          ? 'bg-gradient-to-r from-[#78350F] via-[#B45309] to-[#D97706] text-amber-200 border-amber-300/50 shadow-[0_1px_4px_rgba(217,119,6,0.35)]'
+                          : 'bg-gradient-to-r from-purple-800 to-indigo-900 text-purple-200 border-purple-400/50'
+                      }`}
+                      title={`عضوية النخبة ${dashboardBadges.vipLevel || profile.vipLevel || 'VIP7'}`}
+                    >
+                      <Crown className="w-2.5 h-2.5 text-amber-300 fill-amber-300 shrink-0" />
+                      <span className="font-mono tracking-tight leading-none">{dashboardBadges.vipLevel || profile.vipLevel || 'VIP7'}</span>
+                    </span>
+                  )}
+
+                  {/* 2. Supporter Micro-Capsule (شارة الداعم - ثابتة ومستقرة للأرقام دون أي اهتزاز) */}
+                  {dashboardBadges.showSupporterBadge && (
+                    <span
+                      onClick={() => setIsLevelModalOpen(true)}
+                      className={`inline-flex items-center gap-1 px-2 py-[2px] rounded-full text-[10px] font-black border shrink-0 cursor-pointer active:scale-95 transition-transform ${getSupporterBadgeStyle()}`}
+                      title={`مستوى الداعم المعتمد من السيرفر: ${dashboardBadges.supporterLevel}`}
+                    >
+                      <span className="text-[10px] leading-none shrink-0 filter drop-shadow">🔥</span>
+                      <span className="font-mono font-black tracking-tight leading-none">{dashboardBadges.supporterLevel}</span>
+                    </span>
+                  )}
+
+                  {/* 3. Charm / Receiver Micro-Capsule (شارة المدعوم - ثابتة ومستقرة للأرقام دون أي اهتزاز) */}
+                  {dashboardBadges.showCharmBadge && (
+                    <span
+                      onClick={() => setIsLevelModalOpen(true)}
+                      className={`inline-flex items-center gap-1 px-2 py-[2px] rounded-full text-[10px] font-black border shrink-0 cursor-pointer active:scale-95 transition-transform ${getCharmBadgeStyle()}`}
+                      title={`مستوى الكاريزما والشهرة المعتمد من السيرفر: ${dashboardBadges.charmLevel}`}
+                    >
+                      <span className="text-[10px] leading-none shrink-0 filter drop-shadow">💎</span>
+                      <span className="font-mono font-black tracking-tight leading-none">{dashboardBadges.charmLevel}</span>
+                    </span>
+                  )}
+
+                  {/* 4. Super Legend SL1 Badge */}
+                  <span
+                    onClick={() => setIsSuperLegendModalOpen(true)}
+                    className="inline-flex items-center gap-0.5 px-2 py-[2px] rounded-full text-[10px] font-black border border-amber-300/40 bg-gradient-to-r from-amber-700 via-amber-600 to-yellow-600 text-amber-100 shadow-2xs cursor-pointer shrink-0 active:scale-95 transition-transform"
+                    title="عضوية الأساطير SL1"
+                  >
+                    <span className="text-[10px] leading-none shrink-0">🐺</span>
+                    <span className="font-mono leading-none tracking-tight">SL1</span>
+                  </span>
+                </div>
+
+                {/* ID + Developer Badge Row directly UNDER the badges */}
+                <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+                  {/* ID + Copy Button */}
                   <button
                     onClick={handleCopyId}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200/90 text-[10px] text-slate-600 font-mono transition-colors shrink-0 cursor-pointer shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-300 text-[11px] font-mono text-slate-700 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
                     title="نسخ المعرف"
                   >
-                    <span className="font-semibold">ID:{profile.userId}</span>
+                    <span className="font-bold">ID:{profile.userId}</span>
                     {copiedId ? (
-                      <Check className="w-3 h-3 text-emerald-500" />
+                      <Check className="w-3 h-3 text-emerald-600" />
                     ) : (
                       <Copy className="w-3 h-3 text-slate-400" />
                     )}
                   </button>
-                </div>
 
-                {/* صف أفقي كامل: 1. الـ VIP أولاً (إن وُجد) -> 2. الداعم (التاج والرقم فقط) -> 3. المدعوم (القلب والرقم فقط) -> 4. أمبولة العمر (أزرق ♂ / وردي ♀) */}
-                <div 
-                  className="flex items-center gap-1.5 flex-nowrap transition-all duration-300 overflow-x-auto no-scrollbar"
-                  dir="rtl"
-                >
-                  {/* 1. الـ VIP هو الأول (يظهر إن وُجد فقط) مع تطبيق تصميمه المرفوع من الخادم */}
-                  {Boolean(
-                    serverVipDesign?.hasVip ?? (
-                      (serverVipDesign?.vipTier || profile.vipTier || profile.vipLevel) &&
-                      (serverVipDesign?.vipTier || profile.vipTier || profile.vipLevel) !== 'none' &&
-                      (serverVipDesign?.vipTier || profile.vipTier || profile.vipLevel) !== '0' &&
-                      (serverVipDesign?.vipTier || profile.vipTier || profile.vipLevel) !== 'VIP0'
-                    )
-                  ) && (
+                  {/* شارة المطور بجوار الآيدي */}
+                  {(isOwner || rolesSummary.isSuperAdmin || profile.userId === '1001001') && (
                     <span
-                      onClick={() => setIsVipCenterModalOpen(true)}
-                      className={`${serverVipDesign?.vipBg || 'bg-gradient-to-r from-amber-600 via-amber-800 to-slate-900'} ${serverVipDesign?.vipColor || 'text-amber-300'} px-1.5 py-0.5 rounded-full text-[9px] font-black border ${serverVipDesign?.vipBorder || 'border-amber-400/60'} shadow-2xs cursor-pointer flex items-center gap-0.5 shrink-0 select-none hover:scale-105 transition-transform`}
-                      title={`عضوية VIP: ${serverVipDesign?.vipText || serverVipDesign?.vipTier || profile.vipTier || profile.vipLevel || 'VIP'}`}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black border border-amber-300/60 bg-gradient-to-r from-red-700 via-rose-600 to-amber-600 text-white shadow-2xs shrink-0 font-sans"
+                      title="المطور الأساسي والسوبر أدمن"
                     >
-                      {serverVipDesign?.vipImage ? (
-                        <img src={serverVipDesign.vipImage} alt="VIP" className="h-3 w-auto object-contain" />
-                      ) : serverVipDesign?.vipIcon ? (
-                        <span className="text-[10px]">{serverVipDesign.vipIcon}</span>
-                      ) : (
-                        <Crown className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
-                      )}
-                      <span>{serverVipDesign?.vipText || serverVipDesign?.vipTier || profile.vipTier || profile.vipLevel || 'VIP'}</span>
-                    </span>
-                  )}
-
-                  {/* 2. الداعم هو الثاني (التاج والرقم فقط) */}
-                  <span
-                    onClick={() => {
-                      setLevelModalMode('supporter');
-                      setIsLevelModalOpen(true);
-                    }}
-                    className={`${senderTier.badgeBg} ${senderTier.textColor} px-1.5 py-0.5 rounded-full text-[9px] font-black border ${senderTier.badgeBorder} shadow-2xs cursor-pointer flex items-center gap-0.5 shrink-0 select-none hover:scale-105 transition-transform`}
-                    title={`مستوى الداعم: ${senderCalc.level}`}
-                  >
-                    <span className="text-[10px]">👑</span>
-                    <span className="font-mono font-black">{senderCalc.level}</span>
-                  </span>
-
-                  {/* 3. المدعوم هو الثالث (القلب والرقم فقط) */}
-                  <span
-                    onClick={() => {
-                      setLevelModalMode('charm');
-                      setIsLevelModalOpen(true);
-                    }}
-                    className={`${receiverTier.badgeBg} ${receiverTier.textColor} px-1.5 py-0.5 rounded-full text-[9px] font-black border ${receiverTier.badgeBorder} shadow-2xs cursor-pointer flex items-center gap-0.5 shrink-0 select-none hover:scale-105 transition-transform`}
-                    title={`مستوى المدعوم / الجاذبية: ${receiverCalc.level}`}
-                  >
-                    <span className="text-[10px]">💖</span>
-                    <span className="font-mono font-black">{receiverCalc.level}</span>
-                  </span>
-
-                  {/* 4. أمبولة العمر والجنس بنفس مقاس الليبل والمستطيل تماماً (أزرق ♂ للرجل، وردي ♀ للأنثى مع العمر في الوسط) */}
-                  {userGender === 'female' ? (
-                    <span
-                      className="bg-pink-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-black border border-pink-400/60 shadow-2xs flex items-center gap-0.5 shrink-0 select-none cursor-default"
-                      title={`أنثى ♀ • العمر: ${userAge}`}
-                    >
-                      <span className="text-[10px] leading-none">♀</span>
-                      <span className="font-mono font-black">{userAge}</span>
-                    </span>
-                  ) : (
-                    <span
-                      className="bg-sky-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-black border border-sky-400/60 shadow-2xs flex items-center gap-0.5 shrink-0 select-none cursor-default"
-                      title={`ذكر ♂ • العمر: ${userAge}`}
-                    >
-                      <span className="text-[10px] leading-none">♂</span>
-                      <span className="font-mono font-black">{userAge}</span>
+                      <Sparkles className="w-2.5 h-2.5 text-amber-300 fill-amber-300 shrink-0 animate-pulse" />
+                      <span className="leading-none text-[9.5px]">المطور 👑</span>
                     </span>
                   )}
                 </div>
@@ -1112,39 +1238,29 @@ export const ProfileScreen: React.FC = () => {
 
         {/* 4 Rectangular Action Cards arranged 2 on the right and 2 on the left (2x2 grid) with Luxury Gold / Pearl White / Obsidian Night styling */}
         <div className="grid grid-cols-2 gap-2.5" dir="rtl">
-          {/* Right Column Top: مستوى المستخدم الحقيقي المرتبط بالسيرفر */}
+          {/* Right Column Top: مستوى المستخدم */}
           <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.96 }}
-            onClick={() => {
-              setLevelModalMode('supporter');
-              setIsLevelModalOpen(true);
-            }}
+            onClick={() => setIsLevelModalOpen(true)}
             className={`relative p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} transition-all duration-300 cursor-pointer group text-right w-full`}
           >
             <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300 h-full`}>
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div className="flex items-center gap-2.5 min-w-0">
                 {/* 3D Inner Embossed Plinth */}
                 <div className={`relative w-11 h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
                   <UserLevel3DIcon className="w-8 h-8" />
                   <span className="absolute -bottom-1 -right-1 bg-gradient-to-r from-[#C89228] to-[#7E4F0B] text-[#FFF9E6] font-black text-[8px] px-1.5 py-0.2 rounded-full border border-white shadow-xs font-mono">
-                    {senderCalc.level}
+                    113
                   </span>
                 </div>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0">
                   <h4 className={`text-xs font-black ${curRoyal.titleText} transition-colors truncate`}>
-                    مستوى الداعم والجاذبية
+                    مستوى المستخدم
                   </h4>
-                  <span className={`text-[10px] ${curRoyal.subText} font-bold block truncate font-mono`}>
-                    الداعم Lv.{senderCalc.level} • {senderCalc.progressPercent}%
+                  <span className={`text-[10px] ${curRoyal.subText} font-bold block truncate`}>
+                    المستوى 113 • 97%
                   </span>
-                  {/* Real Dynamic Mini Progress Bar */}
-                  <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700/60 rounded-full overflow-hidden mt-1 max-w-[120px]">
-                    <div
-                      className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all duration-500"
-                      style={{ width: `${senderCalc.progressPercent}%` }}
-                    />
-                  </div>
                 </div>
               </div>
               <ChevronLeft className={`w-4 h-4 ${curRoyal.chevron} group-hover:-translate-x-0.5 transition-transform shrink-0 mr-0.5`} />
@@ -1641,7 +1757,7 @@ export const ProfileScreen: React.FC = () => {
           </div>
 
           {/* 6.5 إدارة المتجر وثيمات التطبيق (المستطيل البنفسجي الياقوتي الفاخر مع الشارة البارزة للأعلى) */}
-          {(rolesSummary.isSuperAdmin || isThemeAdmin(profile.userId) || adminRole === 'theme_admin' || adminRole === 'super_admin' || isOwner) && (
+          {(rolesSummary.isThemeAdmin || rolesSummary.isSuperAdmin) && (
             <motion.div 
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.98 }}
@@ -1679,8 +1795,8 @@ export const ProfileScreen: React.FC = () => {
             </motion.div>
           )}
 
-          {/* 6.7 مدير الوكالات الرسمية والمندوبين (حصرية للسيرفر: rolesSummary.isManager === true أو rolesSummary.isSuperAdmin === true) */}
-          {(rolesSummary.isManager === true || rolesSummary.isSuperAdmin === true) && (
+          {/* 6.7 مدير الوكالات الرسمية والمندوبين (المستطيل الماسي السيان الملكي الفاخر مع الشارة البارزة للأعلى) */}
+          {(rolesSummary.isManager || rolesSummary.isSuperAdmin) && (
             <motion.div 
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.98 }}
@@ -1718,8 +1834,8 @@ export const ProfileScreen: React.FC = () => {
             </motion.div>
           )}
 
-          {/* 6.8 مندوب وكالات (حصرية للسيرفر: rolesSummary.isDelegate === true أو rolesSummary.isSuperAdmin === true) */}
-          {(rolesSummary.isDelegate === true || rolesSummary.isSuperAdmin === true) && (
+          {/* 6.8 مندوب وكالات (المستطيل الفضي البلاتيني الفاخر مع الشارة البارزة للأعلى) */}
+          {(rolesSummary.isDelegate || rolesSummary.isSuperAdmin) && (
             <motion.div 
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.98 }}
@@ -1763,8 +1879,8 @@ export const ProfileScreen: React.FC = () => {
             </motion.div>
           )}
 
-          {/* وكالتي (الوكيل الرسمي) - حصرية للسيرفر: rolesSummary.isAgent === true أو rolesSummary.isSuperAdmin === true */}
-          {(rolesSummary.isAgent === true || rolesSummary.isSuperAdmin === true) && (
+          {/* وكالتي (الوكيل الرسمي أو السوبر أدمن) - إدارة المذيعين والوسطاء والعقود - تم نقله ليكون فوق مركز الوسطاء */}
+          {(rolesSummary.isAgent || rolesSummary.isSuperAdmin) && (
             <motion.div 
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.98 }}
@@ -1780,10 +1896,12 @@ export const ProfileScreen: React.FC = () => {
               </div>
 
               <div className="bg-gradient-to-br from-[#064E3B]/95 via-[#065F46] to-[#042F2C] text-white rounded-[14px] p-3 sm:p-3.5 flex items-center justify-between border border-emerald-400/40 group-hover:border-emerald-300 group-hover:from-[#065F46] group-hover:to-[#022c22] transition-all duration-300 relative overflow-hidden">
+                {/* خلفية جمالية خافتة بتدرج لوني */}
                 <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-emerald-400/10 rounded-full blur-xl pointer-events-none" />
                 <div className="absolute -left-6 -top-6 w-24 h-24 bg-amber-400/10 rounded-full blur-xl pointer-events-none" />
 
                 <div className="flex items-center gap-3 min-w-0 flex-1 relative z-10">
+                  {/* 3D Inner Embossed Plinth مع حواف زمردية وذهبية فاخرة */}
                   <div className="relative w-12 h-12 rounded-xl bg-gradient-to-b from-emerald-900/90 to-slate-950 border border-emerald-400/60 shadow-[0_2px_10px_rgba(0,0,0,0.4),inset_0_1px_2px_rgba(255,255,255,0.2)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <OfficialAgency3DIcon className="w-8 h-8" />
                     <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-amber-400 rounded-full border border-emerald-950 shadow-xs flex items-center justify-center text-[7px] font-black text-slate-950">
@@ -1814,14 +1932,15 @@ export const ProfileScreen: React.FC = () => {
             </motion.div>
           )}
 
-          {/* وكالة شحن (وكيل شحن معتمد) */}
-          {(rolesSummary.isAgent === true || rolesSummary.isSuperAdmin === true || isRechargeAgent(profile.userId) || adminRole === 'recharge_agent' || isOwner) && (
+          {/* وكالة شحن (وكيل شحن معتمد - هوية ذهبية برتقالية فاخرة تميز الشحن والكوينزات) */}
+          {(rolesSummary.isRechargeAgent || rolesSummary.isSuperAdmin) && (
             <motion.div 
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsRechargeAgencyModalOpen(true)}
               className="relative my-2.5 p-[2px] rounded-2xl bg-gradient-to-r from-[#FFF0B3] via-[#F59E0B] via-[#D97706] to-[#FFF0B3] bg-[length:200%_auto] animate-[gradient_4s_linear_infinite] shadow-[0_4px_22px_rgba(245,158,11,0.38),0_0_15px_rgba(217,119,6,0.25)] cursor-pointer group text-right transition-all duration-300"
             >
+              {/* شارة تمييز أعلى زاوية المستطيل بلون ذهبي متألق */}
               <div className="absolute -top-2.5 right-4 z-20">
                 <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-amber-600 via-yellow-500 to-orange-600 text-slate-950 border border-yellow-200/90 shadow-[0_2px_10px_rgba(245,158,11,0.5)] font-sans tracking-wide">
                   <Sparkles className="w-3 h-3 text-white fill-white animate-pulse" />
@@ -1831,11 +1950,13 @@ export const ProfileScreen: React.FC = () => {
               </div>
 
               <div className="bg-gradient-to-br from-[#2D1602]/95 via-[#451A03] to-[#1F0C01] text-white rounded-[14px] p-3 sm:p-3.5 flex items-center justify-between border border-amber-400/50 group-hover:border-amber-300 group-hover:from-[#3D1E03] group-hover:to-[#260E02] transition-all duration-300 relative overflow-hidden">
+                {/* توهجات خلفية ذهبية برتقالية تعكس بريق الذهب */}
                 <div className="absolute -right-6 -bottom-6 w-28 h-28 bg-amber-500/20 rounded-full blur-xl pointer-events-none" />
                 <div className="absolute -left-6 -top-6 w-28 h-28 bg-yellow-400/20 rounded-full blur-xl pointer-events-none" />
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(251,191,36,0.15),transparent_70%)] pointer-events-none" />
 
                 <div className="flex items-center gap-3 min-w-0 flex-1 relative z-10">
+                  {/* 3D Realistic Icon Container بخلفية ذهبية ملكية */}
                   <div className="relative w-12 h-12 rounded-xl bg-gradient-to-b from-amber-950 to-stone-950 border border-amber-400/70 shadow-[0_2px_12px_rgba(245,158,11,0.35),inset_0_1px_2px_rgba(255,255,255,0.3)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <RechargeAgency3DIcon className="w-8 h-8" />
                     <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-gradient-to-tr from-amber-400 to-yellow-300 rounded-full border border-amber-950 shadow-xs flex items-center justify-center text-[8px] font-black text-slate-950">
@@ -1866,8 +1987,8 @@ export const ProfileScreen: React.FC = () => {
             </motion.div>
           )}
 
-          {/* 7. مركز الوسطاء (حصرية للسيرفر: rolesSummary.isBroker === true أو rolesSummary.isSuperAdmin === true) */}
-          {(rolesSummary.isBroker === true || rolesSummary.isSuperAdmin === true) && (
+          {/* 7. مركز الوسطاء (صلاحية وسيط معتمد ممنوحة من وكالتي لحساب ومتابعة المذيعين وعمولات الوساطة) */}
+          {(rolesSummary.isBroker || rolesSummary.isSuperAdmin) && (
             <motion.div 
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.98 }}
@@ -1905,8 +2026,8 @@ export const ProfileScreen: React.FC = () => {
             </motion.div>
           )}
 
-          {/* 8. مركز المذيعين (حصرية للسيرفر: rolesSummary.isHost === true أو rolesSummary.isSuperAdmin === true) */}
-          {(rolesSummary.isHost === true || rolesSummary.isSuperAdmin === true) && (
+          {/* 8. مركز المذيعين (يظهر فقط إذا كان rolesSummary.isHost === true أو السوبر أدمن) */}
+          {(rolesSummary.isHost || rolesSummary.isSuperAdmin) && (
             <motion.div 
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.98 }}
@@ -1922,10 +2043,12 @@ export const ProfileScreen: React.FC = () => {
               </div>
 
               <div className="bg-gradient-to-r from-[#FFF5F7] via-[#FAF5FF] to-[#F5F3FF] rounded-[14px] p-3 flex items-center justify-between border border-rose-200/70 group-hover:border-rose-300/90 group-hover:from-white group-hover:to-[#FFF5F7] transition-all relative overflow-hidden">
+                {/* لمسات إضاءة خلفية ناعمة وخفيفة */}
                 <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-rose-300/15 rounded-full blur-xl pointer-events-none" />
                 <div className="absolute -left-6 -top-6 w-24 h-24 bg-purple-300/15 rounded-full blur-xl pointer-events-none" />
 
                 <div className="flex items-center gap-3 relative z-10">
+                  {/* 3D Realistic Icon Container بتدرج خفيف ومتناسق وألوان فاخرة ناعمة */}
                   <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white via-rose-50/70 to-purple-50/90 border border-rose-200/80 shadow-[0_2px_10px_rgba(244,63,94,0.10),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <BroadcasterCenter3DIcon className="w-7 h-7 sm:w-8 sm:h-8" />
                     <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-gradient-to-tr from-amber-400 via-amber-300 to-yellow-200 rounded-full border border-white shadow-2xs flex items-center justify-center text-[7.5px] font-black text-amber-950">
@@ -1958,19 +2081,8 @@ export const ProfileScreen: React.FC = () => {
 
         </div>
 
-        {/* Copyright Notice */}
-        <div className="text-center py-4 text-[10px] text-slate-400 font-medium flex flex-col items-center justify-center gap-1.5 border-t border-slate-200/50 mt-2">
-          <div className="flex items-center gap-2">
-            <NajmLogo size="sm" className="scale-75" />
-            <span className="font-extrabold text-[#5C3F13] text-xs">تطبيق النجم (Al-Najm)</span>
-          </div>
-          <span className="text-[10px] text-slate-400">
-            جميع حقوق الملكية الفكرية والعلامة التجارية مسجلة ومحفوظة © 2026 للمالك والمطور
-          </span>
-        </div>
-
       </div>
-      </>
+      </div>
       )}
 
       {/* Fixed Bottom Navigation Bar (RTL Order from Right to Left) */}
@@ -2050,7 +2162,7 @@ export const ProfileScreen: React.FC = () => {
           <RechargeModal
             isOpen={isRechargeModalOpen}
             onClose={() => setIsRechargeModalOpen(false)}
-            onSuccessRecharge={(addedCoins: number) => {
+            onSuccessRecharge={(addedCoins) => {
               setCoinsBalance((prev) => {
                 const next = prev + addedCoins;
                 try {
@@ -2079,6 +2191,8 @@ export const ProfileScreen: React.FC = () => {
             friends={MOCK_FRIENDS}
             followers={MOCK_FOLLOWERS}
             likes={MOCK_LIKES}
+            profile={profile}
+            dashboardBadges={dashboardBadges}
           />
         </Suspense>
       )}
@@ -2099,8 +2213,6 @@ export const ProfileScreen: React.FC = () => {
               name: profile.name,
               country: profile.country || 'اليمن',
               bio: profile.bio,
-              age: userAge,
-              gender: userGender,
               avatar: profile.avatarUrl
             }}
             onSave={handleSaveProfile}
@@ -2140,6 +2252,12 @@ export const ProfileScreen: React.FC = () => {
         </Suspense>
       )}
 
+      {/* نافذة تنزيل وتثبيت تطبيق الأندرويد APK */}
+      <DownloadApkModal
+        isOpen={isDownloadApkOpen}
+        onClose={() => setIsDownloadApkOpen(false)}
+      />
+
       {isSuperLegendModalOpen && (
         <Suspense fallback={<LazyModalSkeleton title="سوبر ليجند" />}>
           <SuperLegendModal
@@ -2155,11 +2273,7 @@ export const ProfileScreen: React.FC = () => {
           <UserLevelModal
             isOpen={isLevelModalOpen}
             onClose={() => setIsLevelModalOpen(false)}
-            userId={profile.userId}
-            level={senderCalc.level}
-            senderExp={senderExp}
-            receiverExp={receiverExp}
-            initialMode={levelModalMode}
+            level={113}
             userName={profile.name || "(عابر سبيل)"}
             avatarUrl={profile.avatarUrl}
           />
@@ -2171,22 +2285,6 @@ export const ProfileScreen: React.FC = () => {
           <FamilyModal
             isOpen={isFamilyModalOpen}
             onClose={() => setIsFamilyModalOpen(false)}
-            onSelectRoom={(roomId: string) => {
-              setIsFamilyModalOpen(false);
-              handleOpenRoom({
-                id: roomId,
-                title: 'روم العائلة 👑',
-                host: profile.name || 'مضيف العائلة',
-                listenersCount: 15,
-                countryName: 'اليمن',
-                countryCode: 'YE',
-                flag: '🇾🇪',
-                ownerId: profile.userId,
-                isOwner: true,
-                image: profile.avatarUrl,
-                avatars: [profile.avatarUrl]
-              });
-            }}
           />
         </Suspense>
       )}
@@ -2199,7 +2297,7 @@ export const ProfileScreen: React.FC = () => {
             userName={profile.name || "(عابر سبيل)"}
             avatarUrl={profile.avatarUrl}
             badges={profile.badges}
-            onSelectBadge={(badge: any) => setSelectedBadge(badge)}
+            onSelectBadge={(badge) => setSelectedBadge(badge)}
           />
         </Suspense>
       )}
@@ -2221,7 +2319,7 @@ export const ProfileScreen: React.FC = () => {
             isOpen={isVipCenterModalOpen}
             onClose={() => setIsVipCenterModalOpen(false)}
             profile={profile}
-            onUpgrade={(newVipLevel: any) => {
+            onUpgrade={(newVipLevel) => {
               const updated = { ...profile, vipLevel: newVipLevel, vipTier: newVipLevel };
               setProfile(updated);
               localStorage.setItem('user_profile_data', JSON.stringify({
@@ -2256,28 +2354,12 @@ export const ProfileScreen: React.FC = () => {
         </Suspense>
       )}
 
-      {/* لوحة السوبر أدمن (المالك والمبرمج) - مشروطة حصراً به */}
-      {isSuperAdminModalOpen && (
-        <Suspense fallback={<LazyModalSkeleton title="لوحة التحكم العليا للسوبر أدمن" />}>
-          <SuperAdminControlModal
-            isOpen={isSuperAdminModalOpen}
-            onClose={() => setIsSuperAdminModalOpen(false)}
-            currentUserId={profile.userId}
-            onOpenAgencyModal={() => setIsAgencyAdminModalOpen(true)}
-            onOpenThemeModal={() => setIsThemeAdminModalOpen(true)}
-            onOpenModeratorModal={() => setIsModeratorModalOpen(true)}
-          />
-        </Suspense>
-      )}
-
-      {/* لوحة مدير الإدارة / إداري الوكالات */}
+      {/* لوحة إداري الوكالات */}
       {isAgencyAdminModalOpen && (
-        <Suspense fallback={<LazyModalSkeleton title="مدير الإدارة" />}>
+        <Suspense fallback={<LazyModalSkeleton title="لوحة إداري الوكالات" />}>
           <AgencyAdminDashboardModal
             isOpen={isAgencyAdminModalOpen}
             onClose={() => setIsAgencyAdminModalOpen(false)}
-            userId="MGR-9901"
-            userName="أبو أمجد"
           />
         </Suspense>
       )}
@@ -2300,8 +2382,8 @@ export const ProfileScreen: React.FC = () => {
           <OfficialAgencyManagerModal
             isOpen={isOfficialAgencyManagerModalOpen}
             onClose={() => setIsOfficialAgencyManagerModalOpen(false)}
-            managerId="MGR-9901"
-            managerName="أبو أمجد"
+            managerId={profile.userId}
+            managerName={profile.nickname || profile.name}
             managerAvatar={profile.avatarUrl}
             isSuperAdmin={isOwner || adminRole === 'super_admin'}
           />
@@ -2426,36 +2508,43 @@ export const ProfileScreen: React.FC = () => {
               : 'opacity-100 pointer-events-auto visible fixed inset-0 z-50'
           }
         >
-          <Suspense fallback={<LazyModalSkeleton title="جاري الدخول إلى الغرفة الصوتية..." />}>
-            <VoiceRoomScreen
-              roomTitle={activeVoiceRoom.title}
-              hostName={activeVoiceRoom.host}
-              roomId={activeVoiceRoom.id}
-              isOwner={Boolean(activeVoiceRoom.isOwner || activeVoiceRoom.ownerId === profile.userId)}
-              currentUserId={profile.userId}
-              currentUserName={profile.name}
-              currentUserAvatar={profile.avatarUrl}
-              currentUserVip={profile.vipTier || 'VIP6'}
-              onClose={() => {
-                queueMicrotask(() => {
-                  setActiveVoiceRoom(null);
-                  setIsRoomMinimized(false);
-                  exitRoomSession();
-                });
-              }}
-              onMinimize={() => {
-                queueMicrotask(() => {
-                  setIsRoomMinimized(true);
-                  minimizeRoomSession();
-                });
-              }}
-              onOpenRecharge={() => {
-                queueMicrotask(() => {
-                  setIsRechargeModalOpen(true);
-                });
-              }}
-            />
-          </Suspense>
+          <ErrorBoundary fallback={<LazyModalSkeleton title="جاري تحضير الغرفة الصوتية..." />}>
+            <Suspense fallback={<LazyModalSkeleton title="جاري الدخول إلى الغرفة الصوتية..." />}>
+              <VoiceRoomScreen
+                key={activeVoiceRoom.id}
+                roomTitle={activeVoiceRoom.title}
+                hostName={activeVoiceRoom.host}
+                roomId={activeVoiceRoom.id}
+                ownerId={activeVoiceRoom.ownerId}
+                isOwner={Boolean(
+                  activeVoiceRoom.id === 'my-own-room-7798' ||
+                  (activeVoiceRoom.ownerId && activeVoiceRoom.ownerId === (profile?.userId || '1001001'))
+                )}
+                currentUserId={profile?.userId || '1001001'}
+                currentUserName={profile?.name || 'مستخدم النجم'}
+                currentUserAvatar={profile?.avatarUrl}
+                currentUserVip={profile?.vipTier || 'VIP6'}
+                onClose={() => {
+                  queueMicrotask(() => {
+                    setActiveVoiceRoom(null);
+                    setIsRoomMinimized(false);
+                    exitRoomSession();
+                  });
+                }}
+                onMinimize={() => {
+                  queueMicrotask(() => {
+                    setIsRoomMinimized(true);
+                    minimizeRoomSession();
+                  });
+                }}
+                onOpenRecharge={() => {
+                  queueMicrotask(() => {
+                    setIsRechargeModalOpen(true);
+                  });
+                }}
+              />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       )}
 

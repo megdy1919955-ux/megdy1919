@@ -2,11 +2,11 @@ import React from 'react';
 import { Search, Lightbulb, X, Play, Clapperboard } from 'lucide-react';
 import { RedCinemaSeat } from '../RedCinemaSeat';
 import { SeatUser } from '../../types';
-import { CinemaVideoItem, VideoSuggestion } from '../CinemaYouTubePickerModal';
+import { CinemaVideoItem } from '../CinemaYouTubePickerModal';
 
 interface RoomCinemaSectionProps {
   selectedCinemaVideo: CinemaVideoItem | null;
-  videoSuggestions: (CinemaVideoItem | VideoSuggestion)[];
+  videoSuggestions: CinemaVideoItem[];
   isOwner: boolean;
   allMicSeats: SeatUser[];
   onOpenVideoPicker: () => void;

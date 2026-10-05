@@ -8,6 +8,7 @@ import {
   Mic,
   MicOff,
   Music,
+  Settings,
   Radio,
   Users,
   Info,
@@ -82,8 +83,8 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
   onClose,
   roomTitle = 'غرفة الأساطير الذهبية 👑',
   roomId = '997812',
-  hostAvatar = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=400',
-  hostName = 'أبو أمجد',
+  hostAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+  hostName = 'الأمير أسامة',
   userRole = 'owner',
   currentAppRole = 'developer',
   isRoomOwner,
@@ -1033,6 +1034,22 @@ export const RoomInfoModal: React.FC<RoomInfoModalProps> = ({
           </div>
         )}
 
+            {/* 4. ADVANCED ROOM SETTINGS BUTTON (OWNER ONLY) */}
+            {isOwner && (
+              <div className="bg-[#1A2234] border border-white/10 rounded-2xl p-3 flex items-center justify-between">
+                <span className="font-bold text-slate-300 text-xs">إعدادات وإدارة الغرفة المتقدمة</span>
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenSettings?.();
+                  }}
+                  className="bg-amber-500 text-slate-950 px-3 py-1.5 rounded-xl font-black text-[11px] flex items-center gap-1 hover:brightness-110 cursor-pointer"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  <span>الإعدادات</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Bottom Action Bar */}

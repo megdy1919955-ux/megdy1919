@@ -1,46 +1,37 @@
-/**
- * Global Firestore-backed WebRTC Real-time Audio Engine
- * Operates autonomously on any mobile device (Android APK, iOS, Web)
- * without requiring any local backend server.
- */
-
-import { RealtimeRoomPresence, RealtimePeerAudioState, RealtimeNetworkQuality } from '../types/realtimeAudio';
 import {
-  subscribeToRoomSignals,
-  sendRoomSignalInFirestore,
-  updateRoomSeatInFirestore,
-  RealtimeSignalPacket
-} from './roomRealtimeService';
-import { notifyNativeAndroidAudioMode, syncMediaSessionState } from './realtimeVoiceService';
+  collection,
+  doc,
+  setDoc,
+  deleteDoc,
+  onSnapshot
+} from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType, IS_CLOUD_SYNC_DISABLED } from './firebase';
+import { updateRoomSeatInFirestore } from './roomRealtimeService';
 
-const RTC_CONFIG: RTCConfiguration = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' }
-  ]
-};
+export interface WebRTCPeerSignal {
+  senderId: string;
+  targetId: string;
+  type: 'offer' | 'answer' | 'ice-candidate';
+  payload: any;
+  timestamp: number;
+}
 
 export interface FirestoreWebRTCConfig {
   roomId: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
+  userId?: string;
+  userName?: string;
+  userAvatar?: string;
   seatId?: number | null;
 }
 
 export class FirestoreWebRTCEngine {
   public roomId: string;
-  public userId: string;
-  public userName: string;
-  public userAvatar: string;
   public myPeerId: string;
   public seatId: number | null = null;
   public isMuted: boolean = true;
   public isCameraEnabled: boolean = false;
 
-  private localAudioStream: MediaStream | null = null;
+  public localAudioStream: MediaStream | null = null;
   private localVideoStream: MediaStream | null = null;
   private peerConnections: Map<string, RTCPeerConnection> = new Map();
   private remoteAudioElements: Map<string, HTMLAudioElement> = new Map();
@@ -53,36 +44,46 @@ export class FirestoreWebRTCEngine {
 
   private unsubSignals: (() => void) | null = null;
 
-  // Callbacks
-  public onConnectionStatus?: (status: 'connecting' | 'connected' | 'disconnected' | 'error') => void;
-  public onPeerSpeaking?: (state: RealtimePeerAudioState) => void;
-  public onRemoteVideoStream?: (peerId: string, stream: MediaStream | null) => void;
-  public onMicPermissionError?: (err: Error) => void;
+  public onRemoteStream?: (peerId: string, stream: MediaStream) => void;
+  public onRemoteStreamRemoved?: (peerId: string) => void;
+  public onSpeakingChange?: (isSpeaking: boolean, level: number) => void;
+  public onPeerSpeaking?: (state: { seatId?: number | null; userName?: string; isSpeaking: boolean; audioLevel: number }) => void;
+  public onMicPermissionError?: (error: any) => void;
+  public onRemoteVideoTrack?: (peerId: string, stream: MediaStream) => void;
 
-  constructor(config: FirestoreWebRTCConfig) {
-    this.roomId = config.roomId;
-    this.userId = config.userId;
-    this.userName = config.userName;
-    this.userAvatar = config.userAvatar;
-    this.seatId = config.seatId ?? null;
-    this.myPeerId = `peer_${config.userId.replace(/[^a-zA-Z0-9]/g, '_')}_${Math.random().toString(36).substring(2, 6)}`;
+  private speakingInterval: any = null;
 
-    notifyNativeAndroidAudioMode('media');
-    syncMediaSessionState(`غرفة صوتية ${config.roomId}`, true);
+  private rtcConfig: RTCConfiguration = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' }
+    ],
+    iceCandidatePoolSize: 10
+  };
+
+  constructor(roomIdOrConfig: string | FirestoreWebRTCConfig, myPeerId?: string) {
+    if (typeof roomIdOrConfig === 'string') {
+      this.roomId = roomIdOrConfig || 'default-room';
+      this.myPeerId = myPeerId || `peer_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    } else {
+      this.roomId = roomIdOrConfig.roomId || 'default-room';
+      this.myPeerId = roomIdOrConfig.userId || `peer_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+      this.seatId = roomIdOrConfig.seatId ?? null;
+    }
   }
 
-  public connect(): void {
-    this.onConnectionStatus?.('connected');
-
-    // Subscribe to incoming WebRTC signals directed to our peerId
-    this.unsubSignals = subscribeToRoomSignals(this.roomId, this.myPeerId, (signal) => {
-      this.handleIncomingSignal(signal);
-    });
+  public async connect(): Promise<void> {
+    return this.init();
   }
 
-  /**
-   * Start local microphone capture and Web Audio level monitor
-   */
+  public async init(): Promise<void> {
+    this.listenToSignalingMessages();
+  }
+
+  // تم ضبط قيود الصوت لتعمل بنمط الوسائط عالي الجودة (Media Mode)
   public async enableMicrophone(): Promise<boolean> {
     try {
       if (!this.localAudioStream) {
@@ -90,11 +91,13 @@ export class FirestoreWebRTCEngine {
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
-            autoGainControl: true
-          }
+            autoGainControl: true,
+            sampleRate: 48000,
+            channelCount: 2 // نمط الوسائط الاستريو الواضح
+          },
+          video: false
         });
 
-        // Add local tracks to all existing peer connections
         this.localAudioStream.getAudioTracks().forEach((track) => {
           this.peerConnections.forEach((pc) => {
             pc.addTrack(track, this.localAudioStream!);
@@ -104,15 +107,15 @@ export class FirestoreWebRTCEngine {
         this.setupAudioLevelAnalysis();
       }
 
-      this.isMuted = false;
       this.localAudioStream.getAudioTracks().forEach((t) => (t.enabled = true));
+      this.isMuted = false;
 
       if (this.seatId) {
         updateRoomSeatInFirestore(this.roomId, this.seatId, {
           isMuted: false,
           isSpeaking: false,
           peerId: this.myPeerId
-        });
+        }).catch(() => {});
       }
 
       return true;
@@ -123,8 +126,35 @@ export class FirestoreWebRTCEngine {
     }
   }
 
+  public stopLocalAudioStream() {
+    if (this.localAudioStream) {
+      this.localAudioStream.getTracks().forEach((track) => {
+        track.stop();
+      });
+      this.localAudioStream = null;
+    }
+  }
+
+  public releaseMicrophone(): void {
+    if (this.animFrameId) {
+      clearTimeout(this.animFrameId);
+      this.animFrameId = null;
+    }
+    this.stopLocalAudioStream();
+    if (this.audioContext && this.audioContext.state !== 'closed') {
+      this.audioContext.close().catch(() => {});
+      this.audioContext = null;
+    }
+    this.micAnalyser = null;
+    this.micSource = null;
+  }
+
   public disableMicrophone(): void {
     this.isMuted = true;
+    if (this.animFrameId) {
+      clearTimeout(this.animFrameId);
+      this.animFrameId = null;
+    }
     if (this.localAudioStream) {
       this.localAudioStream.getAudioTracks().forEach((t) => (t.enabled = false));
     }
@@ -133,31 +163,66 @@ export class FirestoreWebRTCEngine {
       updateRoomSeatInFirestore(this.roomId, this.seatId, {
         isMuted: true,
         isSpeaking: false
-      });
+      }).catch(() => {});
+    }
+  }
+
+  public updateSeat(seatId: number | null): void {
+    this.seatId = seatId;
+    if (seatId === null) {
+      this.disableMicrophone();
+      this.stopLocalAudioStream();
+    }
+  }
+
+  public setIsSpeaking(isSpeaking: boolean): void {
+    this.onSpeakingChange?.(isSpeaking, isSpeaking ? 30 : 0);
+    this.onPeerSpeaking?.({
+      seatId: this.seatId,
+      isSpeaking: isSpeaking,
+      audioLevel: isSpeaking ? 30 : 0
+    });
+    if (this.seatId) {
+      updateRoomSeatInFirestore(this.roomId, this.seatId, {
+        isSpeaking: isSpeaking,
+        audioLevel: isSpeaking ? 30 : 0
+      }).catch(() => {});
+    }
+  }
+
+  public leaveCurrentSeat(): void {
+    this.seatId = null;
+    this.stopLocalAudioStream();
+    this.disableMicrophone();
+  }
+
+  public toggleMute(shouldMute: boolean): void {
+    this.isMuted = shouldMute;
+
+    if (this.localAudioStream) {
+      const audioTrack = this.localAudioStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !shouldMute;
+      }
     }
 
-    this.onPeerSpeaking?.({
-      peerId: this.myPeerId,
-      seatId: this.seatId ?? undefined,
-      userName: this.userName,
-      userAvatar: this.userAvatar,
-      isMuted: true,
-      isSpeaking: false,
-      audioLevel: 0
-    });
+    if (shouldMute && this.speakingInterval) {
+      clearInterval(this.speakingInterval);
+      this.speakingInterval = null;
+      this.setIsSpeaking(false);
+    }
+
+    if (shouldMute) {
+      this.disableMicrophone();
+    } else {
+      this.enableMicrophone().catch(() => {});
+    }
   }
 
   public setMute(muted: boolean): void {
-    if (muted) {
-      this.disableMicrophone();
-    } else {
-      this.enableMicrophone();
-    }
+    this.toggleMute(muted);
   }
 
-  /**
-   * Setup Web Audio Analyzer to calculate real speech volume and trigger speaking waves
-   */
   private setupAudioLevelAnalysis(): void {
     if (!this.localAudioStream) return;
     try {
@@ -171,202 +236,224 @@ export class FirestoreWebRTCEngine {
       this.micAnalyser.smoothingTimeConstant = 0.4;
       this.micSource.connect(this.micAnalyser);
 
-      const buffer = new Uint8Array(this.micAnalyser.frequencyBinCount);
+      const bufferLength = this.micAnalyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
       let lastSpeakingState = false;
 
       const checkVolume = () => {
         if (!this.micAnalyser || this.isMuted) {
           if (lastSpeakingState) {
             lastSpeakingState = false;
-            this.onPeerSpeaking?.({
-              peerId: this.myPeerId,
-              seatId: this.seatId ?? undefined,
-              userName: this.userName,
-              userAvatar: this.userAvatar,
-              isMuted: true,
-              isSpeaking: false,
-              audioLevel: 0
-            });
-            if (this.seatId) {
-              updateRoomSeatInFirestore(this.roomId, this.seatId, {
-                isSpeaking: false,
-                audioLevel: 0
-              });
-            }
+            this.setIsSpeaking(false);
           }
-          this.animFrameId = requestAnimationFrame(checkVolume);
+          this.animFrameId = window.setTimeout(checkVolume, 100);
           return;
         }
 
-        this.micAnalyser.getByteFrequencyData(buffer);
+        const audioTrack = this.localAudioStream?.getAudioTracks()[0];
+        if (!audioTrack || !audioTrack.enabled) {
+          if (lastSpeakingState) {
+            lastSpeakingState = false;
+            this.setIsSpeaking(false);
+          }
+          this.animFrameId = window.setTimeout(checkVolume, 100);
+          return;
+        }
+
+        this.micAnalyser.getByteFrequencyData(dataArray);
         let sum = 0;
-        for (let i = 0; i < buffer.length; i++) {
-          sum += buffer[i];
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
         }
-        const avg = sum / buffer.length;
-        const isSpeaking = avg > 12; // Sound threshold
+        const average = sum / bufferLength;
 
-        if (isSpeaking !== lastSpeakingState) {
-          lastSpeakingState = isSpeaking;
-          this.onPeerSpeaking?.({
-            peerId: this.myPeerId,
-            seatId: this.seatId ?? undefined,
-            userName: this.userName,
-            userAvatar: this.userAvatar,
-            isMuted: this.isMuted,
-            isSpeaking,
-            audioLevel: isSpeaking ? Math.min(100, Math.round(avg * 1.5)) : 0
-          });
-
-          if (this.seatId) {
-            updateRoomSeatInFirestore(this.roomId, this.seatId, {
-              isSpeaking,
-              audioLevel: isSpeaking ? Math.min(100, Math.round(avg * 1.5)) : 0
-            });
-          }
+        const isSpeakingNow = average > 18;
+        if (isSpeakingNow !== lastSpeakingState) {
+          lastSpeakingState = isSpeakingNow;
+          this.setIsSpeaking(isSpeakingNow);
         }
 
-        this.animFrameId = requestAnimationFrame(checkVolume);
+        this.animFrameId = window.setTimeout(checkVolume, 100);
       };
 
-      this.animFrameId = requestAnimationFrame(checkVolume);
+      checkVolume();
     } catch (e) {
-      console.warn('Audio level analyzer warning:', e);
+      console.warn('Audio level analyzer init failed:', e);
     }
   }
 
-  /**
-   * Connect to another peer in the room
-   */
-  public async connectToPeer(remotePeerId: string, initiator: boolean = false): Promise<void> {
-    if (this.peerConnections.has(remotePeerId) || remotePeerId === this.myPeerId) return;
+  private listenToSignalingMessages(): void {
+    if (IS_CLOUD_SYNC_DISABLED) return;
 
+    const path = `rooms/${this.roomId}/rtcSignals`;
     try {
-      const pc = new RTCPeerConnection(RTC_CONFIG);
-      this.peerConnections.set(remotePeerId, pc);
-
-      // Add local audio tracks if available
-      if (this.localAudioStream) {
-        this.localAudioStream.getAudioTracks().forEach((track) => {
-          pc.addTrack(track, this.localAudioStream!);
-        });
-      }
-
-      // Add local video tracks if available
-      if (this.localVideoStream) {
-        this.localVideoStream.getVideoTracks().forEach((track) => {
-          pc.addTrack(track, this.localVideoStream!);
-        });
-      }
-
-      // Handle ICE Candidates
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          sendRoomSignalInFirestore(this.roomId, {
-            fromPeerId: this.myPeerId,
-            toPeerId: remotePeerId,
-            type: 'ice-candidate',
-            payload: JSON.stringify(event.candidate),
-            timestamp: Date.now()
-          });
-        }
-      };
-
-      // Handle remote incoming track (Audio and Video)
-      pc.ontrack = (event) => {
-        const stream = event.streams[0];
-        if (event.track.kind === 'audio') {
-          let audioEl = this.remoteAudioElements.get(remotePeerId);
-          if (!audioEl) {
-            audioEl = new Audio();
-            audioEl.autoplay = true;
-            (audioEl as any).playsInline = true;
-            this.remoteAudioElements.set(remotePeerId, audioEl);
+      const signalsRef = collection(db, 'rooms', this.roomId, 'rtcSignals');
+      this.unsubSignals = onSnapshot(signalsRef, (snapshot) => {
+        snapshot.docChanges().forEach(async (change) => {
+          if (change.type === 'added') {
+            const data = change.doc.data() as WebRTCPeerSignal;
+            if (data.targetId === this.myPeerId && data.senderId !== this.myPeerId) {
+              await this.handleIncomingSignal(data);
+              try {
+                await deleteDoc(change.doc.ref);
+              } catch {}
+            }
           }
-          audioEl.srcObject = stream;
-          audioEl.play().catch(() => {});
-        } else if (event.track.kind === 'video') {
-          this.remoteVideoStreams.set(remotePeerId, stream);
-          this.onRemoteVideoStream?.(remotePeerId, stream);
-        }
-      };
-
-      if (initiator) {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        await sendRoomSignalInFirestore(this.roomId, {
-          fromPeerId: this.myPeerId,
-          toPeerId: remotePeerId,
-          type: 'offer',
-          payload: JSON.stringify(offer),
-          timestamp: Date.now()
         });
-      }
+      });
     } catch (err) {
-      console.warn(`Failed to connect to peer ${remotePeerId}:`, err);
+      handleFirestoreError(err, OperationType.GET, path);
     }
   }
 
-  private async handleIncomingSignal(signal: RealtimeSignalPacket): Promise<void> {
-    try {
-      const fromPeerId = signal.fromPeerId;
-      if (fromPeerId === this.myPeerId) return;
+  private async handleIncomingSignal(signal: WebRTCPeerSignal): Promise<void> {
+    const { senderId, type, payload } = signal;
+    let pc = this.peerConnections.get(senderId);
 
-      let pc = this.peerConnections.get(fromPeerId);
+    if (type === 'offer') {
       if (!pc) {
-        await this.connectToPeer(fromPeerId, false);
-        pc = this.peerConnections.get(fromPeerId);
+        pc = this.createPeerConnection(senderId);
       }
-      if (!pc) return;
+      await pc.setRemoteDescription(new RTCSessionDescription(payload));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
 
-      if (signal.type === 'offer') {
-        const offer = JSON.parse(signal.payload);
-        await pc.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        await sendRoomSignalInFirestore(this.roomId, {
-          fromPeerId: this.myPeerId,
-          toPeerId: fromPeerId,
-          type: 'answer',
-          payload: JSON.stringify(answer),
-          timestamp: Date.now()
-        });
-      } else if (signal.type === 'answer') {
-        const answer = JSON.parse(signal.payload);
-        if (pc.signalingState !== 'stable') {
-          await pc.setRemoteDescription(new RTCSessionDescription(answer));
-        }
-      } else if (signal.type === 'ice-candidate') {
-        const candidate = JSON.parse(signal.payload);
-        await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+      await this.sendSignal({
+        senderId: this.myPeerId,
+        targetId: senderId,
+        type: 'answer',
+        payload: { sdp: answer.sdp, type: answer.type },
+        timestamp: Date.now()
+      });
+    } else if (type === 'answer') {
+      if (pc) {
+        await pc.setRemoteDescription(new RTCSessionDescription(payload));
       }
-    } catch (err) {
-      console.warn('Error handling incoming WebRTC signal:', err);
+    } else if (type === 'ice-candidate') {
+      if (pc && payload) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(payload));
+        } catch (e) {
+          console.warn('Error adding received ice candidate', e);
+        }
+      }
     }
+  }
+
+  public async connectToPeer(targetPeerId: string, _isInitiator?: boolean): Promise<void> {
+    if (this.peerConnections.has(targetPeerId)) return;
+    const pc = this.createPeerConnection(targetPeerId);
+
+    if (this.localAudioStream) {
+      this.localAudioStream.getAudioTracks().forEach((track) => {
+        pc.addTrack(track, this.localAudioStream!);
+      });
+    }
+
+    const offer = await pc.createOffer({
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: true
+    });
+    await pc.setLocalDescription(offer);
+
+    await this.sendSignal({
+      senderId: this.myPeerId,
+      targetId: targetPeerId,
+      type: 'offer',
+      payload: { sdp: offer.sdp, type: offer.type },
+      timestamp: Date.now()
+    });
+  }
+
+  private createPeerConnection(remotePeerId: string): RTCPeerConnection {
+    const pc = new RTCPeerConnection(this.rtcConfig);
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        this.sendSignal({
+          senderId: this.myPeerId,
+          targetId: remotePeerId,
+          type: 'ice-candidate',
+          payload: event.candidate.toJSON(),
+          timestamp: Date.now()
+        }).catch(() => {});
+      }
+    };
+
+    pc.ontrack = (event) => {
+      const [remoteStream] = event.streams;
+      if (!remoteStream) return;
+
+      if (event.track.kind === 'audio') {
+        let audioEl = this.remoteAudioElements.get(remotePeerId);
+        if (!audioEl) {
+          // إجبار عنصر الصوت على تشغيل صوت الوسائط العريض والسماعة الخارجية
+          audioEl = new Audio();
+          audioEl.autoplay = true;
+          (audioEl as any).playsInline = true;
+          (audioEl as any).sinkId = ''; // استخدام المخرج الافتراضي للوسائط
+          if (typeof (audioEl as any).setSinkId === 'function') {
+            (audioEl as any).setSinkId('').catch(() => {});
+          }
+          this.remoteAudioElements.set(remotePeerId, audioEl);
+        }
+        audioEl.srcObject = remoteStream;
+        audioEl.play().catch(() => {});
+        this.onRemoteStream?.(remotePeerId, remoteStream);
+      }
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+        this.closePeer(remotePeerId);
+      }
+    };
+
+    this.peerConnections.set(remotePeerId, pc);
+    return pc;
+  }
+
+  private async sendSignal(signal: WebRTCPeerSignal): Promise<void> {
+    if (IS_CLOUD_SYNC_DISABLED) return;
+    const path = `rooms/${this.roomId}/rtcSignals`;
+    try {
+      const sigDoc = doc(collection(db, 'rooms', this.roomId, 'rtcSignals'));
+      await setDoc(sigDoc, signal);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, path);
+    }
+  }
+
+  private closePeer(peerId: string): void {
+    const pc = this.peerConnections.get(peerId);
+    if (pc) {
+      pc.close();
+      this.peerConnections.delete(peerId);
+    }
+    const audioEl = this.remoteAudioElements.get(peerId);
+    if (audioEl) {
+      audioEl.pause();
+      audioEl.srcObject = null;
+      this.remoteAudioElements.delete(peerId);
+    }
+    this.remoteVideoStreams.delete(peerId);
+    this.onRemoteStreamRemoved?.(peerId);
   }
 
   public destroy(): void {
-    if (this.animFrameId) {
-      cancelAnimationFrame(this.animFrameId);
-    }
     if (this.unsubSignals) {
       this.unsubSignals();
+      this.unsubSignals = null;
     }
-    if (this.localAudioStream) {
-      this.localAudioStream.getTracks().forEach((t) => t.stop());
-    }
-    if (this.localVideoStream) {
-      this.localVideoStream.getTracks().forEach((t) => t.stop());
-    }
+    this.releaseMicrophone();
     this.peerConnections.forEach((pc) => pc.close());
     this.peerConnections.clear();
     this.remoteAudioElements.forEach((el) => {
+      el.pause();
       el.srcObject = null;
-      el.remove();
     });
     this.remoteAudioElements.clear();
-    if (this.audioContext && this.audioContext.state !== 'closed') {
-      this.audioContext.close().catch(() => {});
-    }
+    this.remoteVideoStreams.clear();
   }
 }

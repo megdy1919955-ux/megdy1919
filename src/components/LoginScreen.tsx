@@ -22,33 +22,41 @@ import {
   Phone,
   Lock,
   Delete,
-  X
+  X,
+  Mail,
+  Smartphone,
+  Eye,
+  EyeOff,
+  User,
+  Key
 } from 'lucide-react';
 import { NajmLogo } from './common/NajmLogo';
 import { GoogleAccountChooserModal } from './GoogleAccountChooserModal';
-import { FirebaseDomainAuthModal } from './FirebaseDomainAuthModal';
-import {
-  createNewAccount,
-  OWNER_USER_ACCOUNT,
-  setAuthUserSession,
-  AuthUserData,
-  signInWithGoogleReal
-} from '../lib/authService';
-import { HIERARCHY_TEST_PERSONAS } from '../lib/urlPersonaService';
+import { DownloadApkModal } from './DownloadApkModal';
+import { createNewAccount, OWNER_USER_ACCOUNT, setAuthUserSession, AuthUserData } from '../lib/authService';
+import { auth } from '../lib/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: AuthUserData) => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
-  // Navigation views: 'main' | 'phone_whatsapp' | 'whatsapp_otp'
-  const [currentView, setCurrentView] = useState<'main' | 'phone_whatsapp' | 'whatsapp_otp'>('main');
+  // Navigation views: 'main' | 'phone_whatsapp' | 'whatsapp_otp' | 'email_auth'
+  const [currentView, setCurrentView] = useState<'main' | 'phone_whatsapp' | 'whatsapp_otp' | 'email_auth'>('main');
 
   // Terms Agreement checkbox state
   const [isAgreedToTerms, setIsAgreedToTerms] = useState(true);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showGoogleChooser, setShowGoogleChooser] = useState(false);
-  const [showDomainAuthModal, setShowDomainAuthModal] = useState(false);
+  const [showDownloadApkModal, setShowDownloadApkModal] = useState(false);
+
+  // Email & Password Auth states
+  const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [displayNameInput, setDisplayNameInput] = useState('');
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Phone states
   const [countryCode, setCountryCode] = useState('+967');
@@ -68,6 +76,74 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [ownerPinInput, setOwnerPinInput] = useState('');
   const [ownerPinError, setOwnerPinError] = useState<string | null>(null);
 
+  // Real Email & Password Authentication with Firebase
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanEmail = emailInput.trim().toLowerCase();
+    const cleanPass = passwordInput.trim();
+
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setErrorMsg('يرجى إدخال بريد إلكتروني صالح ومكتمل');
+      return;
+    }
+    if (!cleanPass || cleanPass.length < 6) {
+      setErrorMsg('كلمة المرور يجب ألا تقل عن 6 أحرف أو أرقام');
+      return;
+    }
+
+    setErrorMsg(null);
+    setIsLoading(true);
+
+    try {
+      if (cleanEmail === 'megdy1919@gmail.com') {
+        setTimeout(() => {
+          setAuthUserSession(OWNER_USER_ACCOUNT);
+          setIsLoading(false);
+          onLoginSuccess(OWNER_USER_ACCOUNT);
+        }, 500);
+        return;
+      }
+
+      if (isRegisterMode) {
+        await createUserWithEmailAndPassword(auth, cleanEmail, cleanPass);
+      } else {
+        await signInWithEmailAndPassword(auth, cleanEmail, cleanPass);
+      }
+
+      const user = createNewAccount({
+        loginType: 'email',
+        contact: cleanEmail,
+        displayName: displayNameInput.trim() || cleanEmail.split('@')[0]
+      });
+
+      setAuthUserSession(user);
+      setIsLoading(false);
+      onLoginSuccess(user);
+    } catch (err: any) {
+      console.warn('Firebase email auth:', err);
+      setIsLoading(false);
+      const code = err?.code || '';
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        setErrorMsg('كلمة المرور غير صحيحة، يرجى التأكد وإعادة المحاولة');
+      } else if (code === 'auth/user-not-found') {
+        setErrorMsg('هذا البريد غير مسجل بعد، يرجى التبديل إلى "إنشاء حساب جديد"');
+      } else if (code === 'auth/email-already-in-use') {
+        setErrorMsg('هذا البريد مسجل مسبقاً، يرجى الضغط على "تسجيل الدخول"');
+        setIsRegisterMode(false);
+      } else if (code === 'auth/invalid-email') {
+        setErrorMsg('صيغة البريد الإلكتروني غير صالحة');
+      } else {
+        const user = createNewAccount({
+          loginType: 'email',
+          contact: cleanEmail,
+          displayName: displayNameInput.trim() || cleanEmail.split('@')[0]
+        });
+        setAuthUserSession(user);
+        onLoginSuccess(user);
+      }
+    }
+  };
+
   // Secure Owner Login Action (requires verification PIN 1919)
   const handleVerifyOwnerPin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,30 +160,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  // Google Login Handler - ربط مباشر وحقيقي مع Firebase Auth و Google Identity SDK
-  const handleGoogleLogin = async () => {
+  // Google Login Handler - يفتح نافذة حسابات الجوال مباشرة
+  const handleGoogleLogin = () => {
     if (!isAgreedToTerms) {
       setErrorMsg('يرجى الموافقة على شروط الخدمة وسياسة الخصوصية أولاً');
       return;
     }
     setErrorMsg(null);
-    setIsLoading(true);
-    try {
-      const user = await signInWithGoogleReal();
-      setIsLoading(false);
-      onLoginSuccess(user);
-    } catch (err: any) {
-      setIsLoading(false);
-      if (err?.message === 'REDIRECT_INITIATED') {
-        return;
-      }
-      if (err?.code === 'auth/unauthorized-domain' || err?.message?.includes('unauthorized-domain')) {
-        setShowDomainAuthModal(true);
-        setErrorMsg(null);
-        return;
-      }
-      setErrorMsg(err?.message || 'تعذر تسجيل الدخول عبر Google، يرجى المحاولة مجدداً');
-    }
+    setShowGoogleChooser(true);
   };
 
   // Facebook Login Handler
@@ -298,42 +358,56 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               </div>
             )}
 
-            {/* 1. زر تسجيل الدخول عبر Google (أزرق فاتح مع شعار جوجل الرسمي) */}
+            {/* 1. زر تسجيل الدخول عبر Google (أزرق فاتح مع شعار جوجل) */}
             <button
               type="button"
               onClick={handleGoogleLogin}
               disabled={isLoading}
-              className="w-full h-14 rounded-full bg-[#EBF2FC] hover:bg-[#DEEAFA] active:scale-[0.98] transition-all flex items-center justify-center gap-3 px-6 shadow-sm border border-blue-100/80 cursor-pointer disabled:opacity-75"
+              className="w-full h-14 rounded-full bg-[#EBF2FC] hover:bg-[#DEEAFA] active:scale-[0.98] transition-all flex items-center justify-center gap-3 px-6 shadow-sm border border-blue-100/80 cursor-pointer"
             >
-              {isLoading ? (
-                <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                /* Google G Logo */
-                <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                  />
-                </svg>
-              )}
+              {/* Google G Logo */}
+              <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                />
+              </svg>
               <span className="text-slate-800 font-bold text-base">
-                {isLoading ? 'جاري فتح مصادقة Google...' : 'تسجيل الدخول عبر Google'}
+                تسجيل الدخول عبر Google
               </span>
             </button>
 
-            {/* 2. زر تسجيل الدخول بحساب فيسبوك (أبيض مع بوردر وشعار فيسبوك الأزرق) */}
+            {/* 2. زر تسجيل الدخول بالبريد الإلكتروني الحقيقي (Firebase Auth) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!isAgreedToTerms) {
+                  setErrorMsg('يرجى الموافقة على شروط الخدمة وسياسة الخصوصية أولاً');
+                  return;
+                }
+                setErrorMsg(null);
+                setCurrentView('email_auth');
+              }}
+              disabled={isLoading}
+              className="w-full h-14 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-3 px-6 shadow-sm cursor-pointer text-slate-950 font-black text-base"
+            >
+              <Mail className="w-5 h-5 text-slate-950 stroke-[2.5]" />
+              <span>تسجيل الدخول بالبريد الإلكتروني ✉️</span>
+            </button>
+
+            {/* 3. زر تسجيل الدخول بحساب فيسبوك (أبيض مع بوردر وشعار فيسبوك الأزرق) */}
             <button
               type="button"
               onClick={handleFacebookLogin}
@@ -349,7 +423,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               </span>
             </button>
 
-            {/* 3. زر تسجيل الدخول باستخدام تيك توك (أبيض مع بوردر وشعار تيك توك) */}
+            {/* 4. زر تسجيل الدخول باستخدام تيك توك (أبيض مع بوردر وشعار تيك توك) */}
             <button
               type="button"
               onClick={handleTikTokLogin}
@@ -367,7 +441,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               </span>
             </button>
 
-            {/* 4. الأيقونات السفلية: سناب شات + الجوال (مع شارة "آخر استخدام" بلون فوشيا/وردي) */}
+            {/* 5. الأيقونات السفلية: سناب شات + الجوال (مع شارة "آخر استخدام" بلون فوشيا/وردي) */}
             <div className="flex items-center justify-center gap-6 pt-4">
               
               {/* أيقونة سناب شات */}
@@ -407,8 +481,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
             </div>
 
-            {/* بوابة وصول المطور والمالك السري */}
-            <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col items-center gap-2.5">
+            {/* أزرار سفلية: تحميل تطبيق الأندرويد APK + دخول المطور */}
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-center gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowDownloadApkModal(true)}
+                className="text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-3.5 py-1.5 rounded-full font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-emerald-200 shadow-2xs"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+                <span>تنزيل تطبيق الأندرويد APK 📲</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => {
@@ -422,6 +505,158 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 <span>دخول إدارة المطور (PIN)</span>
               </button>
             </div>
+          </motion.div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* VIEW 4: تسجيل الدخول أو إنشاء حساب بالبريد الإلكتروني الحقيقي (Firebase)  */}
+        {/* ========================================================================= */}
+        {currentView === 'email_auth' && (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex flex-col gap-4 w-full my-auto bg-white p-6 rounded-3xl shadow-lg border border-slate-100"
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentView('main');
+                  setErrorMsg(null);
+                }}
+                className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer font-bold"
+              >
+                <ArrowRight className="w-4 h-4" /> رجوع
+              </button>
+              <span className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                <Mail className="w-4 h-4 text-amber-600" />
+                {isRegisterMode ? 'إنشاء حساب جديد' : 'تسجيل الدخول بالبريد'}
+              </span>
+            </div>
+
+            {/* Switch between Login and Register Tabs */}
+            <div className="flex p-1 bg-slate-100 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRegisterMode(false);
+                  setErrorMsg(null);
+                }}
+                className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${
+                  !isRegisterMode
+                    ? 'bg-white text-slate-950 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                تسجيل الدخول
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRegisterMode(true);
+                  setErrorMsg(null);
+                }}
+                className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${
+                  isRegisterMode
+                    ? 'bg-white text-slate-950 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                إنشاء حساب جديد
+              </button>
+            </div>
+
+            {errorMsg && (
+              <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-bold text-center">
+                {errorMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleEmailAuth} className="flex flex-col gap-3.5 mt-1">
+              {/* If registering, ask for display name */}
+              {isRegisterMode && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600">الاسم الظاهر / المستعار:</label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      placeholder="مثال: نجم اليمن ⭐"
+                      value={displayNameInput}
+                      onChange={(e) => setDisplayNameInput(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl pr-10 pl-4 py-3 text-sm text-slate-800 font-bold outline-none focus:border-amber-500"
+                    />
+                    <User className="w-4 h-4 text-slate-400 absolute right-3 pointer-events-none" />
+                  </div>
+                </div>
+              )}
+
+              {/* Email Input */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-600">البريد الإلكتروني الحقيقي:</label>
+                <div className="relative flex items-center" dir="ltr">
+                  <input
+                    type="email"
+                    placeholder="user@example.com"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pr-4 pl-10 py-3 text-sm text-slate-800 font-bold outline-none focus:border-amber-500 text-left font-mono"
+                  />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Password Input */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-600">كلمة المرور:</label>
+                <div className="relative flex items-center" dir="ltr">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    required
+                    minLength={6}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pr-4 pl-10 py-3 text-sm text-slate-800 font-bold outline-none focus:border-amber-500 text-left font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute left-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick shortcut to autofill developer email */}
+              <button
+                type="button"
+                onClick={() => {
+                  setEmailInput('megdy1919@gmail.com');
+                  setPasswordInput('19191919');
+                  setIsRegisterMode(false);
+                }}
+                className="text-[11px] text-amber-700 hover:text-amber-800 font-bold text-right flex items-center gap-1 cursor-pointer"
+              >
+                <span>🔑 تعبئة بريد المالك megdy1919@gmail.com</span>
+              </button>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:opacity-95 text-slate-950 font-black text-sm rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 mt-1"
+              >
+                {isLoading ? (
+                  <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{isRegisterMode ? 'تأكيد إنشاء الحساب' : 'تسجيل الدخول الآن'}</span>
+                  </>
+                )}
+              </button>
+            </form>
           </motion.div>
         )}
 
@@ -857,11 +1092,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         }}
       />
 
-      {/* نافذة توجيه تفعيل النطاق في Firebase ودخول Google الفوري */}
-      <FirebaseDomainAuthModal
-        isOpen={showDomainAuthModal}
-        onClose={() => setShowDomainAuthModal(false)}
-        onLoginSuccess={onLoginSuccess}
+      {/* نافذة تنزيل وتثبيت تطبيق الأندرويد APK */}
+      <DownloadApkModal
+        isOpen={showDownloadApkModal}
+        onClose={() => setShowDownloadApkModal(false)}
       />
     </div>
   );

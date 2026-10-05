@@ -15,16 +15,7 @@ export function lazyWithRetry<T extends React.ComponentType<any>>(
     try {
       const module = await componentImport();
       sessionStorage.removeItem(storageKey);
-      const resolved =
-        module?.default ||
-        (componentName ? module?.[componentName] : null) ||
-        module?.VoiceRoomScreen ||
-        module?.HomeScreen ||
-        module?.ExploreScreen ||
-        module?.GamesScreen ||
-        module?.MessagesScreen ||
-        (typeof module === 'function' ? module : null) ||
-        (() => React.createElement('div', null));
+      const resolved = module?.default || (componentName ? module?.[componentName] : null) || module?.VoiceRoomScreen || module;
       return { default: resolved };
     } catch (error: any) {
       console.warn(`[lazyWithRetry] Initial load failed for ${componentName || 'component'}, retrying in 400ms...`, error);
@@ -34,16 +25,7 @@ export function lazyWithRetry<T extends React.ComponentType<any>>(
         await new Promise((resolve) => setTimeout(resolve, 400));
         const retryModule = await componentImport();
         sessionStorage.removeItem(storageKey);
-        const resolved =
-          retryModule?.default ||
-          (componentName ? retryModule?.[componentName] : null) ||
-          retryModule?.VoiceRoomScreen ||
-          retryModule?.HomeScreen ||
-          retryModule?.ExploreScreen ||
-          retryModule?.GamesScreen ||
-          retryModule?.MessagesScreen ||
-          (typeof retryModule === 'function' ? retryModule : null) ||
-          (() => React.createElement('div', null));
+        const resolved = retryModule?.default || (componentName ? retryModule?.[componentName] : null) || retryModule?.VoiceRoomScreen || retryModule;
         return { default: resolved };
       } catch (retryError: any) {
         console.error(`[lazyWithRetry] Retry failed for ${componentName || 'component'}:`, retryError);

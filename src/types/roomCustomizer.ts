@@ -18,7 +18,6 @@ export interface MainRoomCustomizerConfig {
   speakingRingColor: string;
   speakingRingWidth: number; // 1 to 8 px
   speakingWaveformStyle: SpeakingWaveformStyle;
-  speakingAuraTheme?: string;
   speakingPulseSpeed: number; // 0.5s to 3s (duration)
   speakingScaleMultiplier: number; // 1.05 to 1.4
 

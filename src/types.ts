@@ -24,15 +24,11 @@ export interface UserProfileData {
   avatarUrl: string;
   coverUrl?: string;
   country?: string;
-  age?: number;
-  gender?: 'male' | 'female';
   bio: string;
   isOnline: boolean;
   level: number;
   vipTier: string;
   vipLevel?: string;
-  superLegendLevel?: string;
-  nickname?: string;
   badges: BadgeInfo[];
   stats: {
     visitors: number;

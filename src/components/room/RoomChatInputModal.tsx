@@ -113,7 +113,7 @@ export const RoomChatInputModal: React.FC<RoomChatInputModalProps> = ({
     <AnimatePresence>
       {isOpen && (
         <div
-          className="fixed inset-x-0 z-50 flex items-end justify-center bg-black/50 cursor-default select-none pointer-events-auto transition-opacity duration-75"
+          className="fixed inset-x-0 z-50 flex items-end justify-center bg-transparent cursor-default select-none pointer-events-auto transition-opacity duration-75"
           style={{
             top: `${viewportMetrics.offsetTop}px`,
             height: `${viewportMetrics.height}px`,
@@ -130,7 +130,7 @@ export const RoomChatInputModal: React.FC<RoomChatInputModalProps> = ({
           <div
             dir="rtl"
             onClick={(e) => e.stopPropagation()}
-            className={`w-full max-w-md bg-[#121827] border-t border-x border-white/20 px-3 pt-2.5 rounded-t-2xl shadow-2xl pointer-events-auto transform-gpu ${
+            className={`w-full max-w-md bg-[#0e1424]/95 border-t border-white/15 px-3 pt-2.5 rounded-t-2xl shadow-2xl pointer-events-auto transform-gpu ${
               viewportMetrics.keyboardOpen
                 ? 'pb-2'
                 : 'pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]'

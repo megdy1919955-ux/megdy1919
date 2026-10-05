@@ -1,3 +1,5 @@
+import { getApiUrl } from './apiConfig';
+
 export interface AgencyInvitation {
   id: string;
   hostId: string;
@@ -337,6 +339,20 @@ export function sendNewInvitation(params: {
     console.error('Failed to sync invitation messages to chats:', err);
   }
 
+  // مزامنة فورية مع السيرفر المركزي عبر POST /api/agencies/invitations
+  fetch(getApiUrl('/api/agencies/invitations'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      hostId: newInvite.hostId,
+      agencyGid: newInvite.agencyGid || 'AG-101',
+      agencyName: newInvite.agencyName || 'وكالة النخبة الملكية',
+      inviterType: newInvite.inviterType,
+      inviterId: newInvite.inviterId || '1001010',
+      inviterName: newInvite.inviterName || 'سلطان الدوسري'
+    })
+  }).catch((err) => console.warn('Server invitation sync notice:', err));
+
   return newInvite;
 }
 
@@ -375,6 +391,23 @@ export function acceptInvitation(inviteId: string): boolean {
     saveBroadcastersList([newMember, ...currentList]);
   }
 
+  // مزامنة فورية مع السيرفر المركزي عبر POST /api/agencies/invitations/:inviteId/respond
+  fetch(getApiUrl(`/api/agencies/invitations/${encodeURIComponent(inviteId)}/respond`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'accept',
+      userId: target.hostId
+    })
+  })
+    .then((res) => res.json())
+    .then(() => {
+      window.dispatchEvent(new Event('hierarchy_permissions_updated'));
+    })
+    .catch((err) => console.warn('Server accept invitation sync notice:', err));
+
+  window.dispatchEvent(new Event('hierarchy_permissions_updated'));
+
   return true;
 }
 
@@ -385,5 +418,62 @@ export function rejectInvitation(inviteId: string): boolean {
 
   target.status = 'rejected';
   saveAgencyInvitations([...currentInvites]);
+
+  // مزامنة الرفض مع السيرفر المركزي
+  fetch(getApiUrl(`/api/agencies/invitations/${encodeURIComponent(inviteId)}/respond`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'reject',
+      userId: target.hostId
+    })
+  }).catch((err) => console.warn('Server reject invitation sync notice:', err));
+
   return true;
 }
+
+/**
+ * جلب واستعلام الدعوات المركزية من السيرفر ومزامنتها محلياً للمستخدم
+ * الرابط: GET /api/agencies/invitations/:userId
+ */
+export async function syncUserServerInvitations(userId: string): Promise<AgencyInvitation[]> {
+  if (!userId) return getAgencyInvitations();
+  try {
+    const res = await fetch(getApiUrl(`/api/agencies/invitations/${encodeURIComponent(userId.trim())}`));
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.invitations) && data.invitations.length > 0) {
+        const local = getAgencyInvitations();
+        let changed = false;
+        data.invitations.forEach((srvInv: any) => {
+          const exists = local.some((l) => l.id === srvInv.id);
+          if (!exists) {
+            local.unshift({
+              id: srvInv.id,
+              hostId: srvInv.hostId,
+              hostName: srvInv.hostName || `مضيف #${srvInv.hostId}`,
+              hostAvatar: srvInv.hostAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+              agencyGid: srvInv.agencyGid || 'AG-101',
+              agencyName: srvInv.agencyName || 'وكالة النخبة الملكية',
+              inviterType: srvInv.inviterType || 'agency',
+              inviterId: srvInv.inviterId || '1001010',
+              inviterName: srvInv.inviterName || 'سلطان الدوسري',
+              message: srvInv.message || `دعوة انضمام رسمية إلى ${srvInv.agencyName || 'الوكالة'}`,
+              status: srvInv.status || 'pending',
+              createdAt: 'الآن',
+              terms: OFFICIAL_AGENCY_TERMS
+            });
+            changed = true;
+          }
+        });
+        if (changed) {
+          saveAgencyInvitations(local);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to sync server invitations:', err);
+  }
+  return getAgencyInvitations();
+}
+

@@ -86,15 +86,19 @@ export function syncMediaSessionState(roomTitle: string = 'غرفة صوتية �
   }
 }
 
-// WebRTC ICE Configuration (Free Public STUN servers for robust P2P audio streaming between any mobile and desktop)
+// إعدادات الـ ICE Servers في كود إنشاء الـ PeerConnection
 const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
+    // خادم مجاني من Google لتحديد الـ IP العام للهاتف (STUN)
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' }
-  ]
+    // ملاحظة: يُفضل مستقبلاً إضافة خادم TURN خاص للتغلب على الشبكات المغلقة جداً (Symmetric NAT)
+  ],
+  iceCandidatePoolSize: 10,
+  bundlePolicy: 'max-bundle'
 };
 
 export class RealtimeVoiceEngine {
@@ -493,6 +497,39 @@ export class RealtimeVoiceEngine {
     this.broadcastSeatUpdate();
   }
 
+  public get localAudioStream(): MediaStream | null {
+    return this.localStream || this.rawMicStream;
+  }
+
+  public set localAudioStream(stream: MediaStream | null) {
+    this.localStream = stream;
+  }
+
+  public stopLocalAudioStream() {
+    if (this.localAudioStream) {
+      this.localAudioStream.getTracks().forEach(track => {
+        track.stop(); // إيقاف المايك في المتصفح كلياً
+      });
+      this.localStream = null;
+    }
+    if (this.rawMicStream) {
+      this.rawMicStream.getTracks().forEach(track => {
+        try { track.stop(); } catch {}
+      });
+      this.rawMicStream = null;
+    }
+  }
+
+  public leaveCurrentSeat(): void {
+    this.updateSeat(null);
+    this.stopLocalAudioStream();
+    this.disableMicrophone();
+  }
+
+  public toggleMute(shouldMute: boolean): void {
+    this.setMute(shouldMute);
+  }
+
   // Completely shut down and stop physical microphone hardware
   public disableMicrophone(): void {
     try {
@@ -574,7 +611,7 @@ export class RealtimeVoiceEngine {
             lastSpeaking = false;
             this.sendSpeakingState(false, 0);
           }
-          this.animFrameId = requestAnimationFrame(checkVolume);
+          this.animFrameId = window.setTimeout(checkVolume, 150);
           return;
         }
 
@@ -587,20 +624,20 @@ export class RealtimeVoiceEngine {
 
         // Strict Gate verification: If gate is closed (ambient noise/silence), mic vibration is completely stopped
         const isGateOpen = this.noiseProcessor ? this.noiseProcessor.isGateOpen() : true;
-        const isSpeaking = isGateOpen && !this.isMuted && avg > 13;
+        const isSpeaking = isGateOpen && !this.isMuted && avg > 14;
         const audioLevel = isSpeaking ? Math.min(100, Math.round((avg / 128) * 100)) : 0;
 
         const now = Date.now();
-        if (isSpeaking !== lastSpeaking || (isSpeaking && now - lastTimeSent > 120)) {
+        if (isSpeaking !== lastSpeaking || (isSpeaking && now - lastTimeSent > 160)) {
           lastSpeaking = isSpeaking;
           lastTimeSent = now;
           this.sendSpeakingState(isSpeaking, audioLevel);
         }
 
-        this.animFrameId = requestAnimationFrame(checkVolume);
+        this.animFrameId = window.setTimeout(checkVolume, 50);
       };
 
-      this.animFrameId = requestAnimationFrame(checkVolume);
+      this.animFrameId = window.setTimeout(checkVolume, 50);
     } catch (err) {
       console.warn('Audio analysis setup warning:', err);
     }
@@ -746,9 +783,14 @@ export class RealtimeVoiceEngine {
         // 2. HTMLAudioElement for mobile background keep-alive & fallback
         let audioEl = this.remoteAudioElements.get(targetPeerId);
         if (!audioEl) {
+          // إجبار عنصر الصوت على تشغيل صوت الوسائط العريض والسماعة الخارجية
           audioEl = new Audio();
           audioEl.autoplay = true;
           (audioEl as any).playsInline = true;
+          (audioEl as any).sinkId = ''; // استخدام المخرج الافتراضي للوسائط
+          if (typeof (audioEl as any).setSinkId === 'function') {
+            (audioEl as any).setSinkId('').catch(() => {});
+          }
           this.remoteAudioElements.set(targetPeerId, audioEl);
         }
         audioEl.srcObject = remoteStream;
@@ -881,7 +923,10 @@ export class RealtimeVoiceEngine {
 
   // Cleanup on leave
   public destroy() {
-    if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+    if (this.animFrameId) {
+      clearTimeout(this.animFrameId);
+      this.animFrameId = null;
+    }
     if (this.noiseProcessor) {
       this.noiseProcessor.destroy();
       this.noiseProcessor = null;

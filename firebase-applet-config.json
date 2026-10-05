@@ -1,10 +1,10 @@
 {
   "projectId": "ainajm",
-  "appId": "1:839763035111:web:c64a1ab735c082f5b07342",
+  "appId": "1:839763035111:web:e7ec582dbe4ad37eb07342",
   "apiKey": "AIzaSyCDfRlg4X_RroML7wZ3TspLejFur7vXTEE",
   "authDomain": "ainajm.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
   "storageBucket": "ainajm.firebasestorage.app",
   "messagingSenderId": "839763035111",
-  "measurementId": "G-R4HE8S8B9J",
-  "firestoreDatabaseId": "(default)"
+  "measurementId": "G-9N3CH6HK5N"
 }

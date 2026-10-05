@@ -58,188 +58,188 @@
       },
       "required": ["roomId", "ownerId", "wallpaperUrl"]
     },
-    "EmojiSlot": {
-      "title": "EmojiSlot",
-      "description": "Dynamic emoji box slot configured from dashboard and stored on server",
+    "RoomMessage": {
+      "title": "RoomMessage",
+      "description": "Real-time room chat message sent by users",
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique slot identifier"
+          "description": "Unique message ID"
         },
-        "slotIndex": {
-          "type": "number",
-          "description": "Grid box order index"
-        },
-        "name": {
+        "roomId": {
           "type": "string",
-          "description": "Display name of emoji"
+          "description": "Target room ID"
         },
-        "emoji": {
+        "userId": {
           "type": "string",
-          "description": "Emoji character or symbol"
+          "description": "Sender User ID"
         },
-        "iconUrl": {
+        "userName": {
           "type": "string",
-          "description": "Optional image or animation URL"
-        },
-        "category": {
-          "type": "string",
-          "description": "Tab category: classic, energy, vip, games"
-        },
-        "badge": {
-          "type": "string",
-          "description": "Optional badge like VIP, HOT, NEW"
-        },
-        "isVip": {
-          "type": "boolean",
-          "description": "Whether emoji requires VIP"
-        },
-        "animationType": {
-          "type": "string",
-          "description": "Animation preset for floating display"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Last update timestamp"
-        }
-      },
-      "required": ["id", "slotIndex", "emoji"]
-    },
-    "SyncMetadata": {
-      "title": "SyncMetadata",
-      "description": "Lightweight signal metadata for silent background sync of emojis, cards, etc.",
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Signal identifier e.g. emojis_sync or cards_sync"
-        },
-        "version": {
-          "type": "number",
-          "description": "Incremental version tag"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp of modification"
-        }
-      },
-      "required": ["id", "version"]
-    },
-    "UserProfile": {
-      "title": "UserProfile",
-      "description": "User account profile with live synchronized wallet balance, coins, diamonds, and VIP tier",
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "User unique identifier e.g. 1919955 or Google UID",
-          "maxLength": 128
-        },
-        "name": {
-          "type": "string",
-          "description": "User display name",
-          "maxLength": 100
+          "description": "Sender Display Name"
         },
         "avatar": {
           "type": "string",
-          "description": "Avatar URL",
-          "maxLength": 5000000
+          "description": "Sender Avatar URL"
         },
-        "email": {
+        "text": {
           "type": "string",
-          "description": "Optional email address",
-          "maxLength": 200
+          "description": "Message content",
+          "maxLength": 500
         },
-        "phone": {
+        "userColor": {
           "type": "string",
-          "description": "Optional phone number",
-          "maxLength": 50
+          "description": "Text styling color"
         },
-        "age": {
-          "type": "number",
-          "description": "User age in years"
-        },
-        "country": {
+        "bubbleSkin": {
           "type": "string",
-          "description": "User country e.g. اليمن, السعودية",
-          "maxLength": 100
+          "description": "Equipped bubble skin"
         },
-        "hasCompletedOnboarding": {
+        "isHost": {
           "type": "boolean",
-          "description": "Whether user completed initial profile onboarding"
+          "description": "Whether sender is room host"
         },
-        "googleUid": {
-          "type": "string",
-          "description": "Google UID from Firebase Auth",
-          "maxLength": 128
-        },
-        "coins": {
+        "timestamp": {
           "type": "number",
-          "description": "Current coins balance in wallet"
-        },
-        "diamonds": {
-          "type": "number",
-          "description": "Current diamonds balance in wallet"
-        },
-        "level": {
-          "type": "number",
-          "description": "Account level"
-        },
-        "sender_exp": {
-          "type": "number",
-          "description": "Total supporter/sender experience points accumulated from sending gifts"
-        },
-        "sender_level": {
-          "type": "number",
-          "description": "Supporter/sender level based on sender_exp"
-        },
-        "receiver_exp": {
-          "type": "number",
-          "description": "Total receiver/charm experience points accumulated from receiving gifts"
-        },
-        "receiver_level": {
-          "type": "number",
-          "description": "Receiver/charm level based on receiver_exp"
-        },
-        "vipTier": {
-          "type": "string",
-          "description": "VIP level tier e.g. VIP8",
-          "maxLength": 20
-        },
-        "role": {
-          "type": "string",
-          "description": "Access role e.g. super_admin or regular_user",
-          "maxLength": 50
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Last update timestamp"
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Creation timestamp"
+          "description": "Unix timestamp in ms"
         }
       },
-      "required": ["id", "name", "coins"]
+      "required": ["id", "roomId", "userName", "text", "timestamp"]
+    },
+    "RoomSeat": {
+      "title": "RoomSeat",
+      "description": "State of a mic seat inside the voice room",
+      "type": "object",
+      "properties": {
+        "seatId": {
+          "type": "number",
+          "description": "Mic seat number 1-20"
+        },
+        "roomId": {
+          "type": "string",
+          "description": "Target room ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Occupant User ID"
+        },
+        "userName": {
+          "type": "string",
+          "description": "Occupant Name"
+        },
+        "avatar": {
+          "type": "string",
+          "description": "Occupant Avatar"
+        },
+        "isMuted": {
+          "type": "boolean",
+          "description": "Whether mic is muted"
+        },
+        "isSpeaking": {
+          "type": "boolean",
+          "description": "Whether occupant is speaking"
+        },
+        "isLocked": {
+          "type": "boolean",
+          "description": "Whether seat is locked by host"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Last update timestamp in ms"
+        }
+      },
+      "required": ["seatId", "roomId"]
+    },
+    "RoomCinema": {
+      "title": "RoomCinema",
+      "description": "Synchronized video and cinema watch together state",
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string",
+          "description": "Target room ID"
+        },
+        "videoId": {
+          "type": "string",
+          "description": "Unique video ID"
+        },
+        "videoTitle": {
+          "type": "string",
+          "description": "Video Title"
+        },
+        "youtubeId": {
+          "type": "string",
+          "description": "YouTube Video ID"
+        },
+        "isPlaying": {
+          "type": "boolean",
+          "description": "Playback state"
+        },
+        "currentTime": {
+          "type": "number",
+          "description": "Playback timestamp in seconds"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Last update timestamp in ms"
+        }
+      },
+      "required": ["roomId"]
+    },
+    "RoomSignal": {
+      "title": "RoomSignal",
+      "description": "WebRTC P2P signaling message for audio and video streaming",
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string",
+          "description": "Target room ID"
+        },
+        "fromPeerId": {
+          "type": "string",
+          "description": "Sender Peer ID"
+        },
+        "toPeerId": {
+          "type": "string",
+          "description": "Recipient Peer ID"
+        },
+        "type": {
+          "type": "string",
+          "description": "Signal type: offer, answer, ice-candidate"
+        },
+        "payload": {
+          "type": "string",
+          "description": "JSON serialized SDP or ICE candidate"
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "Signal creation timestamp in ms"
+        }
+      },
+      "required": ["roomId", "fromPeerId", "toPeerId", "type", "payload", "timestamp"]
     }
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": "UserProfile",
-      "description": "Collection of user account profiles and live balances synchronized with Firebase Console and external dashboard"
-    },
     "/rooms/{roomId}": {
       "schema": "Room",
-      "description": "Collection of voice room documents indexed by roomId with theme and background data editable exclusively by the room owner"
+      "description": "Collection of voice room documents indexed by roomId"
     },
-    "/app_emojis/{slotId}": {
-      "schema": "EmojiSlot",
-      "description": "Collection of emoji slots managed by dashboard and synced in real-time to voice room"
+    "/rooms/{roomId}/messages/{messageId}": {
+      "schema": "RoomMessage",
+      "description": "Real-time room chat messages"
     },
-    "/app_meta/{metaDoc}": {
-      "schema": "SyncMetadata",
-      "description": "Lightweight signals for silent background sync (emojis, cards, etc.)"
+    "/rooms/{roomId}/seats/{seatId}": {
+      "schema": "RoomSeat",
+      "description": "Real-time mic seat allocation and speaking status"
+    },
+    "/rooms/{roomId}/cinema/current": {
+      "schema": "RoomCinema",
+      "description": "Live synchronized cinema video state"
+    },
+    "/rooms/{roomId}/signals/{signalId}": {
+      "schema": "RoomSignal",
+      "description": "Live WebRTC audio signaling packets"
     }
   }
 }

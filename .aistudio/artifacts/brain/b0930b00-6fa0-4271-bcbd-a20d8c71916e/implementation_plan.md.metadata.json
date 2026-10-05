@@ -1,0 +1,6 @@
+{
+  "summary":  "Implementation plan to resolve seat duplication and state synchronization issues when re-entering or minimizing voice rooms, and export the full, unmodified source code files as dedicated artifacts.",
+  "updatedAt":  "2026-10-02T17:20:39.824978807Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

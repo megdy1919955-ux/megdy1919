@@ -183,7 +183,8 @@ export function subscribeToRefundVault(callback: (balance: number) => void): () 
  * Check if a gift qualifies for Gift Cashback processing
  */
 export function isRefundGift(gift: GiftItem): boolean {
-  return Boolean(
+  if (!gift) return false;
+  return (
     gift.category === 'استرداد' ||
     gift.isLucky === true ||
     (gift.badge && (gift.badge.includes('استرداد') || gift.badge.includes('حظ') || gift.badge.includes('JACKPOT')))

@@ -57,9 +57,8 @@ export class UnifiedRealtimeVoiceEngine {
 
     const preferred = config.preferredDriver || 'auto';
 
-    // 2. Initialize ZEGOCLOUD Engine (Primary real-time cloud engine with AppID 2138622497)
-    // Default or explicitly requested 'zegocloud'
-    if (preferred === 'zegocloud' || preferred === 'auto') {
+    // 2. Initialize ZEGOCLOUD Engine only if explicitly requested
+    if (preferred === 'zegocloud') {
       this.zegoEngine = new ZegoVoiceEngine({
         appId: 2138622497,
         roomId: config.roomId,
@@ -87,8 +86,8 @@ export class UnifiedRealtimeVoiceEngine {
       this.activeDriver = 'agora';
     }
 
-    // High-fidelity native WebRTC engine when explicitly requested
-    if (preferred === 'webrtc') {
+    // High-fidelity native WebRTC engine (default / auto)
+    if (preferred === 'webrtc' || preferred === 'auto') {
       this.activeDriver = 'webrtc';
     }
 
@@ -319,6 +318,22 @@ export class UnifiedRealtimeVoiceEngine {
     }
   }
 
+  public stopLocalAudioStream(): void {
+    if ((this.webrtcEngine as any).stopLocalAudioStream) {
+      (this.webrtcEngine as any).stopLocalAudioStream();
+    }
+  }
+
+  public leaveCurrentSeat(): void {
+    this.updateSeat(null);
+    this.stopLocalAudioStream();
+    this.disableMicrophone();
+  }
+
+  public toggleMute(shouldMute: boolean): void {
+    this.setMute(shouldMute);
+  }
+
   // Completely shut down and stop physical microphone hardware
   public disableMicrophone(): void {
     this.isMuted = true;
@@ -329,6 +344,14 @@ export class UnifiedRealtimeVoiceEngine {
       this.agoraEngine.setMute(true);
     }
     this.webrtcEngine.disableMicrophone();
+  }
+
+  // Release microphone tracks and close audio contexts
+  public releaseMicrophone(): void {
+    this.disableMicrophone();
+    if ((this.webrtcEngine as any).releaseMicrophone) {
+      (this.webrtcEngine as any).releaseMicrophone();
+    }
   }
 
   public sendChat(text: string, badges?: any[], bubbleSkin?: string, msgId?: string): void {

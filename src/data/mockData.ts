@@ -1,13 +1,13 @@
 import { UserProfileData, VisitorUser, FriendUser, FollowerUser, LikeActivity } from '../types';
 
 export const INITIAL_USER_PROFILE: UserProfileData = {
-  name: 'أبو أمجد',
+  name: '(عابرسبيل)',
   userId: '1001001',
   avatarUrl: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=400',
   coverUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=1200',
-  bio: 'مدير الإدارة ومدير الوكالة الرسمية 👑 ⭐',
+  bio: '',
   isOnline: true,
-  level: 88,
+  level: 25,
   vipTier: 'VIP8',
   badges: [
     {

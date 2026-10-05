@@ -20,8 +20,7 @@ import {
   getSavedDeviceAccounts,
   OWNER_USER_ACCOUNT,
   createNewAccount,
-  setAuthUserSession,
-  signInWithGoogleReal
+  setAuthUserSession
 } from '../lib/authService';
 
 interface GoogleAccountChooserModalProps {
@@ -51,19 +50,6 @@ export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps>
       setIsProcessing(null);
       onSelectAccount(account);
     }, 450);
-  };
-
-  // إطلاق مصادقة Google الحقيقية الرسمية من Firebase
-  const handleLaunchRealGoogle = async () => {
-    setIsProcessing('real_google');
-    try {
-      const user = await signInWithGoogleReal();
-      setIsProcessing(null);
-      onSelectAccount(user);
-    } catch (err) {
-      setIsProcessing(null);
-      console.warn('Real Google signIn failed:', err);
-    }
   };
 
   // إضافة وتسجيل حساب Google جديد

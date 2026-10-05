@@ -22,14 +22,6 @@ import {
 import { ProfileTabContent } from './ProfileTabContent';
 import { EditProfileModal } from './EditProfileModal';
 import { UserProfileData } from '../types';
-import { getCurrentAuthUser, OWNER_DEV_ID } from '../lib/authService';
-import {
-  calculateLevelFromExp,
-  getSupporterTierInfo,
-  getCharmTierInfo,
-  listenToUserLevels,
-  UserLevelSnapshot
-} from '../lib/levelService';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -175,33 +167,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       window.removeEventListener('storage', syncUser);
     };
   }, [isOpen, isEditOpen, userProfile]);
-
-  const currentAuth = getCurrentAuthUser();
-  const effectiveUserId = user.id || currentAuth?.id || '1001001';
-  const isOwner = effectiveUserId === OWNER_DEV_ID || effectiveUserId === '1001001';
-
-  const [userLevels, setUserLevels] = useState<{ senderExp: number; receiverExp: number }>(() => {
-    return {
-      senderExp: currentAuth?.sender_exp ?? (isOwner ? 2475000 : 0),
-      receiverExp: currentAuth?.receiver_exp ?? (isOwner ? 1914000 : 0)
-    };
-  });
-
-  useEffect(() => {
-    if (!isOpen || !effectiveUserId) return;
-    const unsub = listenToUserLevels(effectiveUserId, (snapshot: UserLevelSnapshot) => {
-      setUserLevels({
-        senderExp: snapshot.senderExp,
-        receiverExp: snapshot.receiverExp
-      });
-    });
-    return () => unsub();
-  }, [isOpen, effectiveUserId]);
-
-  const senderCalc = calculateLevelFromExp(userLevels.senderExp);
-  const receiverCalc = calculateLevelFromExp(userLevels.receiverExp);
-  const senderTier = getSupporterTierInfo(senderCalc.level);
-  const receiverTier = getCharmTierInfo(receiverCalc.level);
 
   const handleCopyId = () => {
     navigator.clipboard.writeText(user.id || '77989080');
@@ -359,33 +324,37 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           </div>
         </div>
 
-        {/* Levels & Badges Strip - 1. VIP أولاً (إن وُجد) -> 2. الداعم (التاج والرقم فقط) -> 3. المدعوم (القلب والرقم فقط) */}
-        <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200/80 flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar shrink-0" dir="rtl">
-          <div className="flex items-center gap-1.5 flex-nowrap">
-            {/* 1. VIP Level Badge (يظهر إن وُجد فقط) */}
-            {Boolean(user.vipLevel && user.vipLevel !== 'none' && user.vipLevel !== '0') && (
-              <span className="bg-gradient-to-r from-slate-900 via-slate-800 to-amber-900 text-amber-300 font-black text-[9px] px-1.5 py-0.5 rounded-full shadow-2xs flex items-center gap-0.5 border border-amber-400/50 shrink-0">
-                <Crown className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
-                <span>{user.vipLevel}</span>
-              </span>
-            )}
-
-            {/* 2. الداعم (التاج والرقم فقط) */}
-            <span className={`${senderTier.badgeBg} ${senderTier.textColor} font-black text-[9px] px-1.5 py-0.5 rounded-full shadow-2xs flex items-center gap-0.5 border ${senderTier.badgeBorder} shrink-0`}>
-              <span className="text-[10px]">👑</span>
-              <span className="font-mono font-black">{senderCalc.level}</span>
+        {/* Levels & Badges Strip */}
+        <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200/80 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar shrink-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Super Legend Badge */}
+            <span className="bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-700 text-white font-black text-[11px] px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1 border border-amber-300/60">
+              <span>🐺</span>
+              <span>{user.superLegendLevel}</span>
             </span>
 
-            {/* 3. المدعوم (القلب والرقم فقط) */}
-            <span className={`${receiverTier.badgeBg} ${receiverTier.textColor} font-black text-[9px] px-1.5 py-0.5 rounded-full shadow-2xs flex items-center gap-0.5 border ${receiverTier.badgeBorder} shrink-0`}>
-              <span className="text-[10px]">💖</span>
-              <span className="font-mono font-black">{receiverCalc.level}</span>
+            {/* VIP Level Badge */}
+            <span className="bg-gradient-to-r from-slate-900 via-slate-800 to-amber-900 text-amber-300 font-black text-[11px] px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1 border border-amber-400/50">
+              <Crown className="w-3 h-3 fill-amber-400 text-amber-400" />
+              <span>{user.vipLevel}</span>
             </span>
 
-            {/* 4. إشارة وأمبولة العمر والجنس (أزرق ♂ / وردي ♀) بنفس مقاس الليبل تماماً */}
-            <span className="bg-sky-500 text-white font-black text-[9px] px-1.5 py-0.5 rounded-full shadow-2xs flex items-center gap-0.5 border border-sky-400/60 shrink-0 select-none">
-              <span className="text-[10px] leading-none">♂</span>
-              <span className="font-mono font-black">28</span>
+            {/* Wealth / Level Badge */}
+            <span className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black text-[11px] px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-yellow-300" />
+              <span>Lv.53</span>
+            </span>
+
+            {/* Charm Likes */}
+            <span className="bg-rose-50 text-rose-600 border border-rose-200 font-bold text-[11px] px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
+              <span className="font-mono">113</span>
+            </span>
+
+            {/* Gender / Age */}
+            <span className="bg-sky-50 text-sky-700 border border-sky-200 font-bold text-[11px] px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <span className="font-mono">25</span>
+              <span>♂</span>
             </span>
           </div>
 

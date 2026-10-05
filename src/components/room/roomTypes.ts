@@ -40,6 +40,7 @@ export interface BadgeItem {
 
 export interface ChatMessage {
   id: string;
+  userId?: string;
   userName: string;
   avatar?: string;
   text: string;
@@ -51,6 +52,10 @@ export interface ChatMessage {
   userAge?: number;
   heartLevel?: number;
   crownLevel?: number;
+  supporterLevel?: number;
+  charmLevel?: number;
+  sharesLevel?: number | string;
+  isSuperAdmin?: boolean;
   vipLevel?: string | number;
   nobleLevel?: string;
   isJoinMessage?: boolean;
@@ -61,7 +66,6 @@ export interface ChatMessage {
   giftIcon?: string;
   badges?: BadgeItem[];
   bubbleSkin?: BubbleSkinType;
-  isSystem?: boolean;
   replyTo?: {
     id: string;
     userName: string;
@@ -76,7 +80,6 @@ export interface RoomEntranceEvent {
   vipLevel: number | string;
   nobleLevel?: string;
   isOwner?: boolean;
-  isHost?: boolean;
   actionText?: string;
   timestamp?: number;
 }
@@ -158,65 +161,3 @@ export const getRibbonMilestoneTheme = (val: number = 0): RibbonMilestoneTheme =
     strokeColor: '#bfdbfe',
   };
 };
-
-export const getSpeakingAuraStyles = (aura: SpeakingAuraType = 'default') => {
-  switch (aura) {
-    case 'gold_fire':
-      return {
-        ring1Class: 'border-2 border-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.85)]',
-        ring2Class: 'border border-orange-400/70 shadow-[0_0_18px_rgba(249,115,22,0.5)]',
-        ring3Class: 'border border-dashed border-yellow-300/60',
-        avatarBorderClass: 'from-amber-400 via-yellow-300 to-amber-500 shadow-[0_0_18px_rgba(245,158,11,0.9)]',
-        scale1: [1, 1.25, 1],
-        opacity1: [0.85, 0.25, 0.85],
-        scale2: [1, 1.42, 1],
-        opacity2: [0.65, 0.1, 0.65],
-      };
-    case 'neon_purple':
-      return {
-        ring1Class: 'border-2 border-purple-400 shadow-[0_0_14px_rgba(168,85,247,0.85)]',
-        ring2Class: 'border border-pink-400/70 shadow-[0_0_18px_rgba(236,72,153,0.5)]',
-        ring3Class: 'border border-dashed border-fuchsia-300/60',
-        avatarBorderClass: 'from-purple-400 via-fuchsia-300 to-pink-500 shadow-[0_0_18px_rgba(168,85,247,0.9)]',
-        scale1: [1, 1.25, 1],
-        opacity1: [0.85, 0.25, 0.85],
-        scale2: [1, 1.42, 1],
-        opacity2: [0.65, 0.1, 0.65],
-      };
-    case 'cyan_plasma':
-      return {
-        ring1Class: 'border-2 border-cyan-400 shadow-[0_0_14px_rgba(6,182,212,0.85)]',
-        ring2Class: 'border border-teal-400/70 shadow-[0_0_18px_rgba(20,184,166,0.5)]',
-        ring3Class: 'border border-dashed border-emerald-300/60',
-        avatarBorderClass: 'from-cyan-400 via-teal-300 to-emerald-400 shadow-[0_0_18px_rgba(6,182,212,0.9)]',
-        scale1: [1, 1.25, 1],
-        opacity1: [0.85, 0.25, 0.85],
-        scale2: [1, 1.42, 1],
-        opacity2: [0.65, 0.1, 0.65],
-      };
-    case 'royal_ruby':
-      return {
-        ring1Class: 'border-2 border-rose-500 shadow-[0_0_14px_rgba(244,63,94,0.85)]',
-        ring2Class: 'border border-red-400/70 shadow-[0_0_18px_rgba(239,68,68,0.5)]',
-        ring3Class: 'border border-dashed border-pink-300/60',
-        avatarBorderClass: 'from-rose-500 via-pink-400 to-red-600 shadow-[0_0_18px_rgba(244,63,94,0.9)]',
-        scale1: [1, 1.25, 1],
-        opacity1: [0.85, 0.25, 0.85],
-        scale2: [1, 1.42, 1],
-        opacity2: [0.65, 0.1, 0.65],
-      };
-    case 'default':
-    default:
-      return {
-        ring1Class: 'border-[1px] border-emerald-400/40 shadow-[0_0_8px_rgba(52,211,153,0.3)]',
-        ring2Class: 'border-[0.75px] border-cyan-400/25 shadow-[0_0_6px_rgba(6,182,212,0.15)]',
-        ring3Class: 'border-[0.75px] border-dashed border-emerald-300/35',
-        avatarBorderClass: 'from-emerald-400/40 via-teal-300/30 to-emerald-400/40 shadow-[0_0_6px_rgba(52,211,153,0.25)] ring-1 ring-emerald-400/30',
-        scale1: [1, 1.14, 1],
-        opacity1: [0.6, 0.2, 0.6],
-        scale2: [1, 1.25, 1],
-        opacity2: [0.4, 0.05, 0.4],
-      };
-  }
-};
-
