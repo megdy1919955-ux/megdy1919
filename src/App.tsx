@@ -10,6 +10,8 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { ExitAppConfirmModal } from './components/ExitAppConfirmModal';
 import { ProfileShellSkeleton } from './components/common/ProfileShellSkeleton';
 import { getCurrentAuthUser, AuthUserData } from './lib/authService';
+import { App as CapApp } from '@capacitor/app';
+import { backNavigation } from './lib/backNavigation';
 
 const ProfileScreen = React.lazy(() => import('./components/ProfileScreen').then(m => ({ default: m.ProfileScreen })));
 const LoginScreen = React.lazy(() => import('./components/LoginScreen').then(m => ({ default: m.LoginScreen })));
@@ -23,8 +25,25 @@ export default function App() {
     };
 
     window.addEventListener('najm_auth_state_changed' as any, handleAuthChange);
+
+    // ربط زر الرجوع الفعلي وإيماءة سحب الرجوع في نظام أندرويد
+    let removeCapListener: (() => void) | null = null;
+    CapApp.addListener('backButton', () => {
+      backNavigation.goBack();
+    }).then((sub) => {
+      removeCapListener = () => sub.remove();
+    }).catch(() => {});
+
+    // دالة استدعاء مباشرة من ملف MainActivity.java عند ضغط زر الرجوع بالجوال
+    (window as any).handleAndroidHardwareBack = () => {
+      backNavigation.goBack();
+      return true;
+    };
+
     return () => {
       window.removeEventListener('najm_auth_state_changed' as any, handleAuthChange);
+      if (removeCapListener) removeCapListener();
+      delete (window as any).handleAndroidHardwareBack;
     };
   }, []);
 

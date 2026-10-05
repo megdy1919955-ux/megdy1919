@@ -7,6 +7,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LogOut, X, AlertTriangle } from 'lucide-react';
+import { App as CapApp } from '@capacitor/app';
 import { backNavigation } from '../lib/backNavigation';
 
 export const ExitAppConfirmModal: React.FC = () => {
@@ -32,27 +33,34 @@ export const ExitAppConfirmModal: React.FC = () => {
     });
   }, [isOpen]);
 
-  const handleConfirmExit = () => {
-    // Attempt standard ways to close window / tab
+  const handleConfirmExit = async () => {
+    setIsOpen(false);
+
+    // 1. Try Capacitor native App exit on Android/iOS
     try {
-      if (window.navigator && (window.navigator as any).app && (window.navigator as any).app.exitApp) {
-        (window.navigator as any).app.exitApp();
+      await CapApp.exitApp();
+      return;
+    } catch {}
+
+    // 2. Try native AndroidBridge interface from MainActivity.java
+    try {
+      if ((window as any).AndroidBridge && typeof (window as any).AndroidBridge.exitApp === 'function') {
+        (window as any).AndroidBridge.exitApp();
         return;
       }
     } catch {}
 
+    // 3. Fallback for Web / PWA
     try {
       window.close();
     } catch {}
 
-    // Fallback if browser security prevents window.close():
-    // Blank page or graceful goodbye screen
-    setIsOpen(false);
+    // 4. Graceful browser goodbye screen if tab cannot be closed by script
     document.body.innerHTML = `
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#0B0B12;color:#fff;font-family:sans-serif;text-align:center;padding:24px;">
         <div style="font-size:54px;margin-bottom:16px;">⭐</div>
         <h2 style="font-size:22px;font-weight:900;margin-bottom:8px;color:#FACC15;">تطبيق النجم الصوتي</h2>
-        <p style="font-size:15px;color:#94A3B8;max-width:320px;line-height:1.6;">تم تسجيل الخروج بنجاح. يمكنك إغلاق علامة التبويب أو التطبيق بأمان الآن.</p>
+        <p style="font-size:15px;color:#94A3B8;max-width:320px;line-height:1.6;">تم الخروج من التطبيق بنجاح. يمكنك إغلاق الصفحة بأمان الآن.</p>
         <button onclick="window.location.reload()" style="margin-top:24px;padding:12px 28px;background:#FACC15;color:#0B0B12;font-weight:bold;border:none;border-radius:12px;cursor:pointer;font-size:15px;">
           إعادة فتح التطبيق 🔄
         </button>

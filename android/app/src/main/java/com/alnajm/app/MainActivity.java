@@ -5,6 +5,7 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
@@ -15,6 +16,13 @@ import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
     private static final int PERMISSION_REQUEST_CODE = 1001;
+
+    public class AndroidBridgeInterface {
+        @JavascriptInterface
+        public void exitApp() {
+            runOnUiThread(() -> finishAffinity());
+        }
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -36,6 +44,9 @@ public class MainActivity extends BridgeActivity {
                 settings.setDatabaseEnabled(true);
                 settings.setMediaPlaybackRequiresUserGesture(false);
 
+                // Add Native JS Bridge for clean app exit & native control
+                webView.addJavascriptInterface(new AndroidBridgeInterface(), "AndroidBridge");
+
                 // Crucial for WebRTC: Allow Android WebView to capture microphone audio
                 webView.setWebChromeClient(new WebChromeClient() {
                     @Override
@@ -55,6 +66,22 @@ public class MainActivity extends BridgeActivity {
                 });
             }
         } catch (Exception ignored) {}
+    }
+
+    @Override
+    public void onBackPressed() {
+        try {
+            WebView webView = getBridge().getWebView();
+            if (webView != null) {
+                webView.evaluateJavascript("window.handleAndroidHardwareBack ? window.handleAndroidHardwareBack() : false", value -> {
+                    if ("false".equals(value) || "null".equals(value)) {
+                        super.onBackPressed();
+                    }
+                });
+                return;
+            }
+        } catch (Exception ignored) {}
+        super.onBackPressed();
     }
 
     private void requestAudioPermissions() {
