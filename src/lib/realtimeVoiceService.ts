@@ -154,8 +154,20 @@ export class RealtimeVoiceEngine {
   public connect() {
     try {
       this.onConnectionStatus?.('connecting');
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/audio-room`;
+
+      const isCapacitorOrLocal =
+        typeof window !== 'undefined' &&
+        (window.location.protocol === 'capacitor:' ||
+         window.location.host === 'localhost' ||
+         window.location.hostname === 'localhost' ||
+         window.location.hostname.includes('alnajm'));
+
+      const backendHost = isCapacitorOrLocal
+        ? 'ais-dev-5bh5aa6tllooxp5ls7semh-95128197478.europe-west2.run.app'
+        : window.location.host;
+
+      const wsProtocol = (isCapacitorOrLocal || window.location.protocol === 'https:') ? 'wss:' : 'ws:';
+      const wsUrl = `${wsProtocol}//${backendHost}/ws/audio-room`;
 
       this.ws = new WebSocket(wsUrl);
 

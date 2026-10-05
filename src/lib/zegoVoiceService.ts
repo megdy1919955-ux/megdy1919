@@ -78,7 +78,18 @@ export class ZegoVoiceEngine {
    */
   private async fetchZegoToken(): Promise<{ available?: boolean; token?: string | null; appId?: number; server?: string } | null> {
     try {
-      const res = await fetch(`/api/zego/token?userId=${encodeURIComponent(this.userId)}&roomId=${encodeURIComponent(this.roomId)}`);
+      const isCapacitorOrLocal =
+        typeof window !== 'undefined' &&
+        (window.location.protocol === 'capacitor:' ||
+         window.location.host === 'localhost' ||
+         window.location.hostname === 'localhost' ||
+         window.location.hostname.includes('alnajm'));
+
+      const baseUrl = isCapacitorOrLocal
+        ? 'https://ais-dev-5bh5aa6tllooxp5ls7semh-95128197478.europe-west2.run.app'
+        : '';
+
+      const res = await fetch(`${baseUrl}/api/zego/token?userId=${encodeURIComponent(this.userId)}&roomId=${encodeURIComponent(this.roomId)}`);
       if (!res.ok) {
         return null;
       }
