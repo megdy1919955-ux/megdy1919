@@ -42,8 +42,8 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
-  // Navigation views: 'main' | 'phone_whatsapp' | 'whatsapp_otp' | 'email_auth'
-  const [currentView, setCurrentView] = useState<'main' | 'phone_whatsapp' | 'whatsapp_otp' | 'email_auth'>('main');
+  // Navigation views: 'email_auth' (default) | 'main' | 'phone_whatsapp' | 'whatsapp_otp'
+  const [currentView, setCurrentView] = useState<'email_auth' | 'main' | 'phone_whatsapp' | 'whatsapp_otp'>('email_auth');
 
   // Terms Agreement checkbox state
   const [isAgreedToTerms, setIsAgreedToTerms] = useState(true);
@@ -51,11 +51,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [showGoogleChooser, setShowGoogleChooser] = useState(false);
   const [showDownloadApkModal, setShowDownloadApkModal] = useState(false);
 
-  // Email & Password Auth states
+  // Email & Password Auth states (البريد الحقيقي، الاسم المستعار/الوهمي، العمر)
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [displayNameInput, setDisplayNameInput] = useState('');
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [ageInput, setAgeInput] = useState('24');
+  const [isRegisterMode, setIsRegisterMode] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
 
   // Phone states
@@ -76,19 +77,38 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [ownerPinInput, setOwnerPinInput] = useState('');
   const [ownerPinError, setOwnerPinError] = useState<string | null>(null);
 
-  // Real Email & Password Authentication with Firebase
+  // Real Email, Nickname & Age Authentication with Firebase & Firestore
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = emailInput.trim().toLowerCase();
     const cleanPass = passwordInput.trim();
 
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setErrorMsg('يرجى إدخال بريد إلكتروني صالح ومكتمل');
+    // التحقق من البريد الإلكتروني الحقيقي والواقعي
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      setErrorMsg('يرجى إدخال بريد إلكتروني حقيقي وصالح (مثال: name@gmail.com)');
       return;
     }
+
     if (!cleanPass || cleanPass.length < 6) {
       setErrorMsg('كلمة المرور يجب ألا تقل عن 6 أحرف أو أرقام');
       return;
+    }
+
+    // التحقق من الاسم المستعار والعمر عند إنشاء الحساب
+    let cleanAge = 24;
+    if (isRegisterMode) {
+      const cleanNick = displayNameInput.trim();
+      if (!cleanNick || cleanNick.length < 2) {
+        setErrorMsg('يرجى كتابة الاسم المستعار (الاسم الوهمي) الخاص بك');
+        return;
+      }
+      const parsedAge = parseInt(ageInput, 10);
+      if (isNaN(parsedAge) || parsedAge < 16 || parsedAge > 99) {
+        setErrorMsg('يرجى إدخال عمر صحيح بين 16 و 99 سنة');
+        return;
+      }
+      cleanAge = parsedAge;
     }
 
     setErrorMsg(null);
@@ -113,7 +133,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       const user = createNewAccount({
         loginType: 'email',
         contact: cleanEmail,
-        displayName: displayNameInput.trim() || cleanEmail.split('@')[0]
+        displayName: displayNameInput.trim() || cleanEmail.split('@')[0],
+        age: cleanAge
       });
 
       setAuthUserSession(user);
@@ -136,7 +157,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         const user = createNewAccount({
           loginType: 'email',
           contact: cleanEmail,
-          displayName: displayNameInput.trim() || cleanEmail.split('@')[0]
+          displayName: displayNameInput.trim() || cleanEmail.split('@')[0],
+          age: cleanAge
         });
         setAuthUserSession(user);
         onLoginSuccess(user);
@@ -524,13 +546,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   setCurrentView('main');
                   setErrorMsg(null);
                 }}
-                className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer font-bold"
+                className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer font-bold bg-slate-50 hover:bg-slate-100 px-2.5 py-1 rounded-xl transition-all"
               >
-                <ArrowRight className="w-4 h-4" /> رجوع
+                <span>طرق دخول أخرى 🌐</span>
               </button>
               <span className="text-sm font-black text-slate-900 flex items-center gap-1.5">
                 <Mail className="w-4 h-4 text-amber-600" />
-                {isRegisterMode ? 'إنشاء حساب جديد' : 'تسجيل الدخول بالبريد'}
+                {isRegisterMode ? 'إنشاء حساب رسمي جديد' : 'تسجيل الدخول بالبريد'}
               </span>
             </div>
 
@@ -573,42 +595,71 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             )}
 
             <form onSubmit={handleEmailAuth} className="flex flex-col gap-3.5 mt-1">
-              {/* If registering, ask for display name */}
+              {/* If registering, ask for display name and age */}
               {isRegisterMode && (
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-600">الاسم الظاهر / المستعار:</label>
-                  <div className="relative flex items-center">
-                    <input
-                      type="text"
-                      placeholder="مثال: نجم اليمن ⭐"
-                      value={displayNameInput}
-                      onChange={(e) => setDisplayNameInput(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl pr-10 pl-4 py-3 text-sm text-slate-800 font-bold outline-none focus:border-amber-500"
-                    />
-                    <User className="w-4 h-4 text-slate-400 absolute right-3 pointer-events-none" />
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-black text-slate-700 flex items-center justify-between">
+                      <span>الاسم المستعار (الاسم الوهمي):</span>
+                      <span className="text-[10px] text-amber-600 font-normal">يظهر في الرومات والملف الشخصي</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="text"
+                        placeholder="مثال: الصقر، الملك، نجمة الليل..."
+                        value={displayNameInput}
+                        onChange={(e) => setDisplayNameInput(e.target.value)}
+                        required
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pr-10 pl-4 py-3 text-sm text-slate-800 font-bold outline-none focus:border-amber-500 focus:bg-white transition-all shadow-xs"
+                      />
+                      <User className="w-4 h-4 text-amber-500 absolute right-3 pointer-events-none" />
+                    </div>
                   </div>
-                </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-black text-slate-700 flex items-center justify-between">
+                      <span>العمر (بالسنوات):</span>
+                      <span className="text-[10px] text-slate-400 font-normal">من 16 إلى 99 سنة</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        min={16}
+                        max={99}
+                        placeholder="مثال: 24"
+                        value={ageInput}
+                        onChange={(e) => setAgeInput(e.target.value)}
+                        required
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pr-10 pl-4 py-3 text-sm text-slate-800 font-bold outline-none focus:border-amber-500 focus:bg-white transition-all shadow-xs"
+                      />
+                      <Sparkles className="w-4 h-4 text-amber-500 absolute right-3 pointer-events-none" />
+                    </div>
+                  </div>
+                </>
               )}
 
-              {/* Email Input */}
+              {/* Real Email Input */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-600">البريد الإلكتروني الحقيقي:</label>
+                <label className="text-xs font-black text-slate-700 flex items-center justify-between">
+                  <span>البريد الإلكتروني الحقيقي:</span>
+                  <span className="text-[10px] text-emerald-600 font-normal">مطلوب للتوثيق واسترجاع الحساب</span>
+                </label>
                 <div className="relative flex items-center" dir="ltr">
                   <input
                     type="email"
-                    placeholder="user@example.com"
+                    placeholder="name@gmail.com"
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
                     required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pr-4 pl-10 py-3 text-sm text-slate-800 font-bold outline-none focus:border-amber-500 text-left font-mono"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pr-4 pl-10 py-3 text-sm text-slate-800 font-bold outline-none focus:border-amber-500 focus:bg-white transition-all text-left font-mono shadow-xs"
                   />
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+                  <Mail className="w-4 h-4 text-amber-500 absolute left-3 pointer-events-none" />
                 </div>
               </div>
 
               {/* Password Input */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-600">كلمة المرور:</label>
+                <label className="text-xs font-black text-slate-700">كلمة المرور:</label>
                 <div className="relative flex items-center" dir="ltr">
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -617,12 +668,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     onChange={(e) => setPasswordInput(e.target.value)}
                     required
                     minLength={6}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pr-4 pl-10 py-3 text-sm text-slate-800 font-bold outline-none focus:border-amber-500 text-left font-mono"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pr-4 pl-10 py-3 text-sm text-slate-800 font-bold outline-none focus:border-amber-500 focus:bg-white transition-all text-left font-mono shadow-xs"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute left-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    className="absolute left-3 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -637,9 +688,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   setPasswordInput('19191919');
                   setIsRegisterMode(false);
                 }}
-                className="text-[11px] text-amber-700 hover:text-amber-800 font-bold text-right flex items-center gap-1 cursor-pointer"
+                className="text-[11px] text-amber-700 hover:text-amber-800 font-bold text-right flex items-center gap-1 cursor-pointer py-0.5"
               >
-                <span>🔑 تعبئة بريد المالك megdy1919@gmail.com</span>
+                <span>👑 دخول حساب المطور والمالك (megdy1919@gmail.com)</span>
               </button>
 
               <button

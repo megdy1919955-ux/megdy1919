@@ -242,12 +242,13 @@ export class FirestoreWebRTCEngine {
       let lastSpeakingState = false;
 
       const checkVolume = () => {
+        // Stop checking volume completely if muted or no analyzer to prevent CPU overheating
         if (!this.micAnalyser || this.isMuted) {
           if (lastSpeakingState) {
             lastSpeakingState = false;
             this.setIsSpeaking(false);
           }
-          this.animFrameId = window.setTimeout(checkVolume, 100);
+          this.animFrameId = null;
           return;
         }
 
@@ -257,7 +258,7 @@ export class FirestoreWebRTCEngine {
             lastSpeakingState = false;
             this.setIsSpeaking(false);
           }
-          this.animFrameId = window.setTimeout(checkVolume, 100);
+          this.animFrameId = null;
           return;
         }
 
@@ -274,10 +275,13 @@ export class FirestoreWebRTCEngine {
           this.setIsSpeaking(isSpeakingNow);
         }
 
-        this.animFrameId = window.setTimeout(checkVolume, 100);
+        // Throttle to 150ms for low battery and thermal footprint
+        this.animFrameId = window.setTimeout(checkVolume, 150);
       };
 
-      checkVolume();
+      if (!this.isMuted) {
+        checkVolume();
+      }
     } catch (e) {
       console.warn('Audio level analyzer init failed:', e);
     }

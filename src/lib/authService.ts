@@ -15,6 +15,7 @@ export interface AuthUserData {
   avatar: string;
   email?: string;
   phone?: string;
+  age?: number;
   country?: string;
   bio?: string;
   coins: number;
@@ -158,6 +159,7 @@ export function setAuthUserSession(user: AuthUserData): void {
       followers: user.isOwner ? 5365 : 12,
       following: user.isOwner ? 120 : 5,
       bio: user.bio || '',
+      age: user.age || 22,
       superLegendLevel: user.superLegendLevel,
       vipLevel: user.vipTier,
       avatar: user.avatar,
@@ -207,6 +209,7 @@ export function createNewAccount(params: {
   contact: string; // phone or email or guest name
   displayName?: string;
   avatar?: string;
+  age?: number;
 }): AuthUserData {
   const cleanContact = params.contact.trim().toLowerCase();
 
@@ -253,6 +256,7 @@ export function createNewAccount(params: {
     avatar: chosenAvatar,
     email: params.loginType === 'email' || params.loginType === 'google' ? params.contact : undefined,
     phone: params.loginType === 'phone' ? params.contact : undefined,
+    age: params.age || 22,
     country: 'اليمن',
     bio: 'مرحباً بكم في حسابي على تطبيق النجم! ✨',
     coins: 50000, // رصيد كوينز ترحيبي مجاني لأصدقائك لتجربة الرومات والهدايا
