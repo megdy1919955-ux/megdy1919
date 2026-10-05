@@ -12,16 +12,16 @@ jobs:
   build-apk:
     name: Build & Package Android APK
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js 22 (LTS)
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install Node Dependencies
         run: npm install
@@ -57,20 +57,8 @@ jobs:
           name: AlNajm-Live-v2-APK
           path: output/AlNajm-Live.apk
 
-      - name: Update GitHub Release with Latest APK
-        uses: softprops/action-gh-release@v2
-        if: github.ref == 'refs/heads/main'
-        with:
-          tag_name: latest
-          name: "⭐ تطبيق النجم - النسخة الحية الرسمية المحدثة (Al-Najm Live)"
-          body: |
-            ### 🚀 تطبيق النجم الصوتي - النسخة الحية المحدثة 2026 (الإصدار v2.0.0)
-            - **تحديث جديد كلياً:** تم تحديث هذا الملف رسمياً ليشمل تسجيل الدخول بالبريد الإلكتروني الحقيقي ومحركات الرومات الصوتية وتحديثات واجهة النجم.
-            - **تحميل مباشر لملف APK:** تم توفير ملف `AlNajm-Live.apk` أدناه للتحميل المباشر بنقرة واحدة والتثبيت الفوري دون الحاجة لفك الضغط!
-            
-            ⚠️ **تنبيه هام جداً قبل التثبيت:**
-            يرجى **حذف (إلغاء تثبيت) النسخة القديمة الموجودة في هاتفك أولاً** حتى لا يحدث تعارض في الحزم من نظام الأندرويد، ثم تثبيت ملف `AlNajm-Live.apk` الجديد مباشرة.
-          files: |
-            output/AlNajm-Live.apk
+      - name: Publish APK to GitHub Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload latest output/AlNajm-Live.apk --clobber || gh release create latest output/AlNajm-Live.apk --title "⭐ تطبيق النجم - النسخة الحية الرسمية المحدثة (Al-Najm Live)" --notes "تطبيق النجم - الإصدار الأحدث v2.0.0" --clobber || true
