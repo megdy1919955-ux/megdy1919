@@ -150,9 +150,9 @@ export const handleGoogleAuthResult = async (user: any): Promise<{ user: AuthUse
     const userSnap = await getDoc(userRef);
 
     if (!userSnap.exists()) {
-      // توليد معرف رقمي فريد مكون من 7 أرقام
-      const generatedId = Math.floor(1000000 + Math.random() * 9000000).toString();
-      const isOwner = user.email === 'megdy1919@gmail.com';
+      const isOwner = user.email === 'megdy1919@gmail.com' || user.isOwner === true;
+      // توليد معرف رقمي فريد: إذا كان المالك يحصل على 1001001 وباقي المستخدمين على معرف عشوائي مكون من 7 أرقام
+      const generatedId = isOwner ? '1001001' : Math.floor(1000000 + Math.random() * 9000000).toString();
       const cleanName = user.displayName || 'مستخدم جديد';
       const cleanAvatar =
         user.photoURL ||
@@ -270,7 +270,8 @@ export async function syncUserWithFirestore(
   }
 
   // حساب جديد كلياً: إنشاء مستند سحابي في Firestore
-  const generatedId = Math.floor(1000000 + Math.random() * 9000000).toString();
+  const isOwner = firebaseUser.email === 'megdy1919@gmail.com';
+  const generatedId = isOwner ? '1001001' : Math.floor(1000000 + Math.random() * 9000000).toString();
   const defaultAvatars = [
     'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
     'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=200',
@@ -291,7 +292,6 @@ export async function syncUserWithFirestore(
     }
   }
 
-  const isOwner = firebaseUser.email === 'megdy1919@gmail.com';
   const newAccount: AuthUserData = {
     id: generatedId,
     uid: firebaseUser.uid,
@@ -403,7 +403,7 @@ export function setAuthUserSession(user: AuthUserData): void {
 
     const profileToSave = {
       name: user.name || user.displayName || 'مستخدم جديد',
-      id: user.id || user.uid,
+      id: isRealOwner ? '1001001' : (user.id || user.uid),
       country: user.country || 'اليمن',
       followers: isRealOwner ? 5365 : 0, // 0 للمستخدم الجديد وليست أرقام المالك
       following: isRealOwner ? 120 : 0,
