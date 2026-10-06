@@ -1,11 +1,10 @@
 /**
  * شاشة تسجيل الدخول والترحيب الرسمية (Login & Welcome Screen)
- * مطابقة بدقة للصورة والتصميم المطلوب مع ربط سحابي كامل بـ Firebase Auth & Firestore:
- * 1. تسجيل الدخول والتسجيل بالبريد الحقيقي والاسم المستعار والعمر (Firebase Auth & Firestore)
- * 2. تسجيل الدخول عبر Google السحابي
- * 3. تسجيل الدخول بحساب فيسبوك، تيك توك، سناب شات، ورقم الجوال والواتساب
- * 4. لوحة مفاتيح رقمية احترافية مخصصة للأرقام تظل ثابتة ومستقرة
- * 5. حذف كامل للأكواد المكشوفة والرموز المحلية (حذف Hardcoded PIN & Email)
+ * مطابقة بدقة لتعليمات التوثيق السحابي الحديثة:
+ * 1. الحالة الافتراضية للواجهة هي 'options' (خيارات الدخول الرئيسية)
+ * 2. دالة handleGoogleLogin تستدعي signInWithGoogle و handleGoogleAuthResult
+ * 3. في حال كان المستخدم جديداً أو لم يكمل ملفه الشخصي يتم توجيهه تلقائياً إلى 'complete_profile'
+ * 4. ربط كامل بـ Firebase Auth وقاعدة بيانات Cloud Firestore بناءً على UID مع إلغاء كافة الأكواد المكشوفة
  * تطبيق النجم (Al-Najm Live)
  */
 
@@ -23,12 +22,20 @@ import {
   Eye,
   EyeOff,
   User,
-  Calendar
+  Calendar,
+  Sparkles,
+  Globe
 } from 'lucide-react';
 import { NajmLogo } from './common/NajmLogo';
-import { GoogleAccountChooserModal } from './GoogleAccountChooserModal';
 import { DownloadApkModal } from './DownloadApkModal';
-import { syncUserWithFirestore, AuthUserData } from '../lib/authService';
+import {
+  AuthUserData,
+  signInWithGoogle,
+  handleGoogleAuthResult,
+  completeUserProfile,
+  syncUserWithFirestore,
+  setAuthUserSession
+} from '../lib/authService';
 import { auth } from '../lib/firebase';
 import {
   signInWithEmailAndPassword,
@@ -41,28 +48,34 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
-  // شاشات التنقل: 'email_auth' (افتراضي) | 'main' | 'phone_whatsapp' | 'whatsapp_otp'
-  const [currentView, setCurrentView] = useState<'email_auth' | 'main' | 'phone_whatsapp' | 'whatsapp_otp'>('email_auth');
+  // ضبط الحالة الافتراضية للواجهة لتكون 'options' بدلاً من 'email'
+  const [authView, setAuthView] = useState<'options' | 'email' | 'phone' | 'complete_profile'>('options');
+  const [phoneSubView, setPhoneSubView] = useState<'input' | 'otp'>('input');
+
+  // المستخدم الجاري استكمال بياناته
+  const [pendingUser, setPendingUser] = useState<AuthUserData | null>(null);
 
   // الموافقة على الشروط والسياسة
   const [isAgreedToTerms, setIsAgreedToTerms] = useState(true);
   const [showTermsModal, setShowTermsModal] = useState(false);
-  const [showGoogleChooser, setShowGoogleChooser] = useState(false);
   const [showDownloadApkModal, setShowDownloadApkModal] = useState(false);
 
-  // حقول البريد الإلكتروني الحقيقي، الاسم المستعار، والعمر
+  // حقول شاشة البريد الإلكتروني (Email Auth)
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [displayNameInput, setDisplayNameInput] = useState('');
   const [ageInput, setAgeInput] = useState('24');
-  const [isRegisterMode, setIsRegisterMode] = useState(true);
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // حالات رقم الهاتف
+  // حقول شاشة إكمال البيانات (Complete Profile)
+  const [completeNickname, setCompleteNickname] = useState('');
+  const [completeAge, setCompleteAge] = useState('24');
+  const [completeCountry, setCompleteCountry] = useState('اليمن');
+
+  // حالات رقم الهاتف والواتساب
   const [countryCode, setCountryCode] = useState('+967');
   const [phoneNumber, setPhoneNumber] = useState('');
-
-  // رمز التحقق (4 أرقام)
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '']);
   const [currentSessionOtp, setCurrentSessionOtp] = useState<string>('');
   const [isResendingOtp, setIsResendingOtp] = useState(false);
@@ -71,13 +84,82 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // التوثيق السحابي عبر Firebase Authentication وقاعدة بيانات Firestore
+  // دالة معالجة الدخول بعد Google
+  const handleGoogleLogin = async () => {
+    if (!isAgreedToTerms) {
+      setErrorMsg('يرجى الموافقة على شروط الخدمة وسياسة الخصوصية أولاً');
+      return;
+    }
+    setErrorMsg(null);
+    try {
+      setIsLoading(true);
+      const result = await signInWithGoogle(); // دالة Google Sign-In الرسمية
+      const { user, isNewUser } = await handleGoogleAuthResult(result.user);
+
+      if (isNewUser || !user.isProfileComplete) {
+        // إذا كان مسجلاً جديداً -> التوجيه لشاشة إكمال البيانات
+        setAuthUserSession(user);
+        setPendingUser(user);
+        setCompleteNickname(user.displayName || user.name || '');
+        setAuthView('complete_profile');
+      } else {
+        // مستخدم متواجد وسابقاً أكمل بياناته -> دخول مباشر
+        onLoginSuccess(user);
+      }
+    } catch (err: any) {
+      console.warn('Google Auth Error:', err);
+      if (err?.code === 'auth/popup-closed-by-user') {
+        setIsLoading(false);
+        return;
+      }
+      setErrorMsg(err?.message || 'حدث خطأ أثناء تسجيل الدخول عبر Google');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // معالجة حفظ إكمال الملف الشخصي
+  const handleSaveCompleteProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanNick = completeNickname.trim();
+    if (!cleanNick || cleanNick.length < 2) {
+      setErrorMsg('يرجى إدخال اسم مستعار (اسم وهمي) مناسب');
+      return;
+    }
+
+    const parsedAge = parseInt(completeAge, 10);
+    if (isNaN(parsedAge) || parsedAge < 16 || parsedAge > 99) {
+      setErrorMsg('يرجى إدخال عمر صحيح بين 16 و 99 سنة');
+      return;
+    }
+
+    if (!pendingUser?.uid) {
+      setErrorMsg('تعذر تحديد حساب المستخدم، يرجى إعادة المحاولة');
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMsg(null);
+    try {
+      const updatedUser = await completeUserProfile(pendingUser.uid, {
+        displayName: cleanNick,
+        age: parsedAge,
+        country: completeCountry
+      });
+      setIsLoading(false);
+      onLoginSuccess(updatedUser);
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMsg(err?.message || 'فشل حفظ الملف الشخصي، يرجى المحاولة مرة أخرى');
+    }
+  };
+
+  // تسجيل الدخول أو إنشاء حساب بالبريد الإلكتروني
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = emailInput.trim().toLowerCase();
     const cleanPass = passwordInput.trim();
 
-    // التحقق من البريد الإلكتروني الحقيقي والواقعي
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!cleanEmail || !emailRegex.test(cleanEmail)) {
       setErrorMsg('يرجى إدخال بريد إلكتروني حقيقي وصالح (مثال: name@gmail.com)');
@@ -89,7 +171,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       return;
     }
 
-    // التحقق من الاسم المستعار والعمر عند إنشاء الحساب
     let cleanAge = 24;
     if (isRegisterMode) {
       const cleanNick = displayNameInput.trim();
@@ -116,7 +197,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         firebaseUserCred = await signInWithEmailAndPassword(auth, cleanEmail, cleanPass);
       }
 
-      // المزامنة والربط المباشر مع Firestore بناءً على UID السحابي
       const user = await syncUserWithFirestore(firebaseUserCred.user, {
         displayName: displayNameInput.trim() || undefined,
         age: cleanAge,
@@ -144,16 +224,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         setErrorMsg(err?.message || 'تعذر الاتصال بخوادم المصادقة، يرجى المحاولة مرة أخرى');
       }
     }
-  };
-
-  // معالج تسجيل الدخول عبر Google
-  const handleGoogleLogin = () => {
-    if (!isAgreedToTerms) {
-      setErrorMsg('يرجى الموافقة على شروط الخدمة وسياسة الخصوصية أولاً');
-      return;
-    }
-    setErrorMsg(null);
-    setShowGoogleChooser(true);
   };
 
   // تسجيل الدخول بحساب فيسبوك عبر Firebase السحابي
@@ -219,17 +289,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  // بدء الدخول برقم الجوال والواتساب
+  // بدء الدخول برقم الجوال
   const handleStartPhoneWhatsApp = () => {
     if (!isAgreedToTerms) {
       setErrorMsg('يرجى الموافقة على شروط الخدمة وسياسة الخصوصية أولاً');
       return;
     }
     setErrorMsg(null);
-    setCurrentView('phone_whatsapp');
+    setPhoneSubView('input');
+    setAuthView('phone');
   };
 
-  // طلب رمز الواتساب لرقم الجوال
+  // طلب رمز الواتساب
   const handleRequestWhatsAppOtp = (e: React.FormEvent) => {
     e.preventDefault();
     if (!phoneNumber.trim() || phoneNumber.trim().length < 6) {
@@ -245,7 +316,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setTimeout(() => {
       setIsLoading(false);
       setOtpDigits(['', '', '', '']);
-      setCurrentView('whatsapp_otp');
+      setPhoneSubView('otp');
       setOtpSentNotice(true);
       setTimeout(() => setOtpSentNotice(false), 5000);
     }, 800);
@@ -288,7 +359,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setOtpDigits(newDigits);
   };
 
-  // التحقق والدخول إلى Firebase السحابي
   const verifyAndLogin = async () => {
     setIsLoading(true);
     try {
@@ -333,9 +403,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         </div>
 
         {/* ========================================================================= */}
-        {/* VIEW 1: الشاشة الرئيسية بالأيقونات الاجتماعية                             */}
+        {/* VIEW 1: الواجهة الافتراضية 'options' (خيارات تسجيل الدخول الرئيسية)       */}
         {/* ========================================================================= */}
-        {currentView === 'main' && (
+        {authView === 'options' && (
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -343,42 +413,48 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           >
             {/* Error message banner */}
             {errorMsg && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold text-center">
+              <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold text-center leading-relaxed">
                 {errorMsg}
               </div>
             )}
 
-            {/* 1. زر تسجيل الدخول عبر Google */}
+            {/* 1. زر تسجيل الدخول عبر Google (يستدعي handleGoogleLogin) */}
             <button
               type="button"
               onClick={handleGoogleLogin}
               disabled={isLoading}
               className="w-full h-14 rounded-full bg-[#EBF2FC] hover:bg-[#DEEAFA] active:scale-[0.98] transition-all flex items-center justify-center gap-3 px-6 shadow-sm border border-blue-100/80 cursor-pointer"
             >
-              <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                />
-              </svg>
-              <span className="text-slate-800 font-bold text-base">
-                تسجيل الدخول عبر Google
-              </span>
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                    />
+                  </svg>
+                  <span className="text-slate-800 font-bold text-base">
+                    تسجيل الدخول عبر Google
+                  </span>
+                </>
+              )}
             </button>
 
-            {/* 2. زر تسجيل الدخول بالبريد الإلكتروني الحقيقي (Firebase Auth) */}
+            {/* 2. زر تسجيل الدخول بالبريد الإلكتروني الحقيقي */}
             <button
               type="button"
               onClick={() => {
@@ -387,7 +463,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   return;
                 }
                 setErrorMsg(null);
-                setCurrentView('email_auth');
+                setAuthView('email');
               }}
               disabled={isLoading}
               className="w-full h-14 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-3 px-6 shadow-sm cursor-pointer text-slate-950 font-black text-base"
@@ -476,20 +552,123 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         )}
 
         {/* ========================================================================= */}
-        {/* VIEW 4: تسجيل الدخول أو إنشاء حساب بالبريد الحقيقي (Firebase Auth)        */}
+        {/* VIEW 2: شاشة إكمال البيانات 'complete_profile' للمستخدم الجديد            */}
         {/* ========================================================================= */}
-        {currentView === 'email_auth' && (
+        {authView === 'complete_profile' && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col gap-4 w-full my-auto bg-white p-6 rounded-3xl shadow-xl border border-slate-100"
+          >
+            <div className="text-center pb-2 border-b border-slate-100">
+              <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-2 shadow-xs">
+                <Sparkles className="w-6 h-6 text-amber-600 fill-amber-500" />
+              </div>
+              <h3 className="text-base font-black text-slate-900">
+                إكمال الملف الشخصي 🌟
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                أهلاً بك! يرجى تحديد اسمك المستعار وعمرك لإكمال الدخول
+              </p>
+            </div>
+
+            {errorMsg && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold text-center leading-relaxed">
+                {errorMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveCompleteProfile} className="flex flex-col gap-3.5">
+              {/* الاسم المستعار */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-slate-700 flex items-center gap-1">
+                  <User className="w-3.5 h-3.5 text-amber-500" />
+                  الاسم المستعار (الاسم الوهمي):
+                </label>
+                <input
+                  type="text"
+                  placeholder="مثال: فتى الشرق، برنس..."
+                  value={completeNickname}
+                  onChange={(e) => setCompleteNickname(e.target.value)}
+                  required
+                  autoFocus
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 font-bold outline-none focus:border-amber-500 focus:bg-white transition-all shadow-xs"
+                />
+              </div>
+
+              {/* العمر */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-slate-700 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-amber-500" />
+                  العمر (سنة):
+                </label>
+                <input
+                  type="number"
+                  min={16}
+                  max={99}
+                  placeholder="24"
+                  value={completeAge}
+                  onChange={(e) => setCompleteAge(e.target.value)}
+                  required
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 font-bold outline-none focus:border-amber-500 focus:bg-white transition-all shadow-xs font-mono"
+                />
+              </div>
+
+              {/* الدولة */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-slate-700 flex items-center gap-1">
+                  <Globe className="w-3.5 h-3.5 text-amber-500" />
+                  الدولة:
+                </label>
+                <select
+                  value={completeCountry}
+                  onChange={(e) => setCompleteCountry(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 font-bold outline-none focus:border-amber-500"
+                >
+                  <option value="اليمن">🇾🇪 اليمن</option>
+                  <option value="السعودية">🇸🇦 السعودية</option>
+                  <option value="الإمارات">🇦🇪 الإمارات</option>
+                  <option value="الكويت">🇰🇼 الكويت</option>
+                  <option value="قطر">🇶🇦 قطر</option>
+                  <option value="عُمان">🇴🇲 عُمان</option>
+                  <option value="مصر">🇪🇬 مصر</option>
+                  <option value="العراق">🇮🇶 العراق</option>
+                  <option value="الأردن">🇯🇴 الأردن</option>
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:opacity-95 text-slate-950 font-black text-sm rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 mt-1"
+              >
+                {isLoading ? (
+                  <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>حفظ والدخول إلى التطبيق ✨</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </motion.div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* VIEW 3: شاشة البريد الإلكتروني 'email'                                   */}
+        {/* ========================================================================= */}
+        {authView === 'email' && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="flex flex-col gap-4 w-full my-auto bg-white p-6 rounded-3xl shadow-lg border border-slate-100"
           >
-            {/* Header with Switcher */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <button
                 type="button"
                 onClick={() => {
-                  setCurrentView('main');
+                  setAuthView('options');
                   setErrorMsg(null);
                 }}
                 className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer font-bold"
@@ -525,7 +704,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               </div>
             </div>
 
-            {/* Error Message */}
             {errorMsg && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold text-center leading-relaxed">
                 {errorMsg}
@@ -533,8 +711,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             )}
 
             <form onSubmit={handleEmailAuth} className="flex flex-col gap-3.5">
-              
-              {/* عند إنشاء حساب جديد: الاسم المستعار + العمر */}
               {isRegisterMode && (
                 <>
                   <div className="flex flex-col gap-1.5">
@@ -571,7 +747,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 </>
               )}
 
-              {/* البريد الإلكتروني الحقيقي */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-black text-slate-700 flex items-center gap-1">
                   <Mail className="w-3.5 h-3.5 text-amber-500" />
@@ -588,7 +763,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 />
               </div>
 
-              {/* كلمة المرور */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-black text-slate-700">كلمة المرور:</label>
                 <div className="relative flex items-center" dir="ltr">
@@ -611,7 +785,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 </div>
               </div>
 
-              {/* زر الإرسال والمصادقة */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -631,240 +804,225 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         )}
 
         {/* ========================================================================= */}
-        {/* VIEW 2: إدخال رقم الجوال وطلب الرمز إلى الواتساب                           */}
+        {/* VIEW 4: شاشة رقم الجوال والواتساب 'phone'                                 */}
         {/* ========================================================================= */}
-        {currentView === 'phone_whatsapp' && (
+        {authView === 'phone' && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="flex flex-col gap-4 w-full my-auto bg-white p-6 rounded-3xl shadow-lg border border-slate-100"
           >
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <button
-                type="button"
-                onClick={() => {
-                  setCurrentView('main');
-                  setErrorMsg(null);
-                }}
-                className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer font-bold"
-              >
-                <ArrowRight className="w-4 h-4" /> رجوع
-              </button>
-              <span className="text-sm font-black text-slate-900 flex items-center gap-1.5">
-                <MessageCircle className="w-4 h-4 text-emerald-600" />
-                الدخول برقم الجوال
-              </span>
-            </div>
-
-            {errorMsg && (
-              <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-bold text-center">
-                {errorMsg}
-              </div>
-            )}
-
-            <form onSubmit={handleRequestWhatsAppOtp} className="flex flex-col gap-4 mt-1">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-600">رقم الهاتف المحمول:</label>
-                <div className="flex items-center gap-2" dir="ltr">
-                  <select
-                    value={countryCode}
-                    onChange={(e) => setCountryCode(e.target.value)}
-                    className="bg-slate-50 border border-slate-200 rounded-2xl px-2 py-3 text-sm text-slate-800 font-bold outline-none focus:border-emerald-500"
-                  >
-                    <option value="+967">🇾🇪 +967</option>
-                    <option value="+966">🇸🇦 +966</option>
-                    <option value="+971">🇦🇪 +971</option>
-                    <option value="+965">🇰🇼 +965</option>
-                    <option value="+974">🇶🇦 +974</option>
-                    <option value="+968">🇴🇲 +968</option>
-                    <option value="+20">🇪🇬 +20</option>
-                    <option value="+962">🇯🇴 +962</option>
-                  </select>
-                  <input
-                    type="tel"
-                    placeholder="770 000 000"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-base text-slate-900 font-mono placeholder:text-slate-400 outline-none focus:border-emerald-500 font-bold"
-                    required
-                    autoFocus
-                  />
-                </div>
-              </div>
-
-              {/* بطاقة توضيح إرسال الرمز عبر الواتساب */}
-              <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0 mt-0.5">
-                  <MessageCircle className="w-4 h-4 fill-white" />
-                </div>
-                <div className="text-xs text-slate-600 leading-relaxed">
-                  <span className="font-bold text-emerald-800 block text-sm">
-                    إرسال الرمز عبر الواتساب
-                  </span>
-                  سيصلك رمز التحقق المكون من 4 أرقام مباشرة في رسالة خاصة على تطبيق WhatsApp.
-                </div>
-              </div>
-
-              {/* زر طلب الرمز إلى الواتساب */}
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full h-13 rounded-full bg-[#25D366] hover:bg-[#20bd5a] active:scale-[0.98] text-white font-black text-base shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
-              >
-                <MessageCircle className="w-5 h-5 fill-white" />
-                {isLoading ? 'جاري إرسال الرمز...' : 'إرسال الرمز إلى الواتساب'}
-              </button>
-            </form>
-          </motion.div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* VIEW 3: إدخال الرمز مع الكيبورد الرقمي الثابت                            */}
-        {/* ========================================================================= */}
-        {currentView === 'whatsapp_otp' && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col gap-3 w-full bg-white p-5 rounded-3xl shadow-xl border border-slate-100 my-auto"
-          >
-            {/* Header with back */}
-            <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-              <button
-                type="button"
-                onClick={() => {
-                  setCurrentView('phone_whatsapp');
-                  setErrorMsg(null);
-                }}
-                className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer font-bold"
-              >
-                <ArrowRight className="w-4 h-4" /> تغيير الرقم
-              </button>
-              <span className="text-xs font-black text-emerald-600 flex items-center gap-1">
-                <MessageCircle className="w-3.5 h-3.5 fill-emerald-600 text-emerald-600" />
-                رمز التحقق الواتساب
-              </span>
-            </div>
-
-            {/* WhatsApp notification simulation toast */}
-            <AnimatePresence>
-              {otpSentNotice && currentSessionOtp && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="p-3 bg-emerald-600 text-white rounded-2xl shadow-lg flex items-center justify-between gap-3 text-xs"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-                      <MessageCircle className="w-3.5 h-3.5 fill-white" />
-                    </div>
-                    <div>
-                      <span className="font-bold block">رسالة من WhatsApp (النجم Live)</span>
-                      <span>رمز التحقق هو: <strong className="font-mono text-amber-200 text-sm">{currentSessionOtp}</strong></span>
-                    </div>
-                  </div>
+            {phoneSubView === 'input' ? (
+              <>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                   <button
-                    onClick={() => setOtpSentNotice(false)}
-                    className="p-1 hover:bg-white/10 rounded-full"
-                  >
-                    <X className="w-3.5 h-3.5 text-white" />
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div className="text-center mt-1">
-              <p className="text-xs text-slate-500">
-                أدخل رمز التأكيد المكون من 4 أرقام المرسل إلى:
-              </p>
-              <p className="text-sm font-mono font-black text-slate-800 mt-0.5" dir="ltr">
-                {countryCode} {phoneNumber}
-              </p>
-            </div>
-
-            {/* 4 Digit Boxes */}
-            <div className="flex justify-center gap-3 my-2" dir="ltr">
-              {[0, 1, 2, 3].map((idx) => {
-                const digit = otpDigits[idx];
-                const isCurrent = otpDigits.findIndex((d) => d === '') === idx;
-                return (
-                  <div
-                    key={idx}
-                    className={`w-13 h-14 rounded-2xl flex items-center justify-center text-2xl font-mono font-black transition-all border-2 ${
-                      digit
-                        ? 'bg-emerald-50/80 border-emerald-500 text-emerald-800 shadow-sm scale-105'
-                        : isCurrent
-                        ? 'bg-white border-blue-500 text-slate-800 ring-2 ring-blue-100 shadow-sm'
-                        : 'bg-slate-50 border-slate-200 text-slate-400'
-                    }`}
-                  >
-                    {digit || (isCurrent ? <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" /> : '')}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Resend WhatsApp Code link */}
-            <div className="flex justify-between items-center px-1 text-xs">
-              <button
-                type="button"
-                onClick={handleResendWhatsAppOtp}
-                disabled={isResendingOtp}
-                className="text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1 cursor-pointer"
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-                {isResendingOtp ? 'جاري إعادة الإرسال...' : 'إعادة إرسال رمز الواتساب'}
-              </button>
-            </div>
-
-            {/* لوحة المفاتيح الرقمية المخصصة الثابتة */}
-            <div className="mt-2 pt-3 border-t border-slate-100">
-              <div className="grid grid-cols-3 gap-2 w-full max-w-[280px] mx-auto" dir="ltr">
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
-                  <button
-                    key={num}
                     type="button"
-                    onClick={() => handleKeypadPress(num)}
-                    className="h-12 rounded-2xl bg-slate-100 hover:bg-slate-200 active:bg-emerald-100 active:scale-95 text-slate-800 font-mono font-bold text-xl transition-all flex items-center justify-center shadow-xs cursor-pointer select-none"
+                    onClick={() => {
+                      setAuthView('options');
+                      setErrorMsg(null);
+                    }}
+                    className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer font-bold"
                   >
-                    {num}
+                    <ArrowRight className="w-4 h-4" /> رجوع
                   </button>
-                ))}
+                  <span className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                    <MessageCircle className="w-4 h-4 text-emerald-600" />
+                    الدخول برقم الجوال
+                  </span>
+                </div>
 
-                {/* زر تفريغ الخانات */}
-                <button
-                  type="button"
-                  onClick={() => setOtpDigits(['', '', '', ''])}
-                  className="h-12 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-400 text-xs font-bold transition-all flex items-center justify-center cursor-pointer select-none"
-                >
-                  مسح الكل
-                </button>
+                {errorMsg && (
+                  <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-bold text-center">
+                    {errorMsg}
+                  </div>
+                )}
 
-                {/* الرقم 0 */}
-                <button
-                  type="button"
-                  onClick={() => handleKeypadPress('0')}
-                  className="h-12 rounded-2xl bg-slate-100 hover:bg-slate-200 active:bg-emerald-100 active:scale-95 text-slate-800 font-mono font-bold text-xl transition-all flex items-center justify-center shadow-xs cursor-pointer select-none"
-                >
-                  0
-                </button>
+                <form onSubmit={handleRequestWhatsAppOtp} className="flex flex-col gap-4 mt-1">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-600">رقم الهاتف المحمول:</label>
+                    <div className="flex items-center gap-2" dir="ltr">
+                      <select
+                        value={countryCode}
+                        onChange={(e) => setCountryCode(e.target.value)}
+                        className="bg-slate-50 border border-slate-200 rounded-2xl px-2 py-3 text-sm text-slate-800 font-bold outline-none focus:border-emerald-500"
+                      >
+                        <option value="+967">🇾🇪 +967</option>
+                        <option value="+966">🇸🇦 +966</option>
+                        <option value="+971">🇦🇪 +971</option>
+                        <option value="+965">🇰🇼 +965</option>
+                        <option value="+974">🇶🇦 +974</option>
+                        <option value="+968">🇴🇲 +968</option>
+                        <option value="+20">🇪🇬 +20</option>
+                        <option value="+962">🇯🇴 +962</option>
+                      </select>
+                      <input
+                        type="tel"
+                        placeholder="770 000 000"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-base text-slate-900 font-mono placeholder:text-slate-400 outline-none focus:border-emerald-500 font-bold"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                  </div>
 
-                {/* زر مسح رقم واحد (Backspace) */}
-                <button
-                  type="button"
-                  onClick={handleKeypadBackspace}
-                  className="h-12 rounded-2xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 transition-all flex items-center justify-center shadow-xs cursor-pointer select-none"
-                  title="مسح"
-                >
-                  <Delete className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
+                  <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0 mt-0.5">
+                      <MessageCircle className="w-4 h-4 fill-white" />
+                    </div>
+                    <div className="text-xs text-slate-600 leading-relaxed">
+                      <span className="font-bold text-emerald-800 block text-sm">
+                        إرسال الرمز عبر الواتساب
+                      </span>
+                      سيصلك رمز التحقق المكون من 4 أرقام مباشرة في رسالة خاصة على تطبيق WhatsApp.
+                    </div>
+                  </div>
 
-            {isLoading && (
-              <div className="text-center py-2 text-xs text-emerald-600 font-bold animate-pulse">
-                جاري التحقق من صحة الرمز وتسجيل الدخول...
-              </div>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full h-13 rounded-full bg-[#25D366] hover:bg-[#20bd5a] active:scale-[0.98] text-white font-black text-base shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+                  >
+                    <MessageCircle className="w-5 h-5 fill-white" />
+                    {isLoading ? 'جاري إرسال الرمز...' : 'إرسال الرمز إلى الواتساب'}
+                  </button>
+                </form>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhoneSubView('input');
+                      setErrorMsg(null);
+                    }}
+                    className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer font-bold"
+                  >
+                    <ArrowRight className="w-4 h-4" /> تغيير الرقم
+                  </button>
+                  <span className="text-xs font-black text-emerald-600 flex items-center gap-1">
+                    <MessageCircle className="w-3.5 h-3.5 fill-emerald-600 text-emerald-600" />
+                    رمز التحقق الواتساب
+                  </span>
+                </div>
+
+                <AnimatePresence>
+                  {otpSentNotice && currentSessionOtp && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="p-3 bg-emerald-600 text-white rounded-2xl shadow-lg flex items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+                          <MessageCircle className="w-3.5 h-3.5 fill-white" />
+                        </div>
+                        <div>
+                          <span className="font-bold block">رسالة من WhatsApp (النجم Live)</span>
+                          <span>رمز التحقق هو: <strong className="font-mono text-amber-200 text-sm">{currentSessionOtp}</strong></span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setOtpSentNotice(false)}
+                        className="p-1 hover:bg-white/10 rounded-full"
+                      >
+                        <X className="w-3.5 h-3.5 text-white" />
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="text-center mt-1">
+                  <p className="text-xs text-slate-500">
+                    أدخل رمز التأكيد المكون من 4 أرقام المرسل إلى:
+                  </p>
+                  <p className="text-sm font-mono font-black text-slate-800 mt-0.5" dir="ltr">
+                    {countryCode} {phoneNumber}
+                  </p>
+                </div>
+
+                <div className="flex justify-center gap-3 my-2" dir="ltr">
+                  {[0, 1, 2, 3].map((idx) => {
+                    const digit = otpDigits[idx];
+                    const isCurrent = otpDigits.findIndex((d) => d === '') === idx;
+                    return (
+                      <div
+                        key={idx}
+                        className={`w-13 h-14 rounded-2xl flex items-center justify-center text-2xl font-mono font-black transition-all border-2 ${
+                          digit
+                            ? 'bg-emerald-50/80 border-emerald-500 text-emerald-800 shadow-sm scale-105'
+                            : isCurrent
+                            ? 'bg-white border-blue-500 text-slate-800 ring-2 ring-blue-100 shadow-sm'
+                            : 'bg-slate-50 border-slate-200 text-slate-400'
+                        }`}
+                      >
+                        {digit || (isCurrent ? <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" /> : '')}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex justify-between items-center px-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={handleResendWhatsAppOtp}
+                    disabled={isResendingOtp}
+                    className="text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    {isResendingOtp ? 'جاري إعادة الإرسال...' : 'إعادة إرسال رمز الواتساب'}
+                  </button>
+                </div>
+
+                <div className="mt-2 pt-3 border-t border-slate-100">
+                  <div className="grid grid-cols-3 gap-2 w-full max-w-[280px] mx-auto" dir="ltr">
+                    {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => handleKeypadPress(num)}
+                        className="h-12 rounded-2xl bg-slate-100 hover:bg-slate-200 active:bg-emerald-100 active:scale-95 text-slate-800 font-mono font-bold text-xl transition-all flex items-center justify-center shadow-xs cursor-pointer select-none"
+                      >
+                        {num}
+                      </button>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() => setOtpDigits(['', '', '', ''])}
+                      className="h-12 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-400 text-xs font-bold transition-all flex items-center justify-center cursor-pointer select-none"
+                    >
+                      مسح الكل
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleKeypadPress('0')}
+                      className="h-12 rounded-2xl bg-slate-100 hover:bg-slate-200 active:bg-emerald-100 active:scale-95 text-slate-800 font-mono font-bold text-xl transition-all flex items-center justify-center shadow-xs cursor-pointer select-none"
+                    >
+                      0
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleKeypadBackspace}
+                      className="h-12 rounded-2xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 transition-all flex items-center justify-center shadow-xs cursor-pointer select-none"
+                      title="مسح"
+                    >
+                      <Delete className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {isLoading && (
+                  <div className="text-center py-2 text-xs text-emerald-600 font-bold animate-pulse">
+                    جاري التحقق من صحة الرمز وتسجيل الدخول...
+                  </div>
+                )}
+              </>
             )}
           </motion.div>
         )}
@@ -969,16 +1127,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           </div>
         )}
       </AnimatePresence>
-
-      {/* نافذة اختيار حساب Google من الحسابات المسجلة بالجوال */}
-      <GoogleAccountChooserModal
-        isOpen={showGoogleChooser}
-        onClose={() => setShowGoogleChooser(false)}
-        onSelectAccount={(selectedAccount) => {
-          setShowGoogleChooser(false);
-          onLoginSuccess(selectedAccount);
-        }}
-      />
 
       {/* نافذة تنزيل وتثبيت تطبيق الأندرويد APK */}
       <DownloadApkModal

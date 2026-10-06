@@ -12,9 +12,17 @@ import {
   updateProfile,
   User as FirebaseUser,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  serverTimestamp
+} from 'firebase/firestore';
 import { setActiveAppRole } from './roleService';
 
 export interface AuthUserData {
@@ -22,9 +30,11 @@ export interface AuthUserData {
   uid: string; // المعرف السحابي المشفر الفريد من Firebase Auth UID
   name: string;
   avatar: string;
+  displayName?: string;
+  photoURL?: string;
   email?: string;
-  phone?: string;
-  age?: number;
+  phone?: string | null;
+  age?: number | null;
   country?: string;
   bio?: string;
   coins: number;
@@ -35,8 +45,10 @@ export interface AuthUserData {
   isOwner: boolean;
   role: 'super_admin' | 'regular_user';
   loginType: 'phone' | 'email' | 'google' | 'guest';
-  createdAt: string;
+  createdAt: any;
+  updatedAt?: any;
   lastLoginAt?: string;
+  isProfileComplete?: boolean;
 }
 
 let cachedCurrentUser: AuthUserData | null = null;
@@ -110,6 +122,114 @@ function notifySubscribers(user: AuthUserData | null) {
 }
 
 /**
+ * دالة تسجيل الدخول عبر Google الرسمية من Firebase
+ */
+export const signInWithGoogle = async () => {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  return await signInWithPopup(auth, provider);
+};
+
+/**
+ * معالجة نتائج توثيق Google ومزامنة بيانات المستخدم سحابياً مع Firestore
+ */
+export const handleGoogleAuthResult = async (user: any): Promise<{ user: AuthUserData; isNewUser: boolean }> => {
+  try {
+    const userRef = doc(db, 'users', user.uid);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+      // توليد معرف رقمي فريد مكون من 7 أرقام
+      const generatedId = Math.floor(1000000 + Math.random() * 9000000).toString();
+      const isOwner = user.email === 'megdy1919@gmail.com';
+      const cleanName = user.displayName || 'مستخدم جديد';
+      const cleanAvatar =
+        user.photoURL ||
+        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200';
+
+      // مستخدم جديد -> إنشاء مستند بدون قيم undefined
+      const newUserPayload: AuthUserData = {
+        id: generatedId,
+        uid: user.uid,
+        name: cleanName,
+        displayName: cleanName,
+        photoURL: cleanAvatar,
+        avatar: cleanAvatar,
+        email: user.email || '',
+        phone: user.phoneNumber || null, // تجنب undefined نهائياً
+        age: null,
+        country: 'اليمن',
+        bio: 'مرحباً بكم في حسابي على تطبيق النجم! ✨',
+        coins: 50000,
+        diamonds: 0,
+        level: 1,
+        vipTier: 'VIP1',
+        superLegendLevel: 'SL1',
+        role: isOwner ? 'super_admin' : 'regular_user',
+        isOwner,
+        loginType: 'google',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        lastLoginAt: 'الآن',
+        isProfileComplete: false // يحدد هل سيوجه لشاشة الاستكمال أم لا
+      };
+
+      await setDoc(userRef, newUserPayload);
+      notifySubscribers(newUserPayload);
+      return { user: newUserPayload, isNewUser: true };
+    } else {
+      // مستخدم مسجل مسبقاً -> جلب بياناته
+      const existingData = userSnap.data() as AuthUserData;
+      const normalizedUser: AuthUserData = {
+        ...existingData,
+        id: existingData.id || Math.floor(1000000 + Math.random() * 9000000).toString(),
+        name: existingData.name || existingData.displayName || 'نجم النجوم',
+        avatar:
+          existingData.avatar ||
+          existingData.photoURL ||
+          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+        coins: existingData.coins ?? 50000,
+        diamonds: existingData.diamonds ?? 0,
+        level: existingData.level ?? 1,
+        vipTier: existingData.vipTier || 'VIP1',
+        superLegendLevel: existingData.superLegendLevel || 'SL1'
+      };
+      notifySubscribers(normalizedUser);
+      return { user: normalizedUser, isNewUser: !existingData.isProfileComplete };
+    }
+  } catch (error) {
+    console.error('Error during Google Auth Firestore Sync:', error);
+    throw error;
+  }
+};
+
+/**
+ * إكمال بيانات الملف الشخصي (الاسم المستعار، العمر، الدولة) للمستخدمين الجدد
+ */
+export async function completeUserProfile(
+  uid: string,
+  data: { displayName: string; age: number; country?: string }
+): Promise<AuthUserData> {
+  const userRef = doc(db, 'users', uid);
+  const updates: any = {
+    displayName: data.displayName.trim(),
+    name: data.displayName.trim(),
+    age: data.age,
+    country: data.country || 'اليمن',
+    isProfileComplete: true,
+    updatedAt: serverTimestamp()
+  };
+  await updateDoc(userRef, updates);
+  if (auth.currentUser) {
+    updateProfile(auth.currentUser, { displayName: data.displayName.trim() }).catch(() => {});
+  }
+  const snap = await getDoc(userRef);
+  const updated = snap.data() as AuthUserData;
+  notifySubscribers(updated);
+  return updated;
+}
+
+/**
  * مزامنة مستخدم Firebase Auth مع قاعدة بيانات Cloud Firestore بناءً على UID
  */
 export async function syncUserWithFirestore(
@@ -146,7 +266,10 @@ export async function syncUserWithFirestore(
     'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
     'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200'
   ];
-  const chosenAvatar = extra?.avatar || firebaseUser.photoURL || defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)];
+  const chosenAvatar =
+    extra?.avatar ||
+    firebaseUser.photoURL ||
+    defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)];
 
   let name = extra?.displayName?.trim() || firebaseUser.displayName?.trim();
   if (!name) {
@@ -157,6 +280,7 @@ export async function syncUserWithFirestore(
     }
   }
 
+  const isOwner = firebaseUser.email === 'megdy1919@gmail.com';
   const newAccount: AuthUserData = {
     id: generatedId,
     uid: firebaseUser.uid,
@@ -172,11 +296,12 @@ export async function syncUserWithFirestore(
     level: 1,
     vipTier: 'VIP1',
     superLegendLevel: 'SL1',
-    isOwner: false,
-    role: 'regular_user',
+    isOwner,
+    role: isOwner ? 'super_admin' : 'regular_user',
     loginType: extra?.loginType || 'email',
     createdAt: new Date().toISOString().split('T')[0],
-    lastLoginAt: 'الآن'
+    lastLoginAt: 'الآن',
+    isProfileComplete: extra?.age ? true : false
   };
 
   await setDoc(userDocRef, newAccount);
