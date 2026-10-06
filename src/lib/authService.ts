@@ -51,6 +51,8 @@ export interface AuthUserData {
   isProfileComplete?: boolean;
 }
 
+export const AUTH_USER_STORAGE_KEY = 'super_legend_auth_user_session';
+
 let cachedCurrentUser: AuthUserData | null = null;
 let isAuthInitializedState = false;
 const authSubscribers = new Set<(user: AuthUserData | null) => void>();
@@ -75,10 +77,24 @@ export function subscribeToAuthReady(callback: (ready: boolean) => void): () => 
 }
 
 /**
- * جلب بيانات المستخدم المسجل حالياً من الذاكرة الحية
+ * جلب بيانات المستخدم المسجل حالياً من الذاكرة الحية أو التخزين الآمن
  */
 export function getCurrentAuthUser(): AuthUserData | null {
-  return cachedCurrentUser;
+  if (cachedCurrentUser) return cachedCurrentUser;
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(AUTH_USER_STORAGE_KEY);
+    if (raw) {
+      const parsed: AuthUserData = JSON.parse(raw);
+      cachedCurrentUser = parsed;
+      return parsed;
+    }
+  } catch (e) {
+    console.error('Failed to get current auth user:', e);
+  }
+  // إزالة إرجاع OWNER_USER_ACCOUNT تلقائياً! 
+  // إذا لم يكن هناك جلسة، يرجع null ليتجه المستخدم لشاشة الدخول النظيفة
+  return null;
 }
 
 /**
@@ -93,31 +109,26 @@ export function subscribeToAuthUser(callback: (user: AuthUserData | null) => voi
 }
 
 function notifySubscribers(user: AuthUserData | null) {
-  cachedCurrentUser = user;
-  authSubscribers.forEach((cb) => {
-    try {
-      cb(user);
-    } catch (e) {
-      console.error('Error notifying auth subscriber:', e);
-    }
-  });
-
-  // تحديث الصلاحية العامة في التطبيق ديناميكياً بناءً على بيانات السحابة المحفوظة بـ Firestore
   if (user) {
-    if (user.role === 'super_admin' || user.isOwner) {
-      setActiveAppRole('developer');
-    } else {
+    setAuthUserSession(user);
+  } else {
+    cachedCurrentUser = null;
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+      localStorage.removeItem('user_profile_data');
+      localStorage.removeItem('user_wallet_coins');
       setActiveAppRole('guest');
-    }
-  }
-
-  // إطلاق أحداث التحديث العامة
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('najm_auth_state_changed', { detail: user }));
-    if (user) {
+      window.dispatchEvent(new CustomEvent('najm_auth_state_changed', { detail: null }));
       window.dispatchEvent(new Event('user_profile_updated'));
-      window.dispatchEvent(new CustomEvent('user_coins_updated', { detail: { coins: user.coins } }));
+      window.dispatchEvent(new CustomEvent('user_coins_updated', { detail: { coins: 0 } }));
     }
+    authSubscribers.forEach((cb) => {
+      try {
+        cb(null);
+      } catch (e) {
+        console.error('Error notifying auth subscriber:', e);
+      }
+    });
   }
 }
 
@@ -360,6 +371,11 @@ export async function updateUserCloudProfile(updates: Partial<AuthUserData>): Pr
  */
 export async function logoutUserSession(): Promise<void> {
   try {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+      localStorage.removeItem('user_profile_data');
+      localStorage.removeItem('user_wallet_coins');
+    }
     await signOut(auth);
   } catch (e) {
     console.error('Failed to sign out from Firebase:', e);
@@ -367,7 +383,64 @@ export async function logoutUserSession(): Promise<void> {
   notifySubscribers(null);
 }
 
-// دالة توافقية مع الأنظمة الداخلية
+/**
+ * حفظ جلسة المستخدم والتأكد من عدم تسريب شارات أو رصيد المالك للمستخدمين الجدد
+ */
 export function setAuthUserSession(user: AuthUserData): void {
-  notifySubscribers(user);
+  if (typeof window === 'undefined') return;
+  try {
+    cachedCurrentUser = user;
+
+    // 1. مسح البيانات القديمة لعدم تسريب شارات أو رصيد المالك للحساب الجديد
+    localStorage.removeItem('user_profile_data');
+    localStorage.removeItem('user_wallet_coins');
+
+    // 2. حفظ بيانات المستخدم الحقيقي الجديد
+    localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
+
+    // 3. التحقق الصارم من كون المستخدم هو المالك (حسب بريده الإلكتروني Mapped من Firestore)
+    const isRealOwner = user.email === 'megdy1919@gmail.com' || user.isOwner === true;
+
+    const profileToSave = {
+      name: user.name || user.displayName || 'مستخدم جديد',
+      id: user.id || user.uid,
+      country: user.country || 'اليمن',
+      followers: isRealOwner ? 5365 : 0, // 0 للمستخدم الجديد وليست أرقام المالك
+      following: isRealOwner ? 120 : 0,
+      bio: user.bio || 'مرحباً بك في حسابي!',
+      age: user.age || 22,
+      superLegendLevel: isRealOwner ? user.superLegendLevel : 'SL1',
+      vipLevel: isRealOwner ? user.vipTier : 'VIP0',
+      avatar: user.avatar || user.photoURL,
+      coins: isRealOwner ? user.coins : 0, // عدم إعطاء ملايين الكوينز للمستخدم الجديد
+      diamonds: isRealOwner ? user.diamonds : 0
+    };
+
+    localStorage.setItem('user_profile_data', JSON.stringify(profileToSave));
+    localStorage.setItem('user_wallet_coins', (profileToSave.coins || 0).toString());
+
+    // 4. ضبط الدور الحقيقي
+    if (isRealOwner) {
+      setActiveAppRole('developer');
+    } else {
+      setActiveAppRole('guest');
+    }
+
+    // إخطار كافة المشتركين بالبيانات المحدثة
+    authSubscribers.forEach((cb) => {
+      try {
+        cb(user);
+      } catch (err) {
+        console.error('Error notifying auth subscriber:', err);
+      }
+    });
+
+    // إطلاق أحداث التحديث
+    window.dispatchEvent(new CustomEvent('najm_auth_state_changed', { detail: user }));
+    window.dispatchEvent(new Event('user_profile_updated'));
+    window.dispatchEvent(new CustomEvent('user_coins_updated', { detail: { coins: profileToSave.coins || 0 } }));
+  } catch (e) {
+    console.error('Failed to set auth user session:', e);
+  }
 }
+
