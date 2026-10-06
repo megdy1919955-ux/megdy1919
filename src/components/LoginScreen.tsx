@@ -454,25 +454,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               )}
             </button>
 
-            {/* 2. زر تسجيل الدخول بالبريد الإلكتروني الحقيقي */}
-            <button
-              type="button"
-              onClick={() => {
-                if (!isAgreedToTerms) {
-                  setErrorMsg('يرجى الموافقة على شروط الخدمة وسياسة الخصوصية أولاً');
-                  return;
-                }
-                setErrorMsg(null);
-                setAuthView('email');
-              }}
-              disabled={isLoading}
-              className="w-full h-14 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-3 px-6 shadow-sm cursor-pointer text-slate-950 font-black text-base"
-            >
-              <Mail className="w-5 h-5 text-slate-950 stroke-[2.5]" />
-              <span>تسجيل الدخول بالبريد الإلكتروني ✉️</span>
-            </button>
-
-            {/* 3. زر تسجيل الدخول بحساب فيسبوك */}
+            {/* 2. زر تسجيل الدخول بحساب فيسبوك */}
             <button
               type="button"
               onClick={handleFacebookLogin}
