@@ -1,16 +1,25 @@
 /**
- * خدمة إدارة حسابات ومصادقة المستخدم (Authentication & User Session Service)
- * تدعم تسجيل الدخول برقم الجوال، البريد الإلكتروني، جوجل، والدخول كـ ضيف
- * تطبيق النجم (Al-Najm)
+ * خدمة إدارة حسابات ومصادقة المستخدم السحابية (Firebase Cloud Auth & Firestore Service)
+ * ربط كلي وحقيقي عبر Firebase Authentication وقاعدة البيانات السحابية Cloud Firestore
+ * تعتمد كلياً على المعرف الفريد UID السحابي مع إلغاء كافة البيانات والرموز المحلية المكشوفة
+ * تطبيق النجم (Al-Najm Live)
  */
 
-import { OWNER_DEV_ID } from './adminRoleService';
+import { auth, db } from './firebase';
+import {
+  onAuthStateChanged,
+  signOut,
+  updateProfile,
+  User as FirebaseUser,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword
+} from 'firebase/auth';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { setActiveAppRole } from './roleService';
 
-export { OWNER_DEV_ID };
-
 export interface AuthUserData {
-  id: string;
+  id: string; // المعرف الرقمي للحساب (7 أرقام)
+  uid: string; // المعرف السحابي المشفر الفريد من Firebase Auth UID
   name: string;
   avatar: string;
   email?: string;
@@ -30,247 +39,210 @@ export interface AuthUserData {
   lastLoginAt?: string;
 }
 
-const AUTH_USER_STORAGE_KEY = 'najm_authenticated_user_v1';
-const SAVED_DEVICE_ACCOUNTS_KEY = 'najm_device_accounts_list_v1';
-
-// الحساب الافتراضي للمالك والمطور
-export const OWNER_USER_ACCOUNT: AuthUserData = {
-  id: OWNER_DEV_ID,
-  name: '(عابرسبيل)',
-  avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=400',
-  email: 'megdy1919@gmail.com',
-  phone: '+967 770000000',
-  country: 'اليمن',
-  bio: 'المالك والمطور الرسمي لتطبيق النجم الصوتي 👑 ⭐',
-  coins: 100000000,
-  diamonds: 8377,
-  level: 88,
-  vipTier: 'VIP8',
-  superLegendLevel: 'SL3',
-  isOwner: true,
-  role: 'super_admin',
-  loginType: 'google',
-  createdAt: '2026-01-01',
-  lastLoginAt: 'الآن'
-};
+let cachedCurrentUser: AuthUserData | null = null;
+let isAuthInitializedState = false;
+const authSubscribers = new Set<(user: AuthUserData | null) => void>();
+const authReadySubscribers = new Set<(ready: boolean) => void>();
 
 /**
- * جلب بيانات المستخدم المسجل حالياً
+ * فحص هل تم الانتهاء من فحص حالة الجلسة الأولية من Firebase
  */
-export function getCurrentAuthUser(): AuthUserData {
-  if (typeof window === 'undefined') return OWNER_USER_ACCOUNT;
-  try {
-    const raw = localStorage.getItem(AUTH_USER_STORAGE_KEY);
-    if (raw) {
-      const parsed: AuthUserData = JSON.parse(raw);
-      if (parsed.id === 'YE1330000') {
-        parsed.id = '1001001';
-        localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(parsed));
-      }
-      return parsed;
+export function isAuthReady(): boolean {
+  return isAuthInitializedState;
+}
+
+/**
+ * الاشتراك في حدث جاهزية جلسة Firebase
+ */
+export function subscribeToAuthReady(callback: (ready: boolean) => void): () => void {
+  authReadySubscribers.add(callback);
+  callback(isAuthInitializedState);
+  return () => {
+    authReadySubscribers.delete(callback);
+  };
+}
+
+/**
+ * جلب بيانات المستخدم المسجل حالياً من الذاكرة الحية
+ */
+export function getCurrentAuthUser(): AuthUserData | null {
+  return cachedCurrentUser;
+}
+
+/**
+ * الاشتراك التفاعلي المباشر في حالة المصادقة من Firebase
+ */
+export function subscribeToAuthUser(callback: (user: AuthUserData | null) => void): () => void {
+  authSubscribers.add(callback);
+  callback(cachedCurrentUser);
+  return () => {
+    authSubscribers.delete(callback);
+  };
+}
+
+function notifySubscribers(user: AuthUserData | null) {
+  cachedCurrentUser = user;
+  authSubscribers.forEach((cb) => {
+    try {
+      cb(user);
+    } catch (e) {
+      console.error('Error notifying auth subscriber:', e);
     }
-  } catch (e) {
-    console.error('Failed to get current auth user:', e);
-  }
-  // إذا لم يكن هناك مستخدم مسجل مسبقاً، يتم اعتماد حساب المطور الأساسي والسوبر أدمن
-  try {
-    localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(OWNER_USER_ACCOUNT));
-  } catch (e) {}
-  return OWNER_USER_ACCOUNT;
-}
+  });
 
-export const OWNER_ACCESS_PIN = '1919';
-
-/**
- * التحقق من صلاحية المالك والمطور الرئيسي
- */
-export function verifyOwnerCredentials(pinOrEmail: string): boolean {
-  const clean = pinOrEmail.trim().toLowerCase();
-  return clean === OWNER_ACCESS_PIN || clean === 'megdy1919@gmail.com' || clean === OWNER_DEV_ID.toLowerCase();
-}
-
-/**
- * جلب قائمة الحسابات المحفوظة على هذا الجوال (Device Google & Login Accounts)
- * يرجع فقط الحسابات التي قام هذا الجوال بتسجيلها أو استخدامها بالفعل
- */
-export function getSavedDeviceAccounts(): AuthUserData[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(SAVED_DEVICE_ACCOUNTS_KEY);
-    if (raw) {
-      const accounts: AuthUserData[] = JSON.parse(raw);
-      if (Array.isArray(accounts)) {
-        return accounts;
-      }
-    }
-  } catch (e) {
-    console.error('Failed to get device accounts:', e);
-  }
-
-  return [];
-}
-
-/**
- * حفظ الحساب في قائمة حسابات الجوال لسهولة استرجاعه والتعرف عليه لاحقاً
- */
-export function saveAccountToDevice(account: AuthUserData): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const accounts = getSavedDeviceAccounts();
-    const existingIndex = accounts.findIndex(
-      (a) => (a.email && a.email === account.email) || a.id === account.id
-    );
-
-    const updatedAccount = {
-      ...account,
-      lastLoginAt: 'منذ لحظات'
-    };
-
-    let updatedList: AuthUserData[];
-    if (existingIndex >= 0) {
-      updatedList = [...accounts];
-      updatedList[existingIndex] = updatedAccount;
-    } else {
-      updatedList = [updatedAccount, ...accounts];
-    }
-
-    localStorage.setItem(SAVED_DEVICE_ACCOUNTS_KEY, JSON.stringify(updatedList));
-  } catch (e) {
-    console.error('Failed to save account to device list:', e);
-  }
-}
-
-/**
- * حفظ جلسة تسجيل الدخول وتحديث البروفايل
- */
-export function setAuthUserSession(user: AuthUserData): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
-    
-    // حفظ الحساب ضمن حسابات الجوال
-    saveAccountToDevice(user);
-
-    // مزامنة ملف البروفايل العام
-    const profileToSave = {
-      name: user.name,
-      id: user.id,
-      country: user.country || 'اليمن',
-      followers: user.isOwner ? 5365 : 12,
-      following: user.isOwner ? 120 : 5,
-      bio: user.bio || '',
-      age: user.age || 22,
-      superLegendLevel: user.superLegendLevel,
-      vipLevel: user.vipTier,
-      avatar: user.avatar,
-      album: {}
-    };
-    localStorage.setItem('user_profile_data', JSON.stringify(profileToSave));
-
-    // مزامنة محفظة الكوينز
-    localStorage.setItem('user_wallet_coins', user.coins.toString());
-
-    // مزامنة الصلاحية الإدارية
-    if (user.isOwner || user.id === OWNER_DEV_ID) {
+  // تحديث الصلاحية العامة في التطبيق ديناميكياً بناءً على بيانات السحابة المحفوظة بـ Firestore
+  if (user) {
+    if (user.role === 'super_admin' || user.isOwner) {
       setActiveAppRole('developer');
-      localStorage.setItem('super_legend_current_active_user_id', OWNER_DEV_ID);
     } else {
       setActiveAppRole('guest');
-      localStorage.setItem('super_legend_current_active_user_id', user.id);
     }
+  }
 
-    // إطلاق أحداث التحديث للنظام كاملاً
+  // إطلاق أحداث التحديث العامة
+  if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('najm_auth_state_changed', { detail: user }));
-    window.dispatchEvent(new Event('user_profile_updated'));
-    window.dispatchEvent(new CustomEvent('user_coins_updated', { detail: { coins: user.coins } }));
-  } catch (e) {
-    console.error('Failed to set auth user session:', e);
+    if (user) {
+      window.dispatchEvent(new Event('user_profile_updated'));
+      window.dispatchEvent(new CustomEvent('user_coins_updated', { detail: { coins: user.coins } }));
+    }
   }
 }
 
 /**
- * تسجيل الخروج من التطبيق
+ * مزامنة مستخدم Firebase Auth مع قاعدة بيانات Cloud Firestore بناءً على UID
  */
-export function logoutUserSession(): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.removeItem(AUTH_USER_STORAGE_KEY);
-    window.dispatchEvent(new CustomEvent('najm_auth_state_changed', { detail: null }));
-  } catch (e) {
-    console.error('Failed to logout user session:', e);
+export async function syncUserWithFirestore(
+  firebaseUser: FirebaseUser,
+  extra?: {
+    displayName?: string;
+    age?: number;
+    loginType?: 'email' | 'phone' | 'google' | 'guest';
+    avatar?: string;
   }
-}
+): Promise<AuthUserData> {
+  const userDocRef = doc(db, 'users', firebaseUser.uid);
+  const snap = await getDoc(userDocRef);
 
-/**
- * إنشاء حساب جديد وتوليد معرف (ID) فريد للمستخدم أو الصديق
- */
-export function createNewAccount(params: {
-  loginType: 'phone' | 'email' | 'google' | 'guest';
-  contact: string; // phone or email or guest name
-  displayName?: string;
-  avatar?: string;
-  age?: number;
-}): AuthUserData {
-  const cleanContact = params.contact.trim().toLowerCase();
-
-  // التحقق إن كان هذا هو حساب المالك والمطور الرئيسي
-  const isOwnerEmail = cleanContact.includes('megdy1919@gmail.com');
-  const isOwnerId = cleanContact === OWNER_DEV_ID.toLowerCase();
-
-  if (isOwnerEmail || isOwnerId) {
-    const owner = {
-      ...OWNER_USER_ACCOUNT,
-      loginType: params.loginType
+  if (snap.exists()) {
+    const data = snap.data() as AuthUserData;
+    const updated: AuthUserData = {
+      ...data,
+      uid: firebaseUser.uid,
+      lastLoginAt: new Date().toISOString()
     };
-    setAuthUserSession(owner);
-    return owner;
+
+    // تحديث وقت الدخول في Firestore
+    updateDoc(userDocRef, { lastLoginAt: updated.lastLoginAt }).catch(() => {});
+    notifySubscribers(updated);
+    return updated;
   }
 
-  // مستخدم جديد / صديق: توليد آيدي عشوائي مكون من 7 أرقام (مثال: 4829104)
-  const randomSuffix = Math.floor(1000000 + Math.random() * 9000000);
-  const newId = randomSuffix.toString();
-  
+  // حساب جديد كلياً: إنشاء مستند سحابي في Firestore
+  const generatedId = Math.floor(1000000 + Math.random() * 9000000).toString();
   const defaultAvatars = [
     'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
     'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=200',
     'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200'
   ];
-  const chosenAvatar = params.avatar || defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)];
+  const chosenAvatar = extra?.avatar || firebaseUser.photoURL || defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)];
 
-  let name = params.displayName?.trim();
+  let name = extra?.displayName?.trim() || firebaseUser.displayName?.trim();
   if (!name) {
-    if (params.loginType === 'phone') {
-      name = `نجم_${newId.slice(-4)}`;
-    } else if (params.loginType === 'email' || params.loginType === 'google') {
-      name = cleanContact.split('@')[0] || `عضو_${newId.slice(-4)}`;
+    if (firebaseUser.email) {
+      name = firebaseUser.email.split('@')[0];
     } else {
-      name = `ضيف_${newId.slice(-4)}`;
+      name = `نجم_${generatedId.slice(-4)}`;
     }
   }
 
   const newAccount: AuthUserData = {
-    id: newId,
+    id: generatedId,
+    uid: firebaseUser.uid,
     name,
     avatar: chosenAvatar,
-    email: params.loginType === 'email' || params.loginType === 'google' ? params.contact : undefined,
-    phone: params.loginType === 'phone' ? params.contact : undefined,
-    age: params.age || 22,
+    email: firebaseUser.email || undefined,
+    phone: firebaseUser.phoneNumber || undefined,
+    age: extra?.age || 24,
     country: 'اليمن',
     bio: 'مرحباً بكم في حسابي على تطبيق النجم! ✨',
-    coins: 50000, // رصيد كوينز ترحيبي مجاني لأصدقائك لتجربة الرومات والهدايا
+    coins: 50000, // رصيد كوينز ترحيبي
     diamonds: 0,
     level: 1,
     vipTier: 'VIP1',
     superLegendLevel: 'SL1',
     isOwner: false,
     role: 'regular_user',
-    loginType: params.loginType,
+    loginType: extra?.loginType || 'email',
     createdAt: new Date().toISOString().split('T')[0],
     lastLoginAt: 'الآن'
   };
 
-  setAuthUserSession(newAccount);
+  await setDoc(userDocRef, newAccount);
+  notifySubscribers(newAccount);
   return newAccount;
+}
+
+/**
+ * الاستماع الدائم لحالة المصادقة من خوادم Firebase
+ */
+if (typeof window !== 'undefined') {
+  onAuthStateChanged(auth, async (firebaseUser) => {
+    if (firebaseUser) {
+      try {
+        await syncUserWithFirestore(firebaseUser);
+      } catch (err) {
+        console.warn('Failed to sync auth user from Firestore:', err);
+      }
+    } else {
+      notifySubscribers(null);
+    }
+
+    if (!isAuthInitializedState) {
+      isAuthInitializedState = true;
+      authReadySubscribers.forEach((cb) => {
+        try {
+          cb(true);
+        } catch (e) {
+          console.error('Error notifying auth ready subscriber:', e);
+        }
+      });
+    }
+  });
+}
+
+/**
+ * تحديث بيانات البروفايل في السحابة ومزامنتها في Firestore
+ */
+export async function updateUserCloudProfile(updates: Partial<AuthUserData>): Promise<void> {
+  const current = cachedCurrentUser;
+  if (!current || !auth.currentUser) return;
+
+  const merged = { ...current, ...updates };
+  const userDocRef = doc(db, 'users', auth.currentUser.uid);
+  await updateDoc(userDocRef, updates as any);
+
+  if (updates.name && auth.currentUser) {
+    updateProfile(auth.currentUser, { displayName: updates.name }).catch(() => {});
+  }
+
+  notifySubscribers(merged);
+}
+
+/**
+ * تسجيل الخروج الرسمي من خوادم Firebase
+ */
+export async function logoutUserSession(): Promise<void> {
+  try {
+    await signOut(auth);
+  } catch (e) {
+    console.error('Failed to sign out from Firebase:', e);
+  }
+  notifySubscribers(null);
+}
+
+// دالة توافقية مع الأنظمة الداخلية
+export function setAuthUserSession(user: AuthUserData): void {
+  notifySubscribers(user);
 }

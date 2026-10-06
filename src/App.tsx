@@ -1,7 +1,9 @@
 /**
  * تطبيق النجم (Al-Najm Voice Chat)
  * Copyright (c) 2026 Al-Najm. All Rights Reserved.
- * جميع حقوق الملكية الفكرية والعلامة التجارية مسجلة ومحفوظة بالكامل للمالك والمطور. وتعتبر كافة الأكواد، التصاميم، الهياكل، والشعار الرسمي "النجم (Al-Najm)" ملكية خاصة وحصرية له، ولا يجوز نسخها أو استخدامها دون إذن خطي مسبق.
+ * ملف إدارة الشاشات والتنقلات الرئيسية (Root Application Router & Shell)
+ * مرتبط كلياً بـ Firebase Authentication وقاعدة بيانات Cloud Firestore
+ * يعالج مشكلة اضطراب التنقلات وتأكيد الرجوع وإغلاق التطبيق في هواتف الأندرويد
  */
 
 import React, { useState, useEffect, Suspense } from 'react';
@@ -9,29 +11,46 @@ import { FullscreenToggle } from './components/FullscreenToggle';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ExitAppConfirmModal } from './components/ExitAppConfirmModal';
 import { ProfileShellSkeleton } from './components/common/ProfileShellSkeleton';
-import { getCurrentAuthUser, AuthUserData } from './lib/authService';
+import {
+  getCurrentAuthUser,
+  subscribeToAuthUser,
+  subscribeToAuthReady,
+  isAuthReady,
+  AuthUserData
+} from './lib/authService';
 import { App as CapApp } from '@capacitor/app';
 import { backNavigation } from './lib/backNavigation';
 
-const ProfileScreen = React.lazy(() => import('./components/ProfileScreen').then(m => ({ default: m.ProfileScreen })));
-const LoginScreen = React.lazy(() => import('./components/LoginScreen').then(m => ({ default: m.LoginScreen })));
+const ProfileScreen = React.lazy(() =>
+  import('./components/ProfileScreen').then((m) => ({ default: m.ProfileScreen }))
+);
+const LoginScreen = React.lazy(() =>
+  import('./components/LoginScreen').then((m) => ({ default: m.LoginScreen }))
+);
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<AuthUserData | null>(() => getCurrentAuthUser());
+  const [authInitialized, setAuthInitialized] = useState<boolean>(() => isAuthReady());
 
   useEffect(() => {
-    const handleAuthChange = (e: CustomEvent<AuthUserData | null>) => {
-      setCurrentUser(e.detail);
-    };
+    // 1. الاشتراك الفوري في جاهزية التحقق السحابي لمنع وميض الشاشات أو اضطراب التنقل
+    const unsubReady = subscribeToAuthReady((ready) => {
+      setAuthInitialized(ready);
+    });
 
-    window.addEventListener('najm_auth_state_changed' as any, handleAuthChange);
+    // 2. الاشتراك التفاعلي المباشر في بيانات المستخدم الموثق عبر Firebase Auth
+    const unsubUser = subscribeToAuthUser((user) => {
+      setCurrentUser(user);
+    });
 
-    // ربط زر الرجوع الفعلي وإيماءة سحب الرجوع في نظام أندرويد
+    // 3. ربط زر الرجوع الفعلي وإيماءة سحب الرجوع في نظام أندرويد عبر Capacitor
     let removeCapListener: (() => void) | null = null;
     CapApp.addListener('backButton', () => {
       backNavigation.goBack();
     }).then((sub) => {
-      removeCapListener = () => sub.remove();
+      removeCapListener = () => {
+        sub.remove();
+      };
     }).catch(() => {});
 
     // دالة استدعاء مباشرة من ملف MainActivity.java عند ضغط زر الرجوع بالجوال
@@ -41,7 +60,8 @@ export default function App() {
     };
 
     return () => {
-      window.removeEventListener('najm_auth_state_changed' as any, handleAuthChange);
+      unsubReady();
+      unsubUser();
       if (removeCapListener) removeCapListener();
       delete (window as any).handleAndroidHardwareBack;
     };
@@ -52,20 +72,35 @@ export default function App() {
       <div className="w-full min-h-screen min-h-[100dvh] h-full bg-[#0F0F17] text-slate-100 flex flex-col select-none overflow-x-hidden relative">
         <FullscreenToggle />
 
-        {/* إذا لم يسجل المستخدم الدخول بعد، تظهر له أول شاشة ترحيبية وتسجيل الدخول */}
-        {!currentUser ? (
-          <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-amber-400 font-bold">جاري تشغيل التطبيق...</div>}>
+        {/* أثناء التحقق الأولي من جلسة Firebase السحابية: منع الوميض والتنقل المضطرب */}
+        {!authInitialized ? (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F0F17] text-slate-200 gap-3">
+            <div className="w-10 h-10 border-3 border-amber-400 border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs font-bold text-slate-400 font-mono">
+              جاري التحقق من الحساب والمزامنة السحابية...
+            </span>
+          </div>
+        ) : !currentUser ? (
+          /* إذا لم يكن المستخدم مسجلاً تظهر له شاشة تسجيل الدخول الموثقة */
+          <Suspense
+            fallback={
+              <div className="min-h-screen flex items-center justify-center text-amber-400 font-bold">
+                جاري تشغيل التطبيق...
+              </div>
+            }
+          >
             <LoginScreen onLoginSuccess={(user) => setCurrentUser(user)} />
           </Suspense>
         ) : (
+          /* عند وجود جلسة موثقة يتم عرض واجهة التطبيق الرئيسية والغرف والمحادثات */
           <Suspense fallback={<ProfileShellSkeleton />}>
             <ProfileScreen />
           </Suspense>
         )}
 
+        {/* نافذة تأكيد إغلاق التطبيق عند آخر رجوع */}
         <ExitAppConfirmModal />
       </div>
     </ErrorBoundary>
   );
 }
-

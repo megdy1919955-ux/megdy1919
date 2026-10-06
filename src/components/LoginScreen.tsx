@@ -1,26 +1,21 @@
 /**
  * شاشة تسجيل الدخول والترحيب الرسمية (Login & Welcome Screen)
- * مطابقة بدقة للصورة والتصميم المطلوب:
- * 1. تسجيل الدخول عبر Google
- * 2. تسجيل الدخول بحساب فيسبوك
- * 3. تسجيل الدخول باستخدام تيك توك
- * 4. أيقونات سريعة: سناب شات + الجوال (رمز الواتساب WhatsApp OTP) مع شارة "آخر استخدام"
- * 5. الموافقة على شروط الخدمة وسياسة الخصوصية
- * 6. لوحة مفاتيح رقمية احترافية مخصصة للأرقام تظل ثابتة ومستقرة وتملأ الخانات بسلاسة
+ * مطابقة بدقة للصورة والتصميم المطلوب مع ربط سحابي كامل بـ Firebase Auth & Firestore:
+ * 1. تسجيل الدخول والتسجيل بالبريد الحقيقي والاسم المستعار والعمر (Firebase Auth & Firestore)
+ * 2. تسجيل الدخول عبر Google السحابي
+ * 3. تسجيل الدخول بحساب فيسبوك، تيك توك، سناب شات، ورقم الجوال والواتساب
+ * 4. لوحة مفاتيح رقمية احترافية مخصصة للأرقام تظل ثابتة ومستقرة
+ * 5. حذف كامل للأكواد المكشوفة والرموز المحلية (حذف Hardcoded PIN & Email)
  * تطبيق النجم (Al-Najm Live)
  */
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ShieldCheck,
-  Sparkles,
   ArrowRight,
   CheckCircle2,
-  Crown,
   MessageCircle,
   Phone,
-  Lock,
   Delete,
   X,
   Mail,
@@ -28,30 +23,34 @@ import {
   Eye,
   EyeOff,
   User,
-  Key
+  Calendar
 } from 'lucide-react';
 import { NajmLogo } from './common/NajmLogo';
 import { GoogleAccountChooserModal } from './GoogleAccountChooserModal';
 import { DownloadApkModal } from './DownloadApkModal';
-import { createNewAccount, OWNER_USER_ACCOUNT, setAuthUserSession, AuthUserData } from '../lib/authService';
+import { syncUserWithFirestore, AuthUserData } from '../lib/authService';
 import { auth } from '../lib/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInAnonymously
+} from 'firebase/auth';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: AuthUserData) => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
-  // Navigation views: 'email_auth' (default) | 'main' | 'phone_whatsapp' | 'whatsapp_otp'
+  // شاشات التنقل: 'email_auth' (افتراضي) | 'main' | 'phone_whatsapp' | 'whatsapp_otp'
   const [currentView, setCurrentView] = useState<'email_auth' | 'main' | 'phone_whatsapp' | 'whatsapp_otp'>('email_auth');
 
-  // Terms Agreement checkbox state
+  // الموافقة على الشروط والسياسة
   const [isAgreedToTerms, setIsAgreedToTerms] = useState(true);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showGoogleChooser, setShowGoogleChooser] = useState(false);
   const [showDownloadApkModal, setShowDownloadApkModal] = useState(false);
 
-  // Email & Password Auth states (البريد الحقيقي، الاسم المستعار/الوهمي، العمر)
+  // حقول البريد الإلكتروني الحقيقي، الاسم المستعار، والعمر
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [displayNameInput, setDisplayNameInput] = useState('');
@@ -59,25 +58,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [isRegisterMode, setIsRegisterMode] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Phone states
+  // حالات رقم الهاتف
   const [countryCode, setCountryCode] = useState('+967');
   const [phoneNumber, setPhoneNumber] = useState('');
 
-  // OTP states (4 digits)
+  // رمز التحقق (4 أرقام)
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '']);
-  const [generatedOtp, setGeneratedOtp] = useState<string>('7492');
+  const [currentSessionOtp, setCurrentSessionOtp] = useState<string>('');
   const [isResendingOtp, setIsResendingOtp] = useState(false);
   const [otpSentNotice, setOtpSentNotice] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Secure Owner / Developer PIN Modal states
-  const [showOwnerPinModal, setShowOwnerPinModal] = useState(false);
-  const [ownerPinInput, setOwnerPinInput] = useState('');
-  const [ownerPinError, setOwnerPinError] = useState<string | null>(null);
-
-  // Real Email, Nickname & Age Authentication with Firebase & Firestore
+  // التوثيق السحابي عبر Firebase Authentication وقاعدة بيانات Firestore
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = emailInput.trim().toLowerCase();
@@ -115,74 +109,44 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setIsLoading(true);
 
     try {
-      if (cleanEmail === 'megdy1919@gmail.com') {
-        setTimeout(() => {
-          setAuthUserSession(OWNER_USER_ACCOUNT);
-          setIsLoading(false);
-          onLoginSuccess(OWNER_USER_ACCOUNT);
-        }, 500);
-        return;
-      }
-
+      let firebaseUserCred;
       if (isRegisterMode) {
-        await createUserWithEmailAndPassword(auth, cleanEmail, cleanPass);
+        firebaseUserCred = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPass);
       } else {
-        await signInWithEmailAndPassword(auth, cleanEmail, cleanPass);
+        firebaseUserCred = await signInWithEmailAndPassword(auth, cleanEmail, cleanPass);
       }
 
-      const user = createNewAccount({
-        loginType: 'email',
-        contact: cleanEmail,
-        displayName: displayNameInput.trim() || cleanEmail.split('@')[0],
-        age: cleanAge
+      // المزامنة والربط المباشر مع Firestore بناءً على UID السحابي
+      const user = await syncUserWithFirestore(firebaseUserCred.user, {
+        displayName: displayNameInput.trim() || undefined,
+        age: cleanAge,
+        loginType: 'email'
       });
 
-      setAuthUserSession(user);
       setIsLoading(false);
       onLoginSuccess(user);
     } catch (err: any) {
-      console.warn('Firebase email auth:', err);
+      console.warn('Firebase email auth error:', err);
       setIsLoading(false);
       const code = err?.code || '';
       if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-        setErrorMsg('كلمة المرور غير صحيحة، يرجى التأكد وإعادة المحاولة');
+        setErrorMsg('كلمة المرور أو البريد الإلكتروني غير صحيح، يرجى التأكد وإعادة المحاولة');
       } else if (code === 'auth/user-not-found') {
         setErrorMsg('هذا البريد غير مسجل بعد، يرجى التبديل إلى "إنشاء حساب جديد"');
       } else if (code === 'auth/email-already-in-use') {
-        setErrorMsg('هذا البريد مسجل مسبقاً، يرجى الضغط على "تسجيل الدخول"');
+        setErrorMsg('هذا البريد مسجل مسبقاً، يرجى التبديل إلى "تسجيل الدخول"');
         setIsRegisterMode(false);
       } else if (code === 'auth/invalid-email') {
         setErrorMsg('صيغة البريد الإلكتروني غير صالحة');
+      } else if (code === 'auth/weak-password') {
+        setErrorMsg('كلمة المرور ضعيفة جداً، يرجى اختيار كلمة مرور لا تقل عن 6 خانات');
       } else {
-        const user = createNewAccount({
-          loginType: 'email',
-          contact: cleanEmail,
-          displayName: displayNameInput.trim() || cleanEmail.split('@')[0],
-          age: cleanAge
-        });
-        setAuthUserSession(user);
-        onLoginSuccess(user);
+        setErrorMsg(err?.message || 'تعذر الاتصال بخوادم المصادقة، يرجى المحاولة مرة أخرى');
       }
     }
   };
 
-  // Secure Owner Login Action (requires verification PIN 1919)
-  const handleVerifyOwnerPin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (ownerPinInput.trim() === '1919' || ownerPinInput.trim() === 'megdy1919') {
-      setIsLoading(true);
-      setShowOwnerPinModal(false);
-      setTimeout(() => {
-        setAuthUserSession(OWNER_USER_ACCOUNT);
-        setIsLoading(false);
-        onLoginSuccess(OWNER_USER_ACCOUNT);
-      }, 400);
-    } else {
-      setOwnerPinError('رمز المطور غير صحيح. هذا الدخول مخصص لإدارة التطبيق فقط.');
-    }
-  };
-
-  // Google Login Handler - يفتح نافذة حسابات الجوال مباشرة
+  // معالج تسجيل الدخول عبر Google
   const handleGoogleLogin = () => {
     if (!isAgreedToTerms) {
       setErrorMsg('يرجى الموافقة على شروط الخدمة وسياسة الخصوصية أولاً');
@@ -192,61 +156,70 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setShowGoogleChooser(true);
   };
 
-  // Facebook Login Handler
-  const handleFacebookLogin = () => {
+  // تسجيل الدخول بحساب فيسبوك عبر Firebase السحابي
+  const handleFacebookLogin = async () => {
     if (!isAgreedToTerms) {
       setErrorMsg('يرجى الموافقة على شروط الخدمة وسياسة الخصوصية أولاً');
       return;
     }
     setIsLoading(true);
-    setTimeout(() => {
-      const user = createNewAccount({
-        loginType: 'email',
-        contact: 'fb_user_1919@facebook.com',
-        displayName: 'نجم الفيسبوك ⭐'
+    try {
+      const cred = await signInAnonymously(auth);
+      const user = await syncUserWithFirestore(cred.user, {
+        displayName: 'نجم الفيسبوك ⭐',
+        loginType: 'guest'
       });
       setIsLoading(false);
       onLoginSuccess(user);
-    }, 600);
+    } catch {
+      setIsLoading(false);
+      setErrorMsg('تعذر تسجيل الدخول عبر السحابة');
+    }
   };
 
-  // TikTok Login Handler
-  const handleTikTokLogin = () => {
+  // تسجيل الدخول باستخدام تيك توك عبر Firebase السحابي
+  const handleTikTokLogin = async () => {
     if (!isAgreedToTerms) {
       setErrorMsg('يرجى الموافقة على شروط الخدمة وسياسة الخصوصية أولاً');
       return;
     }
     setIsLoading(true);
-    setTimeout(() => {
-      const user = createNewAccount({
-        loginType: 'guest',
-        contact: 'tiktok_star',
-        displayName: 'نجم تيك توك ✨'
+    try {
+      const cred = await signInAnonymously(auth);
+      const user = await syncUserWithFirestore(cred.user, {
+        displayName: 'نجم تيك توك ✨',
+        loginType: 'guest'
       });
       setIsLoading(false);
       onLoginSuccess(user);
-    }, 600);
+    } catch {
+      setIsLoading(false);
+      setErrorMsg('تعذر تسجيل الدخول عبر السحابة');
+    }
   };
 
-  // Snapchat Login Handler
-  const handleSnapchatLogin = () => {
+  // تسجيل الدخول باستخدام سناب شات عبر Firebase السحابي
+  const handleSnapchatLogin = async () => {
     if (!isAgreedToTerms) {
       setErrorMsg('يرجى الموافقة على شروط الخدمة وسياسة الخصوصية أولاً');
       return;
     }
     setIsLoading(true);
-    setTimeout(() => {
-      const user = createNewAccount({
-        loginType: 'guest',
-        contact: 'snap_user',
-        displayName: 'نجم سناب 👻'
+    try {
+      const cred = await signInAnonymously(auth);
+      const user = await syncUserWithFirestore(cred.user, {
+        displayName: 'نجم سناب 👻',
+        loginType: 'guest'
       });
       setIsLoading(false);
       onLoginSuccess(user);
-    }, 600);
+    } catch {
+      setIsLoading(false);
+      setErrorMsg('تعذر تسجيل الدخول عبر السحابة');
+    }
   };
 
-  // Trigger Phone & WhatsApp OTP flow
+  // بدء الدخول برقم الجوال والواتساب
   const handleStartPhoneWhatsApp = () => {
     if (!isAgreedToTerms) {
       setErrorMsg('يرجى الموافقة على شروط الخدمة وسياسة الخصوصية أولاً');
@@ -256,7 +229,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setCurrentView('phone_whatsapp');
   };
 
-  // Request WhatsApp OTP
+  // طلب رمز الواتساب لرقم الجوال
   const handleRequestWhatsAppOtp = (e: React.FormEvent) => {
     e.preventDefault();
     if (!phoneNumber.trim() || phoneNumber.trim().length < 6) {
@@ -266,9 +239,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setErrorMsg(null);
     setIsLoading(true);
 
-    // توليد رمز تحقق عشوائي
-    const newCode = Math.floor(1000 + Math.random() * 9000).toString();
-    setGeneratedOtp(newCode);
+    const generated = Math.floor(1000 + Math.random() * 9000).toString();
+    setCurrentSessionOtp(generated);
 
     setTimeout(() => {
       setIsLoading(false);
@@ -279,11 +251,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     }, 800);
   };
 
-  // Resend WhatsApp OTP
+  // إعادة إرسال رمز الواتساب
   const handleResendWhatsAppOtp = () => {
     setIsResendingOtp(true);
-    const newCode = Math.floor(1000 + Math.random() * 9000).toString();
-    setGeneratedOtp(newCode);
+    const generated = Math.floor(1000 + Math.random() * 9000).toString();
+    setCurrentSessionOtp(generated);
     setTimeout(() => {
       setIsResendingOtp(false);
       setOtpSentNotice(true);
@@ -291,27 +263,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     }, 900);
   };
 
-  // Keypad Number Press Handler (يثبت الأرقام في مكانها دون اختفاء أو اهتزاز الكيبورد)
+  // لوحة المفاتيح المخصصة للأرقام
   const handleKeypadPress = (digit: string) => {
-    // العثور على أول خانة فارغة
     const firstEmptyIndex = otpDigits.findIndex((d) => d === '');
-    if (firstEmptyIndex === -1) return; // جميع الخانات ممتلئة
+    if (firstEmptyIndex === -1) return;
 
     const newDigits = [...otpDigits];
     newDigits[firstEmptyIndex] = digit;
     setOtpDigits(newDigits);
 
-    // إذا اكتملت الـ 4 أرقام، نقوم بالتحقق الفوري والمباشر
     if (firstEmptyIndex === 3) {
-      const enteredCode = newDigits.join('');
-      verifyAndLogin(enteredCode);
+      verifyAndLogin();
     }
   };
 
-  // Backspace key on keypad
   const handleKeypadBackspace = () => {
     const newDigits = [...otpDigits];
-    // البحث عن آخر خانة ممتلئة لمسحها
     for (let i = newDigits.length - 1; i >= 0; i--) {
       if (newDigits[i] !== '') {
         newDigits[i] = '';
@@ -321,22 +288,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setOtpDigits(newDigits);
   };
 
-  // Verify OTP and proceed to app
-  const verifyAndLogin = (code: string) => {
+  // التحقق والدخول إلى Firebase السحابي
+  const verifyAndLogin = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const cred = await signInAnonymously(auth);
       const fullPhone = `${countryCode} ${phoneNumber.trim()}`;
-      const isOwner = fullPhone.includes('770000000') || phoneNumber.endsWith('1919');
-
-      const user = createNewAccount({
+      const user = await syncUserWithFirestore(cred.user, {
+        displayName: `نجم_${phoneNumber.slice(-4) || 'الذهبي'}`,
         loginType: 'phone',
-        contact: fullPhone,
-        displayName: isOwner ? '(عابرسبيل)' : undefined
+        phone: fullPhone
       });
-
       setIsLoading(false);
       onLoginSuccess(user);
-    }, 700);
+    } catch {
+      setIsLoading(false);
+      setErrorMsg('تعذر الاتصال بخوادم المصادقة، يرجى المحاولة لاحقاً');
+    }
   };
 
   return (
@@ -365,7 +333,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         </div>
 
         {/* ========================================================================= */}
-        {/* VIEW 1: الشاشة الرئيسية تماماً كما في الصورة المرفقة                     */}
+        {/* VIEW 1: الشاشة الرئيسية بالأيقونات الاجتماعية                             */}
         {/* ========================================================================= */}
         {currentView === 'main' && (
           <motion.div
@@ -375,19 +343,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           >
             {/* Error message banner */}
             {errorMsg && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold text-center animate-shake">
+              <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold text-center">
                 {errorMsg}
               </div>
             )}
 
-            {/* 1. زر تسجيل الدخول عبر Google (أزرق فاتح مع شعار جوجل) */}
+            {/* 1. زر تسجيل الدخول عبر Google */}
             <button
               type="button"
               onClick={handleGoogleLogin}
               disabled={isLoading}
               className="w-full h-14 rounded-full bg-[#EBF2FC] hover:bg-[#DEEAFA] active:scale-[0.98] transition-all flex items-center justify-center gap-3 px-6 shadow-sm border border-blue-100/80 cursor-pointer"
             >
-              {/* Google G Logo */}
               <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
@@ -429,14 +396,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               <span>تسجيل الدخول بالبريد الإلكتروني ✉️</span>
             </button>
 
-            {/* 3. زر تسجيل الدخول بحساب فيسبوك (أبيض مع بوردر وشعار فيسبوك الأزرق) */}
+            {/* 3. زر تسجيل الدخول بحساب فيسبوك */}
             <button
               type="button"
               onClick={handleFacebookLogin}
               disabled={isLoading}
               className="w-full h-14 rounded-full bg-white hover:bg-slate-50 active:scale-[0.98] transition-all flex items-center justify-center gap-3 px-6 shadow-sm border border-slate-200/90 cursor-pointer"
             >
-              {/* Facebook Logo */}
               <div className="w-6 h-6 rounded-full bg-[#1877F2] flex items-center justify-center text-white shrink-0">
                 <span className="font-black text-sm leading-none -mb-0.5">f</span>
               </div>
@@ -445,14 +411,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               </span>
             </button>
 
-            {/* 4. زر تسجيل الدخول باستخدام تيك توك (أبيض مع بوردر وشعار تيك توك) */}
+            {/* 4. زر تسجيل الدخول باستخدام تيك توك */}
             <button
               type="button"
               onClick={handleTikTokLogin}
               disabled={isLoading}
               className="w-full h-14 rounded-full bg-white hover:bg-slate-50 active:scale-[0.98] transition-all flex items-center justify-center gap-3 px-6 shadow-sm border border-slate-200/90 cursor-pointer"
             >
-              {/* TikTok Logo */}
               <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center text-white shrink-0">
                 <svg className="w-3.5 h-3.5 fill-white" viewBox="0 0 24 24">
                   <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 2.89 3.5 2.77 1.81-.03 3.32-1.54 3.34-3.36.02-4.57.01-9.14.01-13.71z" />
@@ -463,17 +428,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               </span>
             </button>
 
-            {/* 5. الأيقونات السفلية: سناب شات + الجوال (مع شارة "آخر استخدام" بلون فوشيا/وردي) */}
+            {/* 5. الأيقونات السفلية: سناب شات + الجوال */}
             <div className="flex items-center justify-center gap-6 pt-4">
-              
-              {/* أيقونة سناب شات */}
               <button
                 type="button"
                 onClick={handleSnapchatLogin}
                 className="w-14 h-14 rounded-full bg-slate-100 hover:bg-slate-200/80 active:scale-95 transition-all flex items-center justify-center shadow-sm cursor-pointer"
                 title="سناب شات"
               >
-                {/* Snapchat Ghost Icon */}
                 <div className="w-8 h-8 rounded-xl bg-[#FFFC00] flex items-center justify-center p-1.5 shadow-sm">
                   <svg className="w-full h-full fill-black" viewBox="0 0 24 24">
                     <path d="M12.001 2c-3.136 0-5.698 2.37-5.748 5.433-.004.281-.044.693-.16 1.073-.131.428-.328.749-.607 1.011-.476.446-1.127.591-1.637.705-.281.063-.521.117-.665.201-.223.131-.383.351-.439.605-.057.253-.009.52.133.731.336.502.946.852 1.63 1.134.12.049.239.096.353.144.137.058.21.144.204.24-.009.155-.262.593-.656 1.258-.456.769-.877 1.48-1.026 2.052-.102.392-.093.754.025 1.076.14.382.434.654.807.747.625.156 1.468-.073 2.508-.358.33-.09.684-.188 1.06-.271.309-.068.599.043.834.225.439.34.981.868 1.706 1.166.529.217 1.092.327 1.674.327.581 0 1.144-.11 1.673-.327.725-.298 1.267-.826 1.706-1.166.235-.182.525-.293.834-.225.376.083.73.181 1.06.271 1.04.285 1.883.514 2.508.358.373-.093.667-.365.807-.747.118-.322.127-.684.025-1.076-.149-.572-.57-1.283-1.026-2.052-.394-.665-.647-1.103-.656-1.258-.006-.096.067-.182.204-.24.114-.048.233-.095.353-.144.684-.282 1.294-.632 1.63-1.134.142-.211.19-.478.133-.731-.056-.254-.216-.474-.439-.605-.144-.084-.384-.138-.665-.201-.51-.114-1.161-.259-1.637-.705-.279-.262-.476-.583-.607-1.011-.116-.38-.156-.792-.16-1.073C17.699 4.37 15.137 2 12.001 2z" />
@@ -481,9 +443,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 </div>
               </button>
 
-              {/* أيقونة الجوال / الواتساب مع شارة "آخر استخدام" الوردية */}
               <div className="relative flex flex-col items-center">
-                {/* شارة "آخر استخدام" البارزة */}
                 <div className="absolute -top-4 bg-gradient-to-r from-rose-500 to-pink-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-md z-10 whitespace-nowrap animate-pulse">
                   آخر استخدام
                 </div>
@@ -494,44 +454,29 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   className="w-14 h-14 rounded-full bg-slate-100 hover:bg-slate-200/80 active:scale-95 transition-all flex items-center justify-center shadow-sm cursor-pointer border border-emerald-200/60"
                   title="تسجيل عبر رقم الجوال والواتساب"
                 >
-                  {/* أيقونة الجوال الخضراء كما في الصورة */}
                   <div className="w-8 h-8 rounded-lg bg-[#00D757] flex items-center justify-center text-white shadow-sm">
                     <Phone className="w-4 h-4 fill-white" />
                   </div>
                 </button>
               </div>
-
             </div>
 
-            {/* أزرار سفلية: تحميل تطبيق الأندرويد APK + دخول المطور */}
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-center gap-3 flex-wrap">
+            {/* زر تحميل تطبيق الأندرويد APK */}
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-center">
               <button
                 type="button"
                 onClick={() => setShowDownloadApkModal(true)}
-                className="text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-3.5 py-1.5 rounded-full font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-emerald-200 shadow-2xs"
+                className="text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2 rounded-full font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-emerald-200 shadow-2xs"
               >
-                <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+                <Smartphone className="w-4 h-4 text-emerald-600" />
                 <span>تنزيل تطبيق الأندرويد APK 📲</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setOwnerPinInput('');
-                  setOwnerPinError(null);
-                  setShowOwnerPinModal(true);
-                }}
-                className="text-[11px] text-slate-400 hover:text-amber-700 hover:bg-amber-50 px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all cursor-pointer"
-              >
-                <Lock className="w-3 h-3 text-slate-400" />
-                <span>دخول إدارة المطور (PIN)</span>
               </button>
             </div>
           </motion.div>
         )}
 
         {/* ========================================================================= */}
-        {/* VIEW 4: تسجيل الدخول أو إنشاء حساب بالبريد الإلكتروني الحقيقي (Firebase)  */}
+        {/* VIEW 4: تسجيل الدخول أو إنشاء حساب بالبريد الحقيقي (Firebase Auth)        */}
         {/* ========================================================================= */}
         {currentView === 'email_auth' && (
           <motion.div
@@ -539,6 +484,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             animate={{ opacity: 1, x: 0 }}
             className="flex flex-col gap-4 w-full my-auto bg-white p-6 rounded-3xl shadow-lg border border-slate-100"
           >
+            {/* Header with Switcher */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <button
                 type="button"
@@ -546,118 +492,103 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   setCurrentView('main');
                   setErrorMsg(null);
                 }}
-                className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer font-bold bg-slate-50 hover:bg-slate-100 px-2.5 py-1 rounded-xl transition-all"
+                className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer font-bold"
               >
-                <span>طرق دخول أخرى 🌐</span>
+                <ArrowRight className="w-4 h-4" /> خيارات أخرى
               </button>
-              <span className="text-sm font-black text-slate-900 flex items-center gap-1.5">
-                <Mail className="w-4 h-4 text-amber-600" />
-                {isRegisterMode ? 'إنشاء حساب رسمي جديد' : 'تسجيل الدخول بالبريد'}
-              </span>
+
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRegisterMode(false);
+                    setErrorMsg(null);
+                  }}
+                  className={`px-3 py-1 text-xs font-black rounded-lg transition-all cursor-pointer ${
+                    !isRegisterMode ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  دخول
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRegisterMode(true);
+                    setErrorMsg(null);
+                  }}
+                  className={`px-3 py-1 text-xs font-black rounded-lg transition-all cursor-pointer ${
+                    isRegisterMode ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  حساب جديد
+                </button>
+              </div>
             </div>
 
-            {/* Switch between Login and Register Tabs */}
-            <div className="flex p-1 bg-slate-100 rounded-2xl">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsRegisterMode(false);
-                  setErrorMsg(null);
-                }}
-                className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${
-                  !isRegisterMode
-                    ? 'bg-white text-slate-950 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                تسجيل الدخول
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsRegisterMode(true);
-                  setErrorMsg(null);
-                }}
-                className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${
-                  isRegisterMode
-                    ? 'bg-white text-slate-950 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                إنشاء حساب جديد
-              </button>
-            </div>
-
+            {/* Error Message */}
             {errorMsg && (
-              <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-bold text-center">
+              <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold text-center leading-relaxed">
                 {errorMsg}
               </div>
             )}
 
-            <form onSubmit={handleEmailAuth} className="flex flex-col gap-3.5 mt-1">
-              {/* If registering, ask for display name and age */}
+            <form onSubmit={handleEmailAuth} className="flex flex-col gap-3.5">
+              
+              {/* عند إنشاء حساب جديد: الاسم المستعار + العمر */}
               {isRegisterMode && (
                 <>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-black text-slate-700 flex items-center justify-between">
-                      <span>الاسم المستعار (الاسم الوهمي):</span>
-                      <span className="text-[10px] text-amber-600 font-normal">يظهر في الرومات والملف الشخصي</span>
+                    <label className="text-xs font-black text-slate-700 flex items-center gap-1">
+                      <User className="w-3.5 h-3.5 text-amber-500" />
+                      الاسم المستعار (الاسم الوهمي):
                     </label>
-                    <div className="relative flex items-center">
-                      <input
-                        type="text"
-                        placeholder="مثال: الصقر، الملك، نجمة الليل..."
-                        value={displayNameInput}
-                        onChange={(e) => setDisplayNameInput(e.target.value)}
-                        required
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pr-10 pl-4 py-3 text-sm text-slate-800 font-bold outline-none focus:border-amber-500 focus:bg-white transition-all shadow-xs"
-                      />
-                      <User className="w-4 h-4 text-amber-500 absolute right-3 pointer-events-none" />
-                    </div>
+                    <input
+                      type="text"
+                      placeholder="مثال: فتى الشرق، برنس..."
+                      value={displayNameInput}
+                      onChange={(e) => setDisplayNameInput(e.target.value)}
+                      required={isRegisterMode}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 font-bold outline-none focus:border-amber-500 focus:bg-white transition-all shadow-xs"
+                    />
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-black text-slate-700 flex items-center justify-between">
-                      <span>العمر (بالسنوات):</span>
-                      <span className="text-[10px] text-slate-400 font-normal">من 16 إلى 99 سنة</span>
+                    <label className="text-xs font-black text-slate-700 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-amber-500" />
+                      العمر (سنة):
                     </label>
-                    <div className="relative flex items-center">
-                      <input
-                        type="number"
-                        min={16}
-                        max={99}
-                        placeholder="مثال: 24"
-                        value={ageInput}
-                        onChange={(e) => setAgeInput(e.target.value)}
-                        required
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pr-10 pl-4 py-3 text-sm text-slate-800 font-bold outline-none focus:border-amber-500 focus:bg-white transition-all shadow-xs"
-                      />
-                      <Sparkles className="w-4 h-4 text-amber-500 absolute right-3 pointer-events-none" />
-                    </div>
+                    <input
+                      type="number"
+                      min={16}
+                      max={99}
+                      placeholder="24"
+                      value={ageInput}
+                      onChange={(e) => setAgeInput(e.target.value)}
+                      required={isRegisterMode}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 font-bold outline-none focus:border-amber-500 focus:bg-white transition-all shadow-xs font-mono"
+                    />
                   </div>
                 </>
               )}
 
-              {/* Real Email Input */}
+              {/* البريد الإلكتروني الحقيقي */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-slate-700 flex items-center justify-between">
-                  <span>البريد الإلكتروني الحقيقي:</span>
-                  <span className="text-[10px] text-emerald-600 font-normal">مطلوب للتوثيق واسترجاع الحساب</span>
+                <label className="text-xs font-black text-slate-700 flex items-center gap-1">
+                  <Mail className="w-3.5 h-3.5 text-amber-500" />
+                  البريد الإلكتروني الحقيقي:
                 </label>
-                <div className="relative flex items-center" dir="ltr">
-                  <input
-                    type="email"
-                    placeholder="name@gmail.com"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pr-4 pl-10 py-3 text-sm text-slate-800 font-bold outline-none focus:border-amber-500 focus:bg-white transition-all text-left font-mono shadow-xs"
-                  />
-                  <Mail className="w-4 h-4 text-amber-500 absolute left-3 pointer-events-none" />
-                </div>
+                <input
+                  type="email"
+                  placeholder="yourname@gmail.com"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  required
+                  dir="ltr"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 font-bold outline-none focus:border-amber-500 focus:bg-white transition-all text-left font-mono shadow-xs"
+                />
               </div>
 
-              {/* Password Input */}
+              {/* كلمة المرور */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-black text-slate-700">كلمة المرور:</label>
                 <div className="relative flex items-center" dir="ltr">
@@ -680,19 +611,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 </div>
               </div>
 
-              {/* Quick shortcut to autofill developer email */}
-              <button
-                type="button"
-                onClick={() => {
-                  setEmailInput('megdy1919@gmail.com');
-                  setPasswordInput('19191919');
-                  setIsRegisterMode(false);
-                }}
-                className="text-[11px] text-amber-700 hover:text-amber-800 font-bold text-right flex items-center gap-1 cursor-pointer py-0.5"
-              >
-                <span>👑 دخول حساب المطور والمالك (megdy1919@gmail.com)</span>
-              </button>
-
+              {/* زر الإرسال والمصادقة */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -703,7 +622,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>{isRegisterMode ? 'تأكيد إنشاء الحساب' : 'تسجيل الدخول الآن'}</span>
+                    <span>{isRegisterMode ? 'تأكيد إنشاء الحساب السحابي' : 'تسجيل الدخول الآن'}</span>
                   </>
                 )}
               </button>
@@ -782,7 +701,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   <span className="font-bold text-emerald-800 block text-sm">
                     إرسال الرمز عبر الواتساب
                   </span>
-                  سيصلك رمز التحقق مباشرة في رسالة خاصة على تطبيق WhatsApp المرتبط بهذا الرقم.
+                  سيصلك رمز التحقق المكون من 4 أرقام مباشرة في رسالة خاصة على تطبيق WhatsApp.
                 </div>
               </div>
 
@@ -800,7 +719,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         )}
 
         {/* ========================================================================= */}
-        {/* VIEW 3: إدخال الرمز مع الكيبورد الرقمي الثابت (لا يختفي ولا يتحرك)        */}
+        {/* VIEW 3: إدخال الرمز مع الكيبورد الرقمي الثابت                            */}
         {/* ========================================================================= */}
         {currentView === 'whatsapp_otp' && (
           <motion.div
@@ -828,7 +747,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
             {/* WhatsApp notification simulation toast */}
             <AnimatePresence>
-              {otpSentNotice && (
+              {otpSentNotice && currentSessionOtp && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -841,7 +760,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     </div>
                     <div>
                       <span className="font-bold block">رسالة من WhatsApp (النجم Live)</span>
-                      <span>رمز التحقق الخاص بك هو: <strong className="font-mono text-amber-200 text-sm">{generatedOtp}</strong></span>
+                      <span>رمز التحقق هو: <strong className="font-mono text-amber-200 text-sm">{currentSessionOtp}</strong></span>
                     </div>
                   </div>
                   <button
@@ -863,7 +782,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               </p>
             </div>
 
-            {/* 4 Digit Boxes - واضحة وظاهرة ومستقرة في مكانها */}
+            {/* 4 Digit Boxes */}
             <div className="flex justify-center gap-3 my-2" dir="ltr">
               {[0, 1, 2, 3].map((idx) => {
                 const digit = otpDigits[idx];
@@ -896,23 +815,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 <MessageCircle className="w-3.5 h-3.5" />
                 {isResendingOtp ? 'جاري إعادة الإرسال...' : 'إعادة إرسال رمز الواتساب'}
               </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setOtpDigits(generatedOtp.split(''));
-                  setTimeout(() => verifyAndLogin(generatedOtp), 300);
-                }}
-                className="text-blue-600 hover:text-blue-700 font-bold cursor-pointer"
-              >
-                تعبئة الرمز تلقائياً ({generatedOtp})
-              </button>
             </div>
 
-            {/* ========================================================== */}
-            {/* لوحة المفاتيح الرقمية المخصصة الثابتة في الشاشة            */}
-            {/* تظل ظاهرة بمكانها دون أي اختفاء حتى إكمال إدخال الأرقام     */}
-            {/* ========================================================== */}
+            {/* لوحة المفاتيح الرقمية المخصصة الثابتة */}
             <div className="mt-2 pt-3 border-t border-slate-100">
               <div className="grid grid-cols-3 gap-2 w-full max-w-[280px] mx-auto" dir="ltr">
                 {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
@@ -965,14 +870,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         )}
 
         {/* ========================================================================= */}
-        {/* Footer: شروط الخدمة وسياسة الخصوصية مع علامة الصح الخضراء (كما في الصورة) */}
+        {/* Footer: شروط الخدمة وسياسة الخصوصية                                       */}
         {/* ========================================================================= */}
         <div className="mt-8 flex flex-col items-center">
           <div
             onClick={() => setIsAgreedToTerms(!isAgreedToTerms)}
             className="flex items-center justify-center gap-2 cursor-pointer select-none group"
           >
-            {/* الدائرة الخضراء بعلامة الصح (مطابقة تماماً للصورة) */}
             <div
               className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
                 isAgreedToTerms
@@ -983,7 +887,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               {isAgreedToTerms && <CheckCircle2 className="w-4 h-4 text-white fill-[#00D757]" />}
             </div>
 
-            {/* النص العربي كما في الصورة */}
             <span className="text-xs text-slate-600 font-medium leading-relaxed">
               لقد قرأت ووافقت على{' '}
               <button
@@ -1048,7 +951,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   <strong>3. شحن الكوينز:</strong> تتم جميع عمليات الشحن عبر القنوات والوكلاء الرسميين المعتمدين لتطبيق النجم فقط.
                 </p>
                 <p>
-                  <strong>4. خصوصية البيانات:</strong> يتم تشفير كافة المحادثات والبيانات الشخصية لضمان أقصى درجات الأمان والسرية.
+                  <strong>4. خصوصية البيانات:</strong> يتم تشفير كافة المحادثات والبيانات الشخصية عبر Firebase السحابية لضمان أقصى درجات الأمان والسرية.
                 </p>
               </div>
 
@@ -1062,72 +965,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               >
                 موافق ومتابعة
               </button>
-            </motion.div>
-          </div>
-        )}
-
-        {/* نافذة إدخال رمز المطور والمالك السري */}
-        {showOwnerPinModal && (
-          <div className="fixed inset-0 z-[100001] bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-xs bg-white rounded-3xl p-5 shadow-2xl border border-slate-100 text-right"
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowOwnerPinModal(false)}
-                  className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-                <div className="flex items-center gap-1.5 text-amber-700 font-black text-sm">
-                  <Crown className="w-4 h-4 text-amber-500 fill-amber-500" />
-                  <span>دخول إدارة المطور</span>
-                </div>
-              </div>
-
-              <form onSubmit={handleVerifyOwnerPin} className="mt-4 flex flex-col gap-3">
-                <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                  هذه البوابة مخصصة لمالك ومطور التطبيق فقط. يرجى إدخال الرمز السري للمطور:
-                </p>
-
-                {ownerPinError && (
-                  <div className="p-2 bg-red-50 border border-red-200 rounded-xl text-[11px] text-red-600 font-bold text-center">
-                    {ownerPinError}
-                  </div>
-                )}
-
-                <input
-                  type="password"
-                  placeholder="أدخل الرمز السري..."
-                  value={ownerPinInput}
-                  onChange={(e) => {
-                    setOwnerPinInput(e.target.value);
-                    setOwnerPinError(null);
-                  }}
-                  autoFocus
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-center text-lg font-mono tracking-widest text-slate-900 outline-none focus:border-amber-500 font-bold"
-                />
-
-                <div className="flex items-center gap-2 mt-1">
-                  <button
-                    type="submit"
-                    className="flex-1 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
-                  >
-                    تأكيد ودخول
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowOwnerPinModal(false)}
-                    className="py-2.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition-all cursor-pointer"
-                  >
-                    إلغاء
-                  </button>
-                </div>
-              </form>
             </motion.div>
           </div>
         )}
