@@ -77,12 +77,11 @@ service cloud.firestore {
       }
     }
 
-    // User Accounts Collection (Authenticated by Firebase UID)
+    // كولكشن حسابات المستخدمين
     match /users/{userId} {
-      allow read: if isValidId(userId);
-      allow create: if isValidId(userId) && (request.auth != null && request.auth.uid == userId);
-      allow update: if isValidId(userId) && (request.auth != null && request.auth.uid == userId);
-      allow delete: if isValidId(userId) && (request.auth != null && request.auth.uid == userId);
+      allow read: if true; // للسماح بالبحث عن البروفايل ورؤية المطور
+      allow create, update: if request.auth != null;
+      allow delete: if request.auth != null && (request.auth.uid == userId || resource.data.uid == request.auth.uid);
     }
 
     // Health check collection

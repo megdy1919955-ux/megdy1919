@@ -145,43 +145,41 @@ import { fetchUserWallet, fetchMobileMe } from '../lib/serverRewardsService';
 export const ProfileScreen: React.FC = () => {
   // State Management
   const [profile, setProfile] = useState<UserProfileData>(() => {
+    // 1. الأولوية المطلقة لبيانات المستخدم الموثق القادمة من Firestore عبر getCurrentAuthUser()
     const authUser = getCurrentAuthUser();
+    if (authUser) {
+      return {
+        ...INITIAL_USER_PROFILE,
+        userId: authUser.id || '1001001',
+        name: authUser.displayName || authUser.name || INITIAL_USER_PROFILE.name,
+        bio: authUser.bio || INITIAL_USER_PROFILE.bio,
+        country: authUser.country || INITIAL_USER_PROFILE.country,
+        avatarUrl: authUser.avatar || authUser.photoURL || INITIAL_USER_PROFILE.avatarUrl,
+        vipTier: authUser.vipTier || 'VIP1',
+        level: authUser.level || 1
+      };
+    }
+
+    // 2. التحقق من الذاكرة المحلية كاحتياط فقط دون أي شروط قديمة
     const saved = localStorage.getItem('user_profile_data');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.id === 'YE1330000') {
-          parsed.id = '1001001';
-          localStorage.setItem('user_profile_data', JSON.stringify(parsed));
-        }
-        if (parsed.id && (!authUser || parsed.id === authUser.id || parsed.id === '1001001')) {
+        if (parsed.id) {
           return {
             ...INITIAL_USER_PROFILE,
-            userId: parsed.id || '1001001',
-            name: parsed.name || (authUser ? authUser.name : INITIAL_USER_PROFILE.name),
-            bio: parsed.bio || (authUser ? authUser.bio : INITIAL_USER_PROFILE.bio),
-            country: parsed.country || (authUser ? authUser.country : INITIAL_USER_PROFILE.country),
-            avatarUrl: parsed.avatar || parsed.avatarUrl || (authUser ? authUser.avatar : INITIAL_USER_PROFILE.avatarUrl),
-            vipTier: parsed.vipLevel || (authUser ? authUser.vipTier : 'VIP1'),
-            level: parsed.level || (authUser ? authUser.level : 1)
+            userId: parsed.id,
+            name: parsed.name || INITIAL_USER_PROFILE.name,
+            bio: parsed.bio || INITIAL_USER_PROFILE.bio,
+            country: parsed.country || INITIAL_USER_PROFILE.country,
+            avatarUrl: parsed.avatar || parsed.avatarUrl || INITIAL_USER_PROFILE.avatarUrl,
+            vipTier: parsed.vipLevel || 'VIP1',
+            level: parsed.level || 1
           };
         }
       } catch (e) {
         console.error(e);
       }
-    }
-
-    if (authUser) {
-      return {
-        ...INITIAL_USER_PROFILE,
-        userId: authUser.id === 'YE1330000' ? '1001001' : (authUser.id || '1001001'),
-        name: authUser.name,
-        bio: authUser.bio,
-        country: authUser.country,
-        avatarUrl: authUser.avatar,
-        vipTier: authUser.vipTier,
-        level: authUser.level
-      };
     }
 
     return INITIAL_USER_PROFILE;
@@ -214,6 +212,24 @@ export const ProfileScreen: React.FC = () => {
 
   useEffect(() => {
     const syncProfile = () => {
+      const authUser = getCurrentAuthUser();
+      if (authUser) {
+        queueMicrotask(() => {
+          setProfile((prev) => ({
+            ...prev,
+            userId: authUser.id || '1001001',
+            name: authUser.displayName || authUser.name || prev.name,
+            bio: authUser.bio || prev.bio,
+            country: authUser.country || prev.country,
+            avatarUrl: authUser.avatar || authUser.photoURL || prev.avatarUrl,
+            vipTier: authUser.vipTier || prev.vipTier,
+            level: authUser.level || prev.level
+          }));
+          setAdminRole(getAdminRoleForUser(authUser.id || '1001001'));
+        });
+        return;
+      }
+
       const saved = localStorage.getItem('user_profile_data');
       if (saved) {
         try {
@@ -236,9 +252,11 @@ export const ProfileScreen: React.FC = () => {
     };
 
     window.addEventListener('user_profile_updated', syncProfile);
+    window.addEventListener('najm_auth_state_changed' as any, syncProfile);
     window.addEventListener('storage', syncProfile);
     return () => {
       window.removeEventListener('user_profile_updated', syncProfile);
+      window.removeEventListener('najm_auth_state_changed' as any, syncProfile);
       window.removeEventListener('storage', syncProfile);
     };
   }, []);

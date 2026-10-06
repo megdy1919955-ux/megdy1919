@@ -132,6 +132,9 @@ function notifySubscribers(user: AuthUserData | null) {
   }
 }
 
+// الـ UID الثابت للمطور في Firebase أو الإيميل
+export const DEVELOPER_UID = '0OW7yfypGLgOgwbBHOVtpV8FJ3A3';
+
 /**
  * دالة تسجيل الدخول عبر Google الرسمية من Firebase
  */
@@ -149,10 +152,14 @@ export const handleGoogleAuthResult = async (user: any): Promise<{ user: AuthUse
     const userRef = doc(db, 'users', user.uid);
     const userSnap = await getDoc(userRef);
 
+    const isOwner = user.uid === DEVELOPER_UID || user.email === 'megdy1919@gmail.com' || user.isOwner === true;
+    const generatedId = isOwner
+      ? '1001001'
+      : (userSnap.exists() && userSnap.data()?.id
+        ? userSnap.data().id
+        : Math.floor(1000000 + Math.random() * 9000000).toString());
+
     if (!userSnap.exists()) {
-      const isOwner = user.email === 'megdy1919@gmail.com' || user.isOwner === true;
-      // توليد معرف رقمي فريد: إذا كان المالك يحصل على 1001001 وباقي المستخدمين على معرف عشوائي مكون من 7 أرقام
-      const generatedId = isOwner ? '1001001' : Math.floor(1000000 + Math.random() * 9000000).toString();
       const cleanName = user.displayName || 'مستخدم جديد';
       const cleanAvatar =
         user.photoURL ||
@@ -171,42 +178,44 @@ export const handleGoogleAuthResult = async (user: any): Promise<{ user: AuthUse
         age: null,
         country: 'اليمن',
         bio: 'مرحباً بكم في حسابي على تطبيق النجم! ✨',
-        coins: 50000,
-        diamonds: 0,
-        level: 1,
-        vipTier: 'VIP1',
-        superLegendLevel: 'SL1',
+        coins: isOwner ? 5000000 : 50000,
+        diamonds: isOwner ? 500000 : 0,
+        level: isOwner ? 100 : 1,
+        vipTier: isOwner ? 'VIP7' : 'VIP1',
+        superLegendLevel: isOwner ? 'SL7' : 'SL1',
         role: isOwner ? 'super_admin' : 'regular_user',
         isOwner,
         loginType: 'google',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         lastLoginAt: 'الآن',
-        isProfileComplete: false // يحدد هل سيوجه لشاشة الاستكمال أم لا
+        isProfileComplete: isOwner ? true : false
       };
 
       await setDoc(userRef, newUserPayload);
       notifySubscribers(newUserPayload);
-      return { user: newUserPayload, isNewUser: true };
+      return { user: newUserPayload, isNewUser: !isOwner };
     } else {
       // مستخدم مسجل مسبقاً -> جلب بياناته
       const existingData = userSnap.data() as AuthUserData;
       const normalizedUser: AuthUserData = {
         ...existingData,
-        id: existingData.id || Math.floor(1000000 + Math.random() * 9000000).toString(),
+        id: isOwner ? '1001001' : (existingData.id || generatedId),
+        role: isOwner ? 'super_admin' : (existingData.role || 'regular_user'),
+        isOwner: isOwner ? true : (existingData.isOwner || false),
         name: existingData.name || existingData.displayName || 'نجم النجوم',
         avatar:
           existingData.avatar ||
           existingData.photoURL ||
           'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-        coins: existingData.coins ?? 50000,
+        coins: existingData.coins ?? (isOwner ? 5000000 : 50000),
         diamonds: existingData.diamonds ?? 0,
-        level: existingData.level ?? 1,
-        vipTier: existingData.vipTier || 'VIP1',
-        superLegendLevel: existingData.superLegendLevel || 'SL1'
+        level: existingData.level ?? (isOwner ? 100 : 1),
+        vipTier: existingData.vipTier || (isOwner ? 'VIP7' : 'VIP1'),
+        superLegendLevel: existingData.superLegendLevel || (isOwner ? 'SL7' : 'SL1')
       };
       notifySubscribers(normalizedUser);
-      return { user: normalizedUser, isNewUser: !existingData.isProfileComplete };
+      return { user: normalizedUser, isNewUser: isOwner ? false : !existingData.isProfileComplete };
     }
   } catch (error) {
     console.error('Error during Google Auth Firestore Sync:', error);
@@ -257,8 +266,12 @@ export async function syncUserWithFirestore(
 
   if (snap.exists()) {
     const data = snap.data() as AuthUserData;
+    const isOwner = firebaseUser.uid === DEVELOPER_UID || firebaseUser.email === 'megdy1919@gmail.com' || data.isOwner === true;
     const updated: AuthUserData = {
       ...data,
+      id: isOwner ? '1001001' : (data.id || Math.floor(1000000 + Math.random() * 9000000).toString()),
+      role: isOwner ? 'super_admin' : (data.role || 'regular_user'),
+      isOwner: isOwner ? true : (data.isOwner || false),
       uid: firebaseUser.uid,
       lastLoginAt: new Date().toISOString()
     };
@@ -270,7 +283,7 @@ export async function syncUserWithFirestore(
   }
 
   // حساب جديد كلياً: إنشاء مستند سحابي في Firestore
-  const isOwner = firebaseUser.email === 'megdy1919@gmail.com';
+  const isOwner = firebaseUser.uid === DEVELOPER_UID || firebaseUser.email === 'megdy1919@gmail.com';
   const generatedId = isOwner ? '1001001' : Math.floor(1000000 + Math.random() * 9000000).toString();
   const defaultAvatars = [
     'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
@@ -398,8 +411,8 @@ export function setAuthUserSession(user: AuthUserData): void {
     // 2. حفظ بيانات المستخدم الحقيقي الجديد
     localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
 
-    // 3. التحقق الصارم من كون المستخدم هو المالك (حسب بريده الإلكتروني Mapped من Firestore)
-    const isRealOwner = user.email === 'megdy1919@gmail.com' || user.isOwner === true;
+    // 3. التحقق الصارم من كون المستخدم هو المالك (حسب UID المطور أو بريده الإلكتروني)
+    const isRealOwner = user.uid === DEVELOPER_UID || user.email === 'megdy1919@gmail.com' || user.isOwner === true || user.id === '1001001';
 
     const profileToSave = {
       name: user.name || user.displayName || 'مستخدم جديد',
