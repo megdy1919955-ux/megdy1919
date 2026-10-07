@@ -103,6 +103,11 @@ service cloud.firestore {
       }
     }
 
+    // كولكشن العدادات التسلسلية الذرية (Atomic Sequence Counters) لترقيم المعرفات من 1001001 فصاعداً
+    match /counters/{counterId} {
+      allow read, write: if true;
+    }
+
     // Health check collection
     match /test/{docId} {
       allow read, write: if true;

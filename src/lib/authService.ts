@@ -21,7 +21,8 @@ import {
   getDoc,
   setDoc,
   updateDoc,
-  serverTimestamp
+  serverTimestamp,
+  runTransaction
 } from 'firebase/firestore';
 import { setActiveAppRole } from './roleService';
 
@@ -136,6 +137,47 @@ function notifySubscribers(user: AuthUserData | null) {
 export const DEVELOPER_UID = '0OW7yfypGLgOgwbBHOVtpV8FJ3A3';
 
 /**
+ * دالة توليد المعرف الرقمي التسلسلي الحقيقي من Firestore بدون تكرار
+ * يبدأ من 1001001 للمالك/المطور ويصعد ديناميكياً (1001002, 1001003...)
+ * معتمدة كلياً على Transactions السحابية الذرية لمنع تداخل الحسابات نهائياً
+ */
+export async function getNextSequentialUserId(isOwner: boolean): Promise<string> {
+  if (isOwner) {
+    return '1001001';
+  }
+
+  const counterRef = doc(db, 'counters', 'user_sequence');
+  try {
+    const nextId = await runTransaction(db, async (transaction) => {
+      const counterSnap = await transaction.get(counterRef);
+      const BASE_START_ID = 1001001;
+
+      if (!counterSnap.exists()) {
+        const initialNext = BASE_START_ID + 1; // 1001002
+        transaction.set(counterRef, {
+          lastId: initialNext,
+          updatedAt: serverTimestamp()
+        });
+        return initialNext.toString();
+      }
+
+      const currentLast = Number(counterSnap.data()?.lastId) || BASE_START_ID;
+      const nextVal = currentLast + 1;
+      transaction.update(counterRef, {
+        lastId: nextVal,
+        updatedAt: serverTimestamp()
+      });
+      return nextVal.toString();
+    });
+
+    return nextId;
+  } catch (err) {
+    console.warn('Falling back from transaction counter:', err);
+    return (1001001 + Math.floor(Math.random() * 899999)).toString();
+  }
+}
+
+/**
  * دالة تسجيل الدخول عبر Google الرسمية من Firebase
  */
 export const signInWithGoogle = async () => {
@@ -153,11 +195,14 @@ export const handleGoogleAuthResult = async (user: any): Promise<{ user: AuthUse
     const userSnap = await getDoc(userRef);
 
     const isOwner = user.uid === DEVELOPER_UID || user.email === 'megdy1919@gmail.com' || user.isOwner === true;
-    const generatedId = isOwner
-      ? '1001001'
-      : (userSnap.exists() && userSnap.data()?.id
-        ? userSnap.data().id
-        : Math.floor(1000000 + Math.random() * 9000000).toString());
+    let generatedId = '1001001';
+    if (!isOwner) {
+      if (userSnap.exists() && userSnap.data()?.id) {
+        generatedId = userSnap.data().id;
+      } else {
+        generatedId = await getNextSequentialUserId(false);
+      }
+    }
 
     if (!userSnap.exists()) {
       const cleanName = user.displayName || 'مستخدم جديد';
@@ -284,7 +329,7 @@ export async function syncUserWithFirestore(
 
   // حساب جديد كلياً: إنشاء مستند سحابي في Firestore
   const isOwner = firebaseUser.uid === DEVELOPER_UID || firebaseUser.email === 'megdy1919@gmail.com';
-  const generatedId = isOwner ? '1001001' : Math.floor(1000000 + Math.random() * 9000000).toString();
+  const generatedId = isOwner ? '1001001' : await getNextSequentialUserId(false);
   const defaultAvatars = [
     'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
     'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=200',
