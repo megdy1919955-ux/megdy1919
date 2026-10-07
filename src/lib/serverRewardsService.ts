@@ -66,6 +66,8 @@ export interface MobileMeResponse {
     supporterBadgeDesign?: string;
     charmBadgeDesign?: string;
     badgeDecisionByDashboard: boolean;
+    supporterLevel?: number;
+    charmLevel?: number;
   };
   hostStats: HostServerStats & { isHost: boolean };
   dashboardControls: {

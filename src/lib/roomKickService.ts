@@ -24,11 +24,15 @@ const BAN_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
  */
 export function extractVipLevel(user: {
   vip?: string | number;
-  vipLevel?: number;
+  vipLevel?: number | string;
   badges?: Array<{ id?: string; label?: string }>;
 } | null | undefined): number {
   if (!user) return 0;
   if (typeof user.vipLevel === 'number') return user.vipLevel;
+  if (typeof user.vipLevel === 'string') {
+    const match = user.vipLevel.match(/\d+/);
+    if (match) return parseInt(match[0], 10);
+  }
   if (typeof user.vip === 'number') return user.vip;
   if (typeof user.vip === 'string') {
     const match = user.vip.match(/\d+/);
@@ -52,7 +56,7 @@ export function extractVipLevel(user: {
  */
 export function isUserImmuneFromKick(user: {
   vip?: string | number;
-  vipLevel?: number;
+  vipLevel?: number | string;
   badges?: Array<{ id?: string; label?: string }>;
   isHost?: boolean;
   name?: string;

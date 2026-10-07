@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
@@ -23,7 +23,8 @@ import {
   Sliders,
   Save,
   Plus,
-  Trash2
+  Trash2,
+  Mail
 } from 'lucide-react';
 import { 
   fetchDashboardConfig, 

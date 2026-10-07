@@ -50,6 +50,10 @@ export interface AuthUserData {
   updatedAt?: any;
   lastLoginAt?: string;
   isProfileComplete?: boolean;
+  followersCount?: number;
+  followingCount?: number;
+  sentGiftsCount?: number;
+  receivedGiftsCount?: number;
 }
 
 export const AUTH_USER_STORAGE_KEY = 'super_legend_auth_user_session';
@@ -135,6 +139,7 @@ function notifySubscribers(user: AuthUserData | null) {
 
 // الـ UID الثابت للمطور في Firebase أو الإيميل
 export const DEVELOPER_UID = '0OW7yfypGLgOgwbBHOVtpV8FJ3A3';
+export const OWNER_DEV_ID = '1001001';
 
 /**
  * دالة توليد المعرف الرقمي التسلسلي الحقيقي من Firestore بدون تكرار
@@ -178,12 +183,27 @@ export async function getNextSequentialUserId(isOwner: boolean): Promise<string>
 }
 
 /**
- * دالة تسجيل الدخول عبر Google الرسمية من Firebase
+ * دالة تسجيل الدخول عبر Google الرسمية من Firebase مع حماية ومقاومة لانقطاع IndexedDB في المتصفح
  */
 export const signInWithGoogle = async () => {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
-  return await signInWithPopup(auth, provider);
+  try {
+    return await signInWithPopup(auth, provider);
+  } catch (error: any) {
+    const errorMsg = String(error?.message || '');
+    // معالجة الخطأ العابر لـ IndexedDB في متصفحات الجوال عند فتح النافذة المنبثقة
+    if (
+      errorMsg.includes('Database is closing') ||
+      errorMsg.includes('closing/hidden') ||
+      error?.code === 'auth/internal-error'
+    ) {
+      console.warn('Transient IndexedDB connection reset detected during popup. Retrying Google Sign-In...', error);
+      await new Promise((res) => setTimeout(res, 400));
+      return await signInWithPopup(auth, provider);
+    }
+    throw error;
+  }
 };
 
 /**
@@ -304,6 +324,7 @@ export async function syncUserWithFirestore(
     age?: number;
     loginType?: 'email' | 'phone' | 'google' | 'guest';
     avatar?: string;
+    phone?: string;
   }
 ): Promise<AuthUserData> {
   const userDocRef = doc(db, 'users', firebaseUser.uid);
@@ -317,6 +338,7 @@ export async function syncUserWithFirestore(
       id: isOwner ? '1001001' : (data.id || Math.floor(1000000 + Math.random() * 9000000).toString()),
       role: isOwner ? 'super_admin' : (data.role || 'regular_user'),
       isOwner: isOwner ? true : (data.isOwner || false),
+      phone: extra?.phone || data.phone || firebaseUser.phoneNumber || undefined,
       uid: firebaseUser.uid,
       lastLoginAt: new Date().toISOString()
     };
@@ -356,7 +378,7 @@ export async function syncUserWithFirestore(
     name,
     avatar: chosenAvatar,
     email: firebaseUser.email || undefined,
-    phone: firebaseUser.phoneNumber || undefined,
+    phone: extra?.phone || firebaseUser.phoneNumber || undefined,
     age: extra?.age || 24,
     country: 'اليمن',
     bio: 'مرحباً بكم في حسابي على تطبيق النجم! ✨',

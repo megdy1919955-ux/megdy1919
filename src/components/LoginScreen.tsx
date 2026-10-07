@@ -84,6 +84,33 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // دالة تحويل رسائل الأخطاء التقنية للواجهة إلى نصوص واضحة للمستخدم
+  const formatAuthErrorMessage = (err: any): string => {
+    if (!err) return 'حدث خطأ غير متوقع، يرجى إعادة المحاولة.';
+    const msg = String(err?.message || '');
+    const code = String(err?.code || '');
+
+    if (msg.includes('Database is closing') || msg.includes('closing/hidden')) {
+      return 'حدثت مقاطعة مؤقتة بالمتصفح أثناء فتح نافذة الدخول. يرجى إعادة الضغط الآن.';
+    }
+    if (code === 'auth/popup-blocked') {
+      return 'المتصفح حظر نافذة الدخول المنبثقة. يرجى السماح بالنوافذ المنبثقة ثم المحاولة.';
+    }
+    if (code === 'auth/popup-closed-by-user') {
+      return 'تم إغلاق نافذة المصادقة قبل اكتمال العملية.';
+    }
+    if (code === 'auth/cancelled-popup-request') {
+      return 'تم إلغاء الطلب السابق، يرجى المحاولة مجدداً.';
+    }
+    if (code === 'auth/network-request-failed' || msg.includes('network')) {
+      return 'تعذر الاتصال بالشبكة، يرجى التحقق من اتصال الإنترنت.';
+    }
+    if (code === 'auth/unauthorized-domain') {
+      return 'نطاق التطبيق يحتاج تصريحاً إضافياً في إعدادات المصادقة.';
+    }
+    return msg || 'حدث خطأ أثناء تسجيل الدخول عبر Google';
+  };
+
   // دالة معالجة الدخول بعد Google
   const handleGoogleLogin = async () => {
     if (!isAgreedToTerms) {
@@ -112,7 +139,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         setIsLoading(false);
         return;
       }
-      setErrorMsg(err?.message || 'حدث خطأ أثناء تسجيل الدخول عبر Google');
+      setErrorMsg(formatAuthErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -150,7 +177,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       onLoginSuccess(updatedUser);
     } catch (err: any) {
       setIsLoading(false);
-      setErrorMsg(err?.message || 'فشل حفظ الملف الشخصي، يرجى المحاولة مرة أخرى');
+      setErrorMsg(formatAuthErrorMessage(err) || 'فشل حفظ الملف الشخصي، يرجى المحاولة مرة أخرى');
     }
   };
 
@@ -221,7 +248,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       } else if (code === 'auth/weak-password') {
         setErrorMsg('كلمة المرور ضعيفة جداً، يرجى اختيار كلمة مرور لا تقل عن 6 خانات');
       } else {
-        setErrorMsg(err?.message || 'تعذر الاتصال بخوادم المصادقة، يرجى المحاولة مرة أخرى');
+        setErrorMsg(formatAuthErrorMessage(err) || 'تعذر الاتصال بخوادم المصادقة، يرجى المحاولة مرة أخرى');
       }
     }
   };

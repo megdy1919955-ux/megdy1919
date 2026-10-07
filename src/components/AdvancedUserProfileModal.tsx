@@ -71,6 +71,12 @@ export interface UserProfileData {
   isMuted?: boolean;
   isMutedByAdmin?: boolean;
   seatId?: number;
+  level?: number;
+  bio?: string;
+  followersCount?: number;
+  followingCount?: number;
+  sentGiftsCount?: number;
+  receivedGiftsCount?: number;
   cpRelation?: any;
   cpRelations?: Array<{
     id: string;
