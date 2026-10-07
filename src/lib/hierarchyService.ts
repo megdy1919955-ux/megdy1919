@@ -394,7 +394,14 @@ export async function fetchUserHierarchyPermissions(userId: string): Promise<Rol
 
   // الاحتياط المحلي في حال عدم الاتصال المؤقت بالشبكة
   const cleanId = userId.trim().toUpperCase();
-  if (cleanId === '1001001' || cleanId === 'MGR-9901' || cleanId === 'HOST-1001001' || cleanId === 'MEGDY1919@GMAIL.COM' || cleanId === 'YE1330000') {
+  if (
+    cleanId === '1001001' || 
+    cleanId === 'MGR-9901' || 
+    cleanId === 'HOST-1001001' || 
+    cleanId === 'MEGDY1919@GMAIL.COM' || 
+    cleanId === 'YE1330000' ||
+    cleanId === '0OW7YFYPGLGOGWBBHOVTPV8FJ3A3'
+  ) {
     return {
       isManager: true,
       isSuperAdmin: true,

@@ -128,8 +128,18 @@ export interface ModerationReport {
   createdAt: string;
 }
 
+export const DEVELOPER_UID = '0OW7yfypGLgOgwbBHOVtpV8FJ3A3';
 export const OWNER_DEV_ID = '1001001';
-export const OFFICIAL_SUPER_ADMIN_IDS = [OWNER_DEV_ID, '1001001', 'YE1330000', 'MGR-9901', 'megdy1919@gmail.com', 'MEGDY1919@GMAIL.COM'];
+export const OFFICIAL_SUPER_ADMIN_IDS = [
+  OWNER_DEV_ID,
+  '1001001',
+  'YE1330000',
+  'MGR-9901',
+  'megdy1919@gmail.com',
+  'MEGDY1919@GMAIL.COM',
+  DEVELOPER_UID,
+  '0OW7YFYPGLGOGWBBHOVTPV8FJ3A3'
+];
 
 const ADMIN_ROLES_STORAGE_KEY = 'super_legend_assigned_admins_v4';
 const AGENCY_REQUESTS_KEY = 'super_legend_agency_requests_v3';
@@ -624,7 +634,28 @@ export function getAdminRoleForUser(userId: string): AdminRole {
 export function isOwnerOrSuperAdmin(userId: string): boolean {
   if (!userId) return false;
   const cleanId = userId.trim().toUpperCase();
-  return OFFICIAL_SUPER_ADMIN_IDS.map(id => id.toUpperCase()).includes(cleanId);
+  if (OFFICIAL_SUPER_ADMIN_IDS.map(id => id.toUpperCase()).includes(cleanId)) {
+    return true;
+  }
+  // فحص دور المستخدم من التخزين السحابي / الجلسة
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('super_legend_auth_user_session');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (
+          parsed.role === 'admin' ||
+          parsed.role === 'developer' ||
+          parsed.role === 'super_admin' ||
+          parsed.isOwner === true ||
+          parsed.uid === DEVELOPER_UID
+        ) {
+          return true;
+        }
+      }
+    } catch {}
+  }
+  return false;
 }
 
 /**
