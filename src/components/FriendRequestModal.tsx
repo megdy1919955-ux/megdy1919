@@ -30,7 +30,7 @@ export const FriendRequestModal: React.FC<FriendRequestModalProps> = ({
 }) => {
   const [requestSent, setRequestSent] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
-  const [customGreeting, setCustomGreeting] = useState('مرحباً، أود إضافتك إلى قائمة أصدقائي في سوبر ليجند 🌟');
+  const [customGreeting, setCustomGreeting] = useState('مرحباً، أود إضافتك إلى قائمة أصدقائي في تطبيق النجم 🌟');
 
   useEffect(() => {
     if (user) {

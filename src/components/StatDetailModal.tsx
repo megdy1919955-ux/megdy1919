@@ -110,12 +110,14 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
     }
   }, [activeStat]);
 
-  // جلب البيانات الحقيقية من friendService
+  // جلب البيانات الحقيقية من friendService معزولة برقم الـ ID الخاص بالحساب
   useEffect(() => {
     if (!isOpen) return;
 
+    const targetUid = profile?.userId || profile?.id;
+
     const loadRealAccounts = () => {
-      const realFriends = getFriendsList().map((f) => ({
+      const realFriends = getFriendsList(targetUid).map((f) => ({
         id: f.id,
         userId: f.userId,
         name: f.name,
@@ -127,7 +129,7 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
         actionNote: f.status === 'in_room' ? 'في الغرفة الصوتية 🎧' : 'متصل الآن 🟢'
       }));
 
-      const realFollowers = getFollowingList().map((fl) => ({
+      const realFollowers = getFollowingList(targetUid).map((fl) => ({
         id: fl.id,
         userId: fl.userId,
         name: fl.name,
@@ -138,7 +140,7 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
         actionNote: 'تتابعه'
       }));
 
-      const realVisitors = getVisitorsList().map((v) => ({
+      const realVisitors = getVisitorsList(targetUid).map((v) => ({
         id: v.id,
         userId: v.userId,
         name: v.name,
@@ -149,7 +151,7 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
         isFollowing: false
       }));
 
-      const realLikes = getLikesList().map((l) => ({
+      const realLikes = getLikesList(targetUid).map((l) => ({
         id: l.id,
         userId: l.userId,
         name: l.name,
@@ -172,20 +174,28 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
 
     loadRealAccounts();
 
-    window.addEventListener('social_stats_updated', loadRealAccounts);
-    window.addEventListener('friends_updated', loadRealAccounts);
-    window.addEventListener('following_updated', loadRealAccounts);
-    window.addEventListener('visitors_updated', loadRealAccounts);
-    window.addEventListener('likes_updated', loadRealAccounts);
+    const handleEventUpdate = (e?: Event) => {
+      const customEvent = e as CustomEvent;
+      const eventUid = customEvent?.detail?.userId;
+      if (!eventUid || !targetUid || eventUid === targetUid) {
+        loadRealAccounts();
+      }
+    };
+
+    window.addEventListener('social_stats_updated', handleEventUpdate);
+    window.addEventListener('friends_updated', handleEventUpdate);
+    window.addEventListener('following_updated', handleEventUpdate);
+    window.addEventListener('visitors_updated', handleEventUpdate);
+    window.addEventListener('likes_updated', handleEventUpdate);
 
     return () => {
-      window.removeEventListener('social_stats_updated', loadRealAccounts);
-      window.removeEventListener('friends_updated', loadRealAccounts);
-      window.removeEventListener('following_updated', loadRealAccounts);
-      window.removeEventListener('visitors_updated', loadRealAccounts);
-      window.removeEventListener('likes_updated', loadRealAccounts);
+      window.removeEventListener('social_stats_updated', handleEventUpdate);
+      window.removeEventListener('friends_updated', handleEventUpdate);
+      window.removeEventListener('following_updated', handleEventUpdate);
+      window.removeEventListener('visitors_updated', handleEventUpdate);
+      window.removeEventListener('likes_updated', handleEventUpdate);
     };
-  }, [isOpen]);
+  }, [isOpen, profile?.userId]);
 
   if (!isOpen) return null;
 
@@ -220,17 +230,21 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
   const handleToggleFollow = (user: SocialAccountItem, initialFollowing: boolean) => {
     const isNowFollowing = followState[user.id] !== undefined ? !followState[user.id] : !initialFollowing;
     setFollowState((prev) => ({ ...prev, [user.id]: isNowFollowing }));
+    const targetUid = profile?.userId || profile?.id;
     if (isNowFollowing) {
-      followUser({
-        id: user.id,
-        userId: user.userId,
-        name: user.name,
-        avatar: user.avatar,
-        level: user.level,
-        vipTier: user.vipTier
-      });
+      followUser(
+        {
+          id: user.id,
+          userId: user.userId,
+          name: user.name,
+          avatar: user.avatar,
+          level: user.level,
+          vipTier: user.vipTier
+        },
+        targetUid
+      );
     } else {
-      unfollowUser(user.userId || user.id);
+      unfollowUser(user.userId || user.id, targetUid);
     }
   };
 

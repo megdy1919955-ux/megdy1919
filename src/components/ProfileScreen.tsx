@@ -300,12 +300,21 @@ export const ProfileScreen: React.FC = () => {
   });
   const [diamondsBalance, setDiamondsBalance] = useState<number>(0);
 
-  // إحصائيات اجتماعية واقعية وحقيقية تبدأ من الصفر (الزوار، الأصدقاء، تمت متابعتهم، المعجبون)
-  const [socialStats, setSocialStats] = useState(() => getSocialStats());
+  // إحصائيات اجتماعية واقعية وحقيقية تبدأ من الصفر (الزوار، الأصدقاء، تمت متابعتهم، المعجبون) معزولة برقم الـ ID
+  const [socialStats, setSocialStats] = useState(() => getSocialStats(profile.userId));
+
+  // تحديث الإحصائيات تلقائياً وفورياً عند تبديل المستخدم الحالي
+  useEffect(() => {
+    setSocialStats(getSocialStats(profile.userId));
+  }, [profile.userId]);
 
   useEffect(() => {
-    const handleSocialUpdate = () => {
-      setSocialStats(getSocialStats());
+    const handleSocialUpdate = (e?: Event) => {
+      const customEvent = e as CustomEvent;
+      const eventUid = customEvent?.detail?.userId;
+      if (!eventUid || eventUid === profile.userId) {
+        setSocialStats(getSocialStats(profile.userId));
+      }
     };
     window.addEventListener('social_stats_updated', handleSocialUpdate);
     window.addEventListener('friends_updated', handleSocialUpdate);
@@ -319,7 +328,7 @@ export const ProfileScreen: React.FC = () => {
       window.removeEventListener('visitors_updated', handleSocialUpdate);
       window.removeEventListener('likes_updated', handleSocialUpdate);
     };
-  }, []);
+  }, [profile.userId]);
 
   // Pull-to-refresh state for ProfileScreen
   const [profilePullDistance, setProfilePullDistance] = useState(0);
@@ -2238,10 +2247,10 @@ export const ProfileScreen: React.FC = () => {
             isOpen={activeStatModal !== null}
             onClose={() => setActiveStatModal(null)}
             activeStat={activeStatModal}
-            visitors={getVisitorsList()}
-            friends={getFriendsList()}
-            followers={getFollowingList()}
-            likes={getLikesList()}
+            visitors={getVisitorsList(profile.userId)}
+            friends={getFriendsList(profile.userId)}
+            followers={getFollowingList(profile.userId)}
+            likes={getLikesList(profile.userId)}
             profile={profile}
             dashboardBadges={dashboardBadges}
           />
