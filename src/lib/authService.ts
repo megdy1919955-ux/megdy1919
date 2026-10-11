@@ -243,8 +243,8 @@ export const handleGoogleAuthResult = async (user: any): Promise<{ user: AuthUse
         age: null,
         country: 'اليمن',
         bio: 'مرحباً بكم في حسابي على تطبيق النجم! ✨',
-        coins: isOwner ? 5000000 : 50000,
-        diamonds: isOwner ? 500000 : 0,
+        coins: 0,
+        diamonds: 0,
         level: isOwner ? 100 : 1,
         vipTier: isOwner ? 'VIP7' : 'VIP1',
         superLegendLevel: isOwner ? 'SL7' : 'SL1',
@@ -273,7 +273,7 @@ export const handleGoogleAuthResult = async (user: any): Promise<{ user: AuthUse
           existingData.avatar ||
           existingData.photoURL ||
           'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-        coins: existingData.coins ?? (isOwner ? 5000000 : 50000),
+        coins: existingData.coins ?? 0,
         diamonds: existingData.diamonds ?? 0,
         level: existingData.level ?? (isOwner ? 100 : 1),
         vipTier: existingData.vipTier || (isOwner ? 'VIP7' : 'VIP1'),
@@ -382,7 +382,7 @@ export async function syncUserWithFirestore(
     age: extra?.age || 24,
     country: 'اليمن',
     bio: 'مرحباً بكم في حسابي على تطبيق النجم! ✨',
-    coins: 50000, // رصيد كوينز ترحيبي
+    coins: 0,
     diamonds: 0,
     level: 1,
     vipTier: 'VIP1',

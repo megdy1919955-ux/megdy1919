@@ -43,7 +43,14 @@ import { DownloadApkModal } from './DownloadApkModal';
 import { PullToRefreshIndicator } from './PullToRefreshIndicator';
 import { UserProfileData, StatItem, BadgeInfo } from '../types';
 import { lazyWithRetry } from '../lib/lazyWithRetry';
-import { INITIAL_USER_PROFILE, MOCK_VISITORS, MOCK_FRIENDS, MOCK_FOLLOWERS, MOCK_LIKES } from '../data/mockData';
+import { INITIAL_USER_PROFILE } from '../data/mockData';
+import {
+  getSocialStats,
+  getFriendsList,
+  getFollowingList,
+  getVisitorsList,
+  getLikesList
+} from '../lib/friendService';
 import { RoyalThemeMode, ROYAL_THEMES } from './profile/ProfileThemeConfig';
 import {
   UserLevel3DIcon,
@@ -197,11 +204,11 @@ export const ProfileScreen: React.FC = () => {
       name: newProfile.name,
       id: newProfile.userId,
       country: newProfile.country,
-      followers: 5365,
-      following: 120,
+      followers: socialStats.followers,
+      following: socialStats.friends,
       bio: newProfile.bio,
-      superLegendLevel: 'SL3',
-      vipLevel: 'VIP6',
+      superLegendLevel: (newProfile as any).superLegendLevel || 'SL1',
+      vipLevel: newProfile.vipTier || 'VIP1',
       avatar: newProfile.avatarUrl,
       album: updatedData.album || {}
     };
@@ -280,13 +287,39 @@ export const ProfileScreen: React.FC = () => {
     try {
       const saved = localStorage.getItem('user_wallet_coins');
       if (saved) {
+        if (saved === '100000000') {
+          localStorage.setItem('user_wallet_coins', '0');
+          return 0;
+        }
         const parsed = parseInt(saved, 10);
         if (!isNaN(parsed) && parsed >= 0) return parsed;
       }
     } catch {}
-    return 100000000;
+    const authUser = getCurrentAuthUser();
+    return authUser?.coins || 0;
   });
   const [diamondsBalance, setDiamondsBalance] = useState<number>(0);
+
+  // إحصائيات اجتماعية واقعية وحقيقية تبدأ من الصفر (الزوار، الأصدقاء، تمت متابعتهم، المعجبون)
+  const [socialStats, setSocialStats] = useState(() => getSocialStats());
+
+  useEffect(() => {
+    const handleSocialUpdate = () => {
+      setSocialStats(getSocialStats());
+    };
+    window.addEventListener('social_stats_updated', handleSocialUpdate);
+    window.addEventListener('friends_updated', handleSocialUpdate);
+    window.addEventListener('following_updated', handleSocialUpdate);
+    window.addEventListener('visitors_updated', handleSocialUpdate);
+    window.addEventListener('likes_updated', handleSocialUpdate);
+    return () => {
+      window.removeEventListener('social_stats_updated', handleSocialUpdate);
+      window.removeEventListener('friends_updated', handleSocialUpdate);
+      window.removeEventListener('following_updated', handleSocialUpdate);
+      window.removeEventListener('visitors_updated', handleSocialUpdate);
+      window.removeEventListener('likes_updated', handleSocialUpdate);
+    };
+  }, []);
 
   // Pull-to-refresh state for ProfileScreen
   const [profilePullDistance, setProfilePullDistance] = useState(0);
@@ -1102,7 +1135,7 @@ export const ProfileScreen: React.FC = () => {
                     <Visitors3DIcon className="w-6 h-6 sm:w-7 sm:h-7" />
                   </div>
                   <div className={`text-sm sm:text-base font-black ${curRoyal.titleText} font-mono leading-tight tracking-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]`}>
-                    {profile.stats.visitors.toLocaleString('en-US')}
+                    {socialStats.visitors.toLocaleString('en-US')}
                   </div>
                   <div className={`text-[10px] sm:text-[11px] ${curRoyal.subText} font-black mt-0.5 whitespace-nowrap transition-colors`}>
                     الزوار
@@ -1123,7 +1156,7 @@ export const ProfileScreen: React.FC = () => {
                     <Friends3DIcon className="w-6 h-6 sm:w-7 sm:h-7" />
                   </div>
                   <div className={`text-sm sm:text-base font-black ${curRoyal.titleText} font-mono leading-tight tracking-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]`}>
-                    {profile.stats.friends.toLocaleString('en-US')}
+                    {socialStats.friends.toLocaleString('en-US')}
                   </div>
                   <div className={`text-[10px] sm:text-[11px] ${curRoyal.subText} font-black mt-0.5 whitespace-nowrap transition-colors`}>
                     الأصدقاء
@@ -1144,7 +1177,7 @@ export const ProfileScreen: React.FC = () => {
                     <Following3DIcon className="w-6 h-6 sm:w-7 sm:h-7" />
                   </div>
                   <div className={`text-sm sm:text-base font-black ${curRoyal.titleText} font-mono leading-tight tracking-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]`}>
-                    {profile.stats.followers.toLocaleString('en-US')}
+                    {socialStats.followers.toLocaleString('en-US')}
                   </div>
                   <div className={`text-[10px] sm:text-[11px] ${curRoyal.subText} font-black mt-0.5 whitespace-nowrap transition-colors`}>
                     تمت متابعتهم
@@ -1165,7 +1198,7 @@ export const ProfileScreen: React.FC = () => {
                     <Likes3DIcon className="w-6 h-6 sm:w-7 sm:h-7" />
                   </div>
                   <div className={`text-sm sm:text-base font-black ${curRoyal.titleText} font-mono leading-tight tracking-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]`}>
-                    {profile.stats.likes.toLocaleString('en-US')}
+                    {socialStats.likes.toLocaleString('en-US')}
                   </div>
                   <div className={`text-[10px] sm:text-[11px] ${curRoyal.subText} font-black mt-0.5 whitespace-nowrap transition-colors`}>
                     المعجبين
@@ -2205,10 +2238,10 @@ export const ProfileScreen: React.FC = () => {
             isOpen={activeStatModal !== null}
             onClose={() => setActiveStatModal(null)}
             activeStat={activeStatModal}
-            visitors={MOCK_VISITORS}
-            friends={MOCK_FRIENDS}
-            followers={MOCK_FOLLOWERS}
-            likes={MOCK_LIKES}
+            visitors={getVisitorsList()}
+            friends={getFriendsList()}
+            followers={getFollowingList()}
+            likes={getLikesList()}
             profile={profile}
             dashboardBadges={dashboardBadges}
           />

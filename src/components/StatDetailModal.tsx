@@ -26,9 +26,15 @@ import {
   Gift
 } from 'lucide-react';
 import { StatItem } from '../types';
-import { db } from '../lib/firebase';
-import { collection, getDocs, limit, query } from 'firebase/firestore';
 import { getCurrentAuthUser } from '../lib/authService';
+import {
+  getFriendsList,
+  getFollowingList,
+  getVisitorsList,
+  getLikesList,
+  followUser,
+  unfollowUser
+} from '../lib/friendService';
 
 type TabType = 'visitors' | 'friends' | 'followers' | 'likes';
 
@@ -60,160 +66,12 @@ interface StatDetailModalProps {
   likes?: any[];
 }
 
-// قائمة بيانات موثوقة جاهزة للعرض الفوري والتجربة التفاعلية
+// القوائم تبدأ من الصفر تماماً وتعتمد على السجلات الفعلية للمستخدم
 const FALLBACK_ACCOUNTS: Record<TabType, SocialAccountItem[]> = {
-  visitors: [
-    {
-      id: 'v1',
-      userId: '7829104',
-      name: 'سلطانة الشرق 👑',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-      level: 42,
-      vipTier: 'VIP6',
-      superLegendLevel: 'SL2',
-      isFollowing: false,
-      timeAgo: 'منذ 5 دقائق'
-    },
-    {
-      id: 'v2',
-      userId: '6541298',
-      name: 'فارس الليل ⚔️',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-      level: 35,
-      vipTier: 'VIP4',
-      isFollowing: true,
-      timeAgo: 'منذ 18 دقيقة'
-    },
-    {
-      id: 'v3',
-      userId: '9182734',
-      name: 'نور القمر ✨',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
-      level: 28,
-      vipTier: 'VIP3',
-      isFollowing: false,
-      timeAgo: 'منذ ساعة'
-    },
-    {
-      id: 'v4',
-      userId: '5421987',
-      name: 'الزعيم اليمني 🇾🇪',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
-      level: 60,
-      vipTier: 'VIP7',
-      superLegendLevel: 'SL3',
-      isFollowing: true,
-      timeAgo: 'منذ 3 ساعات'
-    }
-  ],
-  friends: [
-    {
-      id: 'f1',
-      userId: '8841001',
-      name: 'أميرة الشرق 🌸',
-      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=200',
-      level: 53,
-      vipTier: 'VIP8',
-      superLegendLevel: 'SL4',
-      isFollowing: true,
-      isMutualFriend: true,
-      actionNote: 'متصل الآن 🟢'
-    },
-    {
-      id: 'f2',
-      userId: '77989081',
-      name: 'برنس صنعاء ⭐',
-      avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=200',
-      level: 30,
-      vipTier: 'VIP5',
-      isFollowing: true,
-      isMutualFriend: true,
-      actionNote: 'في الغرفة الصوتية 🎧'
-    },
-    {
-      id: 'f3',
-      userId: '77989082',
-      name: 'المهيب الركن 🛡️',
-      avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=200',
-      level: 48,
-      vipTier: 'VIP6',
-      isFollowing: true,
-      isMutualFriend: true,
-      actionNote: 'نشط منذ 10 دقائق'
-    }
-  ],
-  followers: [
-    {
-      id: 'fl1',
-      userId: '3948102',
-      name: 'سفير المحبة 🕊️',
-      avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=200',
-      level: 22,
-      vipTier: 'VIP2',
-      isFollowing: true,
-      actionNote: 'تتابعه'
-    },
-    {
-      id: 'fl2',
-      userId: '8839102',
-      name: 'وردة بيضاء 🤍',
-      avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=200',
-      level: 31,
-      vipTier: 'VIP4',
-      isFollowing: true,
-      actionNote: 'تتابعه'
-    },
-    {
-      id: 'fl3',
-      userId: '4928173',
-      name: 'صقر قريش 🦅',
-      avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=200',
-      level: 19,
-      vipTier: 'VIP1',
-      isFollowing: true,
-      actionNote: 'تتابعه'
-    }
-  ],
-  likes: [
-    {
-      id: 'l1',
-      userId: '6629104',
-      name: 'ملكة الإحساس 💖',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
-      level: 45,
-      vipTier: 'VIP6',
-      superLegendLevel: 'SL2',
-      isFollowing: false,
-      timeAgo: 'منذ ساعتين',
-      actionNote: 'أرسلت قلوب وإعجاب للملف ❤️',
-      giftIcon: '🌹'
-    },
-    {
-      id: 'l2',
-      userId: '7728190',
-      name: 'الكينغ عمار 👑',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-      level: 55,
-      vipTier: 'VIP7',
-      superLegendLevel: 'SL3',
-      isFollowing: true,
-      timeAgo: 'اليوم',
-      actionNote: 'أهدى سيارة رياضية بالروم 🏎️',
-      giftIcon: '🏎️'
-    },
-    {
-      id: 'l3',
-      userId: '9928172',
-      name: 'نسمة صيف 🍃',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-      level: 16,
-      vipTier: 'VIP1',
-      isFollowing: false,
-      timeAgo: 'أمس',
-      actionNote: 'أعجبت بصورك في الألبوم ⭐',
-      giftIcon: '⭐'
-    }
-  ]
+  visitors: [],
+  friends: [],
+  followers: [],
+  likes: []
 };
 
 const TABS_CONFIG: { id: TabType; title: string; icon: React.ReactNode }[] = [
@@ -237,7 +95,7 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
     return 'visitors';
   });
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [dataCache, setDataCache] = useState<Record<TabType, SocialAccountItem[]>>(FALLBACK_ACCOUNTS);
   const [followState, setFollowState] = useState<Record<string, boolean>>({});
 
@@ -252,90 +110,80 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
     }
   }, [activeStat]);
 
-  // جلب الحسابات الحقيقية من Firestore
+  // جلب البيانات الحقيقية من friendService
   useEffect(() => {
     if (!isOpen) return;
 
-    let isMounted = true;
-    const fetchFirestoreUsers = async () => {
-      setLoading(true);
-      try {
-        const usersRef = collection(db, 'users');
-        const q = query(usersRef, limit(30));
-        const snap = await getDocs(q);
+    const loadRealAccounts = () => {
+      const realFriends = getFriendsList().map((f) => ({
+        id: f.id,
+        userId: f.userId,
+        name: f.name,
+        avatar: f.avatar,
+        level: f.level || 1,
+        vipTier: f.vipTier || 'VIP1',
+        isFollowing: true,
+        isMutualFriend: true,
+        actionNote: f.status === 'in_room' ? 'في الغرفة الصوتية 🎧' : 'متصل الآن 🟢'
+      }));
 
-        if (!snap.empty && isMounted) {
-          const currentAuth = getCurrentAuthUser();
-          const firestoreUsers: SocialAccountItem[] = [];
+      const realFollowers = getFollowingList().map((fl) => ({
+        id: fl.id,
+        userId: fl.userId,
+        name: fl.name,
+        avatar: fl.avatar,
+        level: fl.level,
+        vipTier: fl.vipTier,
+        isFollowing: true,
+        actionNote: 'تتابعه'
+      }));
 
-          snap.forEach((docSnap) => {
-            const data = docSnap.data();
-            // استبعاد المستخدم الحالي من القوائم
-            if (currentAuth && (data.uid === currentAuth.uid || data.id === currentAuth.id)) {
-              return;
-            }
-            firestoreUsers.push({
-              id: docSnap.id,
-              userId: data.id || Math.floor(1000000 + Math.random() * 9000000).toString(),
-              name: data.displayName || data.name || 'مستخدم النجم',
-              avatar: data.photoURL || data.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-              level: data.level || Math.floor(10 + Math.random() * 50),
-              vipTier: data.vipTier || 'VIP2',
-              superLegendLevel: data.superLegendLevel || 'SL1',
-              isOwner: data.isOwner || data.role === 'super_admin',
-              isFollowing: false,
-              isMutualFriend: false
-            });
-          });
+      const realVisitors = getVisitorsList().map((v) => ({
+        id: v.id,
+        userId: v.userId,
+        name: v.name,
+        avatar: v.avatar,
+        level: v.level,
+        vipTier: v.vipTier,
+        timeAgo: v.timeAgo,
+        isFollowing: false
+      }));
 
-          if (firestoreUsers.length > 0) {
-            // توزيع الحسابات الحقيقية بذكاء على الفئات الأربع لتمثيل البيانات السحابية
-            const realVisitors: SocialAccountItem[] = firestoreUsers.slice(0, 8).map((u, i) => ({
-              ...u,
-              timeAgo: `منذ ${i * 15 + 5} دقيقة`
-            }));
+      const realLikes = getLikesList().map((l) => ({
+        id: l.id,
+        userId: l.userId,
+        name: l.name,
+        avatar: l.avatar,
+        level: l.level,
+        vipTier: l.vipTier,
+        timeAgo: l.timeAgo,
+        actionNote: l.actionNote,
+        giftIcon: l.giftIcon
+      }));
 
-            const realFriends: SocialAccountItem[] = firestoreUsers.slice(2, 7).map((u) => ({
-              ...u,
-              isFollowing: true,
-              isMutualFriend: true,
-              actionNote: 'متصل الآن 🟢'
-            }));
-
-            const realFollowers: SocialAccountItem[] = firestoreUsers.slice(1, 6).map((u) => ({
-              ...u,
-              isFollowing: true,
-              actionNote: 'تتابعه'
-            }));
-
-            const realLikes: SocialAccountItem[] = firestoreUsers.slice(3, 9).map((u, i) => ({
-              ...u,
-              timeAgo: `اليوم ${i + 1}:00 م`,
-              actionNote: i % 2 === 0 ? 'أرسل هدية نجم ذهبي ⭐' : 'أعجب بملفك الشخصي ❤️',
-              giftIcon: i % 2 === 0 ? '⭐' : '🌹'
-            }));
-
-            setDataCache({
-              visitors: realVisitors.length > 0 ? realVisitors : FALLBACK_ACCOUNTS.visitors,
-              friends: realFriends.length > 0 ? realFriends : FALLBACK_ACCOUNTS.friends,
-              followers: realFollowers.length > 0 ? realFollowers : FALLBACK_ACCOUNTS.followers,
-              likes: realLikes.length > 0 ? realLikes : FALLBACK_ACCOUNTS.likes
-            });
-          }
-        }
-      } catch (err) {
-        console.warn('Notice: Firestore accounts fallback active:', err);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
+      setDataCache({
+        visitors: realVisitors,
+        friends: realFriends,
+        followers: realFollowers,
+        likes: realLikes
+      });
+      setLoading(false);
     };
 
-    fetchFirestoreUsers();
+    loadRealAccounts();
+
+    window.addEventListener('social_stats_updated', loadRealAccounts);
+    window.addEventListener('friends_updated', loadRealAccounts);
+    window.addEventListener('following_updated', loadRealAccounts);
+    window.addEventListener('visitors_updated', loadRealAccounts);
+    window.addEventListener('likes_updated', loadRealAccounts);
 
     return () => {
-      isMounted = false;
+      window.removeEventListener('social_stats_updated', loadRealAccounts);
+      window.removeEventListener('friends_updated', loadRealAccounts);
+      window.removeEventListener('following_updated', loadRealAccounts);
+      window.removeEventListener('visitors_updated', loadRealAccounts);
+      window.removeEventListener('likes_updated', loadRealAccounts);
     };
   }, [isOpen]);
 
@@ -368,12 +216,22 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
     touchEndX.current = null;
   };
 
-  // تبديل المتابعة
-  const handleToggleFollow = (id: string, initialFollowing: boolean) => {
-    setFollowState((prev) => {
-      const current = prev[id] !== undefined ? prev[id] : initialFollowing;
-      return { ...prev, [id]: !current };
-    });
+  // تبديل المتابعة الفعلي
+  const handleToggleFollow = (user: SocialAccountItem, initialFollowing: boolean) => {
+    const isNowFollowing = followState[user.id] !== undefined ? !followState[user.id] : !initialFollowing;
+    setFollowState((prev) => ({ ...prev, [user.id]: isNowFollowing }));
+    if (isNowFollowing) {
+      followUser({
+        id: user.id,
+        userId: user.userId,
+        name: user.name,
+        avatar: user.avatar,
+        level: user.level,
+        vipTier: user.vipTier
+      });
+    } else {
+      unfollowUser(user.userId || user.id);
+    }
   };
 
   const currentList = dataCache[currentTab] || [];
@@ -596,7 +454,7 @@ export const StatDetailModal: React.FC<StatDetailModalProps> = ({
                       /* زر المتابعة التفاعلي (متابعة / إلغاء متابعة) */
                       <button
                         type="button"
-                        onClick={() => handleToggleFollow(user.id, user.isFollowing || false)}
+                        onClick={() => handleToggleFollow(user, user.isFollowing || false)}
                         className={`px-3.5 py-2 text-xs font-black rounded-xl transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
                           isFollowing
                             ? 'bg-white/10 hover:bg-white/15 text-slate-300 border border-white/10'

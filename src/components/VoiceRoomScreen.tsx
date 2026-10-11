@@ -501,17 +501,22 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     ? Boolean(myOccupiedSeat.isMuted)
     : Boolean(userMuteStates[myUserId] ?? userMuteStates[CURRENT_USER_PROFILE_ID] ?? false);
   // Supporter Coins Balance with real-time automatic persistence
+  // Supporter Coins Balance with real-time automatic persistence
   const getInitialUserCoins = (): number => {
     try {
       const saved = localStorage.getItem('user_wallet_coins');
       if (saved) {
+        if (saved === '100000000') {
+          localStorage.setItem('user_wallet_coins', '0');
+          return 0;
+        }
         const parsed = parseInt(saved, 10);
         if (!isNaN(parsed) && parsed >= 0) return parsed;
       }
     } catch {
       // ignore localStorage errors
     }
-    return isOwner ? 100000000 : (authUser?.coins || 50000);
+    return authUser?.coins || 0;
   };
 
   const [userCoinsBalance, setUserCoinsBalance] = useState<number>(getInitialUserCoins);
@@ -529,18 +534,19 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
   userCoinsBalanceRef.current = userCoinsBalance;
   const isInternalCoinsUpdateRef = useRef<boolean>(false);
 
-  // Ensure 100,000,000 coins are seeded to localStorage upon entering room
+  // Synchronize real coins balance and purge any legacy 100M artificial seed
   useEffect(() => {
     try {
       const currentCoins = localStorage.getItem('user_wallet_coins');
       const parsedCoins = currentCoins ? parseInt(currentCoins, 10) : 0;
-      if (!currentCoins || isNaN(parsedCoins) || parsedCoins < 100000000) {
-        localStorage.setItem('user_wallet_coins', '100000000');
-        setUserCoinsBalance(100000000);
+      if (currentCoins === '100000000' || !currentCoins || isNaN(parsedCoins)) {
+        const realCoins = authUser?.coins || 0;
+        localStorage.setItem('user_wallet_coins', realCoins.toString());
+        setUserCoinsBalance(realCoins);
         queueMicrotask(() => {
           window.dispatchEvent(
             new CustomEvent('user_coins_updated', {
-              detail: { coins: 100000000, source: 'voice_room' }
+              detail: { coins: realCoins, source: 'voice_room' }
             })
           );
         });
@@ -548,7 +554,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     } catch {
       // ignore
     }
-  }, []);
+  }, [authUser?.coins]);
 
   useEffect(() => {
     try {
