@@ -1303,7 +1303,7 @@ export const ProfileScreen: React.FC = () => {
                     <div className="flex items-center gap-1.5 min-w-0">
                       <TCoin3DIcon className="w-5 h-5 shrink-0" />
                       <span className={`text-xs font-black ${curRoyal.coinsText} transition-colors`}>
-                        شحن
+                        الكوينز (المحفظة)
                       </span>
                     </div>
                     <ChevronLeft className={`w-4 h-4 ${curRoyal.chevron} group-hover:-translate-x-0.5 transition-transform shrink-0`} />
@@ -1339,6 +1339,14 @@ export const ProfileScreen: React.FC = () => {
                   </div>
                 </div>
               </motion.div>
+            </div>
+
+            {/* التنويه الرسمي لشحن الرصيد المعتمد عبر الوكيل أو لوحة التحكم */}
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-300/50 text-[11px] font-bold text-amber-950 shadow-2xs" dir="rtl">
+              <span className="text-amber-600 text-sm shrink-0">ℹ️</span>
+              <span className="leading-snug">
+                لشحن رصيدك، يرجى التواصل مع الوكيل المعتمد أو شحن الرصيد عبر معرف المستخدم (<span className="font-mono font-black text-amber-800">{profile.userId}</span>) في لوحة التحكم.
+              </span>
             </div>
 
         {/* 4 Rectangular Action Cards arranged 2 on the right and 2 on the left (2x2 grid) with Luxury Gold / Pearl White / Obsidian Night styling */}
@@ -2261,18 +2269,19 @@ export const ProfileScreen: React.FC = () => {
         </button>
       </div>
 
-      {/* Recharge Top-Up Modal */}
+      {/* Official Agency Wallet & Recharge Modal (Read-Only & Verified Agencies) */}
       {isRechargeModalOpen && (
-        <Suspense fallback={<LazyModalSkeleton title="شحن الرصيد والكوينز" />}>
+        <Suspense fallback={<LazyModalSkeleton title="المحفظة الرسمية ووكلاء الشحن" />}>
           <RechargeModal
             isOpen={isRechargeModalOpen}
             onClose={() => setIsRechargeModalOpen(false)}
+            userId={profile.userId}
+            userName={profile.name}
             currentCoins={coinsBalance}
             currentDiamonds={diamondsBalance}
-            onSuccessRecharge={async (addedCoins, paymentMethod) => {
-              setCoinsBalance((prev) => prev + addedCoins);
-              const targetUserId = profile.userId || '1001001';
-              await rechargeUserCoins(targetUserId, addedCoins, { uid: auth.currentUser?.uid, paymentMethod });
+            onContactSupport={() => {
+              setIsRechargeModalOpen(false);
+              setIsCustomerServiceModalOpen(true);
             }}
           />
         </Suspense>

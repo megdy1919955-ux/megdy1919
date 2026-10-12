@@ -1915,11 +1915,27 @@ async function startServer() {
   });
 
   // 🌟 CENTRAL RULE: POST /api/users/:userId/recharge
-  // شحن وتزويد كوينز المحفظة وحفظها بالسيرفر المركزي لعدم ضياعها بالتحديث
+  // شحن وتزويد كوينز المحفظة محصور حصراً بلوحة التحكم (Dashboard / Admin SDK / Server-to-Server)
   app.post('/api/users/:userId/recharge', (req, res) => {
     try {
+      const authHeader = req.headers['authorization'] || '';
+      const adminKey = req.headers['x-admin-key'] || req.headers['x-dashboard-key'] || req.query.adminKey;
+      const isDashboardAuthorized =
+        adminKey === 'najm_dashboard_admin_secret_key_2026' ||
+        adminKey === 'admin_dashboard_secret' ||
+        authHeader.includes('Bearer najm_dashboard_admin_token') ||
+        authHeader.includes('Bearer dashboard-admin-secret-najm-2026');
+
+      if (!isDashboardAuthorized) {
+        return res.status(403).json({
+          status: 'error',
+          code: 'FORBIDDEN_CLIENT_RECHARGE',
+          message: 'عذراً، الشحن المباشر من التطبيق غير متاح. يرجى التواصل مع الوكيل المعتمد أو استخدام لوحة التحكم (Dashboard) عبر معرفك (ID).'
+        });
+      }
+
       const userId = req.params.userId.trim();
-      const { amount, paymentMethod = 'card', packageId = 'coins-pkg' } = req.body;
+      const { amount, paymentMethod = 'agency', packageId = 'agency_recharge' } = req.body;
       const rechargeAmount = Math.max(0, Number(amount) || 0);
 
       const profile = getOrCreateUserProfile(userId);
