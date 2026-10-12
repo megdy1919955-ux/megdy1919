@@ -141,6 +141,8 @@ function notifySubscribers(user: AuthUserData | null) {
 export const DEVELOPER_UID = '0OW7yfypGLgOgwbBHOVtpV8FJ3A3';
 export const OWNER_DEV_ID = '1001001';
 
+import { generateNextUserId } from './userIdGenerator';
+
 /**
  * دالة توليد المعرف الرقمي التسلسلي الحقيقي من Firestore بدون تكرار
  * يبدأ من 1001001 للمالك/المطور ويصعد ديناميكياً (1001002, 1001003...)
@@ -150,36 +152,8 @@ export async function getNextSequentialUserId(isOwner: boolean): Promise<string>
   if (isOwner) {
     return '1001001';
   }
-
-  const counterRef = doc(db, 'counters', 'user_sequence');
-  try {
-    const nextId = await runTransaction(db, async (transaction) => {
-      const counterSnap = await transaction.get(counterRef);
-      const BASE_START_ID = 1001001;
-
-      if (!counterSnap.exists()) {
-        const initialNext = BASE_START_ID + 1; // 1001002
-        transaction.set(counterRef, {
-          lastId: initialNext,
-          updatedAt: serverTimestamp()
-        });
-        return initialNext.toString();
-      }
-
-      const currentLast = Number(counterSnap.data()?.lastId) || BASE_START_ID;
-      const nextVal = currentLast + 1;
-      transaction.update(counterRef, {
-        lastId: nextVal,
-        updatedAt: serverTimestamp()
-      });
-      return nextVal.toString();
-    });
-
-    return nextId;
-  } catch (err) {
-    console.warn('Falling back from transaction counter:', err);
-    return (1001001 + Math.floor(Math.random() * 899999)).toString();
-  }
+  const nextId = await generateNextUserId();
+  return nextId.toString();
 }
 
 /**
