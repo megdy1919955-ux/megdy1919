@@ -139,7 +139,9 @@ import { ElectricRefundEnergySphere, ElectricOrbState } from './ElectricRefundEn
 import { playElectricChargeZap, playElectricExplosionSound } from '../lib/electricSoundService';
 import { SideGiftStream, SideGiftEvent } from './SideGiftStream';
 import { ErrorBoundary } from './ErrorBoundary';
-import { isFirebaseReady } from '../lib/firebase';
+import { db, auth, handleFirestoreError, OperationType, isFirebaseReady } from '../lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { deductUserCoins, rechargeUserCoins } from '../lib/walletService';
 import { sendGiftSignalToServer, sendReceiveSupport, fetchMobileMe } from '../lib/serverRewardsService';
 import { processRefundGiftDraw, isRefundGift, RefundDrawResult } from '../lib/refundVaultService';
 import { RoomCinemaSection } from './room/RoomCinemaSection';
@@ -574,10 +576,37 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     }
   }, [userCoinsBalance]);
 
+  // الربط اللحظي المستمر مع قاعدة بيانات Firebase Firestore لمزامنة رصيد الكوينز داخل الروم
+  useEffect(() => {
+    const currentUid = auth.currentUser?.uid;
+    if (!currentUid) return;
+
+    try {
+      const userDocRef = doc(db, 'users', currentUid);
+      const unsubscribe = onSnapshot(
+        userDocRef,
+        (snap) => {
+          if (snap.exists()) {
+            const uData = snap.data();
+            if (typeof uData.coins === 'number' && uData.coins !== userCoinsBalanceRef.current) {
+              setUserCoinsBalance(uData.coins);
+              localStorage.setItem('user_wallet_coins', uData.coins.toString());
+            }
+          }
+        },
+        (err) => {
+          handleFirestoreError(err, OperationType.GET, `users/${currentUid}`);
+        }
+      );
+      return () => unsubscribe();
+    } catch (e) {
+      console.warn('Firestore room coins sync notice:', e);
+    }
+  }, []);
+
   useEffect(() => {
     const handleGlobalCoinsUpdate = (e: Event) => {
       const customEvent = e as CustomEvent;
-      if (customEvent.detail?.source === 'voice_room') return;
       if (typeof customEvent.detail?.coins === 'number' && customEvent.detail.coins !== userCoinsBalanceRef.current) {
         setUserCoinsBalance(customEvent.detail.coins);
       }
@@ -4464,6 +4493,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
     if (totalValue > 0) {
       isInternalCoinsUpdateRef.current = true;
       setUserCoinsBalance((prev) => Math.max(0, prev - totalValue));
+      deductUserCoins(myUserId || '1001001', totalValue, { uid: auth.currentUser?.uid, reason: 'room_gift_sent' }).catch(() => {});
       setTotalRoomSupportDiamonds((prev) => {
         const nextVal = prev + totalValue;
         try {
@@ -4522,6 +4552,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       // AUTOMATICALLY and IMMEDIATELY add won refund coins to supporter's wallet balance
       isInternalCoinsUpdateRef.current = true;
       setUserCoinsBalance((prev) => prev + refundResult.refundCoins);
+      rechargeUserCoins(myUserId || '1001001', refundResult.refundCoins, { uid: auth.currentUser?.uid, packageId: 'lucky_refund_win' }).catch(() => {});
 
       // Trigger Electric Energy Sphere in center of the screen (with rapid tap accumulation & explosion)
       handleRefundOrbDraw(refundResult, giftItem, giftQty);

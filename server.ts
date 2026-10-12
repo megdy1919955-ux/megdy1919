@@ -1914,6 +1914,76 @@ async function startServer() {
     });
   });
 
+  // 🌟 CENTRAL RULE: POST /api/users/:userId/recharge
+  // شحن وتزويد كوينز المحفظة وحفظها بالسيرفر المركزي لعدم ضياعها بالتحديث
+  app.post('/api/users/:userId/recharge', (req, res) => {
+    try {
+      const userId = req.params.userId.trim();
+      const { amount, paymentMethod = 'card', packageId = 'coins-pkg' } = req.body;
+      const rechargeAmount = Math.max(0, Number(amount) || 0);
+
+      const profile = getOrCreateUserProfile(userId);
+      const wallet = getOrCreateUserWallet(userId, profile.name);
+      wallet.coins += rechargeAmount;
+      wallet.updatedAt = Date.now();
+
+      // Broadcast update to all clients
+      const notice = JSON.stringify({
+        type: 'user_wallet_recharged',
+        payload: {
+          userId,
+          coins: wallet.coins,
+          addedCoins: rechargeAmount,
+          paymentMethod,
+          timestamp: Date.now()
+        }
+      });
+      clients.forEach((c) => {
+        if (c.ws.readyState === WebSocket.OPEN) {
+          c.ws.send(notice);
+        }
+      });
+
+      res.json({
+        status: 'success',
+        message: 'تم شحن الكوينز وتحديث المحفظة بنجاح بالسيرفر المركزي 🎉',
+        userId,
+        coins: wallet.coins,
+        addedCoins: rechargeAmount,
+        updatedAt: wallet.updatedAt
+      });
+    } catch (err: any) {
+      res.status(500).json({ status: 'error', message: err?.message || 'Server error' });
+    }
+  });
+
+  // 🌟 CENTRAL RULE: POST /api/users/:userId/deduct
+  // خصم الكوينز عند إرسال الهدايا لضمان تطابق الأرصدة لحظياً
+  app.post('/api/users/:userId/deduct', (req, res) => {
+    try {
+      const userId = req.params.userId.trim();
+      const { amount, reason = 'gift_sent' } = req.body;
+      const deductAmount = Math.max(0, Number(amount) || 0);
+
+      const profile = getOrCreateUserProfile(userId);
+      const wallet = getOrCreateUserWallet(userId, profile.name);
+      wallet.coins = Math.max(0, wallet.coins - deductAmount);
+      wallet.totalCoinsSpent += deductAmount;
+      wallet.updatedAt = Date.now();
+
+      res.json({
+        status: 'success',
+        message: 'تم خصم الكوينز بنجاح من السيرفر المركزي',
+        userId,
+        coins: wallet.coins,
+        deducted: deductAmount,
+        updatedAt: wallet.updatedAt
+      });
+    } catch (err: any) {
+      res.status(500).json({ status: 'error', message: err?.message || 'Server error' });
+    }
+  });
+
   // 3. استعلام إحصائيات المضيف وساعات البث والراتب بالدولار من السيرفر المركزي
   // GET /api/broadcaster/:userId/stats
   app.get('/api/broadcaster/:userId/stats', (req, res) => {

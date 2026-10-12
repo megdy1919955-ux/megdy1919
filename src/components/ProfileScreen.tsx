@@ -45,6 +45,7 @@ import { UserProfileData, StatItem, BadgeInfo } from '../types';
 import { lazyWithRetry } from '../lib/lazyWithRetry';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { rechargeUserCoins } from '../lib/walletService';
 import { INITIAL_USER_PROFILE } from '../data/mockData';
 import {
   getSocialStats,
@@ -2266,19 +2267,12 @@ export const ProfileScreen: React.FC = () => {
           <RechargeModal
             isOpen={isRechargeModalOpen}
             onClose={() => setIsRechargeModalOpen(false)}
-            onSuccessRecharge={(addedCoins) => {
-              setCoinsBalance((prev) => {
-                const next = prev + addedCoins;
-                try {
-                  localStorage.setItem('user_wallet_coins', next.toString());
-                  window.dispatchEvent(
-                    new CustomEvent('user_coins_updated', {
-                      detail: { coins: next }
-                    })
-                  );
-                } catch {}
-                return next;
-              });
+            currentCoins={coinsBalance}
+            currentDiamonds={diamondsBalance}
+            onSuccessRecharge={async (addedCoins, paymentMethod) => {
+              setCoinsBalance((prev) => prev + addedCoins);
+              const targetUserId = profile.userId || '1001001';
+              await rechargeUserCoins(targetUserId, addedCoins, { uid: auth.currentUser?.uid, paymentMethod });
             }}
           />
         </Suspense>

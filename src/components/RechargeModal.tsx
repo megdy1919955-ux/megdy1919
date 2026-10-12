@@ -5,13 +5,17 @@ import { X, Coins, Gem, Check, CreditCard, Smartphone, Sparkles, Zap, ShieldChec
 interface RechargeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccessRecharge: (coinsAdded: number) => void;
+  onSuccessRecharge: (coinsAdded: number, paymentMethod?: string) => void;
+  currentCoins?: number;
+  currentDiamonds?: number;
 }
 
 export const RechargeModal: React.FC<RechargeModalProps> = ({
   isOpen,
   onClose,
   onSuccessRecharge,
+  currentCoins = 0,
+  currentDiamonds = 0,
 }) => {
   const [activeTab, setActiveTab] = useState<'buy_coins' | 'exchange_diamonds'>('buy_coins');
   const [selectedPackage, setSelectedPackage] = useState<string>('pkg_2');
@@ -44,7 +48,8 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
       setIsProcessing(false);
       const pkg = coinPackages.find((p) => p.id === selectedPackage);
       const totalCoins = pkg ? pkg.coins + pkg.bonus : 5000;
-      onSuccessRecharge(totalCoins);
+      const selectedMethod = paymentMethods.find((p) => p.id === selectedPayment)?.name || 'بطاقة ائتمان';
+      onSuccessRecharge(totalCoins, selectedMethod);
       setShowToast(true);
       setTimeout(() => {
         setShowToast(false);
@@ -60,7 +65,7 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
       setIsProcessing(false);
       // 1 Diamond = 2 Coins exchange rate
       const coinsReceived = diamondsToExchange * 2;
-      onSuccessRecharge(coinsReceived);
+      onSuccessRecharge(coinsReceived, 'تحويل ألماس');
       setShowToast(true);
       setTimeout(() => {
         setShowToast(false);
@@ -245,7 +250,7 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-sky-100">رصيد الألماس المتوفر:</span>
                     <span className="text-sm font-black font-mono bg-white/20 px-2.5 py-0.5 rounded-full border border-white/20">
-                      8,377 ألماس 💎
+                      {currentDiamonds.toLocaleString('en-US')} ألماس 💎
                     </span>
                   </div>
                   <p className="text-[11px] text-sky-100">سعر الصرف: 1 ألماس = 2 كوينز</p>
