@@ -82,6 +82,12 @@ service cloud.firestore {
       allow read: if true; // للسماح بالبحث عن البروفايل ورؤية المطور
       allow create, update: if request.auth != null;
       allow delete: if request.auth != null && (request.auth.uid == userId || resource.data.uid == request.auth.uid);
+
+      // السجلات المالية وسجلات الشحن والمعاملات التابعة لحساب المستخدم
+      match /{subCollection=**} {
+        allow read: if true;
+        allow write: if request.auth != null;
+      }
     }
 
     // كولكشن بيانات المضيفين والوكالات المربوطة بالداشبورد الخارجي
