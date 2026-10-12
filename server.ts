@@ -1078,15 +1078,14 @@ async function startServer() {
   const serverUserWallets = new Map<string, ServerUserWallet>();
   const serverHostStats = new Map<string, ServerHostStats>();
 
-  // Ensure default developer / super admin wallet is pre-populated with real zeroed diamonds
+  // Ensure user wallet is isolated by userId and starts with real 0 balance
   function getOrCreateUserWallet(userId: string, userName?: string): ServerUserWallet {
     const cleanId = (userId || '1001001').trim();
     if (!serverUserWallets.has(cleanId)) {
-      const isOwner = cleanId === '1001001' || cleanId.toLowerCase() === 'megdy1919@gmail.com';
       serverUserWallets.set(cleanId, {
         userId: cleanId,
-        userName: userName || (isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مستخدم #${cleanId}`),
-        coins: isOwner ? 100000000 : 50000,
+        userName: userName || `مستخدم #${cleanId}`,
+        coins: 0,
         diamonds: 0,
         totalDiamondsEarned: 0,
         totalCoinsSpent: 0,
@@ -1234,6 +1233,34 @@ async function startServer() {
     return current;
   }
 
+  // Helper to dynamically calculate individual user supporter level based on actual coins spent
+  function calculateUserSupporterLevel(totalCoinsSpent: number): number {
+    const supporterTiers = userLevelTiersStore
+      .filter((t) => t.type === 'supporter')
+      .sort((a, b) => a.level - b.level);
+    let currentLevel = 1;
+    for (const tier of supporterTiers) {
+      if (totalCoinsSpent >= tier.minPoints) {
+        currentLevel = tier.level;
+      }
+    }
+    return currentLevel;
+  }
+
+  // Helper to dynamically calculate individual user charm level based on actual diamonds earned
+  function calculateUserCharmLevel(totalDiamondsEarned: number): number {
+    const charmTiers = userLevelTiersStore
+      .filter((t) => t.type === 'charm')
+      .sort((a, b) => a.level - b.level);
+    let currentLevel = 1;
+    for (const tier of charmTiers) {
+      if (totalDiamondsEarned >= tier.minPoints) {
+        currentLevel = tier.level;
+      }
+    }
+    return currentLevel;
+  }
+
   // ====================================================================
   // 🌟 CENTRAL RULE: GET /api/hosts/:hostId/mobile-me
   // صفحة «أنا» في التطبيق والمتصفح تقرأ بياناتها حصراً من هذا المسار
@@ -1248,11 +1275,15 @@ async function startServer() {
     // Sync settings and tier stats dynamically from active target tiers table
     recalculateHostTierStats(hostStats);
 
+    // حساب استحقاق ومستوى الداعم والمدعوم الفردي بناءً على الأرقام الحقيقية لهذا الـ ID
+    const userSupporterLevel = calculateUserSupporterLevel(wallet.totalCoinsSpent || 0);
+    const userCharmLevel = calculateUserCharmLevel(wallet.totalDiamondsEarned || hostStats.diamondsEarned || 0);
+
     const badges = {
-      level: dashboardControlsConfig.badges.supporterLevel,
-      supporterLevel: dashboardControlsConfig.badges.supporterLevel,
-      charmLevel: dashboardControlsConfig.badges.charmLevel,
-      vipLevel: dashboardControlsConfig.badges.vipLevel || 'VIP7',
+      level: userSupporterLevel,
+      supporterLevel: userSupporterLevel,
+      charmLevel: userCharmLevel,
+      vipLevel: profile.vipLevel || 'VIP1',
       showVipBadge: dashboardControlsConfig.badges.showVipBadge,
       showSupporterBadge: dashboardControlsConfig.badges.showSupporterBadge,
       showCharmBadge: dashboardControlsConfig.badges.showCharmBadge,

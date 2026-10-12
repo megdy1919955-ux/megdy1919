@@ -43,6 +43,8 @@ import { DownloadApkModal } from './DownloadApkModal';
 import { PullToRefreshIndicator } from './PullToRefreshIndicator';
 import { UserProfileData, StatItem, BadgeInfo } from '../types';
 import { lazyWithRetry } from '../lib/lazyWithRetry';
+import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { INITIAL_USER_PROFILE } from '../data/mockData';
 import {
   getSocialStats,
@@ -370,13 +372,55 @@ export const ProfileScreen: React.FC = () => {
     showVipBadge: true,
     showSupporterBadge: true,
     showCharmBadge: true,
-    supporterLevel: 120,
-    charmLevel: 45,
-    vipLevel: 'VIP7',
+    supporterLevel: 1,
+    charmLevel: 1,
+    vipLevel: 'VIP1',
     vipDesignStyle: 'royal_gold_3d',
     supporterBadgeDesign: 'royal_dragon_flame',
     charmBadgeDesign: 'diamond_rose_5star'
   });
+
+  // الربط المباشر اللحظي مع قاعدة بيانات Firebase Firestore لمستند المستخدم المعزول بالـ UID
+  useEffect(() => {
+    const currentUid = auth.currentUser?.uid;
+    if (!currentUid) return;
+
+    try {
+      const userDocRef = doc(db, 'users', currentUid);
+      const unsubscribe = onSnapshot(
+        userDocRef,
+        (snap) => {
+          if (snap.exists()) {
+            const uData = snap.data();
+            if (typeof uData.coins === 'number') {
+              setCoinsBalance(uData.coins);
+              localStorage.setItem('user_wallet_coins', uData.coins.toString());
+            }
+            if (typeof uData.diamonds === 'number') {
+              setDiamondsBalance(uData.diamonds);
+            }
+            if (uData.vipTier) {
+              setProfile((prev) => ({ ...prev, vipTier: uData.vipTier }));
+              setDashboardBadges((prev) => ({ ...prev, vipLevel: uData.vipTier }));
+            }
+            if (typeof uData.supporterLevel === 'number') {
+              setDashboardBadges((prev) => ({ ...prev, supporterLevel: uData.supporterLevel }));
+            }
+            if (typeof uData.charmLevel === 'number') {
+              setDashboardBadges((prev) => ({ ...prev, charmLevel: uData.charmLevel }));
+            }
+          }
+        },
+        (err) => {
+          handleFirestoreError(err, OperationType.GET, `users/${currentUid}`);
+        }
+      );
+
+      return () => unsubscribe();
+    } catch (e) {
+      console.warn('Firestore user profile snapshot notice:', e);
+    }
+  }, [profile.userId]);
 
   // Dynamic background style for Supporter Badge from server:
   const getSupporterBadgeStyle = () => {
@@ -404,7 +448,7 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
-  // 🌟 Central Rule: صفحة «أنا» في التطبيق والمتصفح تقرأ بياناتها حصراً من GET /api/hosts/{hostId}/mobile-me
+  // 🌟 Central Rule: صفحة «أنا» في التطبيق والمتصفح تقرأ بياناتها وتتحقق من شروط الداشبورد
   useEffect(() => {
     let isCurrent = true;
     const syncFromCentralServer = async () => {
@@ -432,15 +476,15 @@ export const ProfileScreen: React.FC = () => {
             }));
           }
 
-          // 3. مزامنة قرارات وتصاميم الشارات من لوحة التحكم الخارجية
+          // 3. مزامنة قرارات وتصاميم الشارات من لوحة التحكم الخارجية مع الحساب الفردي
           if (meData.badges) {
             setDashboardBadges({
               showVipBadge: meData.badges.showVipBadge ?? true,
               showSupporterBadge: meData.badges.showSupporterBadge ?? true,
               showCharmBadge: meData.badges.showCharmBadge ?? true,
-              supporterLevel: meData.badges.supporterLevel ?? meData.badges.level ?? 120,
-              charmLevel: meData.badges.charmLevel ?? 45,
-              vipLevel: meData.badges.vipLevel || 'VIP7',
+              supporterLevel: meData.badges.supporterLevel ?? meData.badges.level ?? 1,
+              charmLevel: meData.badges.charmLevel ?? 1,
+              vipLevel: meData.badges.vipLevel || profile.vipTier || 'VIP1',
               vipDesignStyle: meData.badges.vipDesignStyle || 'royal_gold_3d',
               supporterBadgeDesign: meData.badges.supporterBadgeDesign || 'royal_dragon_flame',
               charmBadgeDesign: meData.badges.charmBadgeDesign || 'diamond_rose_5star'
@@ -2333,7 +2377,7 @@ export const ProfileScreen: React.FC = () => {
           <UserLevelModal
             isOpen={isLevelModalOpen}
             onClose={() => setIsLevelModalOpen(false)}
-            level={113}
+            level={profile.level || 1}
             userName={profile.name || "(عابر سبيل)"}
             avatarUrl={profile.avatarUrl}
           />

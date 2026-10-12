@@ -18,7 +18,7 @@ interface UserLevelModalProps {
 export const UserLevelModal: React.FC<UserLevelModalProps> = ({ 
   isOpen, 
   onClose, 
-  level = 113,
+  level = 1,
   userName = "عابر سبيل",
   avatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150"
 }) => {
