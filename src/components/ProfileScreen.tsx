@@ -45,7 +45,7 @@ import { UserProfileData, StatItem, BadgeInfo } from '../types';
 import { lazyWithRetry } from '../lib/lazyWithRetry';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { rechargeUserCoins } from '../lib/walletService';
+import { rechargeUserCoins, WalletService } from '../lib/walletService';
 import { INITIAL_USER_PROFILE } from '../data/mockData';
 import {
   getSocialStats,
@@ -381,13 +381,23 @@ export const ProfileScreen: React.FC = () => {
     charmBadgeDesign: 'diamond_rose_5star'
   });
 
-  // الربط المباشر اللحظي مع قاعدة بيانات Firebase Firestore لمستند المستخدم المعزول بالـ UID
+  // الربط المباشر اللحظي مع قاعدة بيانات Firebase Firestore لمستند المستخدم لسحب الأرصدة الصافية الحقيقية
   useEffect(() => {
-    const currentUid = auth.currentUser?.uid;
-    if (!currentUid) return;
+    const targetUserId = auth.currentUser?.uid || profile.userId || '1001001';
+    if (!targetUserId) return;
+
+    // اشتراك مباشر وفوري في المحفظة من فايربيس لسحب أرقام الرصيد الصافية
+    const unsubWallet = WalletService.subscribeToUserWallet(targetUserId, (wallet) => {
+      if (typeof wallet.coins === 'number') {
+        setCoinsBalance(wallet.coins);
+      }
+      if (typeof wallet.diamonds === 'number') {
+        setDiamondsBalance(wallet.diamonds);
+      }
+    });
 
     try {
-      const userDocRef = doc(db, 'users', currentUid);
+      const userDocRef = doc(db, 'users', targetUserId);
       const unsubscribe = onSnapshot(
         userDocRef,
         (snap) => {
@@ -413,13 +423,17 @@ export const ProfileScreen: React.FC = () => {
           }
         },
         (err) => {
-          handleFirestoreError(err, OperationType.GET, `users/${currentUid}`);
+          handleFirestoreError(err, OperationType.GET, `users/${targetUserId}`);
         }
       );
 
-      return () => unsubscribe();
+      return () => {
+        unsubWallet();
+        unsubscribe();
+      };
     } catch (e) {
       console.warn('Firestore user profile snapshot notice:', e);
+      return () => unsubWallet();
     }
   }, [profile.userId]);
 
@@ -1339,14 +1353,6 @@ export const ProfileScreen: React.FC = () => {
                   </div>
                 </div>
               </motion.div>
-            </div>
-
-            {/* التنويه الرسمي لشحن الرصيد المعتمد عبر الوكيل أو لوحة التحكم */}
-            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-300/50 text-[11px] font-bold text-amber-950 shadow-2xs" dir="rtl">
-              <span className="text-amber-600 text-sm shrink-0">ℹ️</span>
-              <span className="leading-snug">
-                لشحن رصيدك، يرجى التواصل مع الوكيل المعتمد أو شحن الرصيد عبر معرف المستخدم (<span className="font-mono font-black text-amber-800">{profile.userId}</span>) في لوحة التحكم.
-              </span>
             </div>
 
         {/* 4 Rectangular Action Cards arranged 2 on the right and 2 on the left (2x2 grid) with Luxury Gold / Pearl White / Obsidian Night styling */}

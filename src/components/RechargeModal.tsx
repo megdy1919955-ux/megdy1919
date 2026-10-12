@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Coins, Gem, Check, Copy, ShieldCheck, Headphones, ExternalLink, Sparkles, Building2, User } from 'lucide-react';
+import { X, Coins, Gem, Check, Copy, User, AlertCircle, ShieldCheck } from 'lucide-react';
+import { WalletService } from '../lib/walletService';
 
 interface RechargeModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface RechargeModalProps {
   currentCoins?: number;
   currentDiamonds?: number;
   onContactSupport?: () => void;
+  onRechargeSuccess?: (added: number) => void;
 }
 
 export const RechargeModal: React.FC<RechargeModalProps> = ({
@@ -22,42 +24,34 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
   onContactSupport
 }) => {
   const [copiedId, setCopiedId] = useState(false);
+  const [liveCoins, setLiveCoins] = useState(currentCoins);
+  const [liveDiamonds, setLiveDiamonds] = useState(currentDiamonds);
+
+  // تحديث الأرصدة الحية مباشرة من Firestore
+  useEffect(() => {
+    setLiveCoins(currentCoins);
+  }, [currentCoins]);
+
+  useEffect(() => {
+    setLiveDiamonds(currentDiamonds);
+  }, [currentDiamonds]);
+
+  useEffect(() => {
+    if (!isOpen || !userId) return;
+    const unsub = WalletService.subscribeToUserWallet(userId, (w) => {
+      if (typeof w.coins === 'number') setLiveCoins(w.coins);
+      if (typeof w.diamonds === 'number') setLiveDiamonds(w.diamonds);
+    });
+    return () => unsub();
+  }, [isOpen, userId]);
 
   if (!isOpen) return null;
 
   const handleCopyId = () => {
-    navigator.clipboard.writeText(userId);
+    navigator.clipboard?.writeText(userId);
     setCopiedId(true);
     setTimeout(() => setCopiedId(false), 2000);
   };
-
-  // قائمة الوكلاء المعتمدين للشحن الرسمي
-  const officialAgencies = [
-    {
-      id: 'agency-1',
-      name: 'وكالة النجم الذهبية الرسمية (الإدارة المركزية)',
-      code: 'AG-GOLD-01',
-      status: 'وكيل معتمد رسمي ⭐️',
-      contact: '+966500000000',
-      badge: 'الوكيل الذهبي'
-    },
-    {
-      id: 'agency-2',
-      name: 'وكالة شحن وتوزيع سوريا وألمانيا',
-      code: 'AG-SY-DE-02',
-      status: 'وكيل معتمد دولي 🌍',
-      contact: '+491500000000',
-      badge: 'شحن فوري'
-    },
-    {
-      id: 'agency-3',
-      name: 'مركز وكلاء الشرق الأوسط والخليج',
-      code: 'AG-GULF-03',
-      status: 'خدمة 24/7 ⚡️',
-      contact: '+971500000000',
-      badge: 'دعم مباشر'
-    }
-  ];
 
   return (
     <AnimatePresence>
@@ -76,8 +70,8 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
                 <Coins className="w-6 h-6 fill-amber-300" />
               </div>
               <div>
-                <h2 className="text-base font-black">المحفظة الرسمية ومركز وكلاء الشحن</h2>
-                <p className="text-[11px] font-bold text-slate-900/80">الشحن الآمن والموثق حصراً عبر الوكلاء المعتمدين</p>
+                <h2 className="text-base font-black">محفظة الرصيد</h2>
+                <p className="text-[11px] font-bold text-slate-900/80">الرصيد الفعلي المعتمد في السحابة</p>
               </div>
             </div>
             <button
@@ -90,8 +84,7 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
 
           {/* Main Body */}
           <div className="p-4 space-y-4 overflow-y-auto flex-1 no-scrollbar">
-
-            {/* Current Balance Showcase (Read-Only) */}
+            {/* Current Balance Showcase (Live Real-Time from Firebase) */}
             <div className="grid grid-cols-2 gap-2.5">
               {/* Coins Balance */}
               <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50 to-yellow-100/70 border border-amber-200/80 shadow-xs">
@@ -99,8 +92,8 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
                   <Coins className="w-4 h-4 text-amber-600 fill-amber-500" />
                   <span>رصيد الكوينز الحالي</span>
                 </div>
-                <div className="text-xl font-black font-mono text-amber-700 tracking-tight">
-                  {currentCoins.toLocaleString('en-US')}
+                <div className="text-2xl font-black font-mono text-amber-700 tracking-tight">
+                  {liveCoins.toLocaleString('en-US')}
                 </div>
                 <span className="text-[10px] text-amber-800/80 font-bold block mt-0.5">معتمد ومحمي سحابياً</span>
               </div>
@@ -111,19 +104,27 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
                   <Gem className="w-4 h-4 text-sky-600 fill-sky-500" />
                   <span>رصيد الألماس الحالي</span>
                 </div>
-                <div className="text-xl font-black font-mono text-sky-700 tracking-tight">
-                  {currentDiamonds.toLocaleString('en-US')}
+                <div className="text-2xl font-black font-mono text-sky-700 tracking-tight">
+                  {liveDiamonds.toLocaleString('en-US')}
                 </div>
                 <span className="text-[10px] text-sky-800/80 font-bold block mt-0.5">أرباح ودعم المضيفين</span>
               </div>
             </div>
 
-            {/* User ID Box for Agency Recharge */}
+            {/* Simple Insufficient Balance Notice if Coins <= 0 */}
+            {liveCoins <= 0 && (
+              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200/80 flex items-center justify-center gap-2 text-rose-700 text-xs font-bold text-center">
+                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                <span>عذراً، لا يتوفر لديك رصيد كافٍ حالياً.</span>
+              </div>
+            )}
+
+            {/* User ID Box */}
             <div className="p-4 rounded-2xl bg-slate-900 text-white border border-slate-800 shadow-md">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-amber-400" />
-                  <span className="text-xs font-bold text-slate-300">معرف الحساب (ID) المعتمد للشحن:</span>
+                  <span className="text-xs font-bold text-slate-300">معرف الحساب (ID):</span>
                 </div>
                 <button
                   onClick={handleCopyId}
@@ -151,92 +152,24 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
               </div>
             </div>
 
-            {/* Central Directive Notice (كما طلبت تماماً) */}
-            <div className="p-4 rounded-2xl bg-amber-500/10 border-2 border-dashed border-amber-400/60 flex items-start gap-3">
-              <Sparkles className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <h4 className="text-xs font-black text-amber-950">تنويه رسمي بخصوص الشحن المالي:</h4>
-                <p className="text-xs font-bold text-slate-700 leading-relaxed">
-                  لشحن رصيدك، يرجى التواصل مع الوكيل المعتمد أو شحن الرصيد عبر معرف المستخدم <span className="font-mono font-black text-amber-700">({userId})</span> في لوحة التحكم (Dashboard).
-                </p>
-                <p className="text-[11px] font-medium text-slate-500">
-                  🔒 عمليات الشحن والتزويد المالي مقفلة ومحمية أمنياً، وتتم حصراً من خلال الوكلاء المعتمدين لحماية الحسابات.
-                </p>
-              </div>
-            </div>
-
-            {/* Verified Official Recharge Agencies List */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-black text-slate-900">
-                  <Building2 className="w-4 h-4 text-amber-600" />
-                  <span>وكلاء الشحن المعتمدون رسمياً:</span>
-                </div>
-                <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  وكلاء موثقون ✓
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                {officialAgencies.map((agency) => (
-                  <div
-                    key={agency.id}
-                    className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200/90 rounded-2xl flex items-center justify-between transition-all"
-                  >
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-slate-900">{agency.name}</span>
-                        <span className="text-[9px] font-black bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded-md">
-                          {agency.badge}
-                        </span>
-                      </div>
-                      <div className="text-[10px] font-bold text-slate-500 flex items-center gap-2">
-                        <span>كود الوكيل: <span className="font-mono">{agency.code}</span></span>
-                        <span>•</span>
-                        <span className="text-emerald-600 font-black">{agency.status}</span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        handleCopyId();
-                        if (onContactSupport) {
-                          onContactSupport();
-                        } else {
-                          window.dispatchEvent(new CustomEvent('najm_open_customer_service'));
-                        }
-                      }}
-                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition-colors cursor-pointer flex items-center gap-1 shadow-xs shrink-0"
-                    >
-                      <Headphones className="w-3.5 h-3.5 text-amber-400" />
-                      <span>تواصل للشحن</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* Security Guarantee Note */}
-            <div className="p-3 bg-slate-100 rounded-2xl border border-slate-200/80 flex items-center gap-2 text-[11px] font-medium text-slate-600">
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center gap-2 text-[11px] font-medium text-slate-600">
               <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>الرصيد محمي وموثق مباشرة على قاعدة البيانات السحابية (Firebase Cloud).</span>
+              <span>الرصيد متزامن لحظياً وبأعلى معايير الأمان مع قاعدة بيانات Firebase.</span>
             </div>
 
-            {/* Direct Support Button */}
+            {/* Close Button */}
             <button
-              onClick={() => {
-                onClose();
-                window.dispatchEvent(new CustomEvent('najm_open_customer_service'));
-              }}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-amber-300 font-black text-xs shadow-md hover:opacity-95 cursor-pointer flex items-center justify-center gap-2 border border-amber-400/30"
+              onClick={onClose}
+              className="w-full py-3 rounded-2xl bg-slate-900 text-white font-black text-xs hover:bg-slate-800 cursor-pointer transition-all shadow-sm"
             >
-              <Headphones className="w-4 h-4 text-amber-400" />
-              <span>محادثة خدمة عملاء الوكالات والشحن المعتمد</span>
+              إغلاق النافذة
             </button>
-
           </div>
         </motion.div>
       </div>
     </AnimatePresence>
   );
 };
+
+export default RechargeModal;
