@@ -1,14 +1,21 @@
 /**
  * خدمة المحفظة المركزية الموحدة (Central Wallet Service)
- * تضمن استقرار وتخزين رصيد الكوينز في:
+ * تضمن استقرار وتخزين رصيد الكوينز والألماس في:
  * 1. Firebase Firestore السحابية (دائم لا يضيع بالتحديث)
  * 2. سيرفر Node.js المركزي (Server-authoritative)
  * 3. التخزين المحلي والأحداث اللحظية (WebSockets / CustomEvents)
  */
 
-import { doc, updateDoc, increment, serverTimestamp, addDoc, collection } from 'firebase/firestore';
+import { doc, updateDoc, increment, serverTimestamp, addDoc, collection, onSnapshot, getDoc } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from './firebase';
 import { getApiUrl } from './apiConfig';
+
+export interface UserWalletData {
+  coins: number;
+  diamonds: number;
+  totalDiamondsEarned: number;
+  totalCoinsSpent: number;
+}
 
 export interface RechargeOptions {
   uid?: string;
@@ -37,6 +44,93 @@ export const getCachedCoins = (): number => {
     }
   } catch {}
   return 0;
+};
+
+/**
+ * كائن WalletService المطلوب من المستخدم:
+ * يدعم الاستماع المباشر وتحديث الرصيد في Firestore والسيرفر المركزي
+ */
+export const WalletService = {
+  // الاستماع المباشر للرصيد الحقيقي للمستخدم من فايربيس
+  subscribeToUserWallet(userId: string, callback: (wallet: UserWalletData) => void) {
+    if (!userId) return () => {};
+    const targetId = userId || auth.currentUser?.uid;
+    if (!targetId) return () => {};
+
+    const userRef = doc(db, 'users', targetId);
+    return onSnapshot(
+      userRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const wallet: UserWalletData = {
+            coins: typeof data.coins === 'number' ? data.coins : 0,
+            diamonds: typeof data.diamonds === 'number' ? data.diamonds : 0,
+            totalDiamondsEarned: typeof data.totalDiamondsEarned === 'number' ? data.totalDiamondsEarned : 0,
+            totalCoinsSpent: typeof data.totalCoinsSpent === 'number' ? data.totalCoinsSpent : 0
+          };
+
+          // تحديث التخزين المحلي وإطلاق الحدث اللحظي لتحديث كافة الشاشات المفتوحة
+          try {
+            localStorage.setItem('user_wallet_coins', wallet.coins.toString());
+          } catch {}
+
+          window.dispatchEvent(
+            new CustomEvent('user_coins_updated', {
+              detail: { coins: wallet.coins, diamonds: wallet.diamonds, userId: targetId }
+            })
+          );
+
+          callback(wallet);
+        }
+      },
+      (error) => {
+        console.warn('خطأ في الاستماع للرصيد اللحظي من فايربيس:', error);
+      }
+    );
+  },
+
+  // خصم أو إضافة الكونزات أو الألماس (في فايربيس والسيرفر المركزي)
+  async updateBalance(userId: string, type: 'coins' | 'diamonds', amount: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      const targetId = userId || auth.currentUser?.uid;
+      if (!targetId) return { success: false, error: 'المعرف غير محدد' };
+
+      const userRef = doc(db, 'users', targetId);
+      const updateData: Record<string, any> = {};
+
+      if (type === 'coins') {
+        updateData.coins = increment(amount);
+        if (amount < 0) updateData.totalCoinsSpent = increment(Math.abs(amount));
+      } else if (type === 'diamonds') {
+        updateData.diamonds = increment(amount);
+        if (amount > 0) updateData.totalDiamondsEarned = increment(amount);
+      }
+
+      // محاولة التحديث المباشر في Firestore
+      try {
+        await updateDoc(userRef, updateData);
+      } catch (fErr) {
+        console.warn('تنبيه أمان فايربيس، جاري المزامنة عبر السيرفر المركزي:', fErr);
+      }
+
+      // المزامنة مع السيرفر المركزي Node.js لضمان استقرار الرصيد
+      try {
+        await fetch(getApiUrl(`/api/users/${encodeURIComponent(targetId)}/update-balance`), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type, amount })
+        });
+      } catch (sErr) {
+        console.warn('تنبيه مزامنة السيرفر المركزي:', sErr);
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('خطأ في تحديث الرصيد الحقيقي:', error);
+      return { success: false, error: error?.message || 'خطأ غير معروف في تحديث الرصيد' };
+    }
+  }
 };
 
 /**

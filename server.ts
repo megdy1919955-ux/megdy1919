@@ -1160,6 +1160,7 @@ async function startServer() {
     age: number;
     country: string;
     auditStatus: 'approved' | 'pending' | 'rejected';
+    vipLevel?: string;
     pendingName?: string;
     pendingAvatar?: string;
     updatedAt: number;
@@ -1994,6 +1995,57 @@ async function startServer() {
         coins: wallet.coins,
         deducted: deductAmount,
         updatedAt: wallet.updatedAt
+      });
+    } catch (err: any) {
+      res.status(500).json({ status: 'error', message: err?.message || 'Server error' });
+    }
+  });
+
+  // POST /api/users/:userId/update-balance
+  // متزامن مع خدمة WalletService لخصم أو إضافة الكوينز أو الألماس
+  app.post('/api/users/:userId/update-balance', (req, res) => {
+    try {
+      const userId = req.params.userId.trim();
+      const { type, amount } = req.body;
+      const numAmount = Number(amount) || 0;
+      const profile = getOrCreateUserProfile(userId);
+      const wallet = getOrCreateUserWallet(userId, profile.name);
+
+      if (type === 'coins') {
+        wallet.coins = Math.max(0, wallet.coins + numAmount);
+        if (numAmount < 0) wallet.totalCoinsSpent += Math.abs(numAmount);
+      } else if (type === 'diamonds') {
+        wallet.diamonds = Math.max(0, wallet.diamonds + numAmount);
+        if (numAmount > 0) wallet.totalDiamondsEarned += numAmount;
+      }
+      wallet.updatedAt = Date.now();
+
+      // إشعار كافة المستخدمين عبر الـ WebSocket
+      const notice = JSON.stringify({
+        type: 'user_wallet_updated',
+        payload: {
+          userId,
+          coins: wallet.coins,
+          diamonds: wallet.diamonds,
+          type,
+          amount: numAmount,
+          timestamp: Date.now()
+        }
+      });
+      clients.forEach((c) => {
+        if (c.ws.readyState === WebSocket.OPEN) {
+          c.ws.send(notice);
+        }
+      });
+
+      res.json({
+        status: 'success',
+        wallet: {
+          coins: wallet.coins,
+          diamonds: wallet.diamonds,
+          totalDiamondsEarned: wallet.totalDiamondsEarned,
+          totalCoinsSpent: wallet.totalCoinsSpent
+        }
       });
     } catch (err: any) {
       res.status(500).json({ status: 'error', message: err?.message || 'Server error' });

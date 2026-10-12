@@ -19,7 +19,7 @@ export interface GiftItem {
   mediaKey?: string; // Permanent Phone/Device IndexedDB Media Vault key
   soundMediaKey?: string; // Permanent Phone/Device IndexedDB Audio key
   iconMediaKey?: string; // Permanent Phone/Device IndexedDB Icon key
-  category: 'الفعالية' | 'رائج' | 'استرداد' | 'الدولة/المنطقة' | 'مخصصة' | 'الامتيازات' | 'مداعبة' | 'الكل';
+  category: 'الفعالية' | 'رائج' | 'استرداد' | 'الدولة/المنطقة' | 'مخصصة' | 'الامتيازات' | 'مداعبة' | 'الكل' | string;
   subCategory?: string;
   badge?: string; // e.g. "برج الاسد", "LV1", "Top1", "JACKPOT", "حظ", "VIP"
   hasSound?: boolean;
