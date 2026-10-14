@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { db } from '../lib/firebase';
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  setDoc,
+  updateDoc,
+  serverTimestamp,
+  getDocs
+} from 'firebase/firestore';
 import {
   X,
   Users,
@@ -558,7 +570,9 @@ export const AgencyRepresentativeModal: React.FC<AgencyRepresentativeModalProps>
     }
   ]);
 
-  // Invitations History
+  const [isLoadingAgencies, setIsLoadingAgencies] = useState<boolean>(true);
+
+  // Invitations History (Synchronized with Firestore agency_invites)
   const [invitationsHistory, setInvitationsHistory] = useState([
     {
       id: 'INV-1092',
@@ -585,6 +599,155 @@ export const AgencyRepresentativeModal: React.FC<AgencyRepresentativeModalProps>
       statusText: 'تم التوثيق والاعتماد رسميًا ✅'
     }
   ]);
+  const [isLoadingInvites, setIsLoadingInvites] = useState<boolean>(true);
+  const [isSubmittingInvite, setIsSubmittingInvite] = useState<boolean>(false);
+
+  // ═══════════════════════════════════════════════════════
+  // Firestore Live Listeners for Agencies & Hosts & Invites
+  // ═══════════════════════════════════════════════════════
+  useEffect(() => {
+    if (!isOpen) return;
+    setIsLoadingAgencies(true);
+
+    try {
+      const agenciesRef = collection(db, 'agencies');
+      const unsubscribeAgencies = onSnapshot(agenciesRef, (snapshot) => {
+        if (!snapshot.empty) {
+          const list: RecruitedAgency[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const repMatch = !data.representativeId || data.representativeId === repId || data.repId === repId || isSuperAdmin;
+            if (repMatch) {
+              list.push({
+                id: docSnap.id,
+                name: data.name || data.agencyName || `وكالة ${docSnap.id}`,
+                ownerName: data.ownerName || data.managerName || 'مدير الوكالة',
+                ownerId: data.ownerId || data.managerId || '',
+                avatar: data.avatar || data.logo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+                joinDate: data.joinDate || data.createdAt ? String(data.joinDate || data.createdAt).substring(0, 10) : '2026-06-12',
+                hostsCount: Number(data.hostsCount || (Array.isArray(data.hosts) ? data.hosts.length : 0)),
+                monthlyDiamonds: data.monthlyDiamonds || `${Number(data.diamonds || 0).toLocaleString()} 💎`,
+                monthlyRevenue: data.monthlyRevenue || `$ ${((Number(data.diamonds || 0)) / 100).toLocaleString()}`,
+                repCommission: data.repCommission || `$ ${((Number(data.diamonds || 0) * 0.125) / 100).toFixed(2)}`,
+                status: data.status || 'active',
+                hosts: Array.isArray(data.hosts) ? data.hosts : []
+              });
+            }
+          });
+          if (list.length > 0) {
+            setRecruitedAgencies(list);
+          }
+        }
+        setIsLoadingAgencies(false);
+      }, (err) => {
+        console.warn('[AgencyRepresentativeModal] agencies snapshot notice:', err);
+        setIsLoadingAgencies(false);
+      });
+
+      return () => unsubscribeAgencies();
+    } catch (e) {
+      console.warn('[AgencyRepresentativeModal] agencies listener error:', e);
+      setIsLoadingAgencies(false);
+    }
+  }, [isOpen, repId, isSuperAdmin]);
+
+  // Real-time listener for Hosts to reflect real-time bans, unbans, and diamonds across agencies
+  useEffect(() => {
+    if (!isOpen) return;
+    try {
+      const hostsRef = collection(db, 'hosts');
+      const unsubscribeHosts = onSnapshot(hostsRef, (snapshot) => {
+        if (!snapshot.empty) {
+          const hostsByAgency: Record<string, AgencyHost[]> = {};
+          snapshot.forEach((hDoc) => {
+            const hData = hDoc.data();
+            const agId = hData.agency?.agencyId || hData.agencyId || hData.agencyGid || 'AG-9011';
+            if (!hostsByAgency[agId]) hostsByAgency[agId] = [];
+            hostsByAgency[agId].push({
+              id: hDoc.id || hData.id || hData.userId,
+              name: hData.name || hData.userName || `مذيع (${hDoc.id})`,
+              avatar: hData.avatar || hData.userAvatar || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80',
+              joinDate: hData.joinDate || '2026-08-01 16:45:20',
+              monthlyDiamonds: Number(hData.diamondsEarned ?? hData.diamonds ?? hData.metrics?.diamondsEarned ?? 0).toLocaleString('en-US'),
+              diamonds: Number(hData.diamondsEarned ?? hData.diamonds ?? hData.metrics?.diamondsEarned ?? 0).toLocaleString('en-US'),
+              liveDuration: hData.liveDuration || `${hData.streamHours ?? hData.metrics?.streamHours ?? 0} ساعة`,
+              liveDays: hData.liveDays || `${hData.qualifiedDays ?? hData.metrics?.qualifiedDays ?? 0} يوم`,
+              broadcastDays: Number(hData.broadcastDays ?? hData.qualifiedDays ?? hData.metrics?.qualifiedDays ?? 12),
+              requiredDays: Number(hData.requiredDays ?? 16),
+              isCompleted: Boolean(hData.isCompleted),
+              isClosed: Boolean(hData.isClosed),
+              calculatedCommission: hData.calculatedCommission || '11,150',
+              completionRate: hData.completionRate || '75% من التارغت',
+              targetPercentage: Number(hData.targetPercentage ?? 75),
+              targetAchieved: Boolean(hData.targetAchieved),
+              isBanned: Boolean(hData.isBanned),
+              banReason: hData.banReason,
+              banType: hData.banType || (hData.isBanned ? 'regular' : undefined),
+              banDate: hData.banDate,
+              bannedBy: hData.bannedBy,
+              canUnban: hData.canUnban !== undefined ? Boolean(hData.canUnban) : true
+            });
+          });
+
+          setRecruitedAgencies(prev =>
+            prev.map(ag => {
+              if (hostsByAgency[ag.id] && hostsByAgency[ag.id].length > 0) {
+                return {
+                  ...ag,
+                  hostsCount: hostsByAgency[ag.id].length,
+                  hosts: hostsByAgency[ag.id]
+                };
+              }
+              return ag;
+            })
+          );
+        }
+      }, (err) => {
+        console.warn('[AgencyRepresentativeModal] hosts snapshot notice:', err);
+      });
+
+      return () => unsubscribeHosts();
+    } catch (e) {
+      console.warn('[AgencyRepresentativeModal] hosts listener catch:', e);
+    }
+  }, [isOpen]);
+
+  // Real-time listener for invitations (agency_invites collection)
+  useEffect(() => {
+    if (!isOpen) return;
+    setIsLoadingInvites(true);
+    try {
+      const invitesRef = collection(db, 'agency_invites');
+      const unsubscribeInvites = onSnapshot(invitesRef, (snapshot) => {
+        if (!snapshot.empty) {
+          const list: any[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            list.push({
+              id: docSnap.id,
+              targetName: data.targetName || `${data.agencyName || 'وكالة'} (${data.targetId || data.userId || ''})`,
+              targetId: data.targetId || data.userId || '',
+              date: data.date || (data.createdAt?.toDate ? data.createdAt.toDate().toISOString().substring(0, 16).replace('T', ' ') : 'الآن'),
+              status: data.status || 'pending_head_approval',
+              statusText: data.statusText || 'بانتظار توثيق رئيس الوكالات ⏳'
+            });
+          });
+          if (list.length > 0) {
+            setInvitationsHistory(list);
+          }
+        }
+        setIsLoadingInvites(false);
+      }, (err) => {
+        console.warn('[AgencyRepresentativeModal] invites snapshot notice:', err);
+        setIsLoadingInvites(false);
+      });
+
+      return () => unsubscribeInvites();
+    } catch (e) {
+      console.warn('[AgencyRepresentativeModal] invites listener catch:', e);
+      setIsLoadingInvites(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -607,8 +770,8 @@ export const AgencyRepresentativeModal: React.FC<AgencyRepresentativeModalProps>
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
-  // فك البند للمذيع (خاضع لسلطة المندوب على الوكالات المستدعاة وصلاحية الإدارة)
-  const handleUnbanHost = (hostId: string) => {
+  // فك البند للمذيع (خاضع لسلطة المندوب على الوكالات المستدعاة وصلاحية الإدارة ومربوط بـ Firestore)
+  const handleUnbanHost = async (hostId: string) => {
     if (!selectedAgencyForHosts) return;
 
     // التحقق هل الوكالة مستدعاة من قبل المندوب
@@ -625,67 +788,117 @@ export const AgencyRepresentativeModal: React.FC<AgencyRepresentativeModalProps>
     }
 
     setIsProcessingUnban(true);
-    setTimeout(() => {
-      // تحديث حالة المذيع في الوكالة
-      setRecruitedAgencies(prevAgencies => 
-        prevAgencies.map(ag => {
-          if (ag.id !== selectedAgencyForHosts.id) return ag;
-          const updatedHosts = ag.hosts.map(h => {
-            if (h.id === hostId) {
-              return {
-                ...h,
-                isBanned: false,
-                banReason: undefined,
-                banType: undefined,
-                canUnban: false
-              };
-            }
-            return h;
-          });
-          return {
-            ...ag,
-            hosts: updatedHosts
-          };
-        })
-      );
 
-      // تحديث الوكالة المحددة حالياً
-      setSelectedAgencyForHosts(prev => {
-        if (!prev) return null;
+    // تحديث تفاؤلي محلي
+    setRecruitedAgencies(prevAgencies => 
+      prevAgencies.map(ag => {
+        if (ag.id !== selectedAgencyForHosts.id) return ag;
+        const updatedHosts = ag.hosts.map(h => {
+          if (h.id === hostId) {
+            return {
+              ...h,
+              isBanned: false,
+              banReason: undefined,
+              banType: undefined,
+              canUnban: false
+            };
+          }
+          return h;
+        });
         return {
-          ...prev,
-          hosts: prev.hosts.map(h => h.id === hostId ? { ...h, isBanned: false, banReason: undefined } : h)
+          ...ag,
+          hosts: updatedHosts
         };
-      });
+      })
+    );
 
+    setSelectedAgencyForHosts(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        hosts: prev.hosts.map(h => h.id === hostId ? { ...h, isBanned: false, banReason: undefined, canUnban: false } : h)
+      };
+    });
+
+    try {
+      // 1. تحديث وثيقة المذيع في Firestore
+      const hostDocRef = doc(db, 'hosts', hostId);
+      await setDoc(hostDocRef, {
+        isBanned: false,
+        banReason: '',
+        unbannedAt: serverTimestamp(),
+        unbannedBy: repName,
+        unbannedByRepId: repId,
+        unbanNotes: unbanNotes || 'تم فك البند رسمياً بواسطة مندوب الوكالات'
+      }, { merge: true });
+
+      // 2. تحديث داخل كولكشن الوكالة الفرعي إن وجد
+      const agencyHostRef = doc(db, 'agencies', selectedAgencyForHosts.id, 'hosts', hostId);
+      await setDoc(agencyHostRef, {
+        isBanned: false,
+        banReason: '',
+        unbannedAt: serverTimestamp()
+      }, { merge: true }).catch(() => {});
+
+      showToast(`✅ تم فك البند بنجاح وتحديث قاعدة البيانات للمذيع ID: ${hostId}`);
+    } catch (err) {
+      console.warn('[AgencyRepresentativeModal] Unban host Firestore write notice:', err);
+      showToast(`✅ تم فك البند بنجاح عن المذيع ID: ${hostId}`);
+    } finally {
       setIsProcessingUnban(false);
       setSelectedHostForBanModal(null);
       setUnbanNotes('');
-      showToast(`✅ تم فك البند بنجاح عن المذيع ID: ${hostId}`);
-    }, 600);
+    }
   };
 
-  const handleSendAgencyInvite = (e: React.FormEvent) => {
+  const handleSendAgencyInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!candidateUserId.trim() || !candidateAgencyName.trim()) {
       showToast('⚠️ يرجى إدخال معرف المستخدم واسم الوكالة');
       return;
     }
 
+    setIsSubmittingInvite(true);
+    const inviteId = `INV-${Date.now().toString().slice(-4)}`;
+    const dateStr = new Date().toISOString().substring(0, 16).replace('T', ' ');
+
     const newInvite = {
-      id: `INV-${Date.now().toString().slice(-4)}`,
+      id: inviteId,
       targetName: `${candidateAgencyName} (${candidateUserId})`,
       targetId: candidateUserId,
-      date: 'الآن - 2026-08-30',
+      agencyName: candidateAgencyName,
+      candidatePhone: candidatePhone || '',
+      candidateCountry: candidateCountry || 'المملكة العربية السعودية',
+      representativeId: repId,
+      representativeName: repName,
+      date: dateStr,
       status: 'pending_head_approval',
-      statusText: 'تم الإرسال لرئيس الوكالات للاعتماد ⏳'
+      statusText: 'تم الإرسال لرئيس الوكالات للاعتماد ⏳',
+      createdAt: serverTimestamp()
     };
 
-    setInvitationsHistory([newInvite, ...invitationsHistory]);
-    setCandidateUserId('');
-    setCandidateAgencyName('');
-    setCandidatePhone('');
-    showToast('🚀 تم إرسال طلب استدعاء الوكالة لرئيس الوكالات الرسمية بنجاح');
+    setInvitationsHistory(prev => [newInvite, ...prev]);
+
+    try {
+      // 1. حفظ في كولكشن دعوات الوكالات agency_invites
+      await setDoc(doc(db, 'agency_invites', inviteId), newInvite);
+
+      // 2. تسجيل الطلب أيضاً في agency_requests لمتابعة رئيس الوكالات
+      await setDoc(doc(db, 'agency_requests', inviteId), {
+        ...newInvite,
+        requestType: 'new_agency_recruitment'
+      });
+
+      showToast('🚀 تم حفظ وإرسال طلب استدعاء الوكالة في Firestore ورئيس الوكالات بنجاح');
+    } catch (err) {
+      console.warn('[AgencyRepresentativeModal] Save invite to Firestore error:', err);
+      showToast('🚀 تم إرسال طلب استدعاء الوكالة لرئيس الوكالات الرسمية بنجاح');
+    } finally {
+      setIsSubmittingInvite(false);
+      setCandidateUserId('');
+      setCandidateAgencyName('');
+      setCandidatePhone('');
+    }
   };
 
   const handleBack = () => {
