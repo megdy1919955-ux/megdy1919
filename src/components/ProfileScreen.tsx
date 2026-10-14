@@ -114,6 +114,9 @@ const BroadcasterCenterModal = React.lazy(() => import('./BroadcasterCenterModal
 const GeniusNajmModal = React.lazy(() => import('./GeniusNajmModal').then(m => ({ default: m.GeniusNajmModal || (m as any).default })));
 const FriendlyPointsModal = React.lazy(() => import('./FriendlyPointsModal').then(m => ({ default: m.FriendlyPointsModal || (m as any).default })));
 const MallCenterModal = React.lazy(() => import('./MallCenterModal').then(m => ({ default: m.MallCenterModal || (m as any).default })));
+const JoinAgencyModal = React.lazy(() => import('./agency/JoinAgencyModal').then(m => ({ default: m.JoinAgencyModal || (m as any).default })));
+const ExploreFamiliesModal = React.lazy(() => import('./family/ExploreFamiliesModal').then(m => ({ default: m.ExploreFamiliesModal || (m as any).default })));
+const AgencyHostCenterModal = React.lazy(() => import('./AgencyHostCenterModal').then(m => ({ default: m.AgencyHostCenterModal || (m as any).default })));
 
 // Tabs / screens loaded on demand (بحسب الطلب)
 const HomeScreen = lazyWithRetry(() => import('./HomeScreen'), 'HomeScreen');
@@ -414,6 +417,29 @@ export const ProfileScreen: React.FC = () => {
             if (typeof uData.charmLevel === 'number') {
               setDashboardBadges((prev) => ({ ...prev, charmLevel: uData.charmLevel }));
             }
+            if (uData.agencyStatus !== undefined) {
+              setUserAgencyStatus(uData.agencyStatus);
+              localStorage.setItem('user_agency_status', uData.agencyStatus);
+            }
+            if (uData.pendingAgencyId) {
+              setPendingAgencyInfo({
+                agencyId: uData.pendingAgencyId,
+                agencyName: uData.pendingAgencyName,
+                appliedAt: uData.pendingAgencyAppliedAt
+              });
+            }
+            if (uData.agencyId) {
+              setProfile((prev) => ({ ...prev, agencyId: uData.agencyId, agencyName: uData.agencyName || (prev as any).agencyName }));
+            }
+            if (uData.familyId !== undefined) {
+              setUserFamilyId(uData.familyId);
+              if (uData.familyId) localStorage.setItem('user_family_id', uData.familyId);
+              else localStorage.removeItem('user_family_id');
+            }
+            if (uData.familyName) {
+              setUserFamilyName(uData.familyName);
+              localStorage.setItem('user_family_name', uData.familyName);
+            }
           }
         },
         (err) => {
@@ -635,6 +661,38 @@ export const ProfileScreen: React.FC = () => {
   const [isAgencyModalOpen, setIsAgencyModalOpen] = useState(false);
   const [isRechargeAgencyModalOpen, setIsRechargeAgencyModalOpen] = useState(false);
   const [isBroadcasterCenterModalOpen, setIsBroadcasterCenterModalOpen] = useState(false);
+  const [isJoinAgencyModalOpen, setIsJoinAgencyModalOpen] = useState(false);
+  const [isExploreFamiliesModalOpen, setIsExploreFamiliesModalOpen] = useState(false);
+  const [isAgencyHostCenterModalOpen, setIsAgencyHostCenterModalOpen] = useState(false);
+
+  // حالة انضمام الوكالة للمستخدم (none, pending, approved, active)
+  const [userAgencyStatus, setUserAgencyStatus] = useState<'none' | 'pending' | 'approved' | 'active'>(() => {
+    const saved = localStorage.getItem('user_agency_status');
+    if (saved === 'pending' || saved === 'active' || saved === 'approved') return saved;
+    return 'none';
+  });
+
+  const [pendingAgencyInfo, setPendingAgencyInfo] = useState<{
+    agencyId?: string;
+    agencyName?: string;
+    appliedAt?: string;
+  }>(() => {
+    try {
+      const saved = localStorage.getItem('user_agency_info');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // حالة عائلة المستخدم (تحدد التوجيه لـ ExploreFamiliesModal أو FamilyModal)
+  const [userFamilyId, setUserFamilyId] = useState<string | null>(() => {
+    return localStorage.getItem('user_family_id') || null;
+  });
+  const [userFamilyName, setUserFamilyName] = useState<string>(() => {
+    return localStorage.getItem('user_family_name') || '';
+  });
+
   const [isGeniusModalOpen, setIsGeniusModalOpen] = useState(false);
   const [isFriendlyPointsModalOpen, setIsFriendlyPointsModalOpen] = useState(false);
   const [isMallModalOpen, setIsMallModalOpen] = useState(false);
@@ -673,6 +731,55 @@ export const ProfileScreen: React.FC = () => {
       window.removeEventListener('agency_invitations_updated', handlePermissionsUpdated);
     };
   }, [profile.userId]);
+
+  // استماع فوري لأحداث تغيير حالة الوكالة والعائلة
+  useEffect(() => {
+    const handleAgencyStatusChanged = (e: any) => {
+      if (e.detail?.status) setUserAgencyStatus(e.detail.status);
+      if (e.detail?.agencyGid) {
+        setPendingAgencyInfo(prev => ({ ...prev, agencyId: e.detail.agencyGid, agencyName: e.detail.agencyName }));
+      }
+    };
+    const handleFamilyStatusChanged = (e: any) => {
+      if (e.detail?.familyId) {
+        setUserFamilyId(e.detail.familyId);
+        setUserFamilyName(e.detail.familyName || '');
+      }
+    };
+    window.addEventListener('agency_status_changed', handleAgencyStatusChanged);
+    window.addEventListener('family_status_changed', handleFamilyStatusChanged);
+    return () => {
+      window.removeEventListener('agency_status_changed', handleAgencyStatusChanged);
+      window.removeEventListener('family_status_changed', handleFamilyStatusChanged);
+    };
+  }, []);
+
+  // التوجيه الذكي لمركز المضيفين بحسب حالة المستخدم
+  const handleHostCenterClick = () => {
+    if (userAgencyStatus === 'pending') {
+      setIsJoinAgencyModalOpen(true);
+    } else if (
+      userAgencyStatus === 'active' || 
+      userAgencyStatus === 'approved' || 
+      (profile as any).agencyId || 
+      rolesSummary.isHost || 
+      rolesSummary.isSuperAdmin
+    ) {
+      setIsAgencyHostCenterModalOpen(true);
+    } else {
+      // none
+      setIsJoinAgencyModalOpen(true);
+    }
+  };
+
+  // التوجيه الذكي للعائلات (استكشاف إن لم يكن لديه عائلة، أو فتح قلعة العائلة إن كان منضماً)
+  const handleFamilyClick = () => {
+    if (userFamilyId && userFamilyId !== 'none') {
+      setIsFamilyModalOpen(true);
+    } else {
+      setIsExploreFamiliesModalOpen(true);
+    }
+  };
 
   useEffect(() => {
     const unsub = subscribeToRoomSession((session) => {
@@ -874,6 +981,18 @@ export const ProfileScreen: React.FC = () => {
         setIsMallModalOpen(false);
         return;
       }
+      if (isJoinAgencyModalOpen) {
+        setIsJoinAgencyModalOpen(false);
+        return;
+      }
+      if (isExploreFamiliesModalOpen) {
+        setIsExploreFamiliesModalOpen(false);
+        return;
+      }
+      if (isAgencyHostCenterModalOpen) {
+        setIsAgencyHostCenterModalOpen(false);
+        return;
+      }
 
       // 2. Navigate back through tab history if we have previous tabs
       if (tabHistory.length > 1) {
@@ -924,6 +1043,9 @@ export const ProfileScreen: React.FC = () => {
     isGeniusModalOpen,
     isFriendlyPointsModalOpen,
     isMallModalOpen,
+    isJoinAgencyModalOpen,
+    isExploreFamiliesModalOpen,
+    isAgencyHostCenterModalOpen,
     tabHistory,
     activeTab
   ]);
@@ -1419,7 +1541,7 @@ export const ProfileScreen: React.FC = () => {
           <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.96 }}
-            onClick={() => setIsFamilyModalOpen(true)}
+            onClick={handleFamilyClick}
             className={`relative p-[2px] rounded-2xl ${curRoyal.outerBorder} ${curRoyal.shadow} transition-all duration-300 cursor-pointer group text-right w-full`}
           >
             <div className={`${curRoyal.innerBg} rounded-[14px] p-2.5 sm:p-3 flex items-center justify-between border ${curRoyal.innerBorder} group-hover:bg-white/90 transition-all duration-300 h-full`}>
@@ -1428,7 +1550,7 @@ export const ProfileScreen: React.FC = () => {
                 <div className={`relative w-11 h-11 rounded-xl ${curRoyal.plinthBg} flex items-center justify-center shrink-0`}>
                   <Families3DIcon className="w-8 h-8" />
                   <span className="absolute -bottom-1 -right-1 bg-gradient-to-r from-[#B38022] to-[#5C3F13] text-[#FFF9E6] font-black text-[8px] px-1.5 py-0.2 rounded-full border border-white shadow-xs font-mono">
-                    Lv12
+                    {userFamilyId ? 'عضو' : 'جديد'}
                   </span>
                 </div>
                 <div className="min-w-0">
@@ -1436,7 +1558,7 @@ export const ProfileScreen: React.FC = () => {
                     العائلات
                   </h4>
                   <span className={`text-[10px] ${curRoyal.subText} font-bold block truncate`}>
-                    عائلة فرسان المجد
+                    {userFamilyId ? (userFamilyName || 'عائلة فرسان المجد') : 'استكشاف وتأسيس 🏰'}
                   </span>
                 </div>
               </div>
@@ -2147,56 +2269,98 @@ export const ProfileScreen: React.FC = () => {
             </motion.div>
           )}
 
-          {/* 8. مركز المذيعين (يظهر فقط إذا كان rolesSummary.isHost === true أو السوبر أدمن) */}
-          {(rolesSummary.isHost || rolesSummary.isSuperAdmin) && (
-            <motion.div 
-              whileHover={{ scale: 1.015 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setIsBroadcasterCenterModalOpen(true)}
-              className="relative my-3 p-[2px] rounded-2xl bg-gradient-to-r from-rose-300/85 via-fuchsia-200/80 to-purple-300/85 shadow-[0_4px_18px_rgba(244,63,94,0.12),0_1px_3px_rgba(0,0,0,0.04)] cursor-pointer group transition-all duration-300"
-            >
-              {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
-              <div className="absolute -top-2.5 right-4 z-20">
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black bg-gradient-to-r from-rose-500 via-pink-500 to-purple-600 text-white border border-rose-200/60 shadow-[0_2px_8px_rgba(244,63,94,0.25)] font-sans tracking-wide">
-                  <Sparkles className="w-3 h-3 text-amber-200 fill-amber-200 animate-pulse" />
-                  <span>لوحة مركز المذيعين</span>
+          {/* 8. مركز المضيفين (نقطة الدخول الشاملة: توجيه ذكي حسب حالة agencyStatus) */}
+          <motion.div 
+            whileHover={{ scale: 1.015 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleHostCenterClick}
+            className={`relative my-3 p-[2px] rounded-2xl cursor-pointer group transition-all duration-300 ${
+              userAgencyStatus === 'pending'
+                ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400 shadow-[0_4px_18px_rgba(245,158,11,0.25)]'
+                : (userAgencyStatus === 'active' || userAgencyStatus === 'approved' || (profile as any).agencyId || rolesSummary.isHost || rolesSummary.isSuperAdmin)
+                ? 'bg-gradient-to-r from-rose-300/85 via-fuchsia-200/80 to-purple-300/85 shadow-[0_4px_18px_rgba(244,63,94,0.15)]'
+                : 'bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 shadow-[0_4px_18px_rgba(16,185,129,0.22)]'
+            }`}
+          >
+            {/* شارة بارزة للأعلى: نصفها خارج ونصفها داخل المستطيل */}
+            <div className="absolute -top-2.5 right-4 z-20">
+              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black border shadow-[0_2px_8px_rgba(0,0,0,0.15)] font-sans tracking-wide ${
+                userAgencyStatus === 'pending'
+                  ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white border-amber-300/70 animate-pulse'
+                  : (userAgencyStatus === 'active' || userAgencyStatus === 'approved' || (profile as any).agencyId || rolesSummary.isHost || rolesSummary.isSuperAdmin)
+                  ? 'bg-gradient-to-r from-rose-500 via-pink-500 to-purple-600 text-white border-rose-200/60'
+                  : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 text-white border-emerald-300/70'
+              }`}>
+                <Sparkles className="w-3 h-3 text-amber-200 fill-amber-200 animate-pulse" />
+                <span>
+                  {userAgencyStatus === 'pending'
+                    ? 'قيد المراجعة ⏳'
+                    : (userAgencyStatus === 'active' || userAgencyStatus === 'approved' || (profile as any).agencyId || rolesSummary.isHost || rolesSummary.isSuperAdmin)
+                    ? 'مذيع معتمد 🌟'
+                    : 'انضم لوكالة ✨'}
                 </span>
-              </div>
+              </span>
+            </div>
 
-              <div className="bg-gradient-to-r from-[#FFF5F7] via-[#FAF5FF] to-[#F5F3FF] rounded-[14px] p-3 flex items-center justify-between border border-rose-200/70 group-hover:border-rose-300/90 group-hover:from-white group-hover:to-[#FFF5F7] transition-all relative overflow-hidden">
-                {/* لمسات إضاءة خلفية ناعمة وخفيفة */}
-                <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-rose-300/15 rounded-full blur-xl pointer-events-none" />
-                <div className="absolute -left-6 -top-6 w-24 h-24 bg-purple-300/15 rounded-full blur-xl pointer-events-none" />
+            <div className="bg-gradient-to-r from-[#FFF5F7] via-[#FAF5FF] to-[#F5F3FF] rounded-[14px] p-3 flex items-center justify-between border border-rose-200/70 group-hover:border-rose-300/90 group-hover:from-white group-hover:to-[#FFF5F7] transition-all relative overflow-hidden">
+              {/* لمسات إضاءة خلفية ناعمة وخفيفة */}
+              <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-rose-300/15 rounded-full blur-xl pointer-events-none" />
+              <div className="absolute -left-6 -top-6 w-24 h-24 bg-purple-300/15 rounded-full blur-xl pointer-events-none" />
 
-                <div className="flex items-center gap-3 relative z-10">
-                  {/* 3D Realistic Icon Container بتدرج خفيف ومتناسق وألوان فاخرة ناعمة */}
-                  <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white via-rose-50/70 to-purple-50/90 border border-rose-200/80 shadow-[0_2px_10px_rgba(244,63,94,0.10),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <BroadcasterCenter3DIcon className="w-7 h-7 sm:w-8 sm:h-8" />
-                    <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-gradient-to-tr from-amber-400 via-amber-300 to-yellow-200 rounded-full border border-white shadow-2xs flex items-center justify-center text-[7.5px] font-black text-amber-950">
-                      ★
+              <div className="flex items-center gap-3 relative z-10">
+                {/* 3D Realistic Icon Container بتدرج خفيف ومتناسق وألوان فاخرة ناعمة */}
+                <div className="relative w-11 h-11 rounded-xl bg-gradient-to-b from-white via-rose-50/70 to-purple-50/90 border border-rose-200/80 shadow-[0_2px_10px_rgba(244,63,94,0.10),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <BroadcasterCenter3DIcon className="w-7 h-7 sm:w-8 sm:h-8" />
+                  <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-gradient-to-tr from-amber-400 via-amber-300 to-yellow-200 rounded-full border border-white shadow-2xs flex items-center justify-center text-[7.5px] font-black text-amber-950">
+                    ★
+                  </span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-slate-900 group-hover:text-rose-950 transition-colors tracking-wide">
+                      مركز المضيفين
+                    </span>
+                    <span className={`text-[9px] border font-extrabold px-2 py-0.5 rounded-full shadow-2xs font-mono ${
+                      userAgencyStatus === 'pending'
+                        ? 'bg-amber-100 text-amber-800 border-amber-300'
+                        : (userAgencyStatus === 'active' || userAgencyStatus === 'approved' || (profile as any).agencyId)
+                        ? 'bg-rose-100 text-rose-700 border-rose-200/80'
+                        : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                    }`}>
+                      {userAgencyStatus === 'pending'
+                        ? 'بانتظار الموافقة ⌛'
+                        : (userAgencyStatus === 'active' || userAgencyStatus === 'approved' || (profile as any).agencyId)
+                        ? 'مُعتمد 💎'
+                        : 'فرصة توثيق 🚀'}
                     </span>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-black text-slate-900 group-hover:text-rose-950 transition-colors tracking-wide">
-                        مركز المذيعين
-                      </span>
-                      <span className="text-[9px] bg-gradient-to-r from-rose-100 to-pink-100 text-rose-700 border border-rose-200/80 font-extrabold px-2 py-0.5 rounded-full shadow-2xs font-mono">
-                        مُميّز ✨
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-slate-600 font-bold block mt-0.5 group-hover:text-slate-700">
-                      إحصائيات البث، الأرباح، والعقود
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs font-black text-rose-700 bg-white/95 border border-rose-200/90 px-3 py-1.5 rounded-xl shadow-2xs group-hover:bg-gradient-to-r group-hover:from-rose-500 group-hover:to-pink-600 group-hover:text-white group-hover:border-transparent group-hover:shadow-[0_2px_8px_rgba(244,63,94,0.3)] transition-all shrink-0 relative z-10">
-                  <span>إدارة</span>
-                  <ChevronLeft className="w-4 h-4" />
+                  <span className="text-[10px] text-slate-600 font-bold block mt-0.5 group-hover:text-slate-700">
+                    {userAgencyStatus === 'pending'
+                      ? `طلبك قيد المراجعة لدى ${pendingAgencyInfo.agencyName || 'الوكالة'}`
+                      : (userAgencyStatus === 'active' || userAgencyStatus === 'approved' || (profile as any).agencyId)
+                      ? 'إحصائيات البث، الأرباح، التارجت، والعقود'
+                      : 'انضم كـ مذيع معتمد لدى وكالات النجم لتلقي الدعم والرواتب'}
+                  </span>
                 </div>
               </div>
-            </motion.div>
-          )}
+              <div className={`flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl shadow-2xs transition-all shrink-0 relative z-10 ${
+                userAgencyStatus === 'pending'
+                  ? 'text-amber-800 bg-amber-100/90 border border-amber-300'
+                  : (userAgencyStatus === 'active' || userAgencyStatus === 'approved' || (profile as any).agencyId)
+                  ? 'text-rose-700 bg-white/95 border border-rose-200/90 group-hover:bg-gradient-to-r group-hover:from-rose-500 group-hover:to-pink-600 group-hover:text-white'
+                  : 'text-emerald-800 bg-emerald-100/90 border border-emerald-300 group-hover:bg-emerald-600 group-hover:text-white'
+              }`}>
+                <span>
+                  {userAgencyStatus === 'pending'
+                    ? 'متابعة'
+                    : (userAgencyStatus === 'active' || userAgencyStatus === 'approved' || (profile as any).agencyId)
+                    ? 'إدارة'
+                    : 'طلب انضمام'}
+                </span>
+                <ChevronLeft className="w-4 h-4" />
+              </div>
+            </div>
+          </motion.div>
 
 
 
@@ -2341,7 +2505,7 @@ export const ProfileScreen: React.FC = () => {
           <UserProfileModal
             isOpen={isUserProfileModalOpen}
             onClose={() => setIsUserProfileModalOpen(false)}
-            onOpenFamily={() => setIsFamilyModalOpen(true)}
+            onOpenFamily={handleFamilyClick}
             userProfile={profile}
           />
         </Suspense>
@@ -2601,6 +2765,65 @@ export const ProfileScreen: React.FC = () => {
               setIsMallModalOpen(false);
               setIsRechargeModalOpen(true);
             }}
+          />
+        </Suspense>
+      )}
+
+      {/* بوابة الانضمام للوكالات المعتمدة (Onboarding Agency Screen) */}
+      {isJoinAgencyModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="مركز الانضمام للوكالات" />}>
+          <JoinAgencyModal
+            isOpen={isJoinAgencyModalOpen}
+            onClose={() => setIsJoinAgencyModalOpen(false)}
+            userId={profile.userId}
+            userName={profile.name}
+            userAvatar={profile.avatarUrl}
+            agencyStatus={userAgencyStatus}
+            pendingAgencyInfo={pendingAgencyInfo}
+            onSuccessJoin={(agId, agName) => {
+              setUserAgencyStatus('pending');
+              setPendingAgencyInfo({ agencyId: agId, agencyName: agName });
+            }}
+            onCancelPending={() => {
+              setUserAgencyStatus('none');
+              setPendingAgencyInfo({});
+            }}
+            onOpenHostCenter={(agId, agName) => {
+              setUserAgencyStatus('active');
+              setProfile((prev) => ({ ...prev, agencyId: agId, agencyName: agName } as any));
+              setIsAgencyHostCenterModalOpen(true);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* بوابة استكشاف وتأسيس العائلات (Onboarding Family Screen) */}
+      {isExploreFamiliesModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="استكشاف العائلات" />}>
+          <ExploreFamiliesModal
+            isOpen={isExploreFamiliesModalOpen}
+            onClose={() => setIsExploreFamiliesModalOpen(false)}
+            userId={profile.userId}
+            userName={profile.name}
+            userAvatar={profile.avatarUrl}
+            onJoinedFamily={(famId, famName) => {
+              setUserFamilyId(famId);
+              setUserFamilyName(famName);
+              setIsFamilyModalOpen(true);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* مركز المضيفين الخاص بالوكالة مع البيانات الحية من Firestore */}
+      {isAgencyHostCenterModalOpen && (
+        <Suspense fallback={<LazyModalSkeleton title="مركز المضيفين" />}>
+          <AgencyHostCenterModal
+            isOpen={isAgencyHostCenterModalOpen}
+            onClose={() => setIsAgencyHostCenterModalOpen(false)}
+            agencyGid={(profile as any).agencyId || pendingAgencyInfo.agencyId || '30032'}
+            agencyName={(profile as any).agencyName || pendingAgencyInfo.agencyName || 'وكالة شحن النجم الرسمية'}
+            direction="rtl"
           />
         </Suspense>
       )}
