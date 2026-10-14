@@ -114,6 +114,27 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    match /agency_invites/{inviteId} {
+      allow read, write: if true;
+    }
+
+    // كولكشن العائلات وأعضاء العائلات في المنصة
+    match /families/{familyId} {
+      allow read, write: if true;
+      match /{subCollection=**} {
+        allow read, write: if true;
+      }
+    }
+
+    // كولكشن طلبات وتكوينات الوكالات
+    match /agency_requests/{requestId} {
+      allow read, write: if true;
+    }
+
+    match /agency_configs/{configId} {
+      allow read, write: if true;
+    }
+
     // كولكشن العدادات التسلسلية الذرية (Atomic Sequence Counters) لترقيم المعرفات من 1001001 فصاعداً
     match /counters/{counterId} {
       allow read, write: if true;
