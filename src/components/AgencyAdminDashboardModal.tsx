@@ -33,6 +33,18 @@ import {
   updateAgencyTargetsTiers, 
   AgencyTargetTier 
 } from '../lib/serverRewardsService';
+import { db, auth } from '../lib/firebase';
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  setDoc,
+  updateDoc,
+  getDocs,
+  serverTimestamp
+} from 'firebase/firestore';
 
 interface AgencyAdminDashboardModalProps {
   isOpen: boolean;
@@ -60,6 +72,17 @@ export const AgencyAdminDashboardModal: React.FC<AgencyAdminDashboardModalProps>
   const [tiersList, setTiersList] = useState<AgencyTargetTier[]>([]);
   const [isSavingTiers, setIsSavingTiers] = useState(false);
 
+  // ✅ Live data from Firestore
+  const [agenciesList, setAgenciesList] = useState<any[]>([]);
+  const [requestsList, setRequestsList] = useState<any[]>([]);
+  const [liveStats, setLiveStats] = useState({
+    totalAgencies: 0,
+    activeHosts: 0,
+    totalBrokers: 0,
+    totalDiamonds: 0
+  });
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       fetchDashboardConfig().then((cfg) => {
@@ -84,6 +107,105 @@ export const AgencyAdminDashboardModal: React.FC<AgencyAdminDashboardModalProps>
     };
     window.addEventListener('agency_targets_tiers_updated', handleTiersUpdated);
     return () => window.removeEventListener('agency_targets_tiers_updated', handleTiersUpdated);
+  }, [isOpen]);
+
+  // ✅ Live listen: agencies + hosts + brokers + requests
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    setIsLoadingData(true);
+    
+    // 1️⃣ agencies
+    const unsubAgencies = onSnapshot(
+      collection(db, 'agencies'),
+      (snap) => {
+        const list = snap.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            name: data.agencyName || data.name || `وكالة #${d.id}`,
+            agentName: data.ownerName || 'غير محدد',
+            agentId: data.ownerId || '—',
+            status: data.status || 'pending',
+            broadcastersCount: data.hosts || data.broadcastersCount || 0,
+            brokersCount: data.brokersCount || 0,
+            monthlyTargetDiamonds: (data.targetDiamonds || 0).toLocaleString('en-US'),
+            currentDiamonds: (data.achievedDiamonds || 0).toLocaleString('en-US'),
+            targetCompletion: data.targetDiamonds 
+              ? Math.round(((data.achievedDiamonds || 0) / data.targetDiamonds) * 100)
+              : 0,
+            commissionRate: `${data.commission || 10}%`,
+            joinedDate: data.createdAt || new Date().toISOString().split('T')[0]
+          };
+        });
+        setAgenciesList(list);
+        setLiveStats((prev) => ({
+          ...prev,
+          totalAgencies: snap.size
+        }));
+      },
+      (err) => console.warn('Agencies listen error:', err)
+    );
+    
+    // 2️⃣ hosts (for stats)
+    const unsubHosts = onSnapshot(
+      collection(db, 'hosts'),
+      (snap) => {
+        let totalDiamonds = 0;
+        snap.docs.forEach((d) => {
+          const data = d.data();
+          totalDiamonds += (data.metrics?.diamondsEarned || data.diamonds || 0);
+        });
+        setLiveStats((prev) => ({
+          ...prev,
+          activeHosts: snap.size,
+          totalDiamonds
+        }));
+      },
+      (err) => console.warn('Hosts listen error:', err)
+    );
+    
+    // 3️⃣ brokers
+    const unsubBrokers = onSnapshot(
+      collection(db, 'brokers'),
+      (snap) => {
+        setLiveStats((prev) => ({
+          ...prev,
+          totalBrokers: snap.size
+        }));
+      },
+      (err) => console.warn('Brokers listen error:', err)
+    );
+    
+    // 4️⃣ agency_requests
+    const unsubRequests = onSnapshot(
+      collection(db, 'agency_requests'),
+      (snap) => {
+        const list = snap.docs
+          .filter((d) => {
+            const status = d.data().status;
+            return status === 'pending' || status === 'pending_head_approval';
+          })
+          .map((d) => ({
+            id: d.id,
+            applicantName: d.data().applicantName || 'غير محدد',
+            applicantId: d.data().applicantId || '—',
+            proposedAgencyName: d.data().proposedAgencyName || 'وكالة جديدة',
+            createdAt: d.data().createdAt || new Date().toISOString()
+          }));
+        setRequestsList(list);
+      },
+      (err) => console.warn('Requests listen error:', err)
+    );
+    
+    setIsLoadingData(false);
+    
+    return () => {
+      unsubAgencies();
+      unsubHosts();
+      unsubBrokers();
+      unsubRequests();
+    };
   }, [isOpen]);
 
   const handleTierChange = (index: number, field: keyof AgencyTargetTier, value: any) => {
@@ -143,57 +265,15 @@ export const AgencyAdminDashboardModal: React.FC<AgencyAdminDashboardModalProps>
     }
   };
 
-  if (!isOpen) return null;
-
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3000);
   };
 
-  const MOCK_AGENCIES_DATA = [
-    {
-      id: '30032',
-      name: 'وكالة الأساطير الذهبية (Super Legend VIP)',
-      agentName: 'فهد العتيبي',
-      agentId: '30032',
-      status: 'verified',
-      broadcastersCount: 42,
-      brokersCount: 5,
-      monthlyTargetDiamonds: '12,500,000',
-      currentDiamonds: '14,820,000',
-      targetCompletion: 118,
-      commissionRate: '12%',
-      joinedDate: '2026-01-15'
-    },
-    {
-      id: '88410',
-      name: 'وكالة نجوم الخليج العالمية',
-      agentName: 'سلطان الدوسري',
-      agentId: '88410',
-      status: 'verified',
-      broadcastersCount: 28,
-      brokersCount: 3,
-      monthlyTargetDiamonds: '8,000,000',
-      currentDiamonds: '7,450,000',
-      targetCompletion: 93,
-      commissionRate: '10%',
-      joinedDate: '2026-01-20'
-    },
-    {
-      id: '55120',
-      name: 'وكالة الصقور للبث الصوتي',
-      agentName: 'عمر القحطاني',
-      agentId: '55120',
-      status: 'pending',
-      broadcastersCount: 15,
-      brokersCount: 2,
-      monthlyTargetDiamonds: '5,000,000',
-      currentDiamonds: '4,100,000',
-      targetCompletion: 82,
-      commissionRate: '10%',
-      joinedDate: '2026-02-05'
-    }
-  ];
+  if (!isOpen) return null;
+
+  // ✅ Firestore-driven data (لا MOCK)
+  const displayAgencies = agenciesList;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 text-right select-none" dir="rtl">
@@ -258,23 +338,31 @@ export const AgencyAdminDashboardModal: React.FC<AgencyAdminDashboardModalProps>
           {/* Tab 1: Overview */}
           {activeTab === 'overview' && (
             <div className="space-y-4">
-              {/* Quick Stat Cards */}
+              {/* Quick Stat Cards — LIVE */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 <div className="p-3 bg-slate-900/80 border border-blue-500/30 rounded-2xl">
                   <span className="text-[10px] text-slate-400 font-bold block">إجمالي الوكالات</span>
-                  <span className="text-xl font-black text-blue-400 font-mono">18 وكالة</span>
+                  <span className="text-xl font-black text-blue-400 font-mono">
+                    {agenciesList.length} وكالة
+                  </span>
                 </div>
                 <div className="p-3 bg-slate-900/80 border border-emerald-500/30 rounded-2xl">
                   <span className="text-[10px] text-slate-400 font-bold block">المذيعين النشطين</span>
-                  <span className="text-xl font-black text-emerald-400 font-mono">340 مذيع</span>
+                  <span className="text-xl font-black text-emerald-400 font-mono">
+                    {liveStats.activeHosts} مذيع
+                  </span>
                 </div>
                 <div className="p-3 bg-slate-900/80 border border-purple-500/30 rounded-2xl">
                   <span className="text-[10px] text-slate-400 font-bold block">الوسطاء المعتمدين</span>
-                  <span className="text-xl font-black text-purple-400 font-mono">48 وسيط</span>
+                  <span className="text-xl font-black text-purple-400 font-mono">
+                    {liveStats.totalBrokers} وسيط
+                  </span>
                 </div>
                 <div className="p-3 bg-slate-900/80 border border-amber-500/30 rounded-2xl">
                   <span className="text-[10px] text-slate-400 font-bold block">إجمالي تداول الماس</span>
-                  <span className="text-xl font-black text-amber-400 font-mono">68.4M 💎</span>
+                  <span className="text-xl font-black text-amber-400 font-mono">
+                    {(liveStats.totalDiamonds / 1_000_000).toFixed(1)}M 💎
+                  </span>
                 </div>
               </div>
 
@@ -289,33 +377,48 @@ export const AgencyAdminDashboardModal: React.FC<AgencyAdminDashboardModalProps>
                 </p>
               </div>
 
-              {/* Agencies Performance Table Preview */}
+              {/* Agencies Performance Table Preview — LIVE */}
               <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
                 <h4 className="text-xs font-black text-white flex items-center justify-between">
                   <span>أعلى الوكالات أداءً هذا الشهر</span>
                   <span className="text-[10px] text-slate-400 font-normal">محدث لحظياً ⚡</span>
                 </h4>
-                <div className="space-y-2">
-                  {MOCK_AGENCIES_DATA.map((ag) => (
-                    <div key={ag.id} className="p-3 bg-slate-950/80 border border-slate-800/80 rounded-xl flex items-center justify-between text-xs">
-                      <div>
-                        <div className="font-bold text-white flex items-center gap-1.5">
-                          <span>{ag.name}</span>
-                          <span className="text-[9px] bg-blue-950 text-blue-300 px-1.5 py-0.2 rounded border border-blue-800">
-                            GID: {ag.id}
-                          </span>
+                
+                {isLoadingData ? (
+                  <div className="text-center py-6">
+                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                  </div>
+                ) : displayAgencies.length === 0 ? (
+                  <div className="text-center py-6 text-slate-500 text-xs font-bold">
+                    لا توجد وكالات في Firestore حتى الآن
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {displayAgencies
+                      .slice()
+                      .sort((a, b) => parseInt(String(b.currentDiamonds).replace(/,/g, '') || '0') - parseInt(String(a.currentDiamonds).replace(/,/g, '') || '0'))
+                      .slice(0, 5)
+                      .map((ag) => (
+                        <div key={ag.id} className="p-3 bg-slate-950/80 border border-slate-800/80 rounded-xl flex items-center justify-between text-xs">
+                          <div>
+                            <div className="font-bold text-white flex items-center gap-1.5">
+                              <span>{ag.name}</span>
+                              <span className="text-[9px] bg-blue-950 text-blue-300 px-1.5 py-0.2 rounded border border-blue-800">
+                                GID: {ag.id}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-400">
+                              الوكيل: {ag.agentName} | المذيعين: {ag.broadcastersCount} | الوسطاء: {ag.brokersCount}
+                            </span>
+                          </div>
+                          <div className="text-left">
+                            <span className="font-mono font-black text-amber-400 block">{ag.currentDiamonds} 💎</span>
+                            <span className="text-[10px] text-emerald-400 font-bold">إنجاز {ag.targetCompletion}%</span>
+                          </div>
                         </div>
-                        <span className="text-[10px] text-slate-400">
-                          الوكيل: {ag.agentName} | المذيعين: {ag.broadcastersCount} | الوسطاء: {ag.brokersCount}
-                        </span>
-                      </div>
-                      <div className="text-left">
-                        <span className="font-mono font-black text-amber-400 block">{ag.currentDiamonds} 💎</span>
-                        <span className="text-[10px] text-emerald-400 font-bold">إنجاز {ag.targetCompletion}%</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                      ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -337,53 +440,69 @@ export const AgencyAdminDashboardModal: React.FC<AgencyAdminDashboardModalProps>
               </div>
 
               <div className="space-y-2.5">
-                {MOCK_AGENCIES_DATA.filter((ag) => ag.name.includes(searchQuery) || ag.id.includes(searchQuery)).map((ag) => (
-                  <div key={ag.id} className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="text-sm font-black text-white">{ag.name}</h4>
-                        <p className="text-[11px] text-slate-400 mt-0.5">
-                          الوكيل المسؤول: <strong className="text-slate-200">{ag.agentName}</strong> (ID: {ag.agentId})
-                        </p>
+                {agenciesList
+                  .filter((ag) => 
+                    ag.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                    ag.id.includes(searchQuery) ||
+                    ag.agentName.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .map((ag) => (
+                    <div key={ag.id} className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className="text-sm font-black text-white">{ag.name}</h4>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            الوكيل المسؤول: <strong className="text-slate-200">{ag.agentName}</strong> (ID: {ag.agentId})
+                          </p>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                          ag.status === 'verified' || ag.status === 'active'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        }`}>
+                          {ag.status === 'verified' || ag.status === 'active' ? 'معتمدة ونشطة ✓' : 'قيد المراجعة ⏳'}
+                        </span>
                       </div>
-                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        معتمدة ونشطة ✓
-                      </span>
-                    </div>
 
-                    <div className="grid grid-cols-3 gap-2 bg-slate-950 p-2.5 rounded-xl text-center text-xs">
-                      <div>
-                        <span className="text-[10px] text-slate-400 block">المذيعين</span>
-                        <span className="font-bold text-white font-mono">{ag.broadcastersCount}</span>
+                      <div className="grid grid-cols-3 gap-2 bg-slate-950 p-2.5 rounded-xl text-center text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block">المذيعين</span>
+                          <span className="font-bold text-white font-mono">{ag.broadcastersCount}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 block">نسبة العمولة</span>
+                          <span className="font-bold text-blue-400 font-mono">{ag.commissionRate}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 block">تارغت الشهر</span>
+                          <span className="font-bold text-amber-400 font-mono">{ag.monthlyTargetDiamonds}</span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-[10px] text-slate-400 block">نسبة العمولة</span>
-                        <span className="font-bold text-blue-400 font-mono">{ag.commissionRate}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-400 block">تارغت الشهر</span>
-                        <span className="font-bold text-amber-400 font-mono">{ag.monthlyTargetDiamonds}</span>
-                      </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        onClick={() => showToast(`تم تصدير كشف حساب ${ag.name} بنجاح 📄`)}
-                        className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>تصدير كشف الحساب</span>
-                      </button>
-                      <button
-                        onClick={() => showToast(`تم إرسال إشعار رسمي للوكيل ${ag.agentName} 📩`)}
-                        className="py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <Mail className="w-3.5 h-3.5" />
-                        <span>مراسلة الوكيل</span>
-                      </button>
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => showToast(`تم تصدير كشف حساب ${ag.name} بنجاح 📄`)}
+                          className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>تصدير كشف الحساب</span>
+                        </button>
+                        <button
+                          onClick={() => showToast(`تم إرسال إشعار رسمي للوكيل ${ag.agentName} 📩`)}
+                          className="py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                          <span>مراسلة الوكيل</span>
+                        </button>
+                      </div>
                     </div>
+                  ))}
+
+                {agenciesList.length === 0 && !isLoadingData && (
+                  <div className="text-center py-12 text-slate-400 text-xs font-bold">
+                    لا توجد وكالات في Firestore
                   </div>
-                ))}
+                )}
               </div>
             </div>
           )}
@@ -391,35 +510,69 @@ export const AgencyAdminDashboardModal: React.FC<AgencyAdminDashboardModalProps>
           {/* Tab 3: Requests */}
           {activeTab === 'requests' && (
             <div className="space-y-3">
-              <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                    <h4 className="text-xs font-black text-white">طلب توثيق وكالة جديدة (GID: 77192)</h4>
+              {requestsList.length === 0 ? (
+                <div className="text-center py-16 bg-slate-900/60 rounded-2xl border border-dashed border-slate-800">
+                  <FileText className="w-10 h-10 text-slate-600 mx-auto mb-2" />
+                  <div className="text-xs font-bold text-slate-400">لا توجد طلبات توثيق حالياً</div>
+                </div>
+              ) : (
+                requestsList.map((req) => (
+                  <div key={req.id} className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                        <h4 className="text-xs font-black text-white">
+                          طلب توثيق وكالة جديدة (GID: {req.id.slice(-5)})
+                        </h4>
+                      </div>
+                      <span className="text-[10px] text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold">
+                        قيد المراجعة
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300">
+                      مقدم الطلب: <strong>{req.applicantName}</strong> (ID: {req.applicantId}) — 
+                      اسم الوكالة المقترح: <strong>{req.proposedAgencyName}</strong>
+                    </p>
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={async () => {
+                          try {
+                            await updateDoc(doc(db, 'agency_requests', req.id), {
+                              status: 'approved',
+                              approvedBy: auth.currentUser?.uid || 'admin',
+                              approvedAt: serverTimestamp()
+                            });
+                            showToast(`✅ تمت الموافقة واعتماد الوكالة ${req.proposedAgencyName}`);
+                          } catch (e: any) {
+                            showToast(`⚠️ فشل: ${e.message}`);
+                          }
+                        }}
+                        className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>اعتماد وتوثيق الوكالة</span>
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await updateDoc(doc(db, 'agency_requests', req.id), {
+                              status: 'rejected',
+                              rejectedBy: auth.currentUser?.uid || 'admin',
+                              rejectedAt: serverTimestamp()
+                            });
+                            showToast('❌ تم رفض الطلب');
+                          } catch (e: any) {
+                            showToast(`⚠️ فشل: ${e.message}`);
+                          }
+                        }}
+                        className="py-2 px-4 bg-rose-600/30 hover:bg-rose-600/50 text-rose-300 text-xs font-bold rounded-xl border border-rose-500/40 transition-all cursor-pointer"
+                      >
+                        رفض
+                      </button>
+                    </div>
                   </div>
-                  <span className="text-[10px] text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold">
-                    قيد المراجعة
-                  </span>
-                </div>
-                <p className="text-xs text-slate-300">
-                  مقدم الطلب: <strong>خالد بن ناصر</strong> (ID: 994101) - اسم الوكالة المقترح: <strong>وكالة الرواد لايف</strong>
-                </p>
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    onClick={() => showToast('تمت الموافقة واعتماد الوكالة رسمياً 🌟')}
-                    className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>اعتماد وتوثيق الوكالة</span>
-                  </button>
-                  <button
-                    onClick={() => showToast('تم رفض الطلب وإبلاغ صاحب الحساب')}
-                    className="py-2 px-4 bg-rose-600/30 hover:bg-rose-600/50 text-rose-300 text-xs font-bold rounded-xl border border-rose-500/40 transition-all cursor-pointer"
-                  >
-                    رفض
-                  </button>
-                </div>
-              </div>
+                ))
+              )}
             </div>
           )}
 

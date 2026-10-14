@@ -126,12 +126,15 @@ service cloud.firestore {
       }
     }
 
-    // كولكشن طلبات وتكوينات الوكالات
     match /agency_requests/{requestId} {
       allow read, write: if true;
     }
 
     match /agency_configs/{configId} {
+      allow read, write: if true;
+    }
+
+    match /brokers/{brokerId} {
       allow read, write: if true;
     }
 
