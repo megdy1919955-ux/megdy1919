@@ -2412,7 +2412,7 @@ export const ProfileScreen: React.FC = () => {
             userName={profile.name || "(عابر سبيل)"}
             avatarUrl={profile.avatarUrl}
             badges={profile.badges}
-            userId={targetUserId}
+            userId={profile.userId || '1001001'}
             onSelectBadge={(badge) => setSelectedBadge(badge)}
           />
         </Suspense>

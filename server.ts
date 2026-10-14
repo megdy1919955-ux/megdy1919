@@ -2061,7 +2061,7 @@ async function startServer() {
 
   // 1. استقبال ومعالجة إشارة الدعم والهدايا من السيرفر المركزي
   // POST /api/rewards/gift-signal
-  app.post('/api/rewards/gift-signal', (req, res) => {
+  app.post('/api/rewards/gift-signal', async (req, res) => {
     try {
       const {
         senderId = '1001001',
@@ -2078,13 +2078,13 @@ async function startServer() {
       const totalAmount = numValue;
 
       // 1. الخصم من الداعم
-      const senderWallet = getOrCreateUserWallet(senderId, senderName);
+      const senderWallet = await getOrCreateUserWallet(senderId, senderName);
       senderWallet.coins = Math.max(0, senderWallet.coins - totalAmount);
       senderWallet.totalCoinsSpent += totalAmount;
       senderWallet.updatedAt = Date.now();
 
       // 2. إضافة الألماس للمستلم (معدل 1 كوين = 1 ألماسة)
-      const recipientWallet = getOrCreateUserWallet(recipientId, recipientName);
+      const recipientWallet = await getOrCreateUserWallet(recipientId, recipientName);
       recipientWallet.diamonds += totalAmount;
       recipientWallet.totalDiamondsEarned += totalAmount;
       recipientWallet.updatedAt = Date.now();
@@ -2095,7 +2095,7 @@ async function startServer() {
 
       let hostStats: ServerHostStats | null = null;
       if (isHost) {
-        hostStats = getOrCreateHostStats(recipientId, recipientName);
+        hostStats = await getOrCreateHostStats(recipientId, recipientName);
         hostStats.diamondsEarned += totalAmount;
         if (hostStats.diamondsEarned > hostStats.bestAchievementDiamonds) {
           hostStats.bestAchievementDiamonds = hostStats.diamondsEarned;

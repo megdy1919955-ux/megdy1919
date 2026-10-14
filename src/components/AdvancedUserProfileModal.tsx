@@ -171,8 +171,8 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
             supporterLevel: data.badges.supporterLevel ?? data.badges.level ?? 1,
             charmLevel: data.badges.charmLevel ?? 1,
             vipLevel: data.badges.vipLevel || 'VIP1',
-            sharesLevel: data.badges.sharesLevel || 1,
-            isSuperAdmin: Boolean(data.badges.isSuperAdmin || user.isOwner || user.isSuperAdmin),
+            sharesLevel: (data.badges as any).sharesLevel || 1,
+            isSuperAdmin: Boolean((data.badges as any).isSuperAdmin || user.isOwner || user.isSuperAdmin),
             supporterBadgeDesign: data.badges.supporterBadgeDesign || 'royal_dragon_flame',
             charmBadgeDesign: data.badges.charmBadgeDesign || 'diamond_rose_5star',
             vipDesignStyle: data.badges.vipDesignStyle || 'royal_gold_3d'
