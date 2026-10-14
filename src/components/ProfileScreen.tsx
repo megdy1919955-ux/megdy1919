@@ -287,21 +287,15 @@ export const ProfileScreen: React.FC = () => {
   };
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
   const [coinsBalance, setCoinsBalance] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('user_wallet_coins');
-      if (saved) {
-        if (saved === '100000000') {
-          localStorage.setItem('user_wallet_coins', '0');
-          return 0;
-        }
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed) && parsed >= 0) return parsed;
-      }
-    } catch {}
+    // ✅ القيمة الأولية من authUser الحقيقي
     const authUser = getCurrentAuthUser();
-    return authUser?.coins || 0;
+    return authUser?.coins ?? 0;
   });
-  const [diamondsBalance, setDiamondsBalance] = useState<number>(0);
+
+  const [diamondsBalance, setDiamondsBalance] = useState<number>(() => {
+    const authUser = getCurrentAuthUser();
+    return authUser?.diamonds ?? 0;
+  });
 
   // إحصائيات اجتماعية واقعية وحقيقية تبدأ من الصفر (الزوار، الأصدقاء، تمت متابعتهم، المعجبون) معزولة برقم الـ ID
   const [socialStats, setSocialStats] = useState(() => getSocialStats(profile.userId));
@@ -466,83 +460,91 @@ export const ProfileScreen: React.FC = () => {
   // 🌟 Central Rule: صفحة «أنا» في التطبيق والمتصفح تقرأ بياناتها وتتحقق من شروط الداشبورد
   useEffect(() => {
     let isCurrent = true;
+    const targetId = profile.userId || '1001001';
+
     const syncFromCentralServer = async () => {
-      const targetId = profile.userId || '1001001';
       try {
+        console.log('[ProfileScreen] Fetching mobile-me for:', targetId);
         const meData = await fetchMobileMe(targetId);
-        if (isCurrent && meData && meData.status === 'success') {
-          // 1. مزامنة الألماس والكوينز من السيرفر المركزي الحاكم
-          if (typeof meData.wallet?.diamonds === 'number') {
-            setDiamondsBalance(meData.wallet.diamonds);
-          }
-          if (typeof meData.wallet?.coins === 'number' && meData.wallet.coins >= 0) {
-            setCoinsBalance(meData.wallet.coins);
-            localStorage.setItem('user_wallet_coins', meData.wallet.coins.toString());
-          }
-
-          // 2. مزامنة الاسم المعتمد والصورة الحقيقية المعتمدة من الداشبورد
-          if (meData.profile) {
-            setProfile((prev) => ({
-              ...prev,
-              name: meData.profile.name || prev.name,
-              avatarUrl: meData.profile.avatar || prev.avatarUrl,
-              bio: meData.profile.bio || prev.bio,
-              country: meData.profile.country || prev.country
-            }));
-          }
-
-          // 3. مزامنة قرارات وتصاميم الشارات من لوحة التحكم الخارجية مع الحساب الفردي
-          if (meData.badges) {
-            setDashboardBadges({
-              showVipBadge: meData.badges.showVipBadge ?? true,
-              showSupporterBadge: meData.badges.showSupporterBadge ?? true,
-              showCharmBadge: meData.badges.showCharmBadge ?? true,
-              supporterLevel: meData.badges.supporterLevel ?? meData.badges.level ?? 1,
-              charmLevel: meData.badges.charmLevel ?? 1,
-              vipLevel: meData.badges.vipLevel || profile.vipTier || 'VIP1',
-              vipDesignStyle: meData.badges.vipDesignStyle || 'royal_gold_3d',
-              supporterBadgeDesign: meData.badges.supporterBadgeDesign || 'royal_dragon_flame',
-              charmBadgeDesign: meData.badges.charmBadgeDesign || 'diamond_rose_5star'
-            });
-          }
+        
+        if (!isCurrent) return;
+        
+        if (!meData || meData.status !== 'success') {
+          console.warn('[ProfileScreen] mobile-me failed, keeping current values');
+          return;
+        }
+        
+        console.log('[ProfileScreen] mobile-me success:', meData);
+        
+        // 1. الرصيد
+        if (typeof meData.wallet?.coins === 'number') {
+          setCoinsBalance(meData.wallet.coins);
+          localStorage.setItem('user_wallet_coins', meData.wallet.coins.toString());
+        }
+        if (typeof meData.wallet?.diamonds === 'number') {
+          setDiamondsBalance(meData.wallet.diamonds);
+        }
+        
+        // 2. البروفايل
+        if (meData.profile) {
+          setProfile((prev) => ({
+            ...prev,
+            name: meData.profile.name || prev.name,
+            avatarUrl: meData.profile.avatar || prev.avatarUrl,
+            bio: meData.profile.bio || prev.bio,
+            country: meData.profile.country || prev.country,
+            level: meData.badges?.level ?? prev.level,
+            vipTier: meData.badges?.vipLevel || prev.vipTier
+          }));
+        }
+        
+        // 3. الشارات
+        if (meData.badges) {
+          setDashboardBadges({
+            showVipBadge: meData.badges.showVipBadge ?? true,
+            showSupporterBadge: meData.badges.showSupporterBadge ?? true,
+            showCharmBadge: meData.badges.showCharmBadge ?? true,
+            supporterLevel: meData.badges.supporterLevel ?? meData.badges.level ?? 1,
+            charmLevel: meData.badges.charmLevel ?? 1,
+            vipLevel: meData.badges.vipLevel || profile.vipTier || 'VIP1',
+            vipDesignStyle: meData.badges.vipDesignStyle || 'royal_gold_3d',
+            supporterBadgeDesign: meData.badges.supporterBadgeDesign || 'royal_dragon_flame',
+            charmBadgeDesign: meData.badges.charmBadgeDesign || 'diamond_rose_5star'
+          });
         }
       } catch (e) {
-        console.warn('Error syncing mobile-me from central server:', e);
+        console.warn('[ProfileScreen] sync error:', e);
       }
     };
 
+    // ✅ 1. مزامنة فورية عند التحميل
     syncFromCentralServer();
 
-    // الاستماع الفوري لإشارات السيرفر والداشبورد اللحظية
-    const handleDiamondsUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      if (typeof customEvent.detail?.diamonds === 'number') {
-        const targetUserId = customEvent.detail?.userId;
-        if (!targetUserId || targetUserId === profile.userId || targetUserId === '1001001') {
-          setDiamondsBalance(customEvent.detail.diamonds);
-        }
-      }
-    };
+    // ✅ 2. مزامنة كل 30 ثانية (real-time-ish)
+    const intervalId = setInterval(syncFromCentralServer, 30000);
 
+    // ✅ 3. الاستماع لأحداث التحديث الفورية
+    const handleDiamondsUpdate = () => syncFromCentralServer();
+    const handleCoinsUpdate = () => syncFromCentralServer();
     const handleProfileUpdated = (e: Event) => {
       const customEvent = e as CustomEvent;
       if (!customEvent.detail?.userId || customEvent.detail.userId === profile.userId || customEvent.detail.userId === '1001001') {
         syncFromCentralServer();
       }
     };
-
-    const handleDashboardConfigUpdated = () => {
-      syncFromCentralServer();
-    };
+    const handleDashboardConfigUpdated = () => syncFromCentralServer();
 
     window.addEventListener('user_diamonds_updated', handleDiamondsUpdate);
+    window.addEventListener('user_coins_updated', handleCoinsUpdate);
     window.addEventListener('profile_updated_by_dashboard', handleProfileUpdated);
     window.addEventListener('dashboard_config_updated', handleDashboardConfigUpdated);
     window.addEventListener('user_levels_tiers_updated', handleDashboardConfigUpdated);
 
     return () => {
       isCurrent = false;
+      clearInterval(intervalId);
       window.removeEventListener('user_diamonds_updated', handleDiamondsUpdate);
+      window.removeEventListener('user_coins_updated', handleCoinsUpdate);
       window.removeEventListener('profile_updated_by_dashboard', handleProfileUpdated);
       window.removeEventListener('dashboard_config_updated', handleDashboardConfigUpdated);
       window.removeEventListener('user_levels_tiers_updated', handleDashboardConfigUpdated);
@@ -2410,6 +2412,7 @@ export const ProfileScreen: React.FC = () => {
             userName={profile.name || "(عابر سبيل)"}
             avatarUrl={profile.avatarUrl}
             badges={profile.badges}
+            userId={targetUserId}
             onSelectBadge={(badge) => setSelectedBadge(badge)}
           />
         </Suspense>

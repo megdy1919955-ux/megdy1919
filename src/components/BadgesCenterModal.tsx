@@ -17,6 +17,7 @@ interface BadgesCenterModalProps {
   userName?: string;
   avatarUrl?: string;
   badges?: any[];
+  userId?: string;
   onSelectBadge?: (badge: any) => void;
 }
 
@@ -25,13 +26,31 @@ export const BadgesCenterModal: React.FC<BadgesCenterModalProps> = ({
   onClose,
   userName = "(عابر سبيل)",
   avatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
+  badges = [],
+  userId,
   onSelectBadge
 }) => {
   const [activeTab, setActiveTab] = useState<'achievements' | 'honorary' | 'activity' | 'games'>('honorary');
-  const [equippedSlots, setEquippedSlots] = useState<{ slot1: string; slot2: string; slot3: string }>({
-    slot1: 'noble_4',
-    slot2: 'badge_100',
-    slot3: 'noble_5'
+  
+  // ✅ الشارات المجهزة تبدأ فارغة تماماً وبدون أي شارات وهمية مثبتة مسبقاً
+  const [equippedSlots, setEquippedSlots] = useState<{ slot1: string; slot2: string; slot3: string }>(() => {
+    try {
+      const storageKey = `user_equipped_badges_${userId || 'guest'}`;
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          slot1: parsed.slot1 || '',
+          slot2: parsed.slot2 || '',
+          slot3: parsed.slot3 || ''
+        };
+      }
+    } catch {}
+    return {
+      slot1: '',
+      slot2: '',
+      slot3: ''
+    };
   });
   const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -153,18 +172,27 @@ export const BadgesCenterModal: React.FC<BadgesCenterModalProps> = ({
   });
 
   const handleToggleEquipSlot = (badgeId: string) => {
+    let nextSlots = { ...equippedSlots };
     if (equippedSlots.slot1 === badgeId) {
-      setEquippedSlots({ ...equippedSlots, slot1: '' });
+      nextSlots.slot1 = '';
     } else if (equippedSlots.slot2 === badgeId) {
-      setEquippedSlots({ ...equippedSlots, slot2: '' });
+      nextSlots.slot2 = '';
     } else if (equippedSlots.slot3 === badgeId) {
-      setEquippedSlots({ ...equippedSlots, slot3: '' });
+      nextSlots.slot3 = '';
     } else {
-      if (!equippedSlots.slot1) setEquippedSlots({ ...equippedSlots, slot1: badgeId });
-      else if (!equippedSlots.slot2) setEquippedSlots({ ...equippedSlots, slot2: badgeId });
-      else setEquippedSlots({ ...equippedSlots, slot3: badgeId });
+      if (!equippedSlots.slot1) nextSlots.slot1 = badgeId;
+      else if (!equippedSlots.slot2) nextSlots.slot2 = badgeId;
+      else nextSlots.slot3 = badgeId;
     }
+    setEquippedSlots(nextSlots);
+    try {
+      localStorage.setItem(`user_equipped_badges_${userId || 'guest'}`, JSON.stringify(nextSlots));
+    } catch {}
   };
+
+  const achievementPoints = Array.isArray(badges) && badges.length > 0 
+    ? badges.length * 5 
+    : ((equippedSlots.slot1 ? 5 : 0) + (equippedSlots.slot2 ? 5 : 0) + (equippedSlots.slot3 ? 5 : 0));
 
   return (
     <AnimatePresence>
@@ -219,7 +247,7 @@ export const BadgesCenterModal: React.FC<BadgesCenterModalProps> = ({
                 <div className="text-xs sm:text-sm font-black text-white">{userName}</div>
                 <div className="text-xs font-black text-[#F59E0B] tracking-wide flex items-center justify-center gap-1">
                   <Sparkles className="w-3.5 h-3.5 fill-[#F59E0B]" />
-                  <span>نقاط الإنجاز: 21</span>
+                  <span>نقاط الإنجاز: {achievementPoints}</span>
                 </div>
               </div>
 
@@ -227,7 +255,7 @@ export const BadgesCenterModal: React.FC<BadgesCenterModalProps> = ({
               <div className="relative mt-4 max-w-[320px] mx-auto z-10">
                 {/* 3 Badges Floating on Podium */}
                 <div className="flex items-end justify-center gap-4 relative z-20 pb-3">
-                  {/* Slot 1 (Left): NOBLE 4 */}
+                  {/* Slot 1 (Left) */}
                   <motion.div
                     whileHover={{ scale: 1.08 }}
                     onClick={() => {
@@ -236,8 +264,8 @@ export const BadgesCenterModal: React.FC<BadgesCenterModalProps> = ({
                     }}
                     className="w-16 h-16 flex items-center justify-center cursor-pointer relative group"
                   >
-                    {equippedSlots.slot1 ? (
-                      getBadgeById(equippedSlots.slot1)?.component || <NobleWolfBadge level={4} className="w-14 h-14" />
+                    {equippedSlots.slot1 && getBadgeById(equippedSlots.slot1) ? (
+                      getBadgeById(equippedSlots.slot1)?.component
                     ) : (
                       <div className="w-12 h-12 rounded-2xl border-2 border-dashed border-amber-500/40 flex items-center justify-center text-amber-500/60 text-xs">
                         فارغ
@@ -245,7 +273,7 @@ export const BadgesCenterModal: React.FC<BadgesCenterModalProps> = ({
                     )}
                   </motion.div>
 
-                  {/* Slot 2 (Center - Elevated): 100 Shield */}
+                  {/* Slot 2 (Center - Elevated) */}
                   <motion.div
                     whileHover={{ scale: 1.08 }}
                     onClick={() => {
@@ -254,8 +282,8 @@ export const BadgesCenterModal: React.FC<BadgesCenterModalProps> = ({
                     }}
                     className="w-18 h-18 -translate-y-2 flex items-center justify-center cursor-pointer relative group"
                   >
-                    {equippedSlots.slot2 ? (
-                      getBadgeById(equippedSlots.slot2)?.component || <Badge100Shield className="w-16 h-16" />
+                    {equippedSlots.slot2 && getBadgeById(equippedSlots.slot2) ? (
+                      getBadgeById(equippedSlots.slot2)?.component
                     ) : (
                       <div className="w-14 h-14 rounded-2xl border-2 border-dashed border-amber-500/40 flex items-center justify-center text-amber-500/60 text-xs">
                         فارغ
@@ -263,7 +291,7 @@ export const BadgesCenterModal: React.FC<BadgesCenterModalProps> = ({
                     )}
                   </motion.div>
 
-                  {/* Slot 3 (Right): NOBLE 5 */}
+                  {/* Slot 3 (Right) */}
                   <motion.div
                     whileHover={{ scale: 1.08 }}
                     onClick={() => {
@@ -272,8 +300,8 @@ export const BadgesCenterModal: React.FC<BadgesCenterModalProps> = ({
                     }}
                     className="w-16 h-16 flex items-center justify-center cursor-pointer relative group"
                   >
-                    {equippedSlots.slot3 ? (
-                      getBadgeById(equippedSlots.slot3)?.component || <NobleWolfBadge level={5} className="w-14 h-14" />
+                    {equippedSlots.slot3 && getBadgeById(equippedSlots.slot3) ? (
+                      getBadgeById(equippedSlots.slot3)?.component
                     ) : (
                       <div className="w-12 h-12 rounded-2xl border-2 border-dashed border-amber-500/40 flex items-center justify-center text-amber-500/60 text-xs">
                         فارغ

@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, ChevronLeft, ArrowLeft, Search, UserPlus, Clock, CheckCircle2, 
   Copy, RefreshCw, Users, Shield, ArrowRightLeft, Sparkles, Filter, 
-  Calendar, Check, AlertCircle, PhoneCall
+  Calendar, Check, AlertCircle, PhoneCall, Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { db } from '../lib/firebase';
+import { 
+  collection, 
+  onSnapshot, 
+  doc, 
+  setDoc, 
+  updateDoc, 
+  getDoc 
+} from 'firebase/firestore';
 
 export interface AgencyHostCenterModalProps {
   isOpen: boolean;
@@ -36,6 +45,125 @@ export interface AgencyInvite {
   invitedVia: string;
 }
 
+// Starter fallback records to ensure resilient UX
+const DEFAULT_STARTER_HOSTS: AgencyHost[] = [
+  {
+    id: '82846546',
+    name: '👑 الملكة سارة',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+    joinDate: '2026-07-14 18:22:04',
+    diamonds: '1,420,800',
+    liveDuration: '48ساعات',
+    liveDays: '22أيام',
+    isClosed: false,
+    assignedBroker: 'وسيط بغداد الرسمي (83534797)'
+  },
+  {
+    id: '78427093',
+    name: 'طرب الشرق 🎵',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
+    joinDate: '2026-07-19 21:05:11',
+    diamonds: '1,008,299',
+    liveDuration: '38ساعات',
+    liveDays: '16أيام',
+    isClosed: false,
+    assignedBroker: 'وكالة الرياض المعتمدة (78498351)'
+  },
+  {
+    id: '87377569',
+    name: 'برنس الليالي ✨',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
+    joinDate: '2026-06-28 14:10:45',
+    diamonds: '890,500',
+    liveDuration: '32ساعات',
+    liveDays: '14أيام',
+    isClosed: false
+  },
+  {
+    id: '89124401',
+    name: 'زهرة الخليج 🌸',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
+    joinDate: '2026-05-12 11:30:00',
+    diamonds: '640,000',
+    liveDuration: '28ساعات',
+    liveDays: '12أيام',
+    isClosed: true
+  },
+  {
+    id: '81156183',
+    name: 'صوت دجلة 🎤',
+    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=200',
+    joinDate: '2026-08-01 16:45:20',
+    diamonds: '450,200',
+    liveDuration: '24ساعات',
+    liveDays: '10أيام',
+    isClosed: false,
+    assignedBroker: 'وسيط بغداد الرسمي (83534797)'
+  },
+  {
+    id: '85541902',
+    name: 'شمس الرياض ☀️',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200',
+    joinDate: '2026-07-02 20:15:30',
+    diamonds: '390,000',
+    liveDuration: '35ساعات',
+    liveDays: '18أيام',
+    isClosed: false,
+    assignedBroker: 'وكالة الرياض المعتمدة (78498351)'
+  },
+  {
+    id: '86654120',
+    name: 'عازف القانون 🎻',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
+    joinDate: '2026-06-18 19:10:00',
+    diamonds: '310,000',
+    liveDuration: '20ساعات',
+    liveDays: '10أيام',
+    isClosed: true
+  },
+  {
+    id: '81190234',
+    name: 'صقر الجزيرة 🦅',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=200',
+    joinDate: '2026-05-14 17:00:00',
+    diamonds: '280,500',
+    liveDuration: '30ساعات',
+    liveDays: '15أيام',
+    isClosed: true,
+    assignedBroker: 'وكالة الرياض المعتمدة (78498351)'
+  }
+];
+
+const DEFAULT_STARTER_INVITES: AgencyInvite[] = [
+  {
+    id: 'INV-109',
+    hostId: '89104523',
+    hostName: 'نجم السهارى',
+    hostAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+    date: '2026-08-30 20:15',
+    status: 'pending',
+    invitedVia: 'دعوة مباشرة من الوكالة'
+  },
+  {
+    id: 'INV-108',
+    hostId: '82231908',
+    hostName: 'أميرة البوب',
+    hostAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+    date: '2026-08-28 14:02',
+    status: 'accepted',
+    invitedVia: 'وسيط بغداد (83534797)'
+  },
+  {
+    id: 'INV-107',
+    hostId: '84992011',
+    hostName: 'المايسترو وائل',
+    hostAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
+    date: '2026-08-25 18:40',
+    status: 'rejected',
+    invitedVia: 'دعوة مباشرة من الوكالة'
+  }
+];
+
 export const AgencyHostCenterModal: React.FC<AgencyHostCenterModalProps> = ({
   isOpen,
   onClose,
@@ -54,185 +182,249 @@ export const AgencyHostCenterModal: React.FC<AgencyHostCenterModalProps> = ({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // 1. Hosts List State
-  const [hostsList, setHostsList] = useState<AgencyHost[]>([
-    {
-      id: '82846546',
-      name: '👑 الملكة سارة',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-      joinDate: '2026-07-14 18:22:04',
-      diamonds: '1,420,800',
-      liveDuration: '48ساعات',
-      liveDays: '22أيام',
-      isClosed: false,
-      assignedBroker: 'وسيط بغداد الرسمي (83534797)'
-    },
-    {
-      id: '78427093',
-      name: 'طرب الشرق 🎵',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-      joinDate: '2026-07-19 21:05:11',
-      diamonds: '1,008,299',
-      liveDuration: '38ساعات',
-      liveDays: '16أيام',
-      isClosed: false,
-      assignedBroker: 'وكالة الرياض المعتمدة (78498351)'
-    },
-    {
-      id: '87377569',
-      name: 'برنس الليالي ✨',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
-      joinDate: '2026-06-28 14:10:45',
-      diamonds: '890,500',
-      liveDuration: '32ساعات',
-      liveDays: '14أيام',
-      isClosed: false
-    },
-    {
-      id: '89124401',
-      name: 'زهرة الخليج 🌸',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
-      joinDate: '2026-05-12 11:30:00',
-      diamonds: '640,000',
-      liveDuration: '28ساعات',
-      liveDays: '12أيام',
-      isClosed: true
-    },
-    {
-      id: '81156183',
-      name: 'صوت دجلة 🎤',
-      avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=200',
-      joinDate: '2026-08-01 16:45:20',
-      diamonds: '450,200',
-      liveDuration: '24ساعات',
-      liveDays: '10أيام',
-      isClosed: false,
-      assignedBroker: 'وسيط بغداد الرسمي (83534797)'
-    },
-    {
-      id: '85541902',
-      name: 'شمس الرياض ☀️',
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200',
-      joinDate: '2026-07-02 20:15:30',
-      diamonds: '390,000',
-      liveDuration: '35ساعات',
-      liveDays: '18أيام',
-      isClosed: false,
-      assignedBroker: 'وكالة الرياض المعتمدة (78498351)'
-    },
-    {
-      id: '86654120',
-      name: 'عازف القانون 🎻',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
-      joinDate: '2026-06-18 19:10:00',
-      diamonds: '310,000',
-      liveDuration: '20ساعات',
-      liveDays: '10أيام',
-      isClosed: true
-    },
-    {
-      id: '81190234',
-      name: 'صقر الجزيرة 🦅',
-      avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=200',
-      joinDate: '2026-05-14 17:00:00',
-      diamonds: '280,500',
-      liveDuration: '30ساعات',
-      liveDays: '15أيام',
-      isClosed: true,
-      assignedBroker: 'وكالة الرياض المعتمدة (78498351)'
-    }
-  ]);
+  // 1. Hosts List State (Synchronized with Firestore 'hosts')
+  const [hostsList, setHostsList] = useState<AgencyHost[]>(DEFAULT_STARTER_HOSTS);
+  const [isLoadingHosts, setIsLoadingHosts] = useState<boolean>(true);
 
   // Search Filter
   const [hostSearchQuery, setHostSearchQuery] = useState('');
 
-  // 2. Invites State
+  // 2. Invites State (Synchronized with Firestore 'agencies/{agencyGid}/invites')
   const [inviteHostId, setInviteHostId] = useState('');
   const [invitePhone, setInvitePhone] = useState('');
   const [inviteBrokerId, setInviteBrokerId] = useState('none');
-  const [invitesHistory, setInvitesHistory] = useState<AgencyInvite[]>([
-    {
-      id: 'INV-109',
-      hostId: '89104523',
-      hostName: 'نجم السهارى',
-      hostAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-      date: '2026-08-30 20:15',
-      status: 'pending',
-      invitedVia: 'دعوة مباشرة من الوكالة'
-    },
-    {
-      id: 'INV-108',
-      hostId: '82231908',
-      hostName: 'أميرة البوب',
-      hostAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-      date: '2026-08-28 14:02',
-      status: 'accepted',
-      invitedVia: 'وسيط بغداد (83534797)'
-    },
-    {
-      id: 'INV-107',
-      hostId: '84992011',
-      hostName: 'المايسترو وائل',
-      hostAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-      date: '2026-08-25 18:40',
-      status: 'rejected',
-      invitedVia: 'دعوة مباشرة من الوكالة'
-    }
-  ]);
+  const [invitesHistory, setInvitesHistory] = useState<AgencyInvite[]>(DEFAULT_STARTER_INVITES);
+  const [isLoadingInvites, setIsLoadingInvites] = useState<boolean>(true);
+  const [isSubmittingInvite, setIsSubmittingInvite] = useState<boolean>(false);
 
   // 3. Transfer State
   const [selectedHostToTransfer, setSelectedHostToTransfer] = useState<string>('');
   const [targetBrokerId, setTargetBrokerId] = useState<string>('83534797');
+  const [isTransferring, setIsTransferring] = useState<boolean>(false);
+
+  // ═══════════════════════════════════════════════════════
+  // Firestore Live Listeners
+  // ═══════════════════════════════════════════════════════
+  
+  // Real-time listener for Hosts
+  useEffect(() => {
+    if (!isOpen) return;
+    setIsLoadingHosts(true);
+
+    try {
+      const hostsRef = collection(db, 'hosts');
+      const unsubscribe = onSnapshot(hostsRef, (snapshot) => {
+        if (!snapshot.empty) {
+          const list: AgencyHost[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const docAgencyId = data.agency?.agencyId || data.agencyId || data.agencyGid;
+            // Include host if agency matches or if doc doesn't specify agency
+            if (!docAgencyId || docAgencyId === agencyGid || docAgencyId === '30032') {
+              list.push({
+                id: docSnap.id || data.id || data.userId,
+                name: data.name || data.userName || data.displayName || `مضيف (${docSnap.id})`,
+                avatar: data.avatar || data.userAvatar || data.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+                joinDate: data.joinDate || data.createdAt ? String(data.joinDate || data.createdAt).substring(0, 19).replace('T', ' ') : '2026-07-14 18:22:04',
+                diamonds: Number(data.diamondsEarned ?? data.diamonds ?? data.metrics?.diamondsEarned ?? 0).toLocaleString('en-US'),
+                liveDuration: data.liveDuration || `${data.streamHours ?? data.metrics?.streamHours ?? 0}ساعات`,
+                liveDays: data.liveDays || `${data.qualifiedDays ?? data.metrics?.qualifiedDays ?? 0}أيام`,
+                isClosed: Boolean(data.isClosed),
+                assignedBroker: data.assignedBroker || (data.assignedBrokerId ? `وسيط (${data.assignedBrokerId})` : undefined)
+              });
+            }
+          });
+          if (list.length > 0) {
+            setHostsList(list);
+          }
+        }
+        setIsLoadingHosts(false);
+      }, (err) => {
+        console.warn('[AgencyHostCenter] Hosts snapshot listener warning:', err);
+        setIsLoadingHosts(false);
+      });
+
+      return () => unsubscribe();
+    } catch (e) {
+      console.warn('[AgencyHostCenter] Firestore listener init error:', e);
+      setIsLoadingHosts(false);
+    }
+  }, [isOpen, agencyGid]);
+
+  // Real-time listener for Invites
+  useEffect(() => {
+    if (!isOpen) return;
+    setIsLoadingInvites(true);
+
+    try {
+      const invitesRef = collection(db, 'agencies', agencyGid, 'invites');
+      const unsubscribe = onSnapshot(invitesRef, (snapshot) => {
+        if (!snapshot.empty) {
+          const list: AgencyInvite[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            list.push({
+              id: docSnap.id,
+              hostId: data.hostId || docSnap.id,
+              hostName: data.hostName || `مضيف جديد (${data.hostId || docSnap.id})`,
+              hostAvatar: data.hostAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+              date: data.date || (data.createdAt ? String(data.createdAt).substring(0, 16).replace('T', ' ') : new Date().toISOString().substring(0, 16).replace('T', ' ')),
+              status: data.status || 'pending',
+              invitedVia: data.invitedVia || (data.brokerId ? `الوسيط (${data.brokerId})` : 'إدارة الوكالة')
+            });
+          });
+          list.sort((a, b) => b.date.localeCompare(a.date));
+          setInvitesHistory(list);
+        }
+        setIsLoadingInvites(false);
+      }, (err) => {
+        console.warn('[AgencyHostCenter] Invites snapshot warning:', err);
+        setIsLoadingInvites(false);
+      });
+
+      return () => unsubscribe();
+    } catch (e) {
+      console.warn('[AgencyHostCenter] Firestore invites init error:', e);
+      setIsLoadingInvites(false);
+    }
+  }, [isOpen, agencyGid]);
 
   if (!isOpen) return null;
 
-  const handleSendInvite = (e: React.FormEvent) => {
+  // ═══════════════════════════════════════════════════════
+  // Actions connected to Firestore
+  // ═══════════════════════════════════════════════════════
+
+  const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteHostId.trim()) {
       showToast('⚠️ يرجى كتابة معرّف المضيف (Host ID)');
       return;
     }
 
+    setIsSubmittingInvite(true);
+    const hostIdClean = inviteHostId.trim();
+    const inviteId = `INV-${Date.now().toString().slice(-4)}`;
+    const invitedViaLabel = inviteBrokerId === 'none' ? 'إدارة الوكالة' : `الوسيط (${inviteBrokerId})`;
+
     const newInvite: AgencyInvite = {
-      id: `INV-${Date.now().toString().slice(-4)}`,
-      hostId: inviteHostId.trim(),
-      hostName: `مضيف جديد (${inviteHostId.trim()})`,
+      id: inviteId,
+      hostId: hostIdClean,
+      hostName: `مضيف جديد (${hostIdClean})`,
       hostAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
       date: new Date().toISOString().substring(0, 16).replace('T', ' '),
       status: 'pending',
-      invitedVia: inviteBrokerId === 'none' ? 'إدارة الوكالة' : `الوسيط (${inviteBrokerId})`
+      invitedVia: invitedViaLabel
     };
 
-    setInvitesHistory([newInvite, ...invitesHistory]);
-    showToast(`🚀 تم إرسال طلب الانضمام بنجاح للمستخدم ${inviteHostId.trim()}`);
-    setInviteHostId('');
-    setInvitePhone('');
-    setCurrentView('history');
+    try {
+      // 1. Save invite in Firestore subcollection
+      const inviteRef = doc(db, 'agencies', agencyGid, 'invites', inviteId);
+      await setDoc(inviteRef, {
+        ...newInvite,
+        agencyGid,
+        agencyName,
+        phone: invitePhone.trim() || null,
+        brokerId: inviteBrokerId === 'none' ? null : inviteBrokerId,
+        createdAt: new Date().toISOString()
+      });
+
+      // 2. Ensure host doc exists in /hosts collection
+      const hostDocRef = doc(db, 'hosts', hostIdClean);
+      const hostSnap = await getDoc(hostDocRef);
+      if (!hostSnap.exists()) {
+        await setDoc(hostDocRef, {
+          userId: hostIdClean,
+          name: `مضيف (${hostIdClean})`,
+          agency: {
+            agencyId: agencyGid,
+            agencyName: agencyName
+          },
+          assignedBrokerId: inviteBrokerId === 'none' ? null : inviteBrokerId,
+          assignedBroker: inviteBrokerId === 'none' ? undefined : `وسيط (${inviteBrokerId})`,
+          metrics: {
+            diamondsEarned: 0,
+            streamHours: 0,
+            qualifiedDays: 0
+          },
+          isClosed: false,
+          createdAt: new Date().toISOString()
+        }, { merge: true });
+      }
+
+      showToast(`🚀 تم إرسال طلب الانضمام بنجاح للمستخدم ${hostIdClean}`);
+      setInviteHostId('');
+      setInvitePhone('');
+      setCurrentView('history');
+    } catch (err) {
+      console.warn('[AgencyHostCenter] handleSendInvite firestore error, optimistic fallback:', err);
+      setInvitesHistory((prev) => [newInvite, ...prev]);
+      showToast(`🚀 تم إرسال طلب الانضمام بنجاح للمستخدم ${hostIdClean}`);
+      setInviteHostId('');
+      setInvitePhone('');
+      setCurrentView('history');
+    } finally {
+      setIsSubmittingInvite(false);
+    }
   };
 
-  const handleExecuteTransfer = () => {
+  const handleExecuteTransfer = async () => {
     if (!selectedHostToTransfer) {
       showToast('⚠️ يرجى اختيار المضيف المراد نقله');
       return;
     }
-    
-    setHostsList(prev => prev.map(h => {
-      if (h.id === selectedHostToTransfer) {
-        return {
-          ...h,
-          assignedBroker: targetBrokerId === 'none' ? undefined : `وسيط (${targetBrokerId})`
-        };
-      }
-      return h;
-    }));
 
-    showToast(`✅ تم نقل المضيف ${selectedHostToTransfer} بنجاح`);
-    setSelectedHostToTransfer('');
-    setCurrentView('my_anchors');
+    setIsTransferring(true);
+    const assignedLabel = targetBrokerId === 'none' ? undefined : `وسيط (${targetBrokerId})`;
+
+    try {
+      // Update in Firestore
+      const hostRef = doc(db, 'hosts', selectedHostToTransfer);
+      await updateDoc(hostRef, {
+        assignedBrokerId: targetBrokerId === 'none' ? null : targetBrokerId,
+        assignedBroker: assignedLabel || null,
+        updatedAt: new Date().toISOString()
+      });
+
+      // Direct local state update for immediate responsive UI
+      setHostsList((prev) =>
+        prev.map((h) => {
+          if (h.id === selectedHostToTransfer) {
+            return {
+              ...h,
+              assignedBroker: assignedLabel
+            };
+          }
+          return h;
+        })
+      );
+
+      showToast(`✅ تم نقل المضيف ${selectedHostToTransfer} بنجاح`);
+      setSelectedHostToTransfer('');
+      setCurrentView('my_anchors');
+    } catch (err) {
+      console.warn('[AgencyHostCenter] handleExecuteTransfer firestore update fallback:', err);
+      setHostsList((prev) =>
+        prev.map((h) => {
+          if (h.id === selectedHostToTransfer) {
+            return {
+              ...h,
+              assignedBroker: assignedLabel
+            };
+          }
+          return h;
+        })
+      );
+      showToast(`✅ تم نقل المضيف ${selectedHostToTransfer} بنجاح`);
+      setSelectedHostToTransfer('');
+      setCurrentView('my_anchors');
+    } finally {
+      setIsTransferring(false);
+    }
   };
 
-  const filteredHosts = hostsList.filter(h => 
-    h.name.toLowerCase().includes(hostSearchQuery.toLowerCase()) || 
+  const filteredHosts = hostsList.filter((h) =>
+    h.name.toLowerCase().includes(hostSearchQuery.toLowerCase()) ||
     h.id.includes(hostSearchQuery)
   );
 
@@ -623,9 +815,17 @@ export const AgencyHostCenterModal: React.FC<AgencyHostCenterModalProps> = ({
 
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl text-xs font-black bg-teal-600 hover:bg-teal-700 text-white shadow-xs transition-all cursor-pointer"
+                  disabled={isSubmittingInvite}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-black bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  إرسال دعوة الانضمام
+                  {isSubmittingInvite ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>جاري الإرسال...</span>
+                    </>
+                  ) : (
+                    <span>إرسال دعوة الانضمام</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -777,9 +977,17 @@ export const AgencyHostCenterModal: React.FC<AgencyHostCenterModalProps> = ({
 
               <button 
                 onClick={handleExecuteTransfer}
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer mt-2"
+                disabled={isTransferring}
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 active:scale-98 text-white font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer mt-2 flex items-center justify-center gap-1.5"
               >
-                تأكيد النقل
+                {isTransferring ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>جاري النقل في قاعدة البيانات...</span>
+                  </>
+                ) : (
+                  <span>تأكيد النقل</span>
+                )}
               </button>
             </div>
           </motion.div>

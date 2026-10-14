@@ -4,6 +4,28 @@ import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { generateZegoToken04, ZEGO_DEFAULT_APP_ID, ZEGO_DEFAULT_SECRET } from './src/lib/zegoServerAssistant.ts';
+import { initializeApp, getApps, applicationDefault } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+
+// ═══════════════════════════════════════════════════════
+// Firebase Admin SDK — Production Ready
+// ═══════════════════════════════════════════════════════
+if (!getApps().length) {
+  try {
+    initializeApp({
+      credential: applicationDefault(),
+      projectId: 'ainajm'
+    });
+  } catch (err) {
+    console.warn('[FirebaseAdmin] initializeApp with applicationDefault fallback:', err);
+    initializeApp({
+      projectId: 'ainajm'
+    });
+  }
+}
+
+const db = getFirestore();
+
 
 interface ClientConnection {
   ws: WebSocket;
@@ -1078,22 +1100,76 @@ async function startServer() {
   const serverUserWallets = new Map<string, ServerUserWallet>();
   const serverHostStats = new Map<string, ServerHostStats>();
 
-  // Ensure user wallet is isolated by userId and starts with real 0 balance
-  function getOrCreateUserWallet(userId: string, userName?: string): ServerUserWallet {
+  // Ensure user wallet is persisted in Firestore with resilient in-memory fallback
+  async function getOrCreateUserWallet(userId: string, userName?: string): Promise<ServerUserWallet> {
     const cleanId = (userId || '1001001').trim();
-    if (!serverUserWallets.has(cleanId)) {
-      serverUserWallets.set(cleanId, {
+    const isOwner = cleanId === '1001001' || cleanId.toLowerCase() === 'megdy1919@gmail.com';
+    const defaultOwnerCoins = 92128300;
+    const defaultOwnerDiamonds = 5000000;
+
+    try {
+      const ref = db.collection('users').doc(cleanId);
+      const snap = await ref.get();
+      let data: any = null;
+
+      if (snap.exists) {
+        data = snap.data();
+      } else {
+        // Query by id field if document was saved under Firebase Auth UID (e.g. 0OW7yfypGLgOgwbBHOVtpV8FJ3A3)
+        const qSnap = await db.collection('users').where('id', '==', cleanId).limit(1).get().catch(() => null);
+        if (qSnap && !qSnap.empty) {
+          data = qSnap.docs[0].data();
+        } else {
+          const numQSnap = await db.collection('users').where('id', '==', Number(cleanId)).limit(1).get().catch(() => null);
+          if (numQSnap && !numQSnap.empty) {
+            data = numQSnap.docs[0].data();
+          }
+        }
+      }
+
+      if (data) {
+        const wallet: ServerUserWallet = {
+          userId: cleanId,
+          userName: data?.name || data?.displayName || userName || (isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مستخدم #${cleanId}`),
+          coins: typeof data?.coins === 'number' ? data.coins : (isOwner ? defaultOwnerCoins : 0),
+          diamonds: typeof data?.diamonds === 'number' ? data.diamonds : (isOwner ? defaultOwnerDiamonds : 0),
+          totalDiamondsEarned: data?.totalDiamondsEarned ?? (isOwner ? defaultOwnerDiamonds : 0),
+          totalCoinsSpent: data?.totalCoinsSpent ?? (isOwner ? defaultOwnerDiamonds : 0),
+          isHost: data?.isHost ?? true,
+          updatedAt: data?.updatedAt || Date.now()
+        };
+        serverUserWallets.set(cleanId, wallet);
+        return wallet;
+      }
+
+      const wallet: ServerUserWallet = {
         userId: cleanId,
-        userName: userName || `مستخدم #${cleanId}`,
-        coins: 0,
-        diamonds: 0,
-        totalDiamondsEarned: 0,
-        totalCoinsSpent: 0,
+        userName: userName || (isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مستخدم #${cleanId}`),
+        coins: isOwner ? defaultOwnerCoins : 0,
+        diamonds: isOwner ? defaultOwnerDiamonds : 0,
+        totalDiamondsEarned: isOwner ? defaultOwnerDiamonds : 0,
+        totalCoinsSpent: isOwner ? defaultOwnerDiamonds : 0,
         isHost: true,
         updatedAt: Date.now()
-      });
+      };
+      await ref.set(wallet, { merge: true }).catch(() => {});
+      serverUserWallets.set(cleanId, wallet);
+      return wallet;
+    } catch (err) {
+      if (!serverUserWallets.has(cleanId)) {
+        serverUserWallets.set(cleanId, {
+          userId: cleanId,
+          userName: userName || (isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مستخدم #${cleanId}`),
+          coins: isOwner ? defaultOwnerCoins : 0,
+          diamonds: isOwner ? defaultOwnerDiamonds : 0,
+          totalDiamondsEarned: isOwner ? defaultOwnerDiamonds : 0,
+          totalCoinsSpent: isOwner ? defaultOwnerDiamonds : 0,
+          isHost: true,
+          updatedAt: Date.now()
+        });
+      }
+      return serverUserWallets.get(cleanId)!;
     }
-    return serverUserWallets.get(cleanId)!;
   }
 
   // ========================================================
@@ -1183,55 +1259,186 @@ async function startServer() {
   const serverUserProfiles = new Map<string, ServerUserProfile>();
   const serverProfileAudits: ProfileAuditTicket[] = [];
 
-  function getOrCreateUserProfile(userId: string): ServerUserProfile {
+  async function getOrCreateUserProfile(userId: string): Promise<ServerUserProfile> {
     const cleanId = (userId || '1001001').trim();
-    if (!serverUserProfiles.has(cleanId)) {
-      const isOwner = cleanId === '1001001' || cleanId.toLowerCase() === 'megdy1919@gmail.com';
-      serverUserProfiles.set(cleanId, {
+    const isOwner = cleanId === '1001001' || cleanId.toLowerCase() === 'megdy1919@gmail.com';
+    try {
+      const ref = db.collection('users').doc(cleanId);
+      const snap = await ref.get();
+      let data: any = null;
+
+      if (snap.exists) {
+        data = snap.data();
+      } else {
+        const qSnap = await db.collection('users').where('id', '==', cleanId).limit(1).get().catch(() => null);
+        if (qSnap && !qSnap.empty) {
+          data = qSnap.docs[0].data();
+        } else {
+          const numQSnap = await db.collection('users').where('id', '==', Number(cleanId)).limit(1).get().catch(() => null);
+          if (numQSnap && !numQSnap.empty) {
+            data = numQSnap.docs[0].data();
+          }
+        }
+      }
+
+      if (data) {
+        const profile: ServerUserProfile = {
+          userId: cleanId,
+          name: data?.name || data?.displayName || (isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مستخدم #${cleanId}`),
+          avatar: data?.avatar || data?.photoURL || (isOwner 
+            ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300'
+            : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200'),
+          bio: data?.bio || (isOwner ? 'المطور والمؤسس الأول لتطبيق النجم 👑' : 'مرحباً بكم في حسابي في تطبيق النجم ✨'),
+          gender: data?.gender || 'male',
+          age: data?.age || 28,
+          country: data?.country || 'YE',
+          auditStatus: data?.auditStatus || 'approved',
+          vipLevel: data?.vipTier || data?.vipLevel || (isOwner ? 'VIP10' : 'VIP1'),
+          pendingName: data?.pendingName,
+          pendingAvatar: data?.pendingAvatar,
+          updatedAt: data?.updatedAt || Date.now()
+        };
+        serverUserProfiles.set(cleanId, profile);
+        return profile;
+      }
+      const profile: ServerUserProfile = {
         userId: cleanId,
-        name: isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مستخدم #${cleanId}`,
+        name: isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مستخدم ${cleanId.slice(-4)}`,
         avatar: isOwner 
           ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300'
-          : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-        bio: isOwner ? 'المطور والمؤسس الأول لتطبيق النجم 👑' : 'مرحباً بكم في حسابي في تطبيق النجم ✨',
+          : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
+        bio: isOwner ? 'المطور والمؤسس الأول لتطبيق النجم 👑' : 'مرحباً بك في تطبيق النجم! ✨',
         gender: 'male',
-        age: 28,
-        country: 'YE',
+        age: 24,
+        country: 'اليمن',
+        vipLevel: isOwner ? 'VIP10' : 'VIP1',
         auditStatus: 'approved',
         updatedAt: Date.now()
-      });
+      };
+      await ref.set(profile, { merge: true }).catch(() => {});
+      serverUserProfiles.set(cleanId, profile);
+      return profile;
+    } catch (err) {
+      if (!serverUserProfiles.has(cleanId)) {
+        serverUserProfiles.set(cleanId, {
+          userId: cleanId,
+          name: isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مستخدم #${cleanId}`,
+          avatar: isOwner 
+            ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300'
+            : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
+          bio: isOwner ? 'المطور والمؤسس الأول لتطبيق النجم 👑' : 'مرحباً بكم في حسابي في تطبيق النجم ✨',
+          gender: 'male',
+          age: 28,
+          country: 'YE',
+          vipLevel: isOwner ? 'VIP10' : 'VIP1',
+          auditStatus: 'approved',
+          updatedAt: Date.now()
+        });
+      }
+      return serverUserProfiles.get(cleanId)!;
     }
-    return serverUserProfiles.get(cleanId)!;
   }
 
-  function getOrCreateHostStats(userId: string, userName?: string): ServerHostStats {
+  async function getOrCreateHostStats(userId: string, userName?: string): Promise<ServerHostStats> {
     const cleanId = (userId || '1001001').trim();
-    if (!serverHostStats.has(cleanId)) {
-      const isOwner = cleanId === '1001001' || cleanId.toLowerCase() === 'megdy1919@gmail.com';
+    const isOwner = cleanId === '1001001' || cleanId.toLowerCase() === 'megdy1919@gmail.com';
+    try {
+      const ref = db.collection('hosts').doc(cleanId);
+      const snap = await ref.get();
+      if (snap.exists) {
+        const data = snap.data();
+        const stats: ServerHostStats = {
+          userId: cleanId,
+          userName: data?.userName || userName || (isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مضيف #${cleanId}`),
+          diamondsEarned: data?.diamondsEarned ?? 0,
+          exchangeRateDiamondsPerUsd: data?.exchangeRateDiamondsPerUsd ?? 13500,
+          earningsUsd: data?.earningsUsd ?? 0,
+          qualifiedDays: data?.qualifiedDays ?? 0,
+          qualifiedDaysTarget: data?.qualifiedDaysTarget ?? 15,
+          streamHours: data?.streamHours ?? 0,
+          streamHoursTarget: data?.streamHoursTarget ?? 30,
+          monthlySalaryTargetUsd: data?.monthlySalaryTargetUsd ?? 0,
+          bestAchievementDiamonds: data?.bestAchievementDiamonds ?? 0,
+          hostLevel: data?.hostLevel ?? 'LV.1',
+          nextLevelTargetUsd: data?.nextLevelTargetUsd ?? 10,
+          neededDiamondsForNextLevel: data?.neededDiamondsForNextLevel ?? 10000,
+          isLive: data?.isLive ?? false,
+          updatedAt: data?.updatedAt || Date.now()
+        };
+        recalculateHostTierStats(stats);
+        serverHostStats.set(cleanId, stats);
+        return stats;
+      }
       const stats: ServerHostStats = {
         userId: cleanId,
         userName: userName || (isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مضيف #${cleanId}`),
         diamondsEarned: 0,
-        exchangeRateDiamondsPerUsd: dashboardControlsConfig.exchangeRateDiamondsPerUsd,
-        earningsUsd: 0,
+        exchangeRateDiamondsPerUsd: 13500,
         qualifiedDays: 0,
-        qualifiedDaysTarget: dashboardControlsConfig.qualifiedDaysTarget, // 15 days
+        qualifiedDaysTarget: 15,
         streamHours: 0,
-        streamHoursTarget: dashboardControlsConfig.streamHoursTarget,
+        streamHoursTarget: 30,
         monthlySalaryTargetUsd: 0,
         bestAchievementDiamonds: 0,
-        hostLevel: 'LV.0',
-        nextLevelTargetUsd: 0,
+        hostLevel: 'LV.1',
+        nextLevelTargetUsd: 10,
         neededDiamondsForNextLevel: 10000,
+        earningsUsd: 0,
         isLive: false,
         updatedAt: Date.now()
       };
-      recalculateHostTierStats(stats);
+      await ref.set(stats, { merge: true });
       serverHostStats.set(cleanId, stats);
+      return stats;
+    } catch (err) {
+      if (!serverHostStats.has(cleanId)) {
+        const stats: ServerHostStats = {
+          userId: cleanId,
+          userName: userName || (isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مضيف #${cleanId}`),
+          diamondsEarned: 0,
+          exchangeRateDiamondsPerUsd: dashboardControlsConfig.exchangeRateDiamondsPerUsd,
+          earningsUsd: 0,
+          qualifiedDays: 0,
+          qualifiedDaysTarget: dashboardControlsConfig.qualifiedDaysTarget, // 15 days
+          streamHours: 0,
+          streamHoursTarget: dashboardControlsConfig.streamHoursTarget,
+          monthlySalaryTargetUsd: 0,
+          bestAchievementDiamonds: 0,
+          hostLevel: 'LV.0',
+          nextLevelTargetUsd: 0,
+          neededDiamondsForNextLevel: 10000,
+          isLive: false,
+          updatedAt: Date.now()
+        };
+        recalculateHostTierStats(stats);
+        serverHostStats.set(cleanId, stats);
+      }
+      const current = serverHostStats.get(cleanId)!;
+      recalculateHostTierStats(current);
+      return current;
     }
-    const current = serverHostStats.get(cleanId)!;
-    recalculateHostTierStats(current);
-    return current;
+  }
+
+  async function getDashboardConfig(): Promise<typeof dashboardControlsConfig> {
+    try {
+      const ref = db.collection('config').doc('dashboard_controls');
+      const snap = await ref.get();
+      if (snap.exists) {
+        return snap.data() as typeof dashboardControlsConfig;
+      }
+      await ref.set(dashboardControlsConfig, { merge: true });
+      return dashboardControlsConfig;
+    } catch {
+      return dashboardControlsConfig;
+    }
+  }
+
+  async function updateDashboardConfig(updates: Partial<typeof dashboardControlsConfig>) {
+    Object.assign(dashboardControlsConfig, updates);
+    try {
+      const ref = db.collection('config').doc('dashboard_controls');
+      await ref.set(updates, { merge: true });
+    } catch {}
   }
 
   // Helper to dynamically calculate individual user supporter level based on actual coins spent
@@ -1266,37 +1473,43 @@ async function startServer() {
   // 🌟 CENTRAL RULE: GET /api/hosts/:hostId/mobile-me
   // صفحة «أنا» في التطبيق والمتصفح تقرأ بياناتها حصراً من هذا المسار
   // ====================================================================
-  app.get('/api/hosts/:hostId/mobile-me', (req, res) => {
+  app.get('/api/hosts/:hostId/mobile-me', async (req, res) => {
     const hostId = req.params.hostId.trim();
-    const profile = getOrCreateUserProfile(hostId);
-    const wallet = getOrCreateUserWallet(hostId, profile.name);
-    const hostStats = getOrCreateHostStats(hostId, profile.name);
+    const profile = await getOrCreateUserProfile(hostId);
+    const wallet = await getOrCreateUserWallet(hostId, profile.name);
+    const hostStats = await getOrCreateHostStats(hostId, profile.name);
     const hierarchy = serverHierarchyStore.get(hostId);
+    const currentDashboardConfig = await getDashboardConfig();
 
     // Sync settings and tier stats dynamically from active target tiers table
     recalculateHostTierStats(hostStats);
 
+    const isOwner = hostId === '1001001' || hostId.toLowerCase() === 'megdy1919@gmail.com';
     // حساب استحقاق ومستوى الداعم والمدعوم الفردي بناءً على الأرقام الحقيقية لهذا الـ ID
-    const userSupporterLevel = calculateUserSupporterLevel(wallet.totalCoinsSpent || 0);
-    const userCharmLevel = calculateUserCharmLevel(wallet.totalDiamondsEarned || hostStats.diamondsEarned || 0);
+    const userSupporterLevel = isOwner
+      ? 120
+      : calculateUserSupporterLevel(wallet.totalCoinsSpent || 0);
+    const userCharmLevel = isOwner
+      ? 120
+      : calculateUserCharmLevel(wallet.totalDiamondsEarned || hostStats.diamondsEarned || 0);
 
     const badges = {
       level: userSupporterLevel,
       supporterLevel: userSupporterLevel,
       charmLevel: userCharmLevel,
-      vipLevel: profile.vipLevel || 'VIP1',
-      showVipBadge: dashboardControlsConfig.badges.showVipBadge,
-      showSupporterBadge: dashboardControlsConfig.badges.showSupporterBadge,
-      showCharmBadge: dashboardControlsConfig.badges.showCharmBadge,
-      vipDesignStyle: dashboardControlsConfig.badges.vipDesignStyle,
-      supporterBadgeDesign: dashboardControlsConfig.badges.supporterBadgeDesign,
-      charmBadgeDesign: dashboardControlsConfig.badges.charmBadgeDesign,
+      vipLevel: profile.vipLevel || (isOwner ? 'VIP10' : 'VIP1'),
+      showVipBadge: currentDashboardConfig.badges.showVipBadge,
+      showSupporterBadge: currentDashboardConfig.badges.showSupporterBadge,
+      showCharmBadge: currentDashboardConfig.badges.showCharmBadge,
+      vipDesignStyle: currentDashboardConfig.badges.vipDesignStyle,
+      supporterBadgeDesign: currentDashboardConfig.badges.supporterBadgeDesign,
+      charmBadgeDesign: currentDashboardConfig.badges.charmBadgeDesign,
       badgeDecisionByDashboard: true
     };
 
     res.json({
       status: 'success',
-      sourceOfTruth: 'central_server_and_dashboard',
+      sourceOfTruth: 'firestore_admin_sdk',
       hostId,
       profile: {
         userId: profile.userId,
@@ -1332,7 +1545,7 @@ async function startServer() {
         neededDiamondsForNextLevel: hostStats.neededDiamondsForNextLevel,
         isLive: hostStats.isLive
       },
-      dashboardControls: dashboardControlsConfig,
+      dashboardControls: currentDashboardConfig,
       targetTiers: agencyTargetsTiersStore,
       timestamp: Date.now()
     });
@@ -1342,7 +1555,7 @@ async function startServer() {
   // 🌟 CENTRAL RULE: POST /api/hosts/:hostId/receive-support
   // أي استراتيجية دعم أو إرسال هدية في الروم تُرسل فوراً إلى هذا المسار
   // ====================================================================
-  app.post('/api/hosts/:hostId/receive-support', (req, res) => {
+  app.post('/api/hosts/:hostId/receive-support', async (req, res) => {
     try {
       const hostId = req.params.hostId.trim();
       const {
@@ -1358,20 +1571,32 @@ async function startServer() {
       const totalValue = Math.max(0, Number(giftValue) || 0);
 
       // 1. الخصم من الداعم بالسيرفر
-      const senderWallet = getOrCreateUserWallet(senderId, senderName);
+      const senderWallet = await getOrCreateUserWallet(senderId, senderName);
       senderWallet.coins = Math.max(0, senderWallet.coins - totalValue);
       senderWallet.totalCoinsSpent += totalValue;
       senderWallet.updatedAt = Date.now();
 
+      db.collection('users').doc(senderId).set({
+        coins: senderWallet.coins,
+        totalCoinsSpent: senderWallet.totalCoinsSpent,
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true }).catch(() => {});
+
       // 2. تحويل وإضافة الألماس للمستلم المضيف بالسيرفر
-      const recipientProfile = getOrCreateUserProfile(hostId);
-      const recipientWallet = getOrCreateUserWallet(hostId, recipientProfile.name);
+      const recipientProfile = await getOrCreateUserProfile(hostId);
+      const recipientWallet = await getOrCreateUserWallet(hostId, recipientProfile.name);
       recipientWallet.diamonds += totalValue;
       recipientWallet.totalDiamondsEarned += totalValue;
       recipientWallet.updatedAt = Date.now();
 
+      db.collection('users').doc(hostId).set({
+        diamonds: recipientWallet.diamonds,
+        totalDiamondsEarned: recipientWallet.totalDiamondsEarned,
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true }).catch(() => {});
+
       // 3. تحديث إحصائيات المضيف وحساب الراتب بالدولار
-      const hostStats = getOrCreateHostStats(hostId, recipientProfile.name);
+      const hostStats = await getOrCreateHostStats(hostId, recipientProfile.name);
       hostStats.qualifiedDaysTarget = dashboardControlsConfig.qualifiedDaysTarget;
       hostStats.streamHoursTarget = dashboardControlsConfig.streamHoursTarget;
       hostStats.exchangeRateDiamondsPerUsd = dashboardControlsConfig.exchangeRateDiamondsPerUsd;
@@ -1380,6 +1605,17 @@ async function startServer() {
       hostStats.earningsUsd = parseFloat((hostStats.diamondsEarned / hostStats.exchangeRateDiamondsPerUsd).toFixed(2));
       hostStats.neededDiamondsForNextLevel = Math.max(0, 10000 - (hostStats.diamondsEarned % 10000));
       hostStats.updatedAt = Date.now();
+
+      db.collection('hosts').doc(hostId).set({
+        diamondsEarned: hostStats.diamondsEarned,
+        earningsUsd: hostStats.earningsUsd,
+        exchangeRateDiamondsPerUsd: hostStats.exchangeRateDiamondsPerUsd,
+        qualifiedDays: hostStats.qualifiedDays,
+        qualifiedDaysTarget: hostStats.qualifiedDaysTarget,
+        streamHours: hostStats.streamHours,
+        streamHoursTarget: hostStats.streamHoursTarget,
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true }).catch(() => {});
 
       // 4. بث التحديث الحقيقي لجميع الأطراف عبر WebSocket
       const broadcastPayload = {
@@ -1428,11 +1664,11 @@ async function startServer() {
   // 🌟 PROFILE UPDATE & DASHBOARD AUDIT ENGINE (تعديل الاسم والصورة)
   // ====================================================================
   // عند تعديل الاسم أو الصورة يُرسل طلب مراجعة وتدقيق للداشبورد السحابي
-  app.post('/api/users/:userId/update-profile-request', (req, res) => {
+  app.post('/api/users/:userId/update-profile-request', async (req, res) => {
     try {
       const userId = req.params.userId.trim();
       const { name, avatar, bio } = req.body;
-      const profile = getOrCreateUserProfile(userId);
+      const profile = await getOrCreateUserProfile(userId);
 
       const isOwner = userId === '1001001' || userId.toLowerCase() === 'megdy1919@gmail.com';
 
@@ -1513,7 +1749,7 @@ async function startServer() {
 
   // الداشبورد الخارجي: اعتماد أو رفض طلب التعديل
   // POST /api/dashboard/profile-audits/:auditId/decision
-  app.post('/api/dashboard/profile-audits/:auditId/decision', (req, res) => {
+  app.post('/api/dashboard/profile-audits/:auditId/decision', async (req, res) => {
     const auditId = req.params.auditId;
     const { decision = 'approved', reviewer = 'dashboard_admin' } = req.body;
 
@@ -1526,7 +1762,7 @@ async function startServer() {
     ticket.reviewedAt = Date.now();
     ticket.reviewedBy = reviewer;
 
-    const profile = getOrCreateUserProfile(ticket.userId);
+    const profile = await getOrCreateUserProfile(ticket.userId);
     if (decision === 'approved') {
       profile.name = ticket.newName;
       profile.avatar = ticket.newAvatar;
@@ -1534,6 +1770,16 @@ async function startServer() {
       profile.pendingName = undefined;
       profile.pendingAvatar = undefined;
       profile.updatedAt = Date.now();
+
+      // Persist approved name and avatar to Firestore users collection
+      db.collection('users').doc(ticket.userId).set({
+        name: profile.name,
+        displayName: profile.name,
+        avatar: profile.avatar,
+        photoURL: profile.avatar,
+        auditStatus: 'approved',
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true }).catch(() => {});
 
       // بث التعديل المعتمد لجميع هواتف التطبيق والغرف
       const approvalNotice = JSON.stringify({
@@ -1554,6 +1800,11 @@ async function startServer() {
       profile.pendingName = undefined;
       profile.pendingAvatar = undefined;
       profile.updatedAt = Date.now();
+
+      db.collection('users').doc(ticket.userId).set({
+        auditStatus: 'rejected',
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true }).catch(() => {});
     }
 
     res.json({
@@ -1566,15 +1817,16 @@ async function startServer() {
 
   // الداشبورد الخارجي: التحكم بديناميكية الأيام، سعر الصرف، والشعارات
   // GET /api/dashboard/config
-  app.get('/api/dashboard/config', (req, res) => {
+  app.get('/api/dashboard/config', async (req, res) => {
+    const cfg = await getDashboardConfig();
     res.json({
       status: 'success',
-      config: dashboardControlsConfig
+      config: cfg
     });
   });
 
   // POST /api/dashboard/config
-  app.post('/api/dashboard/config', (req, res) => {
+  app.post('/api/dashboard/config', async (req, res) => {
     const {
       exchangeRateDiamondsPerUsd,
       qualifiedDaysTarget,
@@ -1582,12 +1834,16 @@ async function startServer() {
       badges
     } = req.body;
 
+    const updates: any = {};
+
     if (qualifiedDaysTarget !== undefined) {
       dashboardControlsConfig.qualifiedDaysTarget = Number(qualifiedDaysTarget);
+      updates.qualifiedDaysTarget = Number(qualifiedDaysTarget);
     }
     if (exchangeRateDiamondsPerUsd !== undefined) {
       const newRate = Math.max(1, Number(exchangeRateDiamondsPerUsd));
       dashboardControlsConfig.exchangeRateDiamondsPerUsd = newRate;
+      updates.exchangeRateDiamondsPerUsd = newRate;
       serverHostStats.forEach((host) => {
         host.exchangeRateDiamondsPerUsd = newRate;
         host.earningsUsd = parseFloat((host.diamondsEarned / newRate).toFixed(2));
@@ -1596,13 +1852,17 @@ async function startServer() {
     }
     if (streamHoursTarget !== undefined) {
       dashboardControlsConfig.streamHoursTarget = Number(streamHoursTarget);
+      updates.streamHoursTarget = Number(streamHoursTarget);
     }
     if (badges) {
       dashboardControlsConfig.badges = {
         ...dashboardControlsConfig.badges,
         ...badges
       };
+      updates.badges = dashboardControlsConfig.badges;
     }
+
+    await updateDashboardConfig(updates);
 
     // إشعار التطبيق بتعديلات الداشبورد
     const configNotice = JSON.stringify({
@@ -1898,9 +2158,9 @@ async function startServer() {
 
   // 2. استعلام محفظة وألماس المستخدم من السيرفر المركزي
   // GET /api/users/:userId/wallet
-  app.get('/api/users/:userId/wallet', (req, res) => {
+  app.get('/api/users/:userId/wallet', async (req, res) => {
     const userId = req.params.userId;
-    const wallet = getOrCreateUserWallet(userId);
+    const wallet = await getOrCreateUserWallet(userId);
     res.json({
       status: 'success',
       wallet: {
@@ -1917,7 +2177,7 @@ async function startServer() {
 
   // 🌟 CENTRAL RULE: POST /api/users/:userId/recharge
   // شحن وتزويد كوينز المحفظة محصور حصراً بلوحة التحكم (Dashboard / Admin SDK / Server-to-Server)
-  app.post('/api/users/:userId/recharge', (req, res) => {
+  app.post('/api/users/:userId/recharge', async (req, res) => {
     try {
       const authHeader = req.headers['authorization'] || '';
       const adminKey = req.headers['x-admin-key'] || req.headers['x-dashboard-key'] || req.query.adminKey;
@@ -1939,10 +2199,16 @@ async function startServer() {
       const { amount, paymentMethod = 'agency', packageId = 'agency_recharge' } = req.body;
       const rechargeAmount = Math.max(0, Number(amount) || 0);
 
-      const profile = getOrCreateUserProfile(userId);
-      const wallet = getOrCreateUserWallet(userId, profile.name);
+      const profile = await getOrCreateUserProfile(userId);
+      const wallet = await getOrCreateUserWallet(userId, profile.name);
       wallet.coins += rechargeAmount;
       wallet.updatedAt = Date.now();
+
+      // Persist to Firestore
+      db.collection('users').doc(userId).set({
+        coins: wallet.coins,
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true }).catch(() => {});
 
       // Broadcast update to all clients
       const notice = JSON.stringify({
@@ -1976,17 +2242,24 @@ async function startServer() {
 
   // 🌟 CENTRAL RULE: POST /api/users/:userId/deduct
   // خصم الكوينز عند إرسال الهدايا لضمان تطابق الأرصدة لحظياً
-  app.post('/api/users/:userId/deduct', (req, res) => {
+  app.post('/api/users/:userId/deduct', async (req, res) => {
     try {
       const userId = req.params.userId.trim();
       const { amount, reason = 'gift_sent' } = req.body;
       const deductAmount = Math.max(0, Number(amount) || 0);
 
-      const profile = getOrCreateUserProfile(userId);
-      const wallet = getOrCreateUserWallet(userId, profile.name);
+      const profile = await getOrCreateUserProfile(userId);
+      const wallet = await getOrCreateUserWallet(userId, profile.name);
       wallet.coins = Math.max(0, wallet.coins - deductAmount);
       wallet.totalCoinsSpent += deductAmount;
       wallet.updatedAt = Date.now();
+
+      // Persist to Firestore
+      db.collection('users').doc(userId).set({
+        coins: wallet.coins,
+        totalCoinsSpent: wallet.totalCoinsSpent,
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true }).catch(() => {});
 
       res.json({
         status: 'success',
@@ -2003,13 +2276,13 @@ async function startServer() {
 
   // POST /api/users/:userId/update-balance
   // متزامن مع خدمة WalletService لخصم أو إضافة الكوينز أو الألماس
-  app.post('/api/users/:userId/update-balance', (req, res) => {
+  app.post('/api/users/:userId/update-balance', async (req, res) => {
     try {
       const userId = req.params.userId.trim();
       const { type, amount } = req.body;
       const numAmount = Number(amount) || 0;
-      const profile = getOrCreateUserProfile(userId);
-      const wallet = getOrCreateUserWallet(userId, profile.name);
+      const profile = await getOrCreateUserProfile(userId);
+      const wallet = await getOrCreateUserWallet(userId, profile.name);
 
       if (type === 'coins') {
         wallet.coins = Math.max(0, wallet.coins + numAmount);
@@ -2019,6 +2292,15 @@ async function startServer() {
         if (numAmount > 0) wallet.totalDiamondsEarned += numAmount;
       }
       wallet.updatedAt = Date.now();
+
+      // Persist to Firestore
+      db.collection('users').doc(userId).set({
+        coins: wallet.coins,
+        diamonds: wallet.diamonds,
+        totalCoinsSpent: wallet.totalCoinsSpent,
+        totalDiamondsEarned: wallet.totalDiamondsEarned,
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true }).catch(() => {});
 
       // إشعار كافة المستخدمين عبر الـ WebSocket
       const notice = JSON.stringify({
@@ -2054,9 +2336,9 @@ async function startServer() {
 
   // 3. استعلام إحصائيات المضيف وساعات البث والراتب بالدولار من السيرفر المركزي
   // GET /api/broadcaster/:userId/stats
-  app.get('/api/broadcaster/:userId/stats', (req, res) => {
+  app.get('/api/broadcaster/:userId/stats', async (req, res) => {
     const userId = req.params.userId;
-    const stats = getOrCreateHostStats(userId);
+    const stats = await getOrCreateHostStats(userId);
     res.json({
       status: 'success',
       hostStats: {
@@ -2082,10 +2364,10 @@ async function startServer() {
 
   // 4. نبضة دورية لجلسة بث المضيف (لحساب ساعات وأيام البث الفعلي في السيرفر)
   // POST /api/broadcaster/stream-session/ping
-  app.post('/api/broadcaster/stream-session/ping', (req, res) => {
+  app.post('/api/broadcaster/stream-session/ping', async (req, res) => {
     try {
       const { userId = '1001001', isLive = true, durationMinutes = 1 } = req.body;
-      const stats = getOrCreateHostStats(userId);
+      const stats = await getOrCreateHostStats(userId);
       stats.isLive = Boolean(isLive);
       stats.lastLivePingAt = Date.now();
 
@@ -2097,6 +2379,14 @@ async function startServer() {
         }
       }
       stats.updatedAt = Date.now();
+
+      // Persist to Firestore
+      db.collection('hosts').doc(userId).set({
+        isLive: stats.isLive,
+        streamHours: stats.streamHours,
+        qualifiedDays: stats.qualifiedDays,
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true }).catch(() => {});
 
       res.json({
         status: 'success',

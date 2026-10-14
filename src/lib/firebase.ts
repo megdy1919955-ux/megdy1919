@@ -6,6 +6,7 @@ import {
   persistentMultipleTabManager
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported, Analytics } from 'firebase/analytics';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -43,6 +44,7 @@ try {
 export const IS_CLOUD_SYNC_DISABLED = false;
 
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 
 export enum OperationType {
   CREATE = 'create',
@@ -77,7 +79,6 @@ export function handleFirestoreError(
 ): FirestoreErrorInfo {
   const err = error as { code?: string; message?: string };
   const errMessage = error instanceof Error ? error.message : String(err?.message || error);
-
   if (
     errMessage.includes('unavailable') ||
     errMessage.includes('offline') ||
@@ -105,7 +106,6 @@ export function handleFirestoreError(
     operationType,
     path
   };
-
   return errInfo;
 }
 
@@ -117,4 +117,5 @@ export function isFirebaseReady(): boolean {
   }
 }
 
+export default app;
 export { app, analytics };

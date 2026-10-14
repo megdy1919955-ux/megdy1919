@@ -141,11 +141,11 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
     charmBadgeDesign?: string;
     vipDesignStyle?: string;
   }>({
-    supporterLevel: 120,
-    charmLevel: 45,
-    vipLevel: 'VIP7',
+    supporterLevel: 1,           // ✅ قيمة افتراضية معقولة
+    charmLevel: 1,               // ✅
+    vipLevel: 'VIP1',            // ✅
     sharesLevel: 1,
-    isSuperAdmin: true,
+    isSuperAdmin: false,
     supporterBadgeDesign: 'royal_dragon_flame',
     charmBadgeDesign: 'diamond_rose_5star',
     vipDesignStyle: 'royal_gold_3d'
@@ -153,29 +153,42 @@ export const AdvancedUserProfileModal: React.FC<AdvancedUserProfileModalProps> =
 
   useEffect(() => {
     let isCurrent = true;
-    if (user) {
-      const targetId = (user.userId || user.id || '1001001').toString();
-      fetchMobileMe(targetId)
-        .then((data) => {
-          if (isCurrent && data && data.badges) {
-            setUserRealBadges({
-              supporterLevel: data.badges.supporterLevel ?? data.badges.level ?? (targetId === '1001001' ? 120 : (user.supporterLevel ?? 1)),
-              charmLevel: data.badges.charmLevel ?? (targetId === '1001001' ? 45 : (user.charmLevel ?? 1)),
-              vipLevel: data.badges.vipLevel || (targetId === '1001001' ? 'VIP7' : (user.vipLevel ? `VIP${user.vipLevel}` : 'VIP1')),
-              sharesLevel: user.sharesLevel || 1,
-              isSuperAdmin: Boolean(targetId === '1001001' || user.isOwner || user.isSuperAdmin),
-              supporterBadgeDesign: data.badges.supporterBadgeDesign || 'royal_dragon_flame',
-              charmBadgeDesign: data.badges.charmBadgeDesign || 'diamond_rose_5star',
-              vipDesignStyle: data.badges.vipDesignStyle || 'royal_gold_3d'
-            });
-          }
-        })
-        .catch(() => {});
-    }
+    if (!user) return;
+
+    const targetId = (user.userId || user.id || '').toString();
+    if (!targetId) return;
+
+    console.log('[AdvancedProfile] Fetching badges for:', targetId);
+    
+    fetchMobileMe(targetId)
+      .then((data) => {
+        if (!isCurrent) return;
+        
+        if (data && data.badges) {
+          console.log('[AdvancedProfile] badges received:', data.badges);
+          
+          setUserRealBadges({
+            supporterLevel: data.badges.supporterLevel ?? data.badges.level ?? 1,
+            charmLevel: data.badges.charmLevel ?? 1,
+            vipLevel: data.badges.vipLevel || 'VIP1',
+            sharesLevel: data.badges.sharesLevel || 1,
+            isSuperAdmin: Boolean(data.badges.isSuperAdmin || user.isOwner || user.isSuperAdmin),
+            supporterBadgeDesign: data.badges.supporterBadgeDesign || 'royal_dragon_flame',
+            charmBadgeDesign: data.badges.charmBadgeDesign || 'diamond_rose_5star',
+            vipDesignStyle: data.badges.vipDesignStyle || 'royal_gold_3d'
+          });
+        } else {
+          console.warn('[AdvancedProfile] No badges in response');
+        }
+      })
+      .catch((err) => {
+        console.warn('[AdvancedProfile] fetchMobileMe error:', err);
+      });
+
     return () => {
       isCurrent = false;
     };
-  }, [user, user?.userId, user?.id]);
+  }, [user?.userId, user?.id]);
 
   // Sync isMuted state with user prop changes
   useEffect(() => {
