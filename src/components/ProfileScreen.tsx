@@ -754,22 +754,25 @@ export const ProfileScreen: React.FC = () => {
     };
   }, []);
 
-  // التوجيه الذكي لمركز المضيفين بحسب حالة المستخدم
+  // التوجيه الذكي لمركز المضيفين بحسب حالة المستخدم (none و pending تفتحان JoinAgencyModal دائماً)
   const handleHostCenterClick = () => {
+    // 1. إذا كان المستخدم غير منضم لوكالة (none) -> فتح نافذة الانضمام واستعراض الوكالات والبحث
+    if (userAgencyStatus === 'none') {
+      setIsJoinAgencyModalOpen(true);
+      return;
+    }
+    // 2. إذا كان الطلب قيد الانتظار (pending) -> فتح نافذة الانضمام بحالة المراجعة وخيار الإلغاء
     if (userAgencyStatus === 'pending') {
       setIsJoinAgencyModalOpen(true);
-    } else if (
-      userAgencyStatus === 'active' || 
-      userAgencyStatus === 'approved' || 
-      (profile as any).agencyId || 
-      rolesSummary.isHost || 
-      rolesSummary.isSuperAdmin
-    ) {
-      setIsAgencyHostCenterModalOpen(true);
-    } else {
-      // none
-      setIsJoinAgencyModalOpen(true);
+      return;
     }
+    // 3. إذا كان معتمداً ونشطاً (active أو approved) -> فتح مركز المضيفين
+    if (userAgencyStatus === 'active' || userAgencyStatus === 'approved') {
+      setIsAgencyHostCenterModalOpen(true);
+      return;
+    }
+    // الافتراضي لأي مستخدم جديد
+    setIsJoinAgencyModalOpen(true);
   };
 
   // التوجيه الذكي للعائلات (استكشاف إن لم يكن لديه عائلة، أو فتح قلعة العائلة إن كان منضماً)
@@ -2277,7 +2280,7 @@ export const ProfileScreen: React.FC = () => {
             className={`relative my-3 p-[2px] rounded-2xl cursor-pointer group transition-all duration-300 ${
               userAgencyStatus === 'pending'
                 ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400 shadow-[0_4px_18px_rgba(245,158,11,0.25)]'
-                : (userAgencyStatus === 'active' || userAgencyStatus === 'approved' || (profile as any).agencyId || rolesSummary.isHost || rolesSummary.isSuperAdmin)
+                : (userAgencyStatus === 'active' || userAgencyStatus === 'approved')
                 ? 'bg-gradient-to-r from-rose-300/85 via-fuchsia-200/80 to-purple-300/85 shadow-[0_4px_18px_rgba(244,63,94,0.15)]'
                 : 'bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 shadow-[0_4px_18px_rgba(16,185,129,0.22)]'
             }`}
@@ -2287,7 +2290,7 @@ export const ProfileScreen: React.FC = () => {
               <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9.5px] font-black border shadow-[0_2px_8px_rgba(0,0,0,0.15)] font-sans tracking-wide ${
                 userAgencyStatus === 'pending'
                   ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white border-amber-300/70 animate-pulse'
-                  : (userAgencyStatus === 'active' || userAgencyStatus === 'approved' || (profile as any).agencyId || rolesSummary.isHost || rolesSummary.isSuperAdmin)
+                  : (userAgencyStatus === 'active' || userAgencyStatus === 'approved')
                   ? 'bg-gradient-to-r from-rose-500 via-pink-500 to-purple-600 text-white border-rose-200/60'
                   : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 text-white border-emerald-300/70'
               }`}>
@@ -2295,7 +2298,7 @@ export const ProfileScreen: React.FC = () => {
                 <span>
                   {userAgencyStatus === 'pending'
                     ? 'قيد المراجعة ⏳'
-                    : (userAgencyStatus === 'active' || userAgencyStatus === 'approved' || (profile as any).agencyId || rolesSummary.isHost || rolesSummary.isSuperAdmin)
+                    : (userAgencyStatus === 'active' || userAgencyStatus === 'approved')
                     ? 'مذيع معتمد 🌟'
                     : 'انضم لوكالة ✨'}
                 </span>
@@ -2323,13 +2326,13 @@ export const ProfileScreen: React.FC = () => {
                     <span className={`text-[9px] border font-extrabold px-2 py-0.5 rounded-full shadow-2xs font-mono ${
                       userAgencyStatus === 'pending'
                         ? 'bg-amber-100 text-amber-800 border-amber-300'
-                        : (userAgencyStatus === 'active' || userAgencyStatus === 'approved' || (profile as any).agencyId)
+                        : (userAgencyStatus === 'active' || userAgencyStatus === 'approved')
                         ? 'bg-rose-100 text-rose-700 border-rose-200/80'
                         : 'bg-emerald-100 text-emerald-800 border-emerald-300'
                     }`}>
                       {userAgencyStatus === 'pending'
                         ? 'بانتظار الموافقة ⌛'
-                        : (userAgencyStatus === 'active' || userAgencyStatus === 'approved' || (profile as any).agencyId)
+                        : (userAgencyStatus === 'active' || userAgencyStatus === 'approved')
                         ? 'مُعتمد 💎'
                         : 'فرصة توثيق 🚀'}
                     </span>
@@ -2337,7 +2340,7 @@ export const ProfileScreen: React.FC = () => {
                   <span className="text-[10px] text-slate-600 font-bold block mt-0.5 group-hover:text-slate-700">
                     {userAgencyStatus === 'pending'
                       ? `طلبك قيد المراجعة لدى ${pendingAgencyInfo.agencyName || 'الوكالة'}`
-                      : (userAgencyStatus === 'active' || userAgencyStatus === 'approved' || (profile as any).agencyId)
+                      : (userAgencyStatus === 'active' || userAgencyStatus === 'approved')
                       ? 'إحصائيات البث، الأرباح، التارجت، والعقود'
                       : 'انضم كـ مذيع معتمد لدى وكالات النجم لتلقي الدعم والرواتب'}
                   </span>
@@ -2346,14 +2349,14 @@ export const ProfileScreen: React.FC = () => {
               <div className={`flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl shadow-2xs transition-all shrink-0 relative z-10 ${
                 userAgencyStatus === 'pending'
                   ? 'text-amber-800 bg-amber-100/90 border border-amber-300'
-                  : (userAgencyStatus === 'active' || userAgencyStatus === 'approved' || (profile as any).agencyId)
+                  : (userAgencyStatus === 'active' || userAgencyStatus === 'approved')
                   ? 'text-rose-700 bg-white/95 border border-rose-200/90 group-hover:bg-gradient-to-r group-hover:from-rose-500 group-hover:to-pink-600 group-hover:text-white'
                   : 'text-emerald-800 bg-emerald-100/90 border border-emerald-300 group-hover:bg-emerald-600 group-hover:text-white'
               }`}>
                 <span>
                   {userAgencyStatus === 'pending'
                     ? 'متابعة'
-                    : (userAgencyStatus === 'active' || userAgencyStatus === 'approved' || (profile as any).agencyId)
+                    : (userAgencyStatus === 'active' || userAgencyStatus === 'approved')
                     ? 'إدارة'
                     : 'طلب انضمام'}
                 </span>
