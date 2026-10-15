@@ -766,9 +766,9 @@ export const ProfileScreen: React.FC = () => {
       setIsJoinAgencyModalOpen(true);
       return;
     }
-    // 3. إذا كان معتمداً ونشطاً (active أو approved) -> فتح مركز المضيفين
+    // 3. إذا كان معتمداً ونشطاً (active أو approved) -> فتح مركز المذيعين (الأرباح، وكالتي، الإحصائيات)
     if (userAgencyStatus === 'active' || userAgencyStatus === 'approved') {
-      setIsAgencyHostCenterModalOpen(true);
+      setIsBroadcasterCenterModalOpen(true);
       return;
     }
     // الافتراضي لأي مستخدم جديد
@@ -2794,7 +2794,7 @@ export const ProfileScreen: React.FC = () => {
             onOpenHostCenter={(agId, agName) => {
               setUserAgencyStatus('active');
               setProfile((prev) => ({ ...prev, agencyId: agId, agencyName: agName } as any));
-              setIsAgencyHostCenterModalOpen(true);
+              setIsBroadcasterCenterModalOpen(true);
             }}
           />
         </Suspense>
