@@ -515,9 +515,9 @@ export const ExploreFamiliesModal: React.FC<ExploreFamiliesModalProps> = ({
 
               {/* Families Cards */}
               <div className="space-y-3">
-                {filteredFamilies.map((fam) => (
+                {filteredFamilies.map((fam, idx) => (
                   <motion.div
-                    key={fam.id}
+                    key={`family-${fam.id}-${idx}`}
                     whileHover={{ scale: 1.008 }}
                     className="p-4 rounded-2xl bg-gradient-to-b from-[#1B140E] to-[#120D09] border border-amber-800/30 hover:border-amber-500/60 shadow-md transition-all relative overflow-hidden"
                   >

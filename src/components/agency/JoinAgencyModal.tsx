@@ -67,7 +67,7 @@ export interface JoinAgencyModalProps {
 
 const DEFAULT_AGENCIES: AgencyItem[] = [
   {
-    id: 'AG-101',
+    id: 'def-ag-30032',
     agencyGid: '30032',
     name: 'وكالة شحن النجم الرسمية',
     ownerName: 'أحمد النجم (الوكيل الرسمي)',
@@ -80,7 +80,7 @@ const DEFAULT_AGENCIES: AgencyItem[] = [
     supportHours: '24/7 متواصل'
   },
   {
-    id: 'AG-102',
+    id: 'def-ag-55001',
     agencyGid: '55001',
     name: 'وكالة الصقور الملكية',
     ownerName: 'منصور الهاشمي',
@@ -93,7 +93,7 @@ const DEFAULT_AGENCIES: AgencyItem[] = [
     supportHours: '18 ساعة يومياً'
   },
   {
-    id: 'AG-103',
+    id: 'def-ag-77002',
     agencyGid: '77002',
     name: 'وكالة الأساطير الذهبية',
     ownerName: 'فيصل العتيبي',
@@ -106,7 +106,7 @@ const DEFAULT_AGENCIES: AgencyItem[] = [
     supportHours: '24/7 متواصل'
   },
   {
-    id: 'AG-104',
+    id: 'def-ag-88003',
     agencyGid: '88003',
     name: 'وكالة فرسان العرب',
     ownerName: 'سامي الشمري',
@@ -179,8 +179,24 @@ export const JoinAgencyModal: React.FC<JoinAgencyModalProps> = ({
             });
             // Merge loaded agencies with defaults without duplication
             const mergedMap = new Map<string, AgencyItem>();
-            DEFAULT_AGENCIES.forEach((a) => mergedMap.set(a.agencyGid, a));
-            loaded.forEach((a) => mergedMap.set(a.agencyGid, a));
+            const seenGids = new Set<string>();
+            const seenIds = new Set<string>();
+
+            // Authoritative Firestore loaded agencies first
+            loaded.forEach((a) => {
+              const uniqueKey = a.id || a.agencyGid;
+              mergedMap.set(uniqueKey, a);
+              if (a.agencyGid) seenGids.add(a.agencyGid);
+              if (a.id) seenIds.add(a.id);
+            });
+
+            // Fallback defaults added only if not already loaded from Firestore
+            DEFAULT_AGENCIES.forEach((d) => {
+              if (!seenGids.has(d.agencyGid) && !seenIds.has(d.id)) {
+                mergedMap.set(d.id, d);
+              }
+            });
+
             setAgencies(Array.from(mergedMap.values()));
           }
         },
@@ -588,9 +604,9 @@ export const JoinAgencyModal: React.FC<JoinAgencyModalProps> = ({
 
               {/* Agencies List */}
               <div className="space-y-3">
-                {filteredAgencies.map((agency) => (
+                {filteredAgencies.map((agency, idx) => (
                   <motion.div
-                    key={agency.id || agency.agencyGid}
+                    key={`agency-${agency.id || agency.agencyGid}-${idx}`}
                     whileHover={{ scale: 1.008 }}
                     className="p-4 rounded-2xl bg-gradient-to-b from-slate-900/90 to-slate-950 border border-slate-800/90 hover:border-emerald-500/50 shadow-md transition-all relative overflow-hidden"
                   >
