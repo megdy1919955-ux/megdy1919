@@ -90,7 +90,7 @@ export const ProfileScreen: React.FC = () => {
   // Admin roles & hierarchy
   const [adminRole, setAdminRole] = useState<AdminRole>(() => getAdminRoleForUser(profile.userId));
   const [rolesSummary, setRolesSummary] = useState<RolesSummary>(DEFAULT_ROLES_SUMMARY);
-  const [userHierarchyCode, setUserHierarchyCode] = useState<string | null>(null);
+  const [userHierarchyCode, setUserHierarchyCode] = useState<string | null>(() => (profile.userId === '1001001' || profile.role === 'owner' || profile.role === 'super_admin') ? 'MGR-9901' : null);
 
   // Social Stats
   const [socialStats, setSocialStats] = useState(() => getSocialStats(profile.userId));
@@ -246,7 +246,11 @@ export const ProfileScreen: React.FC = () => {
         }
         if (data.familyId) setUserFamilyId(data.familyId);
         if (data.familyName) setUserFamilyName(data.familyName);
-        if (data.hierarchyId) setUserHierarchyCode(data.hierarchyId);
+        if (data.functionalRoleCode || data.hierarchyId) {
+          setUserHierarchyCode(data.functionalRoleCode || data.hierarchyId);
+        } else if (isOwner || profile.userId === '1001001') {
+          setUserHierarchyCode('MGR-9901');
+        }
         if (data.role && data.role !== profile.role) {
           setProfile((prev) => ({ ...prev, role: data.role }));
         }
