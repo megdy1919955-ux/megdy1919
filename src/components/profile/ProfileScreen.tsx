@@ -481,7 +481,6 @@ export const ProfileScreen: React.FC = () => {
                 coinsBalance={coinsBalance}
                 diamondsBalance={diamondsBalance}
                 curRoyal={curRoyal}
-                onOpenRecharge={() => setIsRechargeModalOpen(true)}
               />
             </Suspense>
 
