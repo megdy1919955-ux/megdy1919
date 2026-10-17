@@ -49,15 +49,17 @@ interface OfficialAgencyManagerModalProps {
   managerId?: string;
   managerName?: string;
   managerAvatar?: string;
+  hierarchyCode?: string;
   isSuperAdmin?: boolean;
 }
 
 export const OfficialAgencyManagerModal: React.FC<OfficialAgencyManagerModalProps> = ({
   isOpen,
   onClose,
-  managerId = 'MGR-7700',
-  managerName = 'سالم الكعبي (رئيس الوكالات والمندوبين)',
-  managerAvatar = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+  managerId = '1001001',
+  managerName = 'أبو أمجد',
+  managerAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+  hierarchyCode = 'MGR-9901',
   isSuperAdmin = true
 }) => {
   const [activeTab, setActiveTab] = useState<'stats' | 'representatives' | 'banned_accounts' | 'agencies' | 'pending_invites' | 'invite_agency' | 'financials'>('stats');
@@ -539,12 +541,18 @@ export const OfficialAgencyManagerModal: React.FC<OfficialAgencyManagerModalProp
               <div className="text-right">
                 <div className="text-base font-black text-[#5C3F13] leading-tight flex items-center gap-1.5">
                   <span>{managerName}</span>
-                  <span className="text-[10px] bg-gradient-to-r from-[#B38022] to-[#7A5210] text-white px-2 py-0.5 rounded-full font-black">
-                    رئيس الوكالات 👑
+                  <span className="text-[10px] bg-gradient-to-r from-[#B38022] to-[#7A5210] text-white px-2 py-0.5 rounded-full font-black flex items-center gap-1 shadow-2xs">
+                    <span>👑</span>
+                    <span>رئيس الوكالات</span>
                   </span>
                 </div>
-                <div className="text-xs font-bold font-mono text-[#8C6B38] mt-0.5" dir="ltr">
-                  SUPERVISOR ID: {managerId}
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#FFF2B8] border border-[#E2B755]/70 text-[#7A5210] text-[11px] font-mono font-black shadow-2xs">
+                    {hierarchyCode}
+                  </span>
+                  <span className="text-xs font-bold font-mono text-[#8C6B38]">
+                    ID: {managerId}
+                  </span>
                 </div>
               </div>
             </div>

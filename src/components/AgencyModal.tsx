@@ -355,11 +355,19 @@ export const AgencyModal: React.FC<AgencyModalProps> = ({
               </div>
 
               <div className="text-right">
-                <div className="text-base font-black text-white leading-tight">
-                  {userName || 'AbuAmjad'}
+                <div className="text-base font-black text-white leading-tight flex items-center gap-1.5">
+                  <span>{userName || 'أبو أمجد'}</span>
+                  <span className="text-[10px] bg-gradient-to-r from-cyan-500 to-teal-600 text-white px-2 py-0.5 rounded-full font-black shadow-2xs">
+                    🏢 صاحب الوكالة
+                  </span>
                 </div>
-                <div className="text-xs font-bold font-mono text-cyan-200/90 mt-0.5">
-                  GID:{agencyGid || 'AG-101'}
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-teal-900/60 border border-teal-400/50 text-cyan-200 text-[11px] font-mono font-black shadow-2xs">
+                    {agencyGid || 'AG-101'}
+                  </span>
+                  <span className="text-xs font-mono text-cyan-200/80 font-bold">
+                    ID: 1001001
+                  </span>
                 </div>
               </div>
             </div>

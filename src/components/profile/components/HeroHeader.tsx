@@ -257,17 +257,6 @@ export const HeroHeader: React.FC<HeroHeaderProps> = ({
               )}
             </button>
 
-            {/* الكود الهرمي */}
-            {userHierarchyCode && (
-              <span
-                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 text-indigo-700 text-[10.5px] font-mono font-black shadow-2xs shrink-0 cursor-default"
-                title={`الكود الهرمي الوظيفي: ${userHierarchyCode}`}
-              >
-                <span className="text-[11px] leading-none">{ROLES[userRole]?.icon || '🎖️'}</span>
-                <span>{userHierarchyCode}</span>
-              </span>
-            )}
-
             {/* شارة المطور */}
             {(isOwner || rolesSummary.isSuperAdmin || profile.userId === '1001001') && (
               <span

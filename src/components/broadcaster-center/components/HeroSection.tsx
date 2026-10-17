@@ -44,11 +44,19 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           </div>
 
           <div className="text-right">
-            <div className="text-base font-black text-slate-900 leading-tight flex items-center gap-1">
+            <div className="text-base font-black text-slate-900 leading-tight flex items-center gap-1.5">
               <span>{userName}</span>
+              <span className="text-[10px] bg-purple-100 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-full font-black">
+                🎙️ مضيف
+              </span>
             </div>
-            <div className="text-xs font-bold font-mono text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md inline-block mt-1">
-              UID:{userId}
+            <div className="flex items-center gap-2 mt-1">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-purple-50 border border-purple-200 text-purple-800 text-[11px] font-mono font-black shadow-2xs">
+                HOST-101-01
+              </span>
+              <span className="text-xs font-bold font-mono text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                ID: {userId}
+              </span>
             </div>
           </div>
         </div>

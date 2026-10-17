@@ -194,15 +194,17 @@ interface AgencyRepresentativeModalProps {
   repId?: string;
   repName?: string;
   repAvatar?: string;
+  hierarchyCode?: string;
   isSuperAdmin?: boolean;
 }
 
 export const AgencyRepresentativeModal: React.FC<AgencyRepresentativeModalProps> = ({
   isOpen,
   onClose,
-  repId = 'REP-9921',
+  repId = '1001001',
   repName = 'المندوب الرسمي للوكالات',
   repAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+  hierarchyCode = 'DEL-401',
   isSuperAdmin = true
 }) => {
   const [currentSubView, setCurrentSubView] = useState<'main' | 'invite_agency' | 'my_agencies' | 'commissions' | 'invite_history' | 'rules' | 'agency_hosts'>('main');
@@ -1048,12 +1050,18 @@ export const AgencyRepresentativeModal: React.FC<AgencyRepresentativeModalProps>
                 <div className="text-right">
                   <div className="text-base font-black text-[#5C3F13] leading-tight flex items-center gap-1.5">
                     <span>{repName}</span>
-                    <span className="text-[10px] bg-gradient-to-r from-[#B38022] to-[#7A5210] text-white px-2 py-0.5 rounded-full font-black">
-                      مندوب معتمد 🔱
+                    <span className="text-[10px] bg-gradient-to-r from-[#B38022] to-[#7A5210] text-white px-2 py-0.5 rounded-full font-black flex items-center gap-1 shadow-2xs">
+                      <span>🔱</span>
+                      <span>مندوب</span>
                     </span>
                   </div>
-                  <div className="text-xs font-bold font-mono text-[#8C6B38] mt-0.5" dir="ltr">
-                    ID: {repId}
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#FFF2B8] border border-[#E2B755]/70 text-[#7A5210] text-[11px] font-mono font-black shadow-2xs">
+                      {hierarchyCode || 'DEL-401'}
+                    </span>
+                    <span className="text-xs font-bold font-mono text-[#8C6B38]">
+                      ID: {repId}
+                    </span>
                   </div>
                 </div>
               </div>

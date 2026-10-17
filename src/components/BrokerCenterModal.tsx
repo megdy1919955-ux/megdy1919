@@ -16,6 +16,7 @@ export interface BrokerCenterModalProps {
   agencyName?: string;
   brokerId?: string;
   brokerName?: string;
+  hierarchyCode?: string;
   commissionRate?: string;
   isAgencyOwner?: boolean;
 }
@@ -55,6 +56,7 @@ export const BrokerCenterModal: React.FC<BrokerCenterModalProps> = ({
   agencyName = 'وكالة النخبة الملكية',
   brokerId = '83534797',
   brokerName = '🔱 وسيط بغداد المعتمد',
+  hierarchyCode = 'BRK-101-01',
   commissionRate = '15%',
   isAgencyOwner = false
 }) => {
@@ -774,10 +776,18 @@ export const BrokerCenterModal: React.FC<BrokerCenterModalProps> = ({
                     />
                   </div>
                   <div>
-                    <h3 className="text-base sm:text-lg font-black text-white leading-tight">
-                      {brokerName}
-                    </h3>
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-base sm:text-lg font-black text-white leading-tight">
+                        {brokerName}
+                      </h3>
+                      <span className="text-[10px] bg-teal-500/20 text-teal-300 border border-teal-400/40 px-2 py-0.5 rounded-full font-black">
+                        🤝 وسيط
+                      </span>
+                    </div>
                     <div className="flex items-center gap-2 mt-1">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-teal-900/60 border border-teal-400/50 text-teal-300 text-[11px] font-mono font-black shadow-2xs">
+                        {hierarchyCode || 'BRK-101-01'}
+                      </span>
                       <span className="text-xs font-mono text-teal-200 font-bold" dir="ltr">
                         ID: {brokerId}
                       </span>

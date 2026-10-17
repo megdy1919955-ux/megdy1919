@@ -417,9 +417,10 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
           <OfficialAgencyManagerModal
             isOpen={isOfficialAgencyManagerModalOpen}
             onClose={() => setIsOfficialAgencyManagerModalOpen(false)}
-            managerId={profile.userId}
+            managerId={profile.userId || '1001001'}
             managerName={profile.nickname || profile.name}
             managerAvatar={profile.avatarUrl}
+            hierarchyCode="MGR-9901"
             isSuperAdmin={isOwner || adminRole === 'super_admin'}
           />
         </Suspense>
@@ -431,9 +432,10 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({
           <AgencyRepresentativeModal
             isOpen={isAgencyRepModalOpen}
             onClose={() => setIsAgencyRepModalOpen(false)}
-            repId={profile.userId}
+            repId={profile.userId || '1001001'}
             repName={profile.nickname || profile.name}
             repAvatar={profile.avatarUrl}
+            hierarchyCode="DEL-401"
             isSuperAdmin={isOwner || adminRole === 'super_admin'}
           />
         </Suspense>

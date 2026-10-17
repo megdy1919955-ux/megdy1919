@@ -480,9 +480,17 @@ export const AgencyHostCenterModal: React.FC<AgencyHostCenterModalProps> = ({
           >
             {/* Top Bar */}
             <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-100/90">
-              <h2 className="text-lg font-black text-slate-900">
-                مركز المضيفين
-              </h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg font-black text-slate-900">
+                  مركز المضيفين
+                </h2>
+                <span className="text-[10px] bg-purple-100 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-full font-black">
+                  🎙️ مضيف
+                </span>
+                <span className="text-[11px] font-mono font-black text-purple-800 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
+                  HOST-101-01
+                </span>
+              </div>
 
               <button 
                 onClick={onClose}
