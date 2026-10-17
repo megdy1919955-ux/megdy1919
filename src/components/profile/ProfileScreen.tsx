@@ -28,7 +28,9 @@ import { getCurrentAuthUser } from '../../lib/authService';
 import { fetchMobileMe } from '../../lib/serverRewardsService';
 import { 
   Role, 
-  toRole 
+  toRole,
+  getCurrentVip,
+  isVipExpired
 } from '../../lib/permissions';
 
 // Lazy-loaded subcomponents for Profile
@@ -51,6 +53,8 @@ export const ProfileScreen: React.FC = () => {
   // State Management
   const [profile, setProfile] = useState<UserProfileData>(() => {
     const authUser = getCurrentAuthUser();
+    const isOwnerUser = authUser?.id === '1001001' || (authUser as any)?.uid === '0OW7yfypGLgOgwbBHOVtpV8FJ3A3' || (authUser as any)?.isOwner;
+    const initialVip = isOwnerUser ? 'VIP10' : getCurrentVip(authUser);
     if (authUser && authUser.id) {
       return {
         ...INITIAL_USER_PROFILE,
@@ -59,8 +63,8 @@ export const ProfileScreen: React.FC = () => {
         avatarUrl: authUser.avatar || INITIAL_USER_PROFILE.avatarUrl,
         coins: authUser.coins || 0,
         diamonds: authUser.diamonds || 0,
-        vipLevel: (authUser as any).vipLevel || 'VIP7',
-        role: (authUser.role as any) || 'owner'
+        vipLevel: initialVip,
+        role: (authUser.role as any) || (isOwnerUser ? 'super_admin' : 'user')
       };
     }
     const saved = localStorage.getItem('user_profile_data');
@@ -106,7 +110,7 @@ export const ProfileScreen: React.FC = () => {
     charmLevel: number;
   }>({
     showVipBadge: true,
-    vipLevel: profile.vipLevel || 'VIP7',
+    vipLevel: profile.vipLevel || 'VIP10',
     vipDesignStyle: 'royal_gold_3d',
     showSupporterBadge: true,
     supporterLevel: 10,
@@ -258,27 +262,38 @@ export const ProfileScreen: React.FC = () => {
           setAdminRole('super_admin');
         }
 
-        // Automatic healing/synchronization for official owner documents (patch 6b-2)
+        // 👑 تحديث مستوى VIP الحقيقي وفحص الانتهاء التلقائي (patch 7b)
+        const activeVip = getCurrentVip(data);
+        if (activeVip) {
+          setProfile((prev) => ({ ...prev, vipLevel: activeVip }));
+          setDashboardBadges((prev) => ({ ...prev, vipLevel: activeVip }));
+        }
+
+        // Automatic healing/synchronization for official owner documents (patch 6b-2 / patch 7b)
         if (isOwner && (targetUid === '0OW7yfypGLgOgwbBHOVtpV8FJ3A3' || authUid === '0OW7yfypGLgOgwbBHOVtpV8FJ3A3')) {
-          if (data.role !== 'super_admin' || !data.functionalRoleCode || typeof data.totalCoinsSpent !== 'number') {
+          const needsHealing = 
+            data.role !== 'super_admin' || 
+            !data.functionalRoleCode || 
+            typeof data.totalCoinsSpent !== 'number' ||
+            data.vipTier !== 'VIP10' ||
+            data.vipLevel !== 'VIP10' ||
+            data.isVipPermanent !== true;
+
+          if (needsHealing) {
             updateDoc(doc(db, 'users', '0OW7yfypGLgOgwbBHOVtpV8FJ3A3'), {
               role: 'super_admin',
               functionalRoleCode: 'MGR-9901',
               totalCoinsSpent: 252000,
               roles: ['SUPER_ADMIN', 'AGENCY MANAGER'],
-              roleTitle: 'مدير عام الوكالات والمشرف الإداري الرئيسي'
-            }).catch(() => {});
-            updateDoc(doc(db, 'users', '1001001'), {
-              coins: 92128300,
-              diamonds: 50000000,
-              role: 'super_admin',
-              functionalRoleCode: 'MGR-9901',
-              totalCoinsSpent: 252000,
+              roleTitle: 'مدير عام الوكالات والمشرف الإداري الرئيسي',
               vipTier: 'VIP10',
-              superLegendLevel: 'SL50',
-              googleUid: '0OW7yfypGLgOgwbBHOVtpV8FJ3A3',
-              uid: '0OW7yfypGLgOgwbBHOVtpV8FJ3A3',
-              isOwner: true
+              vipLevel: 'VIP10',
+              previousVipLevel: data.previousVipLevel || 'VIP0',
+              vipExpiresAt: null,
+              vipActivatedAt: data.vipActivatedAt || new Date().toISOString(),
+              vipDurationDays: 0,
+              vipSource: 'owner',
+              isVipPermanent: true
             }).catch(() => {});
           }
         }

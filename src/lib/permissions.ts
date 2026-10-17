@@ -394,3 +394,12 @@ export default {
   toRole,
 };
 
+// ═══════════════════════════════════════════════════════════
+// 👑 نظام VIP المؤقت والدائم
+// ═══════════════════════════════════════════════════════════
+export { 
+  getCurrentVip, 
+  isVipExpired, 
+  getVipRemainingDays, 
+  formatVipExpirationText 
+} from './vipService';

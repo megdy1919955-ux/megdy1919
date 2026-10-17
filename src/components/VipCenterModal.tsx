@@ -30,6 +30,7 @@ import {
   Check
 } from 'lucide-react';
 import { UserProfileData } from '../types';
+import { getCurrentVip, formatVipExpirationText } from '../lib/vipService';
 
 interface VipCenterModalProps {
   isOpen: boolean;
@@ -223,7 +224,9 @@ export const VipCenterModal: React.FC<VipCenterModalProps> = ({
   profile, 
   onUpgrade 
 }) => {
-  const [selectedVipNumber, setSelectedVipNumber] = useState<number>(6);
+  const userCurrentVip = getCurrentVip(profile);
+  const parsedVipNum = parseInt(userCurrentVip.replace(/[^\d]/g, ''), 10) || 10;
+  const [selectedVipNumber, setSelectedVipNumber] = useState<number>(parsedVipNum);
   const [showEliteHelp, setShowEliteHelp] = useState(false);
   const [selectedPrivilege, setSelectedPrivilege] = useState<PrivilegeItem | null>(null);
   const [showRenewModal, setShowRenewModal] = useState(false);
@@ -680,8 +683,8 @@ export const VipCenterModal: React.FC<VipCenterModalProps> = ({
               <h3 className="text-base font-black text-white leading-none tracking-wide">
                 VIP{selectedVipNumber}
               </h3>
-              <p className="text-[10px] text-slate-400 mt-1 font-mono tracking-tighter">
-                الموعد النهائي: 13:46:42 2026/09/03
+              <p className="text-[10px] text-amber-300/90 mt-1 font-mono tracking-tight font-bold">
+                الموعد النهائي: {formatVipExpirationText(profile)}
               </p>
             </div>
 

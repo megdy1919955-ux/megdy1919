@@ -200,10 +200,10 @@ export const HeroHeader: React.FC<HeroHeaderProps> = ({
                     ? 'bg-gradient-to-r from-[#78350F] via-[#B45309] to-[#D97706] text-amber-200 border-amber-300/50 shadow-[0_1px_4px_rgba(217,119,6,0.35)]'
                     : 'bg-gradient-to-r from-purple-800 to-indigo-900 text-purple-200 border-purple-400/50'
                 }`}
-                title={`عضوية النخبة ${dashboardBadges.vipLevel || profile.vipLevel || 'VIP7'}`}
+                title={`عضوية النخبة ${dashboardBadges.vipLevel || profile.vipLevel || 'VIP10'}`}
               >
                 <Crown className="w-2.5 h-2.5 text-amber-300 fill-amber-300 shrink-0" />
-                <span className="font-mono tracking-tight leading-none">{dashboardBadges.vipLevel || profile.vipLevel || 'VIP7'}</span>
+                <span className="font-mono tracking-tight leading-none">{dashboardBadges.vipLevel || profile.vipLevel || 'VIP10'}</span>
               </span>
             )}
 

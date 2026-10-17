@@ -326,6 +326,11 @@ export async function syncUserWithFirestore(
       if (typeof rawData.totalCoinsSpent !== 'number') updatePayload.totalCoinsSpent = 252000;
       if (!rawData.roles) updatePayload.roles = ['SUPER_ADMIN', 'AGENCY MANAGER'];
       if (!rawData.roleTitle) updatePayload.roleTitle = 'مدير عام الوكالات والمشرف الإداري الرئيسي';
+      if (rawData.vipTier !== 'VIP10') updatePayload.vipTier = 'VIP10';
+      if (rawData.vipLevel !== 'VIP10') updatePayload.vipLevel = 'VIP10';
+      if (rawData.isVipPermanent !== true) updatePayload.isVipPermanent = true;
+      if (!rawData.vipSource) updatePayload.vipSource = 'owner';
+      if (!rawData.previousVipLevel) updatePayload.previousVipLevel = 'VIP0';
     }
     updateDoc(userDocRef, updatePayload).catch(() => {});
     notifySubscribers(updated);

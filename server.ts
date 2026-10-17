@@ -1289,7 +1289,7 @@ async function startServer() {
       showVipBadge: true,
       supporterLevel: 120, // رقم مستوى الداعم المحدد من السيرفر
       charmLevel: 45,      // رقم مستوى المدعوم / الكاريزما المحدد من السيرفر
-      vipLevel: 'VIP7',
+      vipLevel: 'VIP10',
       vipDesignStyle: 'royal_gold_3d',
       supporterBadgeDesign: 'royal_dragon_flame',
       charmBadgeDesign: 'diamond_rose_5star',
