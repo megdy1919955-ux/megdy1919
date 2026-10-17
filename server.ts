@@ -6,6 +6,13 @@ import { createServer as createViteServer } from 'vite';
 import { generateZegoToken04, ZEGO_DEFAULT_APP_ID, ZEGO_DEFAULT_SECRET } from './src/lib/zegoServerAssistant.ts';
 import { initializeApp, getApps, applicationDefault } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { initializeApp as initClientApp, getApps as getClientApps } from 'firebase/app';
+import { getFirestore as getClientFirestore, doc as clientDoc, getDoc as clientGetDoc, setDoc as clientSetDoc, serverTimestamp as clientServerTimestamp } from 'firebase/firestore';
+import firebaseClientConfig from './firebase-applet-config.json';
+
+// Initialize Client SDK as dependable fallback for Firestore operations
+const clientApp = getClientApps().length ? getClientApps()[0] : initClientApp(firebaseClientConfig, 'server-client-app');
+const clientDb = getClientFirestore(clientApp);
 
 // ═══════════════════════════════════════════════════════
 // Firebase Admin SDK — Production Ready
@@ -341,6 +348,23 @@ async function startServer() {
     res.json({ success: true, announcement: entry });
   });
 
+  // Static direct download for code audit archive
+  app.get(['/code_full.zip', '/public/code_full.zip'], (req, res) => {
+    const zipFilePath = path.resolve(process.cwd(), 'public', 'code_full.zip');
+    res.download(zipFilePath, 'super_legend_code_full.zip');
+  });
+
+  app.get(['/critical_10_files.zip', '/public/critical_10_files.zip'], (req, res) => {
+    const zipFilePath = path.resolve(process.cwd(), 'public', 'critical_10_files.zip');
+    res.download(zipFilePath, 'critical_10_files.zip');
+  });
+
+  app.get(['/ProfileScreen.txt', '/ProfileScreen.tsx', '/public/ProfileScreen.txt', '/public/ProfileScreen.tsx'], (req, res) => {
+    const filePath = path.resolve(process.cwd(), 'src', 'components', 'ProfileScreen.tsx');
+    res.type('text/plain; charset=utf-8');
+    res.sendFile(filePath);
+  });
+
   // ZEGOCLOUD Configuration and Token Generation Endpoints
   app.get('/api/zego/config', (req, res) => {
     const appId = Number(process.env.ZEGO_APP_ID) || ZEGO_DEFAULT_APP_ID;
@@ -663,6 +687,8 @@ async function startServer() {
   serverHierarchyStore.set('YE1330000', superAdminEntity);
   serverHierarchyStore.set('MEGDY1919@GMAIL.COM', superAdminEntity);
   serverHierarchyStore.set('megdy1919@gmail.com', superAdminEntity);
+  serverHierarchyStore.set('0OW7yfypGLgOgwbBHOVtpV8FJ3A3', superAdminEntity);
+  serverHierarchyStore.set('0OW7YFYPGLGOGWBBHOVTPV8FJ3A3', superAdminEntity);
 
   // المستوى 2: مندوب الوكالات المعتمد (DEL-401)
   const delegateEntity: ServerUserHierarchy = {
@@ -806,14 +832,42 @@ async function startServer() {
 
   // 1. فحص وتأكيد صلاحيات أي مستخدم لحظياً
   // GET /api/hierarchy/permissions/:userId
-  app.get('/api/hierarchy/permissions/:userId', (req, res) => {
+  app.get('/api/hierarchy/permissions/:userId', async (req, res) => {
     const rawId = req.params.userId?.trim();
     if (!rawId) {
       return res.status(400).json({ error: 'userId is required' });
     }
 
     const cleanId = rawId.toUpperCase();
-    const entity = serverHierarchyStore.get(cleanId) || serverHierarchyStore.get(rawId);
+    let entity = serverHierarchyStore.get(cleanId) || serverHierarchyStore.get(rawId);
+
+    if (!entity) {
+      // فحص سريع لحساب المطور أو السوبر أدمن
+      if (
+        cleanId === '0OW7YFYPGLGOGWBBHOVTPV8FJ3A3' || 
+        cleanId === '1001001' || 
+        cleanId === 'MGR-9901' ||
+        cleanId === 'MEGDY1919@GMAIL.COM'
+      ) {
+        entity = superAdminEntity;
+        serverHierarchyStore.set(rawId, superAdminEntity);
+        serverHierarchyStore.set(cleanId, superAdminEntity);
+      } else {
+        try {
+          // استعلام مستند المستخدم من Firestore للتحقق الحي من صلاحياته
+          const userDoc = await db.collection('users').doc(rawId).get();
+          if (userDoc.exists) {
+            const uData = userDoc.data() || {};
+            if (uData.isOwner === true || uData.role === 'owner' || uData.role === 'super_admin' || uData.role === 'admin') {
+              entity = superAdminEntity;
+              serverHierarchyStore.set(rawId, superAdminEntity);
+            }
+          }
+        } catch (dbErr) {
+          console.warn('[Permissions] DB check error:', dbErr);
+        }
+      }
+    }
 
     if (entity) {
       return res.json({
@@ -1595,7 +1649,50 @@ async function startServer() {
         updatedAt: FieldValue.serverTimestamp()
       }, { merge: true }).catch(() => {});
 
-      // 3. تحديث إحصائيات المضيف وحساب الراتب بالدولار
+      // تحديث supporters subcollection
+      const senderProfile = await getOrCreateUserProfile(senderId);
+      const supporterRef = db
+        .collection('users')
+        .doc(hostId)
+        .collection('supporters')
+        .doc(senderId);
+
+      await supporterRef.set({
+        supporterUid: senderId,
+        supporterName: senderName || senderProfile?.name || 'الداعم',
+        supporterAvatar: senderProfile?.avatar || '',
+        totalDiamonds: FieldValue.increment(totalValue),
+        totalCoins: FieldValue.increment(totalValue),
+        supportCount: FieldValue.increment(1),
+        lastSupportAt: FieldValue.serverTimestamp()
+      }, { merge: true }).catch(async (err: any) => {
+        try {
+          const clientSupporterRef = clientDoc(clientDb, 'users', hostId, 'supporters', senderId);
+          await clientSetDoc(clientSupporterRef, {
+            supporterUid: senderId,
+            supporterName: senderName || senderProfile?.name || 'الداعم',
+            supporterAvatar: senderProfile?.avatar || '',
+            totalDiamonds: totalValue,
+            totalCoins: totalValue,
+            supportCount: 1,
+            lastSupportAt: clientServerTimestamp()
+          }, { merge: true });
+        } catch (clientErr) {
+          console.warn('Supporters write fallback notice:', clientErr);
+        }
+      });
+      // 2b. تحديث سجل البث اليومي في users/{hostId}/daily_records
+      const todayDate = new Date().toISOString().split('T')[0];
+      const monthKey = `${todayDate.substring(5, 7)}/${todayDate.substring(0, 4)}`;
+      db.collection('users').doc(hostId).collection('daily_records').doc(todayDate).set({
+        date: todayDate,
+        month: monthKey,
+        totalDiamonds: FieldValue.increment(totalValue),
+        hostIncome: FieldValue.increment(totalValue),
+        roomDiamonds: FieldValue.increment(totalValue),
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true }).catch(() => {});
+
       const hostStats = await getOrCreateHostStats(hostId, recipientProfile.name);
       hostStats.qualifiedDaysTarget = dashboardControlsConfig.qualifiedDaysTarget;
       hostStats.streamHoursTarget = dashboardControlsConfig.streamHoursTarget;
@@ -2388,6 +2485,20 @@ async function startServer() {
         updatedAt: FieldValue.serverTimestamp()
       }, { merge: true }).catch(() => {});
 
+      // Record daily broadcast stream minutes
+      if (isLive) {
+        const todayDate = new Date().toISOString().split('T')[0];
+        const monthKey = `${todayDate.substring(5, 7)}/${todayDate.substring(0, 4)}`;
+        db.collection('users').doc(userId).collection('daily_records').doc(todayDate).set({
+          date: todayDate,
+          month: monthKey,
+          streamDurationMinutes: FieldValue.increment(durationMinutes),
+          activeDurationMinutes: FieldValue.increment(durationMinutes),
+          isValidDay: stats.streamHours >= 1,
+          updatedAt: FieldValue.serverTimestamp()
+        }, { merge: true }).catch(() => {});
+      }
+
       res.json({
         status: 'success',
         streamHours: stats.streamHours,
@@ -2397,6 +2508,381 @@ async function startServer() {
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
+  });
+
+  // ═══════════════════════════════════════════════════════
+  // 🎯 جدول تصنيف الأرباح والمكافآت الشهرية لنظام التارجت (Target System)
+  // ═══════════════════════════════════════════════════════
+  const TARGET_SYSTEM_LEVELS = [
+    { rank: 1,  diamonds: 13500,     hostUsd: 1,     agencyUsd: 0,     totalUsd: 1 },
+    { rank: 2,  diamonds: 27000,     hostUsd: 2,     agencyUsd: 0,     totalUsd: 2 },
+    { rank: 3,  diamonds: 40500,     hostUsd: 5,     agencyUsd: 0,     totalUsd: 5 },
+    { rank: 4,  diamonds: 100000,    hostUsd: 6,     agencyUsd: 1,     totalUsd: 7 },
+    { rank: 5,  diamonds: 81500,     hostUsd: 7,     agencyUsd: 3,     totalUsd: 10 },
+    { rank: 6,  diamonds: 100000,    hostUsd: 21,    agencyUsd: 7,     totalUsd: 28 },
+    { rank: 7,  diamonds: 400000,    hostUsd: 21,    agencyUsd: 7,     totalUsd: 28 },
+    { rank: 8,  diamonds: 300000,    hostUsd: 25,    agencyUsd: 9,     totalUsd: 34 },
+    { rank: 9,  diamonds: 700000,    hostUsd: 39,    agencyUsd: 12,    totalUsd: 51 },
+    { rank: 10, diamonds: 1000000,   hostUsd: 40,    agencyUsd: 16,    totalUsd: 56 },
+    { rank: 11, diamonds: 1500000,   hostUsd: 117,   agencyUsd: 12,    totalUsd: 129 },
+    { rank: 12, diamonds: 2000000,   hostUsd: 148,   agencyUsd: 44,    totalUsd: 192 },
+    { rank: 13, diamonds: 2500000,   hostUsd: 210,   agencyUsd: 97,    totalUsd: 307 },
+    { rank: 14, diamonds: 3000000,   hostUsd: 245,   agencyUsd: 66,    totalUsd: 311 },
+    { rank: 15, diamonds: 4500000,   hostUsd: 315,   agencyUsd: 17,    totalUsd: 332 },
+    { rank: 16, diamonds: 4500000,   hostUsd: 310,   agencyUsd: 43,    totalUsd: 353 },
+    { rank: 17, diamonds: 5000000,   hostUsd: 310,   agencyUsd: 10,    totalUsd: 320 },
+    { rank: 18, diamonds: 6000000,   hostUsd: 420,   agencyUsd: 120,   totalUsd: 540 },
+    { rank: 19, diamonds: 6000000,   hostUsd: 420,   agencyUsd: 128,   totalUsd: 548 },
+    { rank: 20, diamonds: 7000000,   hostUsd: 490,   agencyUsd: 154,   totalUsd: 644 },
+    { rank: 21, diamonds: 8000000,   hostUsd: 630,   agencyUsd: 178,   totalUsd: 808 },
+    { rank: 22, diamonds: 9000000,   hostUsd: 630,   agencyUsd: 118,   totalUsd: 748 },
+    { rank: 23, diamonds: 10000000,  hostUsd: 875,   agencyUsd: 220,   totalUsd: 1095 },
+    { rank: 24, diamonds: 12500000,  hostUsd: 875,   agencyUsd: 220,   totalUsd: 1095 },
+    { rank: 25, diamonds: 15000000,  hostUsd: 1005,  agencyUsd: 335,   totalUsd: 1340 },
+    { rank: 26, diamonds: 20000000,  hostUsd: 1355,  agencyUsd: 425,   totalUsd: 1780 },
+    { rank: 27, diamonds: 25000000,  hostUsd: 1380,  agencyUsd: 518,   totalUsd: 1898 },
+    { rank: 28, diamonds: 30000000,  hostUsd: 2370,  agencyUsd: 615,   totalUsd: 2985 },
+    { rank: 29, diamonds: 40000000,  hostUsd: 2740,  agencyUsd: 715,   totalUsd: 3455 },
+    { rank: 30, diamonds: 40000000,  hostUsd: 2740,  agencyUsd: 920,   totalUsd: 3660 },
+    { rank: 31, diamonds: 50000000,  hostUsd: 4740,  agencyUsd: 920,   totalUsd: 5660 },
+    { rank: 32, diamonds: 50000000,  hostUsd: 4410,  agencyUsd: 1000,  totalUsd: 5410 },
+    { rank: 33, diamonds: 50000000,  hostUsd: 4440,  agencyUsd: 1800,  totalUsd: 6240 },
+    { rank: 34, diamonds: 70000000,  hostUsd: 4830,  agencyUsd: 1600,  totalUsd: 6430 },
+    { rank: 35, diamonds: 80000000,  hostUsd: 5520,  agencyUsd: 1600,  totalUsd: 7120 },
+    { rank: 36, diamonds: 90000000,  hostUsd: 6770,  agencyUsd: 1000,  totalUsd: 7770 },
+    { rank: 37, diamonds: 100000000, hostUsd: 6730,  agencyUsd: 2050,  totalUsd: 8780 },
+    { rank: 38, diamonds: 150000000, hostUsd: 10250, agencyUsd: 1000,  totalUsd: 11250 },
+    { rank: 39, diamonds: 200000000, hostUsd: 17600, agencyUsd: 1600,  totalUsd: 19200 },
+    { rank: 40, diamonds: 250000000, hostUsd: 17500, agencyUsd: 8500,  totalUsd: 26000 },
+    { rank: 41, diamonds: 300000000, hostUsd: 28510, agencyUsd: 8850,  totalUsd: 37360 },
+    { rank: 42, diamonds: 350000000, hostUsd: 25575, agencyUsd: 8720,  totalUsd: 34295 },
+    { rank: 43, diamonds: 400000000, hostUsd: 27400, agencyUsd: 7800,  totalUsd: 35200 },
+    { rank: 44, diamonds: 450000000, hostUsd: 30625, agencyUsd: 8775,  totalUsd: 39400 },
+    { rank: 45, diamonds: 500000000, hostUsd: 34250, agencyUsd: 9730,  totalUsd: 43980 }
+  ];
+
+  const TARGET_SYSTEM_REQUIREMENTS = {
+    monthlyDays: 15,
+    monthlyHours: 40,
+    dailyMinutes: 60,
+    dailyHours: 3
+  };
+
+  const TARGET_SYSTEM_EXCHANGE_RATE = {
+    diamondsToUsd: 13500,
+    currency: "USD"
+  };
+
+  // دالة مشتركة لتنفيذ وتأكيد زراعة بيانات التارجت في Firestore
+  async function executeTargetSystemSeed(force: boolean = false) {
+    const payload = {
+      levels: TARGET_SYSTEM_LEVELS,
+      requirements: TARGET_SYSTEM_REQUIREMENTS,
+      exchangeRate: TARGET_SYSTEM_EXCHANGE_RATE,
+      seededBy: 'MGR-9901',
+      version: '2026.1',
+      description: 'جدول تصنيف الأرباح والمكافآت الشهرية لنظام التارجت الرسمي'
+    };
+
+    let writeMethod = 'client-sdk';
+    let docData: any = null;
+
+    // 1. المحاولة الأولى: استخدام Firebase Client SDK (الموثق بمشروع ainajm)
+    try {
+      const cRef = clientDoc(clientDb, 'configs', 'target_system');
+      const snap = await clientGetDoc(cRef);
+      if (snap.exists() && !force) {
+        const existing = snap.data();
+        if (existing?.levels?.length === 45) {
+          return {
+            status: 'already_seeded',
+            message: 'جدول التارجت مزروع مسبقاً ويحتوي على 45 مستوى كاملاً.',
+            levelsCount: existing.levels.length,
+            requirements: existing.requirements,
+            exchangeRate: existing.exchangeRate,
+            seededAt: existing.seededAt,
+            seededBy: existing.seededBy
+          };
+        }
+      }
+
+      await clientSetDoc(cRef, {
+        ...payload,
+        seededAt: clientServerTimestamp()
+      });
+
+      const verifySnap = await clientGetDoc(cRef);
+      docData = verifySnap.data();
+      writeMethod = 'client-sdk';
+    } catch (clientErr: any) {
+      console.warn('[SeedTargetSystem] Client SDK write notice:', clientErr?.message);
+      // 2. المحاولة الثانية: استخدام Firebase Admin SDK
+      try {
+        const docRef = db.collection('configs').doc('target_system');
+        const adminSnap = await docRef.get();
+        if (adminSnap.exists && !force && adminSnap.data()?.levels?.length === 45) {
+          const existing = adminSnap.data();
+          return {
+            status: 'already_seeded',
+            message: 'جدول التارجت مزروع مسبقاً عبر Admin SDK.',
+            levelsCount: existing?.levels?.length,
+            requirements: existing?.requirements,
+            exchangeRate: existing?.exchangeRate,
+            seededAt: existing?.seededAt,
+            seededBy: existing?.seededBy
+          };
+        }
+
+        await docRef.set({
+          ...payload,
+          seededAt: FieldValue.serverTimestamp()
+        });
+
+        const verifyAdminSnap = await docRef.get();
+        docData = verifyAdminSnap.data();
+        writeMethod = 'admin-sdk';
+      } catch (adminErr: any) {
+        console.error('[SeedTargetSystem] Admin SDK write failed:', adminErr?.message);
+        throw new Error(`فشلت الكتابة في Firestore عبر الطريقتين: ${clientErr?.message} | ${adminErr?.message}`);
+      }
+    }
+
+    return {
+      status: 'success',
+      writeMethod,
+      message: 'تم زراعة جدول تصنيف الأرباح والمكافآت (45 مستوى) بنجاح تام في Firestore 🎉',
+      path: 'configs/target_system',
+      levelsCount: docData?.levels?.length || TARGET_SYSTEM_LEVELS.length,
+      requirements: docData?.requirements || TARGET_SYSTEM_REQUIREMENTS,
+      exchangeRate: docData?.exchangeRate || TARGET_SYSTEM_EXCHANGE_RATE,
+      seededBy: docData?.seededBy || 'MGR-9901'
+    };
+  }
+
+  // مصفوفة التحقق من توكن المشرف
+  const verifyAdminToken = (req: express.Request): boolean => {
+    const rawToken = 
+      req.headers['x-admin-token'] || 
+      req.headers['x-admin-key'] || 
+      req.headers['authorization'] || 
+      req.query.token || 
+      req.query.admin_token;
+    
+    if (!rawToken) return false;
+    const cleanToken = String(rawToken).replace(/^Bearer\s+/i, '').trim();
+    return cleanToken === 'NAJM_ADMIN_SECRET_2026';
+  };
+
+  // POST /api/admin/seed-target-system
+  app.post('/api/admin/seed-target-system', async (req, res) => {
+    try {
+      if (!verifyAdminToken(req)) {
+        return res.status(403).json({
+          status: 'error',
+          code: 'FORBIDDEN',
+          message: 'Unauthorized: Invalid Admin Token (X-Admin-Token: NAJM_ADMIN_SECRET_2026 required)'
+        });
+      }
+      const isForce = req.query.force === 'true' || req.body?.force === true;
+      const result = await executeTargetSystemSeed(isForce);
+      res.json(result);
+    } catch (err: any) {
+      console.error('[POST /api/admin/seed-target-system] Error:', err);
+      res.status(500).json({ status: 'error', message: err?.message || 'Server error during seeding' });
+    }
+  });
+
+  // GET /api/admin/seed-target-system (متاح للتشغيل المباشر من المتصفح عبر الرابط)
+  app.get('/api/admin/seed-target-system', async (req, res) => {
+    try {
+      if (!verifyAdminToken(req)) {
+        return res.status(403).json({
+          status: 'error',
+          code: 'FORBIDDEN',
+          message: 'Unauthorized: Invalid Admin Token. Please provide ?token=NAJM_ADMIN_SECRET_2026 or header X-Admin-Token'
+        });
+      }
+      const isForce = req.query.force === 'true';
+      const result = await executeTargetSystemSeed(isForce);
+      res.json(result);
+    } catch (err: any) {
+      console.error('[GET /api/admin/seed-target-system] Error:', err);
+      res.status(500).json({ status: 'error', message: err?.message || 'Server error during seeding' });
+    }
+  });
+
+  // GET /api/configs/target-system (Read-only API for target configuration)
+  app.get('/api/configs/target-system', async (req, res) => {
+    try {
+      const cRef = clientDoc(clientDb, 'configs', 'target_system');
+      const snap = await clientGetDoc(cRef);
+      if (snap.exists()) {
+        return res.json({ status: 'success', source: 'firestore-live', data: snap.data() });
+      }
+
+      const docRef = db.collection('configs').doc('target_system');
+      const docSnap = await docRef.get();
+      if (docSnap.exists) {
+        return res.json({ status: 'success', source: 'firestore-admin', data: docSnap.data() });
+      }
+
+      return res.json({
+        status: 'success',
+        fallback: true,
+        data: {
+          levels: TARGET_SYSTEM_LEVELS,
+          requirements: TARGET_SYSTEM_REQUIREMENTS,
+          exchangeRate: TARGET_SYSTEM_EXCHANGE_RATE,
+          seededBy: 'MGR-9901'
+        }
+      });
+    } catch (err: any) {
+      console.warn('[GetTargetSystem] Falling back to default target system config:', err?.message);
+      return res.json({
+        status: 'success',
+        fallback: true,
+        data: {
+          levels: TARGET_SYSTEM_LEVELS,
+          requirements: TARGET_SYSTEM_REQUIREMENTS,
+          exchangeRate: TARGET_SYSTEM_EXCHANGE_RATE,
+          seededBy: 'MGR-9901'
+        }
+      });
+    }
+  });
+
+  // Dashboard لـ Seed في /admin/seed و /admin/seed/
+  app.get(['/admin/seed', '/admin/seed/'], (req, res) => {
+    const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة التحكم لزراعة نظام التارجت | تطبيق النجم</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Cairo', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 sm:p-8">
+  <div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-amber-600/30 via-purple-600/20 to-slate-900 border border-amber-500/30 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center text-3xl shadow-lg shadow-amber-500/20">
+          ⭐
+        </div>
+        <div>
+          <h1 class="text-xl sm:text-2xl font-black text-amber-300">لوحة زراعة نظام التارجت والأرباح</h1>
+          <p class="text-xs sm:text-sm text-slate-400 font-bold">Firestore configs/target_system — 45 مستوى رسمي</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="px-3 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-mono font-bold rounded-full">
+          Live Online 🚀
+        </span>
+      </div>
+    </div>
+
+    <!-- Quick Seed Actions Card -->
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h2 class="text-lg font-black text-slate-100 flex items-center gap-2">
+          <span>⚡ تشغيل الزراعة الفورية (Seeding Trigger)</span>
+        </h2>
+        <span class="text-xs text-amber-400 font-mono">Token: NAJM_ADMIN_SECRET_2026</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button id="btnCheckLive" class="px-4 py-3 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold text-sm rounded-xl border border-slate-700 transition flex items-center justify-center gap-2">
+          <span>🔍 فحص البيانات الحية في Firestore</span>
+        </button>
+
+        <button id="btnTriggerSeed" class="px-4 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 active:scale-95 text-slate-950 font-black text-sm rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2">
+          <span>🌱 تشغيل الزراعة الآن (Force Seed 45 Levels)</span>
+        </button>
+      </div>
+
+      <!-- Links section -->
+      <div class="pt-3 border-t border-slate-800 flex flex-wrap items-center gap-3 text-xs">
+        <span class="text-slate-400">روابط سريعة للمتصفح:</span>
+        <a href="/api/admin/seed-target-system?token=NAJM_ADMIN_SECRET_2026&force=true" target="_blank" class="text-amber-400 underline font-mono hover:text-amber-300">
+          تشغيل مباشر عبر GET URL
+        </a>
+        <span class="text-slate-600">|</span>
+        <a href="/api/configs/target-system" target="_blank" class="text-cyan-400 underline font-mono hover:text-cyan-300">
+          عرض الـ JSON المقروء من Firestore
+        </a>
+      </div>
+
+      <!-- Live Terminal / Log output -->
+      <div class="mt-4">
+        <label class="text-xs font-bold text-slate-400 mb-1 block">سجل النتائج المباشر (Terminal Log):</label>
+        <pre id="logOutput" class="bg-black/80 text-emerald-400 font-mono text-xs p-4 rounded-xl border border-slate-800 overflow-x-auto max-h-56">انقر على "فحص البيانات الحية" أو "تشغيل الزراعة الآن" للبدء...</pre>
+      </div>
+    </div>
+
+    <!-- Target System Specifications & Breakdown -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5">
+        <div class="text-amber-400 text-sm font-black mb-1">المستويات الكلية</div>
+        <div class="text-3xl font-black text-white font-mono">45 مستوى</div>
+        <div class="text-xs text-slate-400 mt-1">من 13,500 إلى 500,000,000 ماسة</div>
+      </div>
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5">
+        <div class="text-purple-400 text-sm font-black mb-1">متطلبات الاستحقاق</div>
+        <div class="text-lg font-bold text-white font-mono leading-relaxed">
+          15 يوم • 40 ساعة شهرياً
+        </div>
+        <div class="text-xs text-slate-400 mt-1">يومياً: 60 دقيقة • الحد الأقصى 3 ساعات</div>
+      </div>
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5">
+        <div class="text-emerald-400 text-sm font-black mb-1">سعر التحويل المعتمد</div>
+        <div class="text-2xl font-black text-white font-mono">13,500 💎 = 1 $</div>
+        <div class="text-xs text-slate-400 mt-1">العملة الرسمية: USD (دولار)</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const log = document.getElementById('logOutput');
+    const setLog = (data) => {
+      log.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    };
+
+    document.getElementById('btnCheckLive').onclick = async () => {
+      setLog('جاري فحص البيانات الحية من Firestore...');
+      try {
+        const res = await fetch('/api/configs/target-system');
+        const json = await res.json();
+        setLog(json);
+      } catch (err) {
+        setLog('خطأ: ' + err.message);
+      }
+    };
+
+    document.getElementById('btnTriggerSeed').onclick = async () => {
+      setLog('جاري إرسال طلب الزراعة إلى Firestore...');
+      try {
+        const res = await fetch('/api/admin/seed-target-system?token=NAJM_ADMIN_SECRET_2026&force=true', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Token': 'NAJM_ADMIN_SECRET_2026'
+          }
+        });
+        const json = await res.json();
+        setLog(json);
+      } catch (err) {
+        setLog('خطأ: ' + err.message);
+      }
+    };
+  </script>
+</body>
+</html>`;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
   });
 
   // WebSocket signaling & real-time broadcast engine

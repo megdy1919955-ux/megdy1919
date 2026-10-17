@@ -433,3 +433,142 @@ export async function fetchUserHierarchyPermissions(userId: string): Promise<Rol
   }
   return DEFAULT_ROLES_SUMMARY;
 }
+
+import { db } from './firebase';
+import { doc, runTransaction } from 'firebase/firestore';
+
+/**
+ * ═══════════════════════════════════════════════════════════
+ * 🎯 دوال توليد الرموز الهرمية آلياً (Automatic Hierarchy Code Generators)
+ * ═══════════════════════════════════════════════════════════
+ */
+
+/**
+ * 1️⃣ توليد رمز مندوب جديد: DEL-XXX (يبدأ من DEL-401 ويصعد: 402, 403, 404...)
+ */
+export async function generateDelegateCode(): Promise<string> {
+  const counterRef = doc(db, 'counters', 'delegateSeqCode');
+  try {
+    const nextCode = await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(counterRef);
+      let currentNum = 403; // آخر مندوب مسجل DEL-403
+      if (snap.exists()) {
+        const val = snap.data().currentNum;
+        if (typeof val === 'number') currentNum = val;
+      }
+      const nextNum = currentNum + 1;
+      transaction.set(counterRef, { currentNum: nextNum, lastUpdated: Date.now() }, { merge: true });
+      return `DEL-${nextNum}`;
+    });
+    return nextCode;
+  } catch (err) {
+    console.warn('[generateDelegateCode] Transaction fallback:', err);
+    const existing = LEVEL_2_DELEGATES.map(d => {
+      const match = d.roleCode.match(/DEL-(\d+)/);
+      return match ? parseInt(match[1], 10) : 400;
+    });
+    const max = Math.max(...existing, 403);
+    return `DEL-${max + 1}`;
+  }
+}
+
+/**
+ * 2️⃣ توليد رمز وكالة جديد: AG-XXX (يبدأ من AG-101 ويصعد: 102, 103, 104, 105, 106, 107...)
+ */
+export async function generateAgencyCode(): Promise<string> {
+  const counterRef = doc(db, 'counters', 'agencySeqCode');
+  try {
+    const nextCode = await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(counterRef);
+      let currentNum = 106; // آخر وكالة مسجلة AG-106
+      if (snap.exists()) {
+        const val = snap.data().currentNum;
+        if (typeof val === 'number') currentNum = val;
+      }
+      const nextNum = currentNum + 1;
+      transaction.set(counterRef, { currentNum: nextNum, lastUpdated: Date.now() }, { merge: true });
+      return `AG-${nextNum}`;
+    });
+    return nextCode;
+  } catch (err) {
+    console.warn('[generateAgencyCode] Transaction fallback:', err);
+    const existing = LEVEL_3_AGENTS.map(a => {
+      const match = a.roleCode.match(/AG-(\d+)/);
+      return match ? parseInt(match[1], 10) : 100;
+    });
+    const max = Math.max(...existing, 106);
+    return `AG-${max + 1}`;
+  }
+}
+
+/**
+ * 3️⃣ توليد رمز وسيط جديد: BRK-XXX-XX (مثال: BRK-101-01, BRK-101-02, BRK-101-03...)
+ * @param agencyGid رقم الوكالة التابع لها الوسيط
+ */
+export async function generateBrokerCode(agencyGid: string = 'AG-101'): Promise<string> {
+  const agencyNum = (agencyGid || 'AG-101').replace(/^AG-?/i, '');
+  const counterRef = doc(db, 'counters', `brokerSeqCode_${agencyNum}`);
+  try {
+    const nextCode = await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(counterRef);
+      let currentNum = 2; // آخر وسيط في AG-101 هو BRK-101-02
+      if (snap.exists()) {
+        const val = snap.data().currentNum;
+        if (typeof val === 'number') currentNum = val;
+      }
+      const nextNum = currentNum + 1;
+      transaction.set(counterRef, { currentNum: nextNum, lastUpdated: Date.now() }, { merge: true });
+      const padded = String(nextNum).padStart(2, '0');
+      return `BRK-${agencyNum}-${padded}`;
+    });
+    return nextCode;
+  } catch (err) {
+    console.warn('[generateBrokerCode] Transaction fallback:', err);
+    const existing = LEVEL_4_BROKERS
+      .filter(b => b.roleCode.startsWith(`BRK-${agencyNum}`))
+      .map(b => {
+        const match = b.roleCode.match(/BRK-\d+-(\d+)/);
+        return match ? parseInt(match[1], 10) : 0;
+      });
+    const max = existing.length > 0 ? Math.max(...existing) : 0;
+    const nextNum = max + 1;
+    return `BRK-${agencyNum}-${String(nextNum).padStart(2, '0')}`;
+  }
+}
+
+/**
+ * 4️⃣ توليد رمز مضيف جديد: HOST-XXX-XX (مثال: HOST-101-01, HOST-101-02... HOST-101-06)
+ * @param agencyGid رقم الوكالة التابع لها المضيف
+ * @param brokerCode كود الوسيط (إن وجد)
+ */
+export async function generateHostCode(agencyGid: string = 'AG-101', _brokerCode?: string): Promise<string> {
+  const agencyNum = (agencyGid || 'AG-101').replace(/^AG-?/i, '');
+  const counterRef = doc(db, 'counters', `hostSeqCode_${agencyNum}`);
+  try {
+    const nextCode = await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(counterRef);
+      let currentNum = 5; // آخر مضيف في AG-101 هو HOST-101-05
+      if (snap.exists()) {
+        const val = snap.data().currentNum;
+        if (typeof val === 'number') currentNum = val;
+      }
+      const nextNum = currentNum + 1;
+      transaction.set(counterRef, { currentNum: nextNum, lastUpdated: Date.now() }, { merge: true });
+      const padded = String(nextNum).padStart(2, '0');
+      return `HOST-${agencyNum}-${padded}`;
+    });
+    return nextCode;
+  } catch (err) {
+    console.warn('[generateHostCode] Transaction fallback:', err);
+    const existing = LEVEL_5_HOSTS
+      .filter(h => h.roleCode.startsWith(`HOST-${agencyNum}`))
+      .map(h => {
+        const match = h.roleCode.match(/HOST-\d+-(\d+)/);
+        return match ? parseInt(match[1], 10) : 0;
+      });
+    const max = existing.length > 0 ? Math.max(...existing) : 0;
+    const nextNum = max + 1;
+    return `HOST-${agencyNum}-${String(nextNum).padStart(2, '0')}`;
+  }
+}
+

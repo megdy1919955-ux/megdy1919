@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 760" width="390" height="760" style="background:#F8FAFC;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <defs>
+    <filter id="modalShadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Status Bar -->
+  <rect width="390" height="44" fill="#0F172A"/>
+  <text x="32" y="28" fill="#FFFFFF" font-size="12" font-weight="bold">9:41</text>
+  <circle cx="340" cy="24" r="3" fill="#FFFFFF"/>
+  <circle cx="348" cy="24" r="3" fill="#FFFFFF"/>
+  <circle cx="356" cy="24" r="3" fill="#FFFFFF"/>
+
+  <!-- Dim Background -->
+  <rect y="44" width="390" height="716" fill="rgba(15, 23, 42, 0.65)"/>
+
+  <!-- Dynamic Levels Modal Container -->
+  <g transform="translate(16, 68)">
+    <rect width="358" height="640" rx="26" fill="#FFFFFF" filter="url(#modalShadow)"/>
+
+    <!-- Header (Clean: جدول المستويات لنظام التارجت) -->
+    <rect width="358" height="72" rx="26" fill="#F8FAFC"/>
+    <rect y="40" width="358" height="32" fill="#F8FAFC"/>
+    <line x1="0" y1="72" x2="358" y2="72" stroke="#E2E8F0" stroke-width="1"/>
+
+    <circle cx="36" cy="36" r="14" fill="#E2E8F0"/>
+    <text x="36" y="41" fill="#475569" font-size="13" font-weight="bold" text-anchor="middle">✕</text>
+
+    <!-- Clean Title: بدون أي أرقام -->
+    <text x="338" y="32" fill="#0F172A" font-size="14" font-weight="900" text-anchor="end">جدول المستويات لنظام التارجت 🏆</text>
+    <text x="338" y="52" fill="#64748B" font-size="10.5" font-weight="bold" text-anchor="end">رصيدك: <tspan fill="#059669" font-weight="900">8,377 💎</tspan> • Firestore: configs/target_system 🟢</text>
+
+    <!-- Levels List (Clean: Only Host Salary) -->
+
+    <!-- Level 1 -->
+    <g transform="translate(14, 86)">
+      <rect width="330" height="50" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+      <rect x="286" y="9" width="32" height="32" rx="10" fill="#F1F5F9"/>
+      <text x="302" y="30" fill="#475569" font-size="12" font-weight="900" text-anchor="middle">#1</text>
+
+      <text x="274" y="24" fill="#0F172A" font-size="12" font-weight="900" text-anchor="end">المستوى 1</text>
+      <text x="274" y="40" fill="#64748B" font-size="10" font-weight="bold" font-family="monospace" text-anchor="end">13,500 💎</text>
+
+      <!-- Host Salary Only -->
+      <text x="14" y="31" fill="#059669" font-size="14" font-weight="900" font-family="monospace">$1 <tspan fill="#64748B" font-size="9" font-sans font-weight="normal">راتب المضيف</tspan></text>
+    </g>
+
+    <!-- Level 2 -->
+    <g transform="translate(14, 144)">
+      <rect width="330" height="50" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+      <rect x="286" y="9" width="32" height="32" rx="10" fill="#F1F5F9"/>
+      <text x="302" y="30" fill="#475569" font-size="12" font-weight="900" text-anchor="middle">#2</text>
+
+      <text x="274" y="24" fill="#0F172A" font-size="12" font-weight="900" text-anchor="end">المستوى 2</text>
+      <text x="274" y="40" fill="#64748B" font-size="10" font-weight="bold" font-family="monospace" text-anchor="end">27,000 💎</text>
+
+      <!-- Host Salary Only -->
+      <text x="14" y="31" fill="#059669" font-size="14" font-weight="900" font-family="monospace">$2 <tspan fill="#64748B" font-size="9" font-sans font-weight="normal">راتب المضيف</tspan></text>
+    </g>
+
+    <!-- Level 5 (Active Highlight) -->
+    <g transform="translate(14, 202)">
+      <rect width="330" height="52" rx="14" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1.8"/>
+      <rect x="286" y="9" width="32" height="34" rx="10" fill="#FBBF24"/>
+      <text x="302" y="31" fill="#78350F" font-size="12" font-weight="900" text-anchor="middle">#5</text>
+
+      <text x="274" y="23" fill="#78350F" font-size="12" font-weight="900" text-anchor="end">المستوى 5</text>
+      <rect x="176" y="10" width="70" height="18" rx="9" fill="#FDE68A"/>
+      <text x="211" y="22" fill="#92400E" font-size="8.5" font-weight="900" text-anchor="middle">مستواك الحالي 🎯</text>
+      <text x="274" y="41" fill="#92400E" font-size="10" font-weight="bold" font-family="monospace" text-anchor="end">81,500 💎</text>
+
+      <!-- Host Salary Only -->
+      <text x="14" y="32" fill="#059669" font-size="15" font-weight="900" font-family="monospace">$7 <tspan fill="#78350F" font-size="9" font-sans font-weight="normal">راتب المضيف</tspan></text>
+    </g>
+
+    <!-- Level 10 -->
+    <g transform="translate(14, 262)">
+      <rect width="330" height="50" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+      <rect x="286" y="9" width="32" height="32" rx="10" fill="#F1F5F9"/>
+      <text x="302" y="30" fill="#475569" font-size="11" font-weight="900" text-anchor="middle">#10</text>
+
+      <text x="274" y="24" fill="#0F172A" font-size="12" font-weight="900" text-anchor="end">المستوى 10</text>
+      <text x="274" y="40" fill="#64748B" font-size="10" font-weight="bold" font-family="monospace" text-anchor="end">1,000,000 💎</text>
+
+      <!-- Host Salary Only -->
+      <text x="14" y="31" fill="#059669" font-size="14" font-weight="900" font-family="monospace">$40 <tspan fill="#64748B" font-size="9" font-sans font-weight="normal">راتب المضيف</tspan></text>
+    </g>
+
+    <!-- Level 25 -->
+    <g transform="translate(14, 320)">
+      <rect width="330" height="50" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+      <rect x="286" y="9" width="32" height="32" rx="10" fill="#F1F5F9"/>
+      <text x="302" y="30" fill="#475569" font-size="11" font-weight="900" text-anchor="middle">#25</text>
+
+      <text x="274" y="24" fill="#0F172A" font-size="12" font-weight="900" text-anchor="end">المستوى 25</text>
+      <text x="274" y="40" fill="#64748B" font-size="10" font-weight="bold" font-family="monospace" text-anchor="end">15,000,000 💎</text>
+
+      <!-- Host Salary Only -->
+      <text x="14" y="31" fill="#059669" font-size="14" font-weight="900" font-family="monospace">$1,005 <tspan fill="#64748B" font-size="9" font-sans font-weight="normal">راتب المضيف</tspan></text>
+    </g>
+
+    <!-- Footer: Cleaned (Only Host Balance + Close Button, No Exchange Rate) -->
+    <g transform="translate(14, 576)">
+      <rect width="330" height="48" rx="16" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+      
+      <!-- Balance Display -->
+      <text x="28" y="29" fill="#059669" font-size="13" font-weight="900" font-family="monospace">8,377 💎</text>
+      <text x="96" y="29" fill="#64748B" font-size="11.5" font-weight="bold">:رصيدك</text>
+
+      <!-- Close Button -->
+      <rect x="240" y="8" width="78" height="32" rx="10" fill="#0F172A"/>
+      <text x="279" y="28" fill="#FFFFFF" font-size="12" font-weight="900" text-anchor="middle">إغلاق</text>
+    </g>
+  </g>
+</svg>

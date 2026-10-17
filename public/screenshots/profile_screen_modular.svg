@@ -1,0 +1,198 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 900" width="100%" height="100%">
+  <defs>
+    <linearGradient id="pastelHeader" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E2F1ED"/>
+      <stop offset="60%" stop-color="#EDF5F2"/>
+      <stop offset="100%" stop-color="#F3F6F9"/>
+    </linearGradient>
+    <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#D4AF37"/>
+      <stop offset="50%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#D4AF37"/>
+    </linearGradient>
+    <linearGradient id="superLegendG" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2B2313"/>
+      <stop offset="50%" stop-color="#3D3017"/>
+      <stop offset="100%" stop-color="#1F190D"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="440" height="900" fill="#F3F6F9"/>
+
+  <!-- Hero Header Area -->
+  <g>
+    <rect width="440" height="280" fill="url(#pastelHeader)"/>
+
+    <!-- Top icons row -->
+    <g transform="translate(16, 14)">
+      <circle cx="16" cy="16" r="14" fill="#FFFFFF" opacity="0.9"/>
+      <text x="16" y="20" font-family="sans-serif" font-size="12" text-anchor="middle">⚙️</text>
+
+      <circle cx="50" cy="16" r="14" fill="#FFFFFF" opacity="0.9"/>
+      <text x="50" y="20" font-family="sans-serif" font-size="12" text-anchor="middle">🔄</text>
+
+      <circle cx="84" cy="16" r="14" fill="#FFFFFF" opacity="0.9"/>
+      <text x="84" y="20" font-family="sans-serif" font-size="12" text-anchor="middle">🎧</text>
+
+      <rect x="106" y="2" width="75" height="28" rx="14" fill="#10B981" opacity="0.15" stroke="#10B981" stroke-width="0.8"/>
+      <text x="143" y="19" font-family="sans-serif" font-size="10" font-weight="bold" fill="#065F46" text-anchor="middle">تطبيق APK 📲</text>
+
+      <rect x="188" y="2" width="90" height="28" rx="14" fill="#FAF5E8" stroke="#DFC386" stroke-width="1"/>
+      <text x="233" y="19" font-family="sans-serif" font-size="10" font-weight="900" fill="#7E4F0B" text-anchor="middle">✨ الملكي الذهبي</text>
+
+      <text x="400" y="20" font-family="sans-serif" font-size="12" fill="#64748B" text-anchor="end">7:35</text>
+    </g>
+
+    <!-- User Info Row (Avatar on right, name/badges in middle) -->
+    <g transform="translate(16, 56)">
+      <!-- Avatar on FAR RIGHT -->
+      <g transform="translate(325, 0)">
+        <circle cx="40" cy="40" r="40" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="3" filter="url(#shadow)"/>
+        <circle cx="40" cy="40" r="37" fill="#E2E8F0"/>
+        <text x="40" y="47" font-family="sans-serif" font-size="28" text-anchor="middle">👑</text>
+        <!-- Pencil Edit -->
+        <circle cx="12" cy="68" r="10" fill="#10B981" stroke="#FFFFFF" stroke-width="2"/>
+        <text x="12" y="72" font-family="sans-serif" font-size="10" fill="#FFFFFF" text-anchor="middle">✏️</text>
+      </g>
+
+      <!-- User Name & Badges -->
+      <g transform="translate(0, 10)">
+        <text x="315" y="22" font-family="sans-serif" font-size="20" font-weight="900" fill="#E53E3E" text-anchor="end">مستخدم النجم</text>
+        
+        <!-- Badges Row -->
+        <g transform="translate(150, 32)">
+          <rect x="110" y="0" width="48" height="18" rx="9" fill="#B45309"/>
+          <text x="134" y="13" font-family="sans-serif" font-size="9" font-weight="bold" fill="#FDE68A" text-anchor="middle">👑 VIP7</text>
+
+          <rect x="56" y="0" width="48" height="18" rx="9" fill="#DC2626"/>
+          <text x="80" y="13" font-family="sans-serif" font-size="9" font-weight="bold" fill="#FFFFFF" text-anchor="middle">🔥 10</text>
+
+          <rect x="2" y="0" width="48" height="18" rx="9" fill="#2563EB"/>
+          <text x="26" y="13" font-family="sans-serif" font-size="9" font-weight="bold" fill="#FFFFFF" text-anchor="middle">💎 8</text>
+        </g>
+
+        <!-- ID & Hierarchy Badges -->
+        <g transform="translate(60, 58)">
+          <rect x="190" y="0" width="65" height="18" rx="9" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="0.8"/>
+          <text x="222" y="13" font-family="sans-serif" font-size="9.5" font-weight="bold" fill="#334155" text-anchor="middle">ID:1001001</text>
+
+          <rect x="100" y="0" width="85" height="18" rx="9" fill="#EEF2FF" stroke="#C7D2FE" stroke-width="0.8"/>
+          <text x="142" y="13" font-family="sans-serif" font-size="9.5" font-weight="900" fill="#4338CA" text-anchor="middle">🎖️ MGR-9901</text>
+
+          <rect x="35" y="0" width="60" height="18" rx="9" fill="#BE123C"/>
+          <text x="65" y="13" font-family="sans-serif" font-size="9" font-weight="900" fill="#FFFFFF" text-anchor="middle">المطور 👑</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- Stats 4 Columns Row -->
+    <g transform="translate(16, 175)">
+      <!-- 1. الزوار -->
+      <rect x="306" y="0" width="94" height="80" rx="16" fill="#FFFDF9" stroke="#DFC386" stroke-width="1" filter="url(#shadow)"/>
+      <circle cx="353" cy="28" r="16" fill="#FAF5E8"/>
+      <text x="353" y="34" font-family="sans-serif" font-size="16" text-anchor="middle">👀</text>
+      <text x="353" y="58" font-family="sans-serif" font-size="13" font-weight="900" fill="#5C3F13" text-anchor="middle">1,248</text>
+      <text x="353" y="72" font-family="sans-serif" font-size="9.5" font-weight="bold" fill="#8C7355" text-anchor="middle">الزوار</text>
+
+      <!-- 2. الأصدقاء -->
+      <rect x="204" y="0" width="94" height="80" rx="16" fill="#FFFDF9" stroke="#DFC386" stroke-width="1" filter="url(#shadow)"/>
+      <circle cx="251" cy="28" r="16" fill="#FAF5E8"/>
+      <text x="251" y="34" font-family="sans-serif" font-size="16" text-anchor="middle">👥</text>
+      <text x="251" y="58" font-family="sans-serif" font-size="13" font-weight="900" fill="#5C3F13" text-anchor="middle">89</text>
+      <text x="251" y="72" font-family="sans-serif" font-size="9.5" font-weight="bold" fill="#8C7355" text-anchor="middle">الأصدقاء</text>
+
+      <!-- 3. تمت متابعتهم -->
+      <rect x="102" y="0" width="94" height="80" rx="16" fill="#FFFDF9" stroke="#DFC386" stroke-width="1" filter="url(#shadow)"/>
+      <circle cx="149" cy="28" r="16" fill="#FAF5E8"/>
+      <text x="149" y="34" font-family="sans-serif" font-size="16" text-anchor="middle">👤</text>
+      <text x="149" y="58" font-family="sans-serif" font-size="13" font-weight="900" fill="#5C3F13" text-anchor="middle">142</text>
+      <text x="149" y="72" font-family="sans-serif" font-size="9.5" font-weight="bold" fill="#8C7355" text-anchor="middle">تمت متابعتهم</text>
+
+      <!-- 4. المعجبين -->
+      <rect x="0" y="0" width="94" height="80" rx="16" fill="#FFFDF9" stroke="#DFC386" stroke-width="1" filter="url(#shadow)"/>
+      <circle cx="47" cy="28" r="16" fill="#FAF5E8"/>
+      <text x="47" y="34" font-family="sans-serif" font-size="16" text-anchor="middle">❤️</text>
+      <text x="47" y="58" font-family="sans-serif" font-size="13" font-weight="900" fill="#5C3F13" text-anchor="middle">3,540</text>
+      <text x="47" y="72" font-family="sans-serif" font-size="9.5" font-weight="bold" fill="#8C7355" text-anchor="middle">المعجبين</text>
+    </g>
+  </g>
+
+  <!-- Super Legend Banner -->
+  <g transform="translate(16, 290)">
+    <rect width="408" height="46" rx="16" fill="url(#superLegendG)" stroke="#F59E0B" stroke-width="0.8" filter="url(#shadow)"/>
+    <rect x="12" y="13" width="70" height="20" rx="10" fill="#F59E0B"/>
+    <text x="47" y="27" font-family="sans-serif" font-size="9" font-weight="900" fill="#0B0F19" text-anchor="middle">✨ مستوى جديد</text>
+
+    <text x="390" y="29" font-family="serif" font-size="14" font-weight="900" fill="#FDE68A" text-anchor="end">SUPER LEGEND 👑</text>
+  </g>
+
+  <!-- Currency Row (Coins & Diamonds) -->
+  <g transform="translate(16, 346)">
+    <!-- Coins Card on RIGHT -->
+    <rect x="210" y="0" width="198" height="70" rx="16" fill="#FFFDF9" stroke="#DFC386" stroke-width="1" filter="url(#shadow)"/>
+    <text x="394" y="24" font-family="sans-serif" font-size="11" font-weight="900" fill="#7E4F0B" text-anchor="end">🪙 الكوينز (المحفظة)</text>
+    <text x="394" y="52" font-family="sans-serif" font-size="18" font-weight="900" fill="#7E4F0B" text-anchor="end">52,400</text>
+
+    <!-- Diamonds Card on LEFT -->
+    <rect x="0" y="0" width="198" height="70" rx="16" fill="#FFFDF9" stroke="#DFC386" stroke-width="1" filter="url(#shadow)"/>
+    <text x="184" y="24" font-family="sans-serif" font-size="11" font-weight="900" fill="#0369A1" text-anchor="end">💎 الماسة</text>
+    <text x="184" y="52" font-family="sans-serif" font-size="18" font-weight="900" fill="#0369A1" text-anchor="end">8,377</text>
+  </g>
+
+  <!-- 4 Action Cards (FamilyCard) -->
+  <g transform="translate(16, 426)">
+    <rect x="210" y="0" width="198" height="52" rx="14" fill="#FFFDF9" stroke="#DFC386" stroke-width="1"/>
+    <text x="394" y="22" font-family="sans-serif" font-size="11" font-weight="900" fill="#5C3F13" text-anchor="end">⭐ مستوى المستخدم</text>
+    <text x="394" y="38" font-family="sans-serif" font-size="9" fill="#8C7355" text-anchor="end">المستوى 113 • 97%</text>
+
+    <rect x="0" y="0" width="198" height="52" rx="14" fill="#FFFDF9" stroke="#DFC386" stroke-width="1"/>
+    <text x="184" y="22" font-family="sans-serif" font-size="11" font-weight="900" fill="#5C3F13" text-anchor="end">🎖️ الشارات</text>
+    <text x="184" y="38" font-family="sans-serif" font-size="9" fill="#8C7355" text-anchor="end">الأوسمة والجوائز</text>
+
+    <rect x="210" y="60" width="198" height="52" rx="14" fill="#FFFDF9" stroke="#DFC386" stroke-width="1"/>
+    <text x="394" y="82" font-family="sans-serif" font-size="11" font-weight="900" fill="#5C3F13" text-anchor="end">🏰 العائلات</text>
+    <text x="394" y="98" font-family="sans-serif" font-size="9" fill="#8C7355" text-anchor="end">عائلة فرسان المجد</text>
+
+    <rect x="0" y="60" width="198" height="52" rx="14" fill="#FFFDF9" stroke="#DFC386" stroke-width="1"/>
+    <text x="184" y="82" font-family="sans-serif" font-size="11" font-weight="900" fill="#5C3F13" text-anchor="end">🎨 مظهري</text>
+    <text x="184" y="98" font-family="sans-serif" font-size="9" fill="#8C7355" text-anchor="end">الإطارات والدخوليات</text>
+  </g>
+
+  <!-- Admin Cards Sample (Official Agency + Host Center) -->
+  <g transform="translate(16, 550)">
+    <!-- وكالتي Card -->
+    <rect width="408" height="66" rx="16" fill="#064E3B" stroke="#10B981" stroke-width="1" filter="url(#shadow)"/>
+    <text x="390" y="28" font-family="sans-serif" font-size="13" font-weight="900" fill="#FFFFFF" text-anchor="end">🏢 وكالتي (وكيل معتمد 💼)</text>
+    <text x="390" y="48" font-family="sans-serif" font-size="10" fill="#A7F3D0" text-anchor="end">إدارة المذيعين، الوسطاء، العقود والرواتب</text>
+
+    <!-- مركز المضيفين Card -->
+    <g transform="translate(0, 76)">
+      <rect width="408" height="66" rx="16" fill="#FFF5F7" stroke="#FDA4AF" stroke-width="1" filter="url(#shadow)"/>
+      <text x="390" y="28" font-family="sans-serif" font-size="13" font-weight="900" fill="#9F1239" text-anchor="end">🎙️ مركز المضيفين (مُعتمد 💎)</text>
+      <text x="390" y="48" font-family="sans-serif" font-size="10" fill="#881337" text-anchor="end">إحصائيات البث، الأرباح، التارجت، والعقود</text>
+    </g>
+  </g>
+
+  <!-- Bottom Navigation Bar -->
+  <g transform="translate(0, 835)">
+    <rect width="440" height="65" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+    <text x="400" y="32" font-family="sans-serif" font-size="14" text-anchor="middle">🏠</text>
+    <text x="400" y="48" font-family="sans-serif" font-size="9" fill="#94A3B8" text-anchor="middle">الرئيسية</text>
+
+    <text x="320" y="32" font-family="sans-serif" font-size="14" text-anchor="middle">🧭</text>
+    <text x="320" y="48" font-family="sans-serif" font-size="9" fill="#94A3B8" text-anchor="middle">استكشاف</text>
+
+    <text x="220" y="32" font-family="sans-serif" font-size="14" text-anchor="middle">⭐</text>
+    <text x="220" y="48" font-family="sans-serif" font-size="9" fill="#94A3B8" text-anchor="middle">لحظات</text>
+
+    <text x="120" y="32" font-family="sans-serif" font-size="14" text-anchor="middle">💬</text>
+    <text x="120" y="48" font-family="sans-serif" font-size="9" fill="#94A3B8" text-anchor="middle">المحادثات</text>
+
+    <text x="40" y="32" font-family="sans-serif" font-size="14" text-anchor="middle">👤</text>
+    <text x="40" y="48" font-family="sans-serif" font-size="9" font-weight="900" fill="#0F172A" text-anchor="middle">أنا</text>
+  </g>
+</svg>

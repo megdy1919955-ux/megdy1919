@@ -41,6 +41,7 @@ import {
   ShieldX,
   Filter
 } from 'lucide-react';
+import { generateDelegateCode, generateAgencyCode } from '../lib/hierarchyService';
 
 interface OfficialAgencyManagerModalProps {
   isOpen: boolean;
@@ -353,12 +354,22 @@ export const OfficialAgencyManagerModal: React.FC<OfficialAgencyManagerModalProp
   };
 
   // Approve Pending Agency from Rep
-  const handleApproveAgencyRequest = (reqId: string) => {
+  const handleApproveAgencyRequest = async (reqId: string) => {
     const req = pendingRequests.find(r => r.id === reqId);
     if (!req) return;
 
+    let agCode = (req as any).agencyGid;
+    if (!agCode || !agCode.startsWith('AG-')) {
+      try {
+        agCode = await generateAgencyCode();
+      } catch (e) {
+        agCode = `AG-${Date.now().toString().slice(-4)}`;
+      }
+    }
+
     const newAg = {
-      id: `AG-${Date.now().toString().slice(-4)}`,
+      id: agCode,
+      agencyGid: agCode,
       name: req.agencyName,
       ownerName: req.candidateName,
       ownerId: req.candidateUserId,
@@ -372,7 +383,7 @@ export const OfficialAgencyManagerModal: React.FC<OfficialAgencyManagerModalProp
 
     setAgenciesList([newAg, ...agenciesList]);
     setPendingRequests(pendingRequests.filter(r => r.id !== reqId));
-    showToast(`✅ تم اعتماد وتوثيق (${req.agencyName}) رسميًا كوكالة معتمدة`);
+    showToast(`✅ تم اعتماد وتوثيق (${req.agencyName}) برمز (${agCode}) كوكالة معتمدة`);
   };
 
   // Reject Pending Agency
@@ -382,15 +393,23 @@ export const OfficialAgencyManagerModal: React.FC<OfficialAgencyManagerModalProp
   };
 
   // Add New Representative
-  const handleAddRepresentative = (e: React.FormEvent) => {
+  const handleAddRepresentative = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRepUserId.trim() || !newRepName.trim()) {
       showToast('⚠️ يرجى إدخال معرف المندوب واسمه الكامل');
       return;
     }
 
+    let delCode = 'DEL-404';
+    try {
+      delCode = await generateDelegateCode();
+    } catch (err) {
+      console.warn('[handleAddRepresentative] generateDelegateCode fallback:', err);
+    }
+
     const newRep = {
-      id: `REP-${Date.now().toString().slice(-4)}`,
+      id: delCode,
+      roleCode: delCode,
       name: newRepName,
       userId: newRepUserId,
       avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
@@ -406,19 +425,27 @@ export const OfficialAgencyManagerModal: React.FC<OfficialAgencyManagerModalProp
     setRepresentatives([newRep, ...representatives]);
     setNewRepUserId('');
     setNewRepName('');
-    showToast(`🎉 تم تعيين المندوب (${newRep.name}) وفتح صلاحية الاستدعاء له بنجاح`);
+    showToast(`🎉 تم تعيين المندوب (${newRep.name}) بالكود (${delCode}) وفتح صلاحية الاستدعاء له`);
   };
 
   // Manager Direct Agency Recruitment
-  const handleManagerDirectRecruit = (e: React.FormEvent) => {
+  const handleManagerDirectRecruit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAgencyName.trim() || !newAgencyOwnerId.trim()) {
       showToast('⚠️ يرجى إدخال اسم الوكالة ومعرف صاحبها');
       return;
     }
 
+    let agCode = 'AG-107';
+    try {
+      agCode = await generateAgencyCode();
+    } catch (err) {
+      console.warn('[handleManagerDirectRecruit] generateAgencyCode fallback:', err);
+    }
+
     const newAg = {
-      id: `AG-${Date.now().toString().slice(-4)}`,
+      id: agCode,
+      agencyGid: agCode,
       name: newAgencyName,
       ownerName: `مالك الوكالة (${newAgencyOwnerId})`,
       ownerId: newAgencyOwnerId,
@@ -433,7 +460,7 @@ export const OfficialAgencyManagerModal: React.FC<OfficialAgencyManagerModalProp
     setAgenciesList([newAg, ...agenciesList]);
     setNewAgencyName('');
     setNewAgencyOwnerId('');
-    showToast(`🚀 تم استدعاء وتوثيق الوكالة (${newAg.name}) مباشرة بقرار إداري`);
+    showToast(`🚀 تم استدعاء وتوثيق الوكالة (${newAg.name}) بالكود (${agCode}) بقرار إداري`);
   };
 
   return (

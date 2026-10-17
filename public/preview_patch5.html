@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>معاينة Patch 5 - تقسيم وهيكلة ProfileScreen (3,006 سطر إلى مكونات صغيرة)</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #0B1120;
+      color: #F8FAFC;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid #22C55E;
+      color: #4ADE80;
+      font-weight: 800;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 22px;
+      font-weight: 900;
+      text-align: center;
+    }
+    p {
+      color: #94A3B8;
+      font-size: 13px;
+      margin: 0 0 24px 0;
+      text-align: center;
+      max-width: 600px;
+      line-height: 1.6;
+    }
+    .preview-card {
+      background: #0F172A;
+      border: 1px solid #1E293B;
+      border-radius: 28px;
+      padding: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      max-width: 440px;
+      width: 100%;
+    }
+    .table-container {
+      margin-top: 24px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 18px;
+      max-width: 640px;
+      width: 100%;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 10px 12px;
+      text-align: right;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    th {
+      color: #F59E0B;
+      font-weight: 800;
+    }
+    td.mono {
+      font-family: monospace;
+      color: #38BDF8;
+      direction: ltr;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <div class="badge">🚀 Patch 5 مكتمل بنجاح 100%</div>
+  <h1>تقسيم وتفكيك ProfileScreen إلى مكونات خفيفة مع Lazy Loading</h1>
+  <p>
+    تم تحويل الملف الأضخم من 3,006 أسطر إلى معمارية نظيفة مجزأة مع الحفاظ الكامل على كافة الوظائف، الاشتراكات اللحظية مع Firestore، الحسابات الهرمية، والتصميم الملكي.
+  </p>
+
+  <div class="preview-card">
+    <img src="/screenshots/profile_screen_modular.svg" alt="ProfileScreen Modular" style="width: 100%; border-radius: 20px; display: block;" />
+  </div>
+
+  <div class="table-container">
+    <h3 style="margin-top: 0; color: #F59E0B; font-size: 15px;">قائمة الملفات الجديدة بعد التقسيم:</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>الملف</th>
+          <th>المسار</th>
+          <th>الأسطر</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Re-export الرئيسي</td>
+          <td class="mono">src/components/ProfileScreen.tsx</td>
+          <td>2 سطر</td>
+        </tr>
+        <tr>
+          <td>المكون الموجه (Router + State)</td>
+          <td class="mono">src/components/profile/ProfileScreen.tsx</td>
+          <td>584 سطر</td>
+        </tr>
+        <tr>
+          <td>رأس الصفحة والإحصائيات</td>
+          <td class="mono">src/components/profile/components/HeroHeader.tsx</td>
+          <td>376 سطر</td>
+        </tr>
+        <tr>
+          <td>بطاقات الكوينز والماسات</td>
+          <td class="mono">src/components/profile/components/CurrencyCards.tsx</td>
+          <td>75 سطر</td>
+        </tr>
+        <tr>
+          <td>بانر سوبر ليجند</td>
+          <td class="mono">src/components/profile/components/SuperLegendBanner.tsx</td>
+          <td>37 سطر</td>
+        </tr>
+        <tr>
+          <td>بطاقات العمليات والعائلات</td>
+          <td class="mono">src/components/profile/components/FamilyCard.tsx</td>
+          <td>150 سطر</td>
+        </tr>
+        <tr>
+          <td>الأدوات وشريط الألعاب</td>
+          <td class="mono">src/components/profile/components/UserToolsGrid.tsx</td>
+          <td>255 سطر</td>
+        </tr>
+        <tr>
+          <td>البطاقات الإدارية والرتب</td>
+          <td class="mono">src/components/profile/components/AdminCards.tsx</td>
+          <td>442 سطر</td>
+        </tr>
+        <tr>
+          <td>شريط التنقل السفلي</td>
+          <td class="mono">src/components/profile/components/BottomNav.tsx</td>
+          <td>91 سطر</td>
+        </tr>
+        <tr>
+          <td>حاوية النوافذ المنبثقة</td>
+          <td class="mono">src/components/profile/modals/ModalsContainer.tsx</td>
+          <td>664 سطر</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

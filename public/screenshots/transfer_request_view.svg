@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 820" width="390" height="820" style="background:#F8FAFC;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <defs>
+    <filter id="cardShadow" x="-5%" y="-5%" width="110%" height="115%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.04" />
+    </filter>
+  </defs>
+
+  <!-- Top Navigation Header -->
+  <rect x="0" y="0" width="390" height="64" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+  
+  <!-- Back Button (Right side in RTL) -->
+  <g transform="translate(340, 20)" cursor="pointer">
+    <circle cx="16" cy="12" r="16" fill="#F1F5F9" />
+    <path d="M14 7L19 12L14 17" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  </g>
+  <text x="328" y="32" font-size="12" font-weight="700" fill="#0F172A" text-anchor="end">رجوع</text>
+
+  <!-- Title -->
+  <text x="195" y="38" font-size="16" font-weight="900" fill="#0F172A" text-anchor="middle">طلب التحويل</text>
+
+  <!-- Close Button -->
+  <g transform="translate(16, 20)" cursor="pointer">
+    <circle cx="16" cy="12" r="16" fill="#F1F5F9" />
+    <path d="M11 7L21 17M21 7L11 17" stroke="#64748B" stroke-width="2" stroke-linecap="round" />
+  </g>
+
+  <!-- Main Request Card Form -->
+  <g transform="translate(16, 80)">
+    <rect x="0" y="0" width="358" height="690" rx="28" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#cardShadow)" />
+    
+    <!-- Icon Header -->
+    <rect x="155" y="20" width="48" height="48" rx="16" fill="#1E293B" />
+    <text x="179" y="52" font-size="22" text-anchor="middle">🔄</text>
+    
+    <text x="179" y="92" font-size="15" font-weight="900" fill="#0F172A" text-anchor="middle">تقديم طلب تحويل الوكالة</text>
+    <text x="179" y="112" font-size="11" font-weight="500" fill="#64748B" text-anchor="middle">يحق للمذيع طلب تغيير وكالته بعد مرور شهرين من الانضمام</text>
+
+    <!-- Duration Verification Pill -->
+    <g transform="translate(16, 130)">
+      <rect x="0" y="0" width="326" height="42" rx="14" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="310" y="26" font-size="12" font-weight="700" fill="#475569" text-anchor="end">مدة العضوية بالوكالة الحالية:</text>
+      <text x="20" y="26" font-size="13" font-weight="900" font-family="monospace" fill="#0F172A">3 أشهر (مستوفٍ للشروط ✅)</text>
+    </g>
+
+    <!-- Agency ID Input -->
+    <g transform="translate(16, 190)">
+      <text x="326" y="14" font-size="12" font-weight="700" fill="#334155" text-anchor="end">معرّف الوكالة الجديدة (Agency ID):</text>
+      <rect x="0" y="24" width="326" height="46" rx="16" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.2" />
+      <text x="310" y="52" font-size="13" font-weight="800" font-family="monospace" fill="#0F172A" text-anchor="end">30045</text>
+    </g>
+
+    <!-- Reason Input -->
+    <g transform="translate(16, 276)">
+      <text x="326" y="14" font-size="12" font-weight="700" fill="#334155" text-anchor="end">سبب طلب التحويل (اختياري):</text>
+      <rect x="0" y="24" width="326" height="76" rx="16" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="310" y="50" font-size="12" font-weight="500" fill="#64748B" text-anchor="end">الانتقال إلى فريق داعم جديد</text>
+    </g>
+
+    <!-- Alert / Notice Box -->
+    <g transform="translate(16, 390)">
+      <rect x="0" y="0" width="326" height="48" rx="14" fill="#FEF3C7" stroke="#FDE68A" />
+      <text x="312" y="28" font-size="10.5" font-weight="700" fill="#92400E" text-anchor="end">⚠️ تنبيه: لا يمكن تقديم أكثر من طلب تحويل واحد خلال 30 يوماً.</text>
+    </g>
+
+    <!-- Terms Checkbox -->
+    <g transform="translate(16, 454)">
+      <rect x="306" y="2" width="18" height="18" rx="5" fill="#0F172A" stroke="#0F172A" />
+      <path d="M310 11L314 15L320 8" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+      <text x="296" y="16" font-size="12" font-weight="800" fill="#1E293B" text-anchor="end">أوافق على لوائح وسياسات تحويل المذيعين</text>
+    </g>
+
+    <!-- Regular Submit Button -->
+    <g transform="translate(16, 494)" cursor="pointer">
+      <rect x="0" y="0" width="326" height="50" rx="16" fill="#0F172A" />
+      <text x="163" y="31" font-size="13" font-weight="900" fill="#FFFFFF" text-anchor="middle">إرسال طلب التحويل (للمراجعة)</text>
+    </g>
+
+    <!-- Exception Banner & Button (شهرين دون راتب) -->
+    <g transform="translate(16, 560)">
+      <line x1="0" y1="0" x2="326" y2="0" stroke="#F1F5F9" stroke-width="1.5" />
+      
+      <rect x="0" y="12" width="326" height="38" rx="12" fill="#ECFDF5" stroke="#A7F3D0" />
+      <text x="312" y="35" font-size="10" font-weight="800" fill="#065F46" text-anchor="end">✨ مؤهل للبند الاستثنائي: يحق لك النقل الفوري دون موافقة</text>
+
+      <g transform="translate(0, 58)" cursor="pointer">
+        <rect x="0" y="0" width="326" height="50" rx="16" fill="#059669" />
+        <text x="163" y="31" font-size="13" font-weight="900" fill="#FFFFFF" text-anchor="middle">⚡ نقل فوري (استثناء شهرين بدون راتب)</text>
+      </g>
+    </g>
+
+  </g>
+</svg>

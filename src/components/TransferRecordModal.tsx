@@ -28,7 +28,7 @@ const SAMPLE_TRANSFERS: TransferItem[] = [
     hostId: '81156183',
     hostAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     leaveAgency: '21810(United Agency)',
-    joinAgency: '30032(AbuAmjad)',
+    joinAgency: 'AG-101(النخبة الملكية)',
     requestTime: '11-07-2026 00:36:43(utc+0)'
   },
   {
@@ -38,7 +38,7 @@ const SAMPLE_TRANSFERS: TransferItem[] = [
     hostName: 'روح',
     hostId: '84448587',
     hostAvatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
-    leaveAgency: '30032(AbuAmjad)',
+    leaveAgency: 'AG-101(النخبة الملكية)',
     joinAgency: '24088(Alno5ba)',
     requestTime: '29-06-2026 05:08:14(utc+0)'
   },
@@ -50,7 +50,7 @@ const SAMPLE_TRANSFERS: TransferItem[] = [
     hostId: '92103441',
     hostAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     leaveAgency: '19804(Star Live)',
-    joinAgency: '30032(AbuAmjad)',
+    joinAgency: 'AG-101(النخبة الملكية)',
     requestTime: '15-05-2026 12:20:01(utc+0)'
   }
 ];

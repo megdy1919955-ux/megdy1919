@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 760" width="390" height="760" style="background:#F8FAFC;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <defs>
+    <filter id="cardShadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.05"/>
+    </filter>
+  </defs>
+
+  <!-- Status Bar -->
+  <rect width="390" height="44" fill="#0F172A"/>
+  <text x="32" y="28" fill="#FFFFFF" font-size="12" font-weight="bold">9:41</text>
+  <circle cx="340" cy="24" r="3" fill="#FFFFFF"/>
+  <circle cx="348" cy="24" r="3" fill="#FFFFFF"/>
+  <circle cx="356" cy="24" r="3" fill="#FFFFFF"/>
+
+  <!-- Header -->
+  <rect y="44" width="390" height="54" fill="#FFFFFF" filter="url(#cardShadow)"/>
+  <text x="195" y="78" fill="#0F172A" font-size="16" font-weight="900" text-anchor="middle">طلب سحب الأرباح</text>
+  <text x="350" y="78" fill="#0F172A" font-size="16" font-weight="bold">→</text>
+  <text x="24" y="76" fill="#059669" font-size="11" font-weight="bold">Live Server ⚡</text>
+
+  <!-- Dark Dim Overlay for Modal -->
+  <rect y="98" width="390" height="662" fill="rgba(15, 23, 42, 0.6)"/>
+
+  <!-- Modal Box -->
+  <g transform="translate(18, 120)">
+    <rect width="354" height="480" rx="28" fill="#FFFFFF" filter="url(#cardShadow)"/>
+
+    <!-- Modal Header -->
+    <text x="314" y="38" fill="#0F172A" font-size="15" font-weight="900" text-anchor="end">طلب سحب الأرباح 💳</text>
+    <circle cx="40" cy="32" r="14" fill="#F1F5F9"/>
+    <text x="40" y="37" fill="#64748B" font-size="13" font-weight="bold" text-anchor="middle">✕</text>
+    <line x1="20" y1="56" x2="334" y2="56" stroke="#F1F5F9" stroke-width="1.5"/>
+
+    <!-- المستطيل 1: معرّف المستلم -->
+    <g transform="translate(20, 72)">
+      <text x="314" y="16" fill="#0F172A" font-size="12" font-weight="900" text-anchor="end">📱 المستطيل 1: معرّف المستلم (UID)</text>
+      <rect y="28" width="314" height="42" rx="14" fill="#F8FAFC" stroke="#059669" stroke-width="1.5"/>
+      <text x="300" y="54" fill="#0F172A" font-size="13" font-weight="900" font-family="monospace" text-anchor="end">82639599</text>
+
+      <!-- Dynamic Recipient Preview -->
+      <g transform="translate(0, 78)">
+        <rect width="314" height="48" rx="14" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1"/>
+        <circle cx="288" cy="24" r="16" fill="#CBD5E1"/>
+        <text x="288" y="29" font-size="16" text-anchor="middle">👑</text>
+        <text x="260" y="20" fill="#0F172A" font-size="11" font-weight="900" text-anchor="end">ابوامجدMá🎼 (رئيس وكالة)</text>
+        <text x="260" y="36" fill="#64748B" font-size="9.5" font-weight="bold" font-family="monospace" text-anchor="end">UID: 82639599</text>
+        <rect x="12" y="14" width="60" height="20" rx="8" fill="#D1FAE5"/>
+        <text x="42" y="28" fill="#065F46" font-size="9" font-weight="900" text-anchor="middle">👑 معتمد</text>
+      </g>
+    </g>
+
+    <!-- المستطيل 2: إدخال المبلغ -->
+    <g transform="translate(20, 224)">
+      <text x="314" y="16" fill="#0F172A" font-size="12" font-weight="900" text-anchor="end">💰 المستطيل 2: إدخال المبلغ ($)</text>
+      <text x="0" y="16" fill="#059669" font-size="10.5" font-weight="bold" font-family="monospace">المتاح: $25.50</text>
+      <rect y="28" width="314" height="42" rx="14" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1"/>
+      <text x="24" y="55" fill="#0F172A" font-size="14" font-weight="900" font-family="monospace">10.00</text>
+      <rect x="256" y="34" width="46" height="30" rx="8" fill="#E2E8F0"/>
+      <text x="279" y="53" fill="#334155" font-size="11" font-weight="bold" text-anchor="middle">الكل</text>
+    </g>
+
+    <!-- Info Notice -->
+    <g transform="translate(20, 316)">
+      <rect width="314" height="44" rx="14" fill="#F0FDF4" stroke="#BBF7D0"/>
+      <text x="300" y="22" fill="#166534" font-size="10.5" font-weight="bold" text-anchor="end">ℹ️ سعر التحويل: 13,500 ماسة = $1.00</text>
+      <text x="300" y="36" fill="#166534" font-size="10" font-weight="500" text-anchor="end">يتم الاتصال فوراً بـ sendReceiveSupport لحفظ العملية</text>
+    </g>
+
+    <!-- Buttons -->
+    <g transform="translate(20, 380)">
+      <!-- Confirm Button (Green) -->
+      <rect width="150" height="42" rx="14" fill="#059669"/>
+      <text x="75" y="26" fill="#FFFFFF" font-size="12" font-weight="900" text-anchor="middle">تأكيد السحب ⚡</text>
+
+      <!-- Cancel Button -->
+      <rect x="164" width="150" height="42" rx="14" fill="#F1F5F9" stroke="#E2E8F0"/>
+      <text x="239" y="26" fill="#475569" font-size="12" font-weight="bold" text-anchor="middle">إلغاء</text>
+    </g>
+
+    <!-- Success Feedback Overlay Pill -->
+    <g transform="translate(20, 436)">
+      <rect width="314" height="30" rx="10" fill="#ECFDF5" stroke="#10B981"/>
+      <text x="157" y="20" fill="#047857" font-size="11" font-weight="900" text-anchor="middle">✅ تم السحب بنجاح وحفظ السجل بالسيرفر</text>
+    </g>
+  </g>
+</svg>

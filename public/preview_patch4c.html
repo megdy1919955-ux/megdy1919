@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>معاينة Patch 4c - ربط سجلات البث (RecordsView) بـ Firestore</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #0B1120;
+      color: #F8FAFC;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid #22C55E;
+      color: #4ADE80;
+      font-weight: 800;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 22px;
+      font-weight: 900;
+      text-align: center;
+    }
+    p {
+      color: #94A3B8;
+      font-size: 13px;
+      margin: 0 0 24px 0;
+      text-align: center;
+      max-width: 600px;
+      line-height: 1.6;
+    }
+    .card-preview {
+      background: #0F172A;
+      border: 1px solid #1E293B;
+      border-radius: 28px;
+      padding: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      max-width: 440px;
+      width: 100%;
+    }
+    .features-list {
+      margin-top: 24px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 18px;
+      max-width: 580px;
+      width: 100%;
+      font-size: 13px;
+    }
+    .features-list li {
+      margin-bottom: 8px;
+      color: #CBD5E1;
+    }
+    .features-list li strong {
+      color: #F8FAFC;
+    }
+  </style>
+</head>
+<body>
+  <div class="badge">🚀 Patch 4c مكتمل بنجاح</div>
+  <h1>سجلات البث المباشر (RecordsView) مربوطة بـ Firestore</h1>
+  <p>
+    تم التخلص تماماً من الأرقام الوهمية الثابتة (MOCK) وربط الإحصائيات الشهرية واليومية بـ Firestore عبر المجموعة الفرعية <code>users/{hostUid}/daily_records</code> مع تجميع فوري وتحديث حقيقي.
+  </p>
+
+  <div class="card-preview">
+    <img src="/screenshots/records_view_live.svg" alt="Records View Live" style="width: 100%; border-radius: 20px; display: block;" />
+  </div>
+
+  <div class="features-list">
+    <h3 style="margin-top:0; font-size: 15px; color:#F59E0B;">الميزات المنفذة في Patch 4c:</h3>
+    <ul>
+      <li><strong>ربط Firestore حقيقي:</strong> عبر <code>onSnapshot</code> على <code>users/{hostUid}/daily_records</code>.</li>
+      <li><strong>التخلص من الأرقام الوهمية:</strong> تم حذف قيم 50, 700, 242, 202, 5775 الثابتة واستبدالها بحسابات ديناميكية.</li>
+      <li><strong>تجميع شهري دقيق:</strong> احتساب الماس، الأيام الصالحة، دقائق البث والنشاط للشهر المختار ومزامنته مع إحصائيات السيرفر.</li>
+      <li><strong>محدد التاريخ واليوم:</strong> فحص إحصائيات أي يوم أو اختيار "اليوم" مباشرة.</li>
+      <li><strong>تفاصيل الجلسات (Check detail):</strong> إمكانية استعراض تفاصيل جلسات البث المسجلة وإضافة جلسة تجريبية سريعة.</li>
+    </ul>
+  </div>
+</body>
+</html>

@@ -2,12 +2,61 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Global default deny
+    // ═══════════════════════════════════════════════════════════
+    // 🛡️ Global default deny
+    // ═══════════════════════════════════════════════════════════
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Hardened Helper Primitives
+    // ═══════════════════════════════════════════════════════════
+    // 🔧 Helper Functions
+    // ═══════════════════════════════════════════════════════════
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isOwner() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        getUserRole() == 'owner'
+      );
+    }
+
+    function isManager() {
+      return isSignedIn() && getUserRole() == 'manager';
+    }
+
+    function isDelegate() {
+      return isSignedIn() && getUserRole() == 'delegate';
+    }
+
+    function isAgencyOwner() {
+      return isSignedIn() && getUserRole() == 'agency_owner';
+    }
+
+    function isBroker() {
+      return isSignedIn() && getUserRole() == 'broker';
+    }
+
+    function isHost() {
+      return isSignedIn() && getUserRole() == 'host';
+    }
+
+    function isManagerOrOwner() {
+      return isOwner() || isManager();
+    }
+
+    function isHierarchyRole() {
+      return isManagerOrOwner() || isDelegate() || 
+             isAgencyOwner() || isBroker() || isHost();
+    }
+
     function isValidId(id) {
       return id is string && id.size() > 0 && id.size() <= 128;
     }
@@ -16,7 +65,6 @@ service cloud.firestore {
       return request.resource.data;
     }
 
-    // Room Entity Validation Helper
     function isValidRoom(data) {
       return data.roomId is string && data.roomId.size() > 0 && data.roomId.size() <= 128 &&
              (!('ownerId' in data) || (data.ownerId is string && data.ownerId.size() <= 128)) &&
@@ -30,126 +78,224 @@ service cloud.firestore {
              (!('updatedAt' in data) || (data.updatedAt is string));
     }
 
-    // Voice Room Theme & Wallpaper Collection
+    // ═══════════════════════════════════════════════════════════
+    // 🎙️ Rooms
+    // ═══════════════════════════════════════════════════════════
     match /rooms/{roomId} {
       allow get: if isValidId(roomId);
       allow list: if true;
-      allow create, update: if isValidId(roomId) && (!('roomId' in incoming()) || incoming().roomId == roomId);
-      allow delete: if isValidId(roomId);
+      
+      allow create: if isSignedIn() && 
+                    isValidId(roomId) && 
+                    (!('roomId' in incoming()) || incoming().roomId == roomId) &&
+                    (!('ownerId' in incoming()) || incoming().ownerId == request.auth.uid);
+      
+      allow update: if isSignedIn() && 
+                    isValidId(roomId) && 
+                    (!('roomId' in incoming()) || incoming().roomId == roomId) &&
+                    (resource.data.ownerId == request.auth.uid || isManagerOrOwner());
+      
+      allow delete: if isSignedIn() && 
+                    (resource.data.ownerId == request.auth.uid || isManagerOrOwner());
 
-      // Real-time Chat Messages
       match /messages/{messageId} {
-        allow read, write: if isValidId(roomId);
+        allow read: if true;
+        allow write: if isSignedIn();
       }
-
-      // Real-time Mic Seats (Who is on which seat, muted, speaking)
       match /seats/{seatId} {
-        allow read, write: if isValidId(roomId);
+        allow read: if true;
+        allow write: if isSignedIn();
       }
-
-      // Real-time Cinema Video Watch Together
       match /cinema/{cinemaDoc} {
-        allow read, write: if isValidId(roomId);
+        allow read, write: if isSignedIn();
       }
-
-      // Real-time WebRTC Audio & Video Signaling
       match /signals/{signalId} {
-        allow read, write: if isValidId(roomId);
+        allow read, write: if isSignedIn();
       }
-
-      // Real-time Room Events (Gifts, Reactions, Entrance)
       match /events/{eventId} {
-        allow read, write: if isValidId(roomId);
+        allow read: if true;
+        allow write: if isSignedIn();
       }
-
-      // Real-time Room Leaderboard & Stats (Supporters, Charm, Club)
       match /supporters/{supporterId} {
-        allow read, write: if isValidId(roomId);
+        allow read: if true;
+        allow write: if isSignedIn();
       }
       match /charm/{charmId} {
-        allow read, write: if isValidId(roomId);
+        allow read: if true;
+        allow write: if isSignedIn();
       }
       match /stats/{statDoc} {
-        allow read, write: if isValidId(roomId);
+        allow read: if true;
+        allow write: if isSignedIn();
       }
       match /clubMembers/{memberId} {
-        allow read, write: if isValidId(roomId);
+        allow read: if true;
+        allow write: if isSignedIn();
       }
     }
 
-    // كولكشن حسابات المستخدمين
+    // ═══════════════════════════════════════════════════════════
+    // 👤 Users
+    // ═══════════════════════════════════════════════════════════
     match /users/{userId} {
-      allow read: if true; // للسماح بالبحث عن البروفايل ورؤية المطور
-      allow create: if request.auth != null;
-      // منع العميل العادي من التلاعب بالرصيد المالي وحصره على السيرفر والداشبورد
-      allow update: if request.auth != null && (
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['coins', 'diamonds', 'totalDiamondsEarned', 'totalCoinsSpent']) ||
+      allow read: if true;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId &&
+         !request.resource.data.diff(resource.data).affectedKeys()
+           .hasAny(['coins', 'diamonds', 'totalDiamondsEarned', 
+                    'totalCoinsSpent', 'role', 'isOwner', 'hierarchyId'])) ||
+        isManagerOrOwner() ||
         request.auth.token.admin == true
       );
-      allow delete: if request.auth != null && (request.auth.uid == userId || resource.data.uid == request.auth.uid);
+      allow delete: if isSignedIn() && 
+                    (request.auth.uid == userId || isManagerOrOwner());
 
-      // السجلات المالية وسجلات الشحن والمعاملات التابعة لحساب المستخدم (للقراءة فقط للمستخدم)
       match /{subCollection=**} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null && request.auth.token.admin == true;
+        allow read: if isSignedIn() && 
+                    (request.auth.uid == userId || isManagerOrOwner());
+        allow write: if isManagerOrOwner() || request.auth.token.admin == true;
       }
     }
 
-    // كولكشن بيانات المضيفين والوكالات المربوطة بالداشبورد الخارجي
-    match /hosts/{hostId} {
-      allow read, write: if true;
-      match /{subCollection=**} {
-        allow read, write: if true;
-      }
-    }
-
+    // ═══════════════════════════════════════════════════════════
+    // 🏢 Agencies
+    // ═══════════════════════════════════════════════════════════
     match /agencies/{agencyId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow create: if isManagerOrOwner() && isValidId(agencyId);
+      allow update: if isManagerOrOwner() ||
+                    (isAgencyOwner() && 
+                     resource.data.ownerUid == request.auth.uid);
+      allow delete: if isManagerOrOwner();
+
       match /{subCollection=**} {
-        allow read, write: if true;
+        allow read: if isSignedIn();
+        allow write: if isManagerOrOwner() || 
+                     (isAgencyOwner() && 
+                      get(/databases/$(database)/documents/agencies/$(agencyId)).data.ownerUid == request.auth.uid);
       }
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // 🤝 Brokers
+    // ═══════════════════════════════════════════════════════════
+    match /brokers/{brokerId} {
+      allow read: if isSignedIn();
+      allow create: if isManagerOrOwner() || isAgencyOwner();
+      allow update: if isManagerOrOwner() ||
+                    (isAgencyOwner() && resource.data.agencyGid != null) ||
+                    (isBroker() && resource.data.brokerUid == request.auth.uid);
+      allow delete: if isManagerOrOwner() || isAgencyOwner();
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 🎙️ Hosts (Admin SDK فقط)
+    // ═══════════════════════════════════════════════════════════
+    match /hosts/{hostId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+      
+      match /{subCollection=**} {
+        allow read: if isSignedIn();
+        allow write: if false;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 📨 Invites
+    // ═══════════════════════════════════════════════════════════
     match /invites/{inviteId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow create: if isAgencyOwner() || isBroker() || isManagerOrOwner();
+      allow update, delete: if isManagerOrOwner() ||
+                            (resource.data.fromUid == request.auth.uid);
     }
 
     match /agency_invites/{inviteId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow create: if isManagerOrOwner() || isDelegate() || isAgencyOwner();
+      allow update, delete: if isManagerOrOwner() ||
+                            (resource.data.fromUid == request.auth.uid) ||
+                            (resource.data.toUid == request.auth.uid);
     }
 
-    // كولكشن العائلات وأعضاء العائلات في المنصة
+    // ═══════════════════════════════════════════════════════════
+    // 📋 Requests
+    // ═══════════════════════════════════════════════════════════
+    match /agency_requests/{requestId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isManagerOrOwner() ||
+                    (isAgencyOwner() && resource.data.agencyGid != null) ||
+                    (resource.data.fromUid == request.auth.uid);
+      allow delete: if isManagerOrOwner() || 
+                    (resource.data.fromUid == request.auth.uid);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 👨👩👧 Families
+    // ═══════════════════════════════════════════════════════════
     match /families/{familyId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isManagerOrOwner() ||
+                    (resource.data.ownerUid == request.auth.uid);
+      allow delete: if isManagerOrOwner() ||
+                    (resource.data.ownerUid == request.auth.uid);
+      
       match /{subCollection=**} {
-        allow read, write: if true;
+        allow read: if isSignedIn();
+        allow write: if isManagerOrOwner() ||
+                     (get(/databases/$(database)/documents/families/$(familyId)).data.ownerUid == request.auth.uid);
       }
     }
 
-    match /agency_requests/{requestId} {
-      allow read, write: if true;
+    match /family_requests/{requestId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isManagerOrOwner() ||
+                    (resource.data.fromUid == request.auth.uid);
+      allow delete: if isManagerOrOwner() ||
+                    (resource.data.fromUid == request.auth.uid);
     }
 
-    match /family_requests/{requestId} {
-      allow read, write: if true;
+    // ═══════════════════════════════════════════════════════════
+    // ⚙️ Configs (قراءة فقط — Admin SDK للكتابة)
+    // ═══════════════════════════════════════════════════════════
+    match /configs/{configId} {
+      allow read: if isSignedIn();
+      allow write: if false;
     }
 
     match /agency_configs/{configId} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
 
-    match /brokers/{brokerId} {
-      allow read, write: if true;
+    match /levels_config/{levelId} {
+      allow read: if true;
+      allow write: if false;
     }
 
-    // كولكشن العدادات التسلسلية الذرية (Atomic Sequence Counters) لترقيم المعرفات من 1001001 فصاعداً
+    // ═══════════════════════════════════════════════════════════
+    // 🔢 Counters (مقيّد — نقل للسيرفر لاحقًا)
+    // ═══════════════════════════════════════════════════════════
     match /counters/{counterId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && 
+        incoming().keys().hasOnly([
+          'lastCode', 'lastBrokerCode', 'lastHostCode', 
+          'seq', 'updatedAt', 'value', 'current'
+        ]);
+      allow delete: if isManagerOrOwner();
     }
 
-    // Health check collection
+    // ═══════════════════════════════════════════════════════════
+    // 🧪 Test
+    // ═══════════════════════════════════════════════════════════
     match /test/{docId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isOwner();
     }
   }
 }

@@ -1633,7 +1633,7 @@ export const VoiceRoomScreen: React.FC<VoiceRoomScreenProps> = ({
       userName: realDisplayName,
       userAvatar: realDisplayAvatar,
       seatId: null,
-      preferredDriver: 'webrtc',
+      preferredDriver: 'zegocloud',
       isNoiseSuppressionEnabled
     });
     engine.setNoiseSuppression(isNoiseSuppressionEnabled);

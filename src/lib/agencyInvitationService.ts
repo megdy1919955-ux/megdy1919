@@ -17,6 +17,7 @@ export interface AgencyInvitation {
   terms: string[];
   termsAccepted?: boolean;
   acceptedAt?: string;
+  hierarchyId?: string;
 }
 
 export const OFFICIAL_AGENCY_TERMS = [
@@ -37,11 +38,11 @@ const INITIAL_INVITATIONS: AgencyInvitation[] = [
     hostId: '81156183',
     hostName: 'المذيع المتألق سيف',
     hostAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-    agencyGid: '30032',
-    agencyName: 'وكالة الأساطير (عابر سبيل)',
+    agencyGid: 'AG-101',
+    agencyName: 'وكالة النخبة الملكية',
     inviterType: 'agency',
-    inviterId: '30032',
-    inviterName: 'إدارة الوكالة (عابر سبيل)',
+    inviterId: 'AG-101',
+    inviterName: 'إدارة وكالة النخبة',
     message: 'يسر وكالة الأساطير دعوتك رسمياً للانضمام إلى نخبة المذيعين مع خطة دعم وبونص شهري.',
     status: 'pending',
     createdAt: 'اليوم 14:20',
@@ -239,11 +240,11 @@ export function sendNewInvitation(params: {
     hostId: params.hostId.trim(),
     hostName: params.hostName?.trim() || `مذيع (ID: ${params.hostId.trim()})`,
     hostAvatar: params.hostAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-    agencyGid: params.agencyGid || '30032',
-    agencyName: params.agencyName || 'وكالة الأساطير (عابر سبيل)',
+    agencyGid: params.agencyGid || 'AG-101',
+    agencyName: params.agencyName || 'وكالة النخبة الملكية',
     inviterType: params.inviterType,
-    inviterId: params.inviterId || (params.inviterType === 'agency' ? '30032' : '994012'),
-    inviterName: params.inviterName || (params.inviterType === 'agency' ? 'إدارة الوكالة (عابر سبيل)' : 'الوسيط المعتمد'),
+    inviterId: params.inviterId || (params.inviterType === 'agency' ? (params.agencyGid || 'AG-101') : 'BRK-101-01'),
+    inviterName: params.inviterName || (params.inviterType === 'agency' ? 'إدارة وكالة النخبة' : 'الوسيط المعتمد'),
     commissionRate: params.commissionRate || (params.inviterType === 'broker' ? '20%' : undefined),
     message: params.message || 'يسر وكالتنا دعوتك رسمياً للانضمام لفريق المذيعين مع خطة دعم وبونص شهري.',
     status: 'pending',
@@ -268,7 +269,7 @@ export function sendNewInvitation(params: {
     if (!agencyChat) {
       agencyChat = {
         id: agencyChatId,
-        senderId: params.agencyGid || '30032',
+        senderId: params.agencyGid || 'AG-101',
         senderName: params.agencyName || 'إدارة الوكالة الرسمية',
         senderAvatar: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&q=80&w=200',
         vipLevel: 10,
@@ -304,7 +305,7 @@ export function sendNewInvitation(params: {
     if (!brokerChat) {
       brokerChat = {
         id: brokerChatId,
-        senderId: params.inviterId || (params.inviterType === 'broker' ? '994012' : '30032'),
+        senderId: params.inviterId || (params.inviterType === 'broker' ? 'BRK-101-01' : (params.agencyGid || 'AG-101')),
         senderName: brokerName,
         senderAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
         vipLevel: 7,

@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 740" width="390" height="740" style="background:#0F172A;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <defs>
+    <filter id="modalShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-opacity="0.35"/>
+    </filter>
+    <clipPath id="avatarClip">
+      <circle cx="270" cy="115" r="18"/>
+    </clipPath>
+  </defs>
+
+  <!-- Modal Backdrop Overlay -->
+  <rect width="390" height="740" fill="#000000" fill-opacity="0.6"/>
+
+  <!-- Centered Withdrawal Modal Container -->
+  <g transform="translate(25, 115)" filter="url(#modalShadow)">
+    <rect width="340" height="505" rx="28" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
+
+    <!-- Modal Header -->
+    <text x="295" y="42" fill="#0F172A" font-size="15" font-weight="900" text-anchor="end">طلب سحب الأرباح 💳</text>
+    <!-- Close Button (X) -->
+    <circle cx="45" cy="36" r="14" fill="#F1F5F9"/>
+    <text x="45" y="41" fill="#64748B" font-size="13" font-weight="bold" text-anchor="middle">✕</text>
+    <line x1="20" y1="62" x2="320" y2="62" stroke="#F1F5F9" stroke-width="1.5"/>
+
+    <!-- 📱 المستطيل 1: إدخال UID المستلم -->
+    <g transform="translate(20, 80)">
+      <text x="300" y="16" fill="#0F172A" font-size="12" font-weight="900" text-anchor="end">📱 المستطيل 1: معرّف المستلم (UID)</text>
+      <!-- Input Box with Typed UID -->
+      <rect y="26" width="300" height="44" rx="14" fill="#FFFFFF" stroke="#059669" stroke-width="2"/>
+      <text x="285" y="53" fill="#0F172A" font-size="13" font-weight="900" font-family="monospace" text-anchor="end">82639599</text>
+
+      <!-- Recipient Profile Result Card -->
+      <g transform="translate(0, 80)">
+        <rect width="300" height="56" rx="16" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1.2"/>
+        
+        <!-- Badge -->
+        <rect x="15" y="18" width="65" height="20" rx="10" fill="#D1FAE5"/>
+        <text x="47" y="32" fill="#065F46" font-size="9.5" font-weight="900" text-anchor="middle">👑 معتمد</text>
+
+        <!-- User Info -->
+        <text x="238" y="26" fill="#0F172A" font-size="12" font-weight="900" text-anchor="end">ابوامجدMá🎼 (رئيس وكالة)</text>
+        <text x="238" y="44" fill="#059669" font-size="10" font-weight="bold" font-family="monospace" text-anchor="end">UID: 82639599</text>
+
+        <!-- Avatar Circle -->
+        <circle cx="270" cy="28" r="18" fill="#10B981" stroke="#34D399" stroke-width="1.5"/>
+        <text x="270" y="33" fill="#FFFFFF" font-size="14" font-weight="bold" text-anchor="middle">👨🏻‍💼</text>
+      </g>
+    </g>
+
+    <!-- 💰 المستطيل 2: إدخال المبلغ -->
+    <g transform="translate(20, 235)">
+      <line x1="0" y1="0" x2="300" y2="0" stroke="#F1F5F9" stroke-width="1.5"/>
+      
+      <text x="300" y="24" fill="#0F172A" font-size="12" font-weight="900" text-anchor="end">💰 المستطيل 2: إدخال المبلغ ($)</text>
+      <text x="10" y="24" fill="#059669" font-size="11" font-weight="bold" text-anchor="start" font-family="monospace">المتاح: $25.50 (من الهدايا)</text>
+      
+      <!-- Input Box with Typed Amount -->
+      <rect y="36" width="300" height="46" rx="14" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+      <text x="25" y="65" fill="#0F172A" font-size="16" font-weight="900" font-family="monospace">25.00</text>
+      <text x="12" y="65" fill="#059669" font-size="14" font-weight="900">$</text>
+      
+      <!-- [الكل] Button Inside Input -->
+      <rect x="245" y="44" width="45" height="30" rx="8" fill="#E2E8F0"/>
+      <text x="267" y="63" fill="#334155" font-size="10.5" font-weight="900" text-anchor="middle">الكل</text>
+    </g>
+
+    <!-- Notice Box -->
+    <g transform="translate(20, 350)">
+      <rect width="300" height="54" rx="14" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1"/>
+      <text x="285" y="22" fill="#92400E" font-size="10" font-weight="bold" text-anchor="end">⚠️ تنبيه هندسي:</text>
+      <text x="285" y="40" fill="#B45309" font-size="9.5" font-weight="500" text-anchor="end">هذه الواجهة تجريبية (Mockup) وسيتم تفعيل الربط الفعلي في المرحلة 4.</text>
+    </g>
+
+    <!-- Action Buttons -->
+    <g transform="translate(20, 425)">
+      <!-- تأكيد السحب -->
+      <rect x="155" width="145" height="48" rx="16" fill="#059669" stroke="#047857" stroke-width="1"/>
+      <text x="227" y="30" fill="#FFFFFF" font-size="13" font-weight="900" text-anchor="middle">تأكيد السحب ✓</text>
+
+      <!-- إلغاء -->
+      <rect x="0" width="145" height="48" rx="16" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1"/>
+      <text x="72" y="30" fill="#475569" font-size="13" font-weight="900" text-anchor="middle">إلغاء</text>
+    </g>
+
+  </g>
+</svg>

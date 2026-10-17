@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 760" width="390" height="760" style="background:#F8FAFC;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <defs>
+    <filter id="cardShadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.05"/>
+    </filter>
+  </defs>
+
+  <!-- Status Bar -->
+  <rect width="390" height="44" fill="#0F172A"/>
+  <text x="32" y="28" fill="#FFFFFF" font-size="12" font-weight="bold">9:41</text>
+  <circle cx="340" cy="24" r="3" fill="#FFFFFF"/>
+  <circle cx="348" cy="24" r="3" fill="#FFFFFF"/>
+  <circle cx="356" cy="24" r="3" fill="#FFFFFF"/>
+
+  <!-- Header -->
+  <rect y="44" width="390" height="54" fill="#FFFFFF" filter="url(#cardShadow)"/>
+  <text x="195" y="78" fill="#0F172A" font-size="16" font-weight="900" text-anchor="middle">قسيمة الراتب</text>
+  <text x="350" y="78" fill="#0F172A" font-size="16" font-weight="bold">→</text>
+
+  <!-- Container -->
+  <g transform="translate(18, 114)">
+    
+    <!-- Month Picker -->
+    <rect width="110" height="34" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+    <text x="55" y="22" fill="#0F172A" font-size="12" font-weight="bold" text-anchor="middle">2026/08 ▼</text>
+    <text x="340" y="22" fill="#64748B" font-size="12" font-weight="bold" text-anchor="end">اختر الشهر</text>
+
+    <!-- Card 1: إجمالي الراتب المحول من الألماس -->
+    <g transform="translate(0, 48)">
+      <rect width="354" height="115" rx="24" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2" filter="url(#cardShadow)"/>
+      <text x="334" y="28" fill="#1E293B" font-size="12" font-weight="bold" text-anchor="end">إجمالي الراتب المحول من الألماس:</text>
+      <text x="20" y="68" fill="#059669" font-size="28" font-weight="900" font-family="monospace">0.62 $</text>
+      <line x1="16" y1="84" x2="338" y2="84" stroke="#F1F5F9" stroke-width="1"/>
+      <text x="334" y="103" fill="#64748B" font-size="10.5" font-weight="bold" text-anchor="end">سعر الصرف المركزي: 13,500 💎 = 1.00 $</text>
+      <text x="20" y="103" fill="#0F172A" font-size="11" font-weight="900" font-family="monospace">8,377 💎</text>
+    </g>
+
+    <!-- Card 2: الراتب الأساسي -->
+    <g transform="translate(0, 175)">
+      <rect width="354" height="85" rx="22" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2" filter="url(#cardShadow)"/>
+      <text x="334" y="30" fill="#1E293B" font-size="12" font-weight="bold" text-anchor="end">الراتب الأساسي:</text>
+      <text x="20" y="32" fill="#0F172A" font-size="15" font-weight="900" font-family="monospace">0.62 $</text>
+      <line x1="16" y1="48" x2="338" y2="48" stroke="#F1F5F9" stroke-width="1"/>
+      <text x="334" y="68" fill="#64748B" font-size="11" font-weight="bold" text-anchor="end">راتب المستوى (LV.5):</text>
+      <text x="20" y="68" fill="#0F172A" font-size="12" font-weight="bold" font-family="monospace">0.62 $</text>
+    </g>
+
+    <!-- Card 3: الراتب غير المفكوك -->
+    <g transform="translate(0, 272)">
+      <rect width="354" height="85" rx="22" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2" filter="url(#cardShadow)"/>
+      <text x="334" y="30" fill="#1E293B" font-size="12" font-weight="bold" text-anchor="end">الراتب الغير مفكوك:</text>
+      <text x="20" y="32" fill="#0F172A" font-size="15" font-weight="900" font-family="monospace">0.00 $</text>
+      <line x1="16" y1="48" x2="338" y2="48" stroke="#F1F5F9" stroke-width="1"/>
+      <text x="334" y="68" fill="#64748B" font-size="11" font-weight="bold" text-anchor="end">يوم (أيام) البث:</text>
+      <text x="20" y="68" fill="#D97706" font-size="11" font-weight="900">قيد الإنجاز 5/15</text>
+    </g>
+
+    <!-- Button: عرض جدول المستويات (Dynamic Title, Clean) -->
+    <g transform="translate(0, 372)">
+      <rect width="354" height="50" rx="16" fill="#0F172A" stroke="#334155" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="177" y="31" fill="#F8FAFC" font-size="12.5" font-weight="900" text-anchor="middle">🏆 عرض جدول المستويات (نظام التارجت) ↗</text>
+    </g>
+
+    <!-- Bottom Link -->
+    <text x="177" y="445" fill="#475569" font-size="11.5" font-weight="bold" text-decoration="underline" text-anchor="middle">التحقق من بيانات البث</text>
+  </g>
+</svg>

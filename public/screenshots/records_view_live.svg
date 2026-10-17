@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 760" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgG" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F8FAFC"/>
+      <stop offset="100%" stop-color="#F1F5F9"/>
+    </linearGradient>
+    <linearGradient id="headerG" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="440" height="760" fill="url(#bgG)"/>
+
+  <!-- Top Exemption Notice -->
+  <g transform="translate(20, 20)">
+    <rect width="400" height="48" rx="16" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1"/>
+    <text x="385" y="28" font-family="sans-serif" font-size="10.5" font-weight="bold" fill="#065F46" text-anchor="end">
+      في بث هذه المناطق (XM,TR,FR,DE,IT...) لن يتم احتساب التبرعات
+    </text>
+  </g>
+
+  <!-- Month Title & Firestore Live Badge -->
+  <g transform="translate(20, 80)">
+    <!-- Month Picker -->
+    <rect x="0" y="0" width="90" height="32" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)"/>
+    <text x="45" y="20" font-family="sans-serif" font-size="11" font-weight="bold" fill="#1E293B" text-anchor="middle">10/2026 ▼</text>
+
+    <!-- Label & Status -->
+    <rect x="250" y="4" width="95" height="24" rx="12" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1"/>
+    <circle cx="262" cy="16" r="3.5" fill="#10B981"/>
+    <text x="272" y="20" font-family="sans-serif" font-size="10" font-weight="900" fill="#047857">مباشر Firestore</text>
+    <text x="400" y="22" font-family="sans-serif" font-size="14" font-weight="900" fill="#0F172A" text-anchor="end">شهريًا</text>
+  </g>
+
+  <!-- Monthly Card -->
+  <g transform="translate(20, 125)">
+    <rect width="400" height="235" rx="24" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)"/>
+    
+    <!-- Diamonds Header -->
+    <text x="380" y="32" font-family="sans-serif" font-size="13" font-weight="900" fill="#0F172A" text-anchor="end">💎 إجمالي الماسات : 8,377</text>
+    <text x="20" y="30" font-family="sans-serif" font-size="10" font-weight="bold" fill="#94A3B8">بيانات مباشرة</text>
+
+    <!-- Grid Table -->
+    <rect x="15" y="45" width="370" height="75" rx="14" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+    <text x="365" y="66" font-family="sans-serif" font-size="10.5" fill="#64748B" text-anchor="end">دخل المذيع: <tspan font-weight="bold" fill="#0F172A">8,377</tspan></text>
+    <text x="180" y="66" font-family="sans-serif" font-size="10.5" fill="#64748B" text-anchor="end">دخل الضيف: <tspan font-weight="bold" fill="#0F172A">0</tspan></text>
+    <text x="365" y="88" font-family="sans-serif" font-size="10.5" fill="#64748B" text-anchor="end">المكافآت: <tspan font-weight="bold" fill="#0F172A">0</tspan></text>
+    <text x="180" y="88" font-family="sans-serif" font-size="10.5" fill="#64748B" text-anchor="end">حصيلة الماس: <tspan font-weight="bold" fill="#0F172A">8,377</tspan></text>
+    <text x="365" y="108" font-family="sans-serif" font-size="10.5" fill="#64748B" text-anchor="end">الرسالة والهدية: <tspan font-weight="bold" fill="#0F172A">0</tspan></text>
+
+    <!-- Valid Days -->
+    <line x1="20" y1="130" x2="380" y2="130" stroke="#F1F5F9" stroke-width="1"/>
+    <text x="380" y="150" font-family="sans-serif" font-size="12" font-weight="900" fill="#047857" text-anchor="end">إجمالي الأيام الصالحة : 5 يوميًا</text>
+    <text x="20" y="150" font-family="sans-serif" font-size="10" font-weight="bold" fill="#94A3B8">الهدف: 15 يوم</text>
+
+    <!-- Active Duration -->
+    <line x1="20" y1="165" x2="380" y2="165" stroke="#F1F5F9" stroke-width="1"/>
+    <text x="380" y="184" font-family="sans-serif" font-size="11.5" font-weight="900" fill="#1E293B" text-anchor="end">إجمالي المدة النشطة : 300 دقائق</text>
+    <rect x="15" y="194" width="370" height="28" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+    <text x="365" y="212" font-family="sans-serif" font-size="10.5" fill="#64748B" text-anchor="end">مدة البث: <tspan font-weight="bold" fill="#0F172A">300 دقائق</tspan></text>
+    <text x="180" y="212" font-family="sans-serif" font-size="10.5" fill="#64748B" text-anchor="end">مدة الضيف: <tspan font-weight="bold" fill="#0F172A">0 دقائق</tspan></text>
+  </g>
+
+  <!-- Daily Section Header -->
+  <g transform="translate(20, 375)">
+    <!-- Date picker -->
+    <rect x="0" y="0" width="120" height="30" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)"/>
+    <text x="60" y="19" font-family="sans-serif" font-size="10.5" font-weight="bold" fill="#1E293B" text-anchor="middle">📅 16/10/2026</text>
+    
+    <rect x="128" y="0" width="50" height="30" rx="10" fill="#FEF3C7" stroke="#FDE68A" stroke-width="1"/>
+    <text x="153" y="19" font-family="sans-serif" font-size="10" font-weight="900" fill="#B45309" text-anchor="middle">اليوم</text>
+    
+    <text x="400" y="20" font-family="sans-serif" font-size="14" font-weight="900" fill="#0F172A" text-anchor="end">يوميًا</text>
+  </g>
+
+  <!-- Daily Card -->
+  <g transform="translate(20, 415)">
+    <rect width="400" height="320" rx="24" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)"/>
+
+    <!-- Daily Diamonds -->
+    <text x="380" y="32" font-family="sans-serif" font-size="12" font-weight="900" fill="#0F172A" text-anchor="end">💎 إجمالي الماسات : 0</text>
+    <text x="20" y="32" font-family="sans-serif" font-size="10" fill="#94A3B8">سجل حي مباشر</text>
+
+    <!-- Daily Duration -->
+    <line x1="20" y1="120" x2="380" y2="120" stroke="#F1F5F9" stroke-width="1"/>
+    <text x="380" y="140" font-family="sans-serif" font-size="11.5" font-weight="bold" fill="#1E293B" text-anchor="end">(No) إجمالي المدة النشطة : 0 دقائق</text>
+
+    <!-- Check Detail Expand Button -->
+    <rect x="20" y="180" width="360" height="34" rx="12" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+    <text x="200" y="202" font-family="sans-serif" font-size="11" font-weight="bold" fill="#475569" text-anchor="middle">Check detail ⌄</text>
+
+    <!-- Detail Box -->
+    <g transform="translate(20, 225)">
+      <rect width="360" height="80" rx="14" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+      <text x="345" y="28" font-family="sans-serif" font-size="11" font-weight="900" fill="#0F172A" text-anchor="end">جلسات البث المباشر لهذا اليوم</text>
+      <text x="180" y="55" font-family="sans-serif" font-size="10" fill="#94A3B8" text-anchor="middle">لا توجد جلسات بث مسجلة لهذا اليوم المختار</text>
+    </g>
+  </g>
+</svg>

@@ -15,6 +15,8 @@ import {
   getDoc 
 } from 'firebase/firestore';
 
+import { getHierarchyEntityById, generateHostCode } from '../lib/hierarchyService';
+
 export interface AgencyHostCenterModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -33,6 +35,7 @@ export interface AgencyHost {
   liveDays: string;
   isClosed?: boolean;
   assignedBroker?: string;
+  hierarchyId?: string;
 }
 
 export interface AgencyInvite {
@@ -168,8 +171,8 @@ export const AgencyHostCenterModal: React.FC<AgencyHostCenterModalProps> = ({
   isOpen,
   onClose,
   direction = 'rtl',
-  agencyGid = '30032',
-  agencyName = 'وكالة الأساطير الذهبية'
+  agencyGid = 'AG-101',
+  agencyName = 'وكالة النخبة الملكية'
 }) => {
   // Navigation State
   const [currentView, setCurrentView] = useState<'menu' | 'my_anchors' | 'invite' | 'history' | 'transfer'>('menu');
@@ -220,17 +223,20 @@ export const AgencyHostCenterModal: React.FC<AgencyHostCenterModalProps> = ({
             const data = docSnap.data();
             const docAgencyId = data.agency?.agencyId || data.agencyId || data.agencyGid;
             // Include host if agency matches or if doc doesn't specify agency
-            if (!docAgencyId || docAgencyId === agencyGid || docAgencyId === '30032') {
+            if (!docAgencyId || docAgencyId === agencyGid || docAgencyId === 'AG-101') {
+              const hostId = docSnap.id || data.id || data.userId;
+              const hierarchyId = data.hierarchyId || data.roleCode || getHierarchyEntityById(hostId)?.roleCode;
               list.push({
-                id: docSnap.id || data.id || data.userId,
-                name: data.name || data.userName || data.displayName || `مضيف (${docSnap.id})`,
+                id: hostId,
+                name: data.name || data.userName || data.displayName || `مضيف (${hostId})`,
                 avatar: data.avatar || data.userAvatar || data.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
                 joinDate: data.joinDate || data.createdAt ? String(data.joinDate || data.createdAt).substring(0, 19).replace('T', ' ') : '2026-07-14 18:22:04',
                 diamonds: Number(data.diamondsEarned ?? data.diamonds ?? data.metrics?.diamondsEarned ?? 0).toLocaleString('en-US'),
                 liveDuration: data.liveDuration || `${data.streamHours ?? data.metrics?.streamHours ?? 0}ساعات`,
                 liveDays: data.liveDays || `${data.qualifiedDays ?? data.metrics?.qualifiedDays ?? 0}أيام`,
                 isClosed: Boolean(data.isClosed),
-                assignedBroker: data.assignedBroker || (data.assignedBrokerId ? `وسيط (${data.assignedBrokerId})` : undefined)
+                assignedBroker: data.assignedBroker || (data.assignedBrokerId ? `وسيط (${data.assignedBrokerId})` : undefined),
+                hierarchyId
               });
             }
           });
@@ -318,6 +324,9 @@ export const AgencyHostCenterModal: React.FC<AgencyHostCenterModalProps> = ({
     };
 
     try {
+      // 0. توليد الكود الهرمي المعتمد للمضيف (مثال: HOST-101-06)
+      const generatedHostCode = await generateHostCode(agencyGid, inviteBrokerId === 'none' ? undefined : inviteBrokerId);
+
       // 1. Save invite in Firestore subcollection
       const inviteRef = doc(db, 'agencies', agencyGid, 'invites', inviteId);
       await setDoc(inviteRef, {
@@ -326,6 +335,8 @@ export const AgencyHostCenterModal: React.FC<AgencyHostCenterModalProps> = ({
         agencyName,
         phone: invitePhone.trim() || null,
         brokerId: inviteBrokerId === 'none' ? null : inviteBrokerId,
+        hierarchyId: generatedHostCode,
+        roleCode: generatedHostCode,
         createdAt: new Date().toISOString()
       });
 
@@ -336,6 +347,8 @@ export const AgencyHostCenterModal: React.FC<AgencyHostCenterModalProps> = ({
         await setDoc(hostDocRef, {
           userId: hostIdClean,
           name: `مضيف (${hostIdClean})`,
+          hierarchyId: generatedHostCode,
+          roleCode: generatedHostCode,
           agency: {
             agencyId: agencyGid,
             agencyName: agencyName
@@ -350,9 +363,18 @@ export const AgencyHostCenterModal: React.FC<AgencyHostCenterModalProps> = ({
           isClosed: false,
           createdAt: new Date().toISOString()
         }, { merge: true });
+      } else {
+        await setDoc(hostDocRef, {
+          hierarchyId: generatedHostCode,
+          roleCode: generatedHostCode,
+          agency: {
+            agencyId: agencyGid,
+            agencyName: agencyName
+          }
+        }, { merge: true });
       }
 
-      showToast(`🚀 تم إرسال طلب الانضمام بنجاح للمستخدم ${hostIdClean}`);
+      showToast(`🚀 تم إرسال طلب الانضمام وتخصيص الكود ${generatedHostCode} بنجاح`);
       setInviteHostId('');
       setInvitePhone('');
       setCurrentView('history');
@@ -617,9 +639,16 @@ export const AgencyHostCenterModal: React.FC<AgencyHostCenterModalProps> = ({
                         <h4 className="text-sm sm:text-base font-black text-slate-900 leading-tight">
                           {host.name}
                         </h4>
-                        <span className="text-xs font-mono text-slate-500 font-bold block mt-0.5" dir="ltr">
-                          ID: {host.id}
-                        </span>
+                        <div className="flex items-center gap-1.5 mt-0.5" dir="ltr">
+                          <span className="text-xs font-mono text-slate-500 font-bold">
+                            ID: {host.id}
+                          </span>
+                          {host.hierarchyId && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200/80 font-black">
+                              {host.hierarchyId}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 

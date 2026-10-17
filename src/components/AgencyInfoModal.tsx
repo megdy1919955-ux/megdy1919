@@ -14,8 +14,8 @@ export const AgencyInfoModal: React.FC<AgencyInfoModalProps> = ({
   isOpen,
   onClose,
   direction = 'rtl',
-  agencyGid = '30032',
-  agencyName = 'AbuAmjad'
+  agencyGid = 'AG-101',
+  agencyName = 'وكالة النخبة الملكية'
 }) => {
   const [broadcasterCount, setBroadcasterCount] = useState(getBroadcastersCount());
 

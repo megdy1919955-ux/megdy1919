@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 760" width="390" height="760" style="background:#F8FAFC;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <defs>
+    <filter id="gridShadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.05"/>
+    </filter>
+  </defs>
+
+  <!-- Top Status Bar Mock -->
+  <rect width="390" height="44" fill="#0F172A"/>
+  <text x="32" y="28" fill="#FFFFFF" font-size="12" font-weight="bold">9:41</text>
+  <circle cx="340" cy="24" r="3" fill="#FFFFFF"/>
+  <circle cx="348" cy="24" r="3" fill="#FFFFFF"/>
+  <circle cx="356" cy="24" r="3" fill="#FFFFFF"/>
+
+  <!-- Modal Header -->
+  <rect y="44" width="390" height="54" fill="#FFFFFF" filter="url(#gridShadow)"/>
+  <text x="195" y="78" fill="#0F172A" font-size="16" font-weight="900" text-anchor="middle">مركز المذيعين</text>
+  <g transform="translate(350, 63)">
+    <path d="M0 8 L10 0 L10 16 Z" fill="#64748B"/>
+  </g>
+
+  <!-- Top Broadcaster Stats Summary Card Mock -->
+  <g transform="translate(18, 110)">
+    <rect width="354" height="110" rx="22" fill="#0F172A" filter="url(#gridShadow)"/>
+    <text x="330" y="36" fill="#F8FAFC" font-size="14" font-weight="900" text-anchor="end">أبو مجد(M✈️)</text>
+    <text x="330" y="56" fill="#94A3B8" font-size="11" font-weight="bold" font-family="monospace" text-anchor="end">ID: 82639599 • وكالة النخبة الملكية</text>
+    
+    <g transform="translate(20, 68)">
+      <rect width="90" height="30" rx="8" fill="#1E293B"/>
+      <text x="45" y="20" fill="#38BDF8" font-size="11" font-weight="bold" text-anchor="middle">LV.5 مضيف</text>
+    </g>
+    <g transform="translate(120, 68)">
+      <rect width="90" height="30" rx="8" fill="#1E293B"/>
+      <text x="45" y="20" fill="#34D399" font-size="11" font-weight="bold" text-anchor="middle">50 💎 مكتسبة</text>
+    </g>
+  </g>
+
+  <!-- Section Title: أدواتي -->
+  <g transform="translate(18, 245)">
+    <rect width="354" height="42" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+    <text x="334" y="27" fill="#0F172A" font-size="14" font-weight="900" text-anchor="end">أدواتي 🛠️</text>
+    <text x="20" y="26" fill="#059669" font-size="11" font-weight="bold" text-anchor="start">✓ تم تنظيف التكرارات وتجميد الزوائد</text>
+  </g>
+
+  <!-- Cleaned Tools Grid -->
+  <g transform="translate(18, 300)">
+    <rect width="354" height="300" rx="24" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" filter="url(#gridShadow)"/>
+    
+    <!-- Row 1: 4 Items -->
+    <!-- Col 1: وكالتي -->
+    <g transform="translate(268, 18)">
+      <rect width="72" height="110" rx="16" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+      <rect x="8" y="8" width="56" height="52" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+      <text x="36" y="40" font-size="22" text-anchor="middle">🏢</text>
+      <text x="36" y="80" fill="#0F172A" font-size="11" font-weight="900" text-anchor="middle">وكالتي</text>
+      <text x="36" y="98" fill="#64748B" font-size="8.5" font-weight="bold" text-anchor="middle">My Agency</text>
+    </g>
+
+    <!-- Col 2: سجل البث -->
+    <g transform="translate(184, 18)">
+      <rect width="72" height="110" rx="16" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+      <rect x="8" y="8" width="56" height="52" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+      <text x="36" y="40" font-size="22" text-anchor="middle">📊</text>
+      <text x="36" y="80" fill="#0F172A" font-size="11" font-weight="900" text-anchor="middle">سجل البث</text>
+      <text x="36" y="98" fill="#64748B" font-size="8.5" font-weight="bold" text-anchor="middle">Live Records</text>
+    </g>
+
+    <!-- Col 3: مركز المضيفين -->
+    <g transform="translate(100, 18)">
+      <rect width="72" height="110" rx="16" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+      <rect x="8" y="8" width="56" height="52" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+      <text x="36" y="40" font-size="22" text-anchor="middle">👥</text>
+      <text x="36" y="80" fill="#0F172A" font-size="10" font-weight="900" text-anchor="middle">مركز المضيفين</text>
+      <text x="36" y="98" fill="#64748B" font-size="8.5" font-weight="bold" text-anchor="middle">Host Center</text>
+    </g>
+
+    <!-- Col 4: تغيير الوكالة -->
+    <g transform="translate(16, 18)">
+      <rect width="72" height="110" rx="16" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+      <rect x="8" y="8" width="56" height="52" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+      <text x="36" y="40" font-size="22" text-anchor="middle">🔄</text>
+      <text x="36" y="80" fill="#0F172A" font-size="10.5" font-weight="900" text-anchor="middle">تغيير الوكالة</text>
+      <text x="36" y="98" fill="#64748B" font-size="8.5" font-weight="bold" text-anchor="middle">Transfer</text>
+    </g>
+
+    <!-- Row 2: Cleaned (Only داعمي + قسيمة الراتب) -->
+    <!-- Col 1: داعمي -->
+    <g transform="translate(268, 145)">
+      <rect width="72" height="110" rx="16" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+      <rect x="8" y="8" width="56" height="52" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+      <text x="36" y="40" font-size="22" text-anchor="middle">🛡️</text>
+      <text x="36" y="80" fill="#0F172A" font-size="11" font-weight="900" text-anchor="middle">داعمي</text>
+      <text x="36" y="98" fill="#64748B" font-size="8.5" font-weight="bold" text-anchor="middle">Supporters</text>
+    </g>
+
+    <!-- Col 2: Download the invoice / قسيمة الراتب -->
+    <g transform="translate(184, 145)">
+      <rect width="72" height="110" rx="16" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+      <rect x="8" y="8" width="56" height="52" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+      <text x="36" y="40" font-size="22" text-anchor="middle">📄</text>
+      <text x="36" y="80" fill="#0F172A" font-size="10" font-weight="900" text-anchor="middle">قسيمة الراتب</text>
+      <text x="36" y="98" fill="#64748B" font-size="8" font-weight="bold" text-anchor="middle">Invoice DL</text>
+    </g>
+
+    <!-- Notice of Cleaned Items (Cols 3 & 4 - Frozen/Removed) -->
+    <g transform="translate(16, 145)">
+      <rect width="156" height="110" rx="16" fill="#F1F5F9" stroke="#CBD5E1" stroke-dasharray="4 4" stroke-width="1.2"/>
+      <text x="78" y="42" font-size="18" text-anchor="middle">❄️</text>
+      <text x="78" y="68" fill="#475569" font-size="11" font-weight="900" text-anchor="middle">العقود ومستخدم جديد</text>
+      <text x="78" y="88" fill="#059669" font-size="10" font-weight="bold" text-anchor="middle">تم الحذف والتجميد بنجاح ✓</text>
+    </g>
+
+    <!-- Bottom Status Text -->
+    <text x="177" y="280" fill="#64748B" font-size="10" font-weight="bold" text-anchor="middle">إجمالي الأدوات النشطة: 6 أدوات (تم استئصال غير الفعالة)</text>
+  </g>
+
+  <!-- Bottom Commit Hash -->
+  <text x="195" y="730" fill="#94A3B8" font-size="11" font-weight="bold" font-family="monospace" text-anchor="middle">Commit: 5dee532 • Patch 1 Clean Verified</text>
+</svg>

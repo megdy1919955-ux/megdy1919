@@ -119,8 +119,8 @@ export const AgencyModal: React.FC<AgencyModalProps> = ({
   isOpen,
   onClose,
   userAvatar = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-  userName = 'AbuAmjad',
-  agencyGid = '30032'
+  userName = 'وكالة النخبة',
+  agencyGid = 'AG-101'
 }) => {
   // اتجاه العرض (RTL: من اليمين لليسار | LTR: من اليسار لليمين)
   const [direction, setDirection] = useState<'rtl' | 'ltr'>(() => {
@@ -359,7 +359,7 @@ export const AgencyModal: React.FC<AgencyModalProps> = ({
                   {userName || 'AbuAmjad'}
                 </div>
                 <div className="text-xs font-bold font-mono text-cyan-200/90 mt-0.5">
-                  GID:{agencyGid || '30032'}
+                  GID:{agencyGid || 'AG-101'}
                 </div>
               </div>
             </div>
@@ -1257,7 +1257,7 @@ export const AgencyModal: React.FC<AgencyModalProps> = ({
                           : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                       }`}
                     >
-                      الوكالة الرئيسية (30032)
+                      الوكالة الرسمية ({agencyGid || 'AG-101'})
                     </button>
                     <button
                       type="button"

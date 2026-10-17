@@ -12,6 +12,7 @@ import {
   serverTimestamp,
   getDocs
 } from 'firebase/firestore';
+import { generateAgencyCode } from '../lib/hierarchyService';
 import {
   X,
   Users,
@@ -862,10 +863,20 @@ export const AgencyRepresentativeModal: React.FC<AgencyRepresentativeModalProps>
     const inviteId = `INV-${Date.now().toString().slice(-4)}`;
     const dateStr = new Date().toISOString().substring(0, 16).replace('T', ' ');
 
+    let candidateAgencyGid = 'AG-107';
+    try {
+      candidateAgencyGid = await generateAgencyCode();
+    } catch (e) {
+      console.warn('[handleSendAgencyInvite] generateAgencyCode fallback:', e);
+    }
+
     const newInvite = {
       id: inviteId,
       targetName: `${candidateAgencyName} (${candidateUserId})`,
       targetId: candidateUserId,
+      agencyGid: candidateAgencyGid,
+      hierarchyId: candidateAgencyGid,
+      roleCode: candidateAgencyGid,
       agencyName: candidateAgencyName,
       candidatePhone: candidatePhone || '',
       candidateCountry: candidateCountry || 'المملكة العربية السعودية',
@@ -873,7 +884,7 @@ export const AgencyRepresentativeModal: React.FC<AgencyRepresentativeModalProps>
       representativeName: repName,
       date: dateStr,
       status: 'pending_head_approval',
-      statusText: 'تم الإرسال لرئيس الوكالات للاعتماد ⏳',
+      statusText: `تم الإرسال لرئيس الوكالات للاعتماد وتخصيص ${candidateAgencyGid} ⏳`,
       createdAt: serverTimestamp()
     };
 

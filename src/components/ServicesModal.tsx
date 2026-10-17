@@ -512,8 +512,8 @@ export const ServicesModal: React.FC<ServicesModalProps> = ({ activeService, onC
                     />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-white">AbuAmjad</h3>
-                    <span className="text-[10px] text-blue-300 font-semibold bg-blue-500/20 px-2 py-0.5 rounded-lg border border-blue-500/30">GID:30032</span>
+                    <h3 className="text-sm font-black text-white">وكالة النخبة</h3>
+                    <span className="text-[10px] text-blue-300 font-semibold bg-blue-500/20 px-2 py-0.5 rounded-lg border border-blue-500/30">GID:AG-101</span>
                   </div>
                 </div>
                 

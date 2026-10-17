@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 740" width="390" height="740" style="background:#F8FAFC;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <defs>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Top Status Bar Mock -->
+  <rect width="390" height="44" fill="#0F172A"/>
+  <text x="32" y="28" fill="#FFFFFF" font-size="12" font-weight="bold">9:41</text>
+  <circle cx="340" cy="24" r="3" fill="#FFFFFF"/>
+  <circle cx="348" cy="24" r="3" fill="#FFFFFF"/>
+  <circle cx="356" cy="24" r="3" fill="#FFFFFF"/>
+
+  <!-- App Header -->
+  <rect y="44" width="390" height="56" fill="#FFFFFF" filter="url(#shadow)"/>
+  <text x="195" y="79" fill="#0F172A" font-size="16" font-weight="900" text-anchor="middle">محفظتي</text>
+  <!-- Back Button (Arrow) -->
+  <g transform="translate(350, 64)">
+    <path d="M0 8 L10 0 L10 16 Z" fill="#64748B"/>
+  </g>
+  <text x="30" y="78" fill="#64748B" font-size="12" font-weight="bold">مركز المذيعين</text>
+
+  <!-- Main Content Container -->
+  <g transform="translate(20, 120)">
+    
+    <!-- Wallet Balance Card -->
+    <rect width="350" height="230" rx="24" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" filter="url(#shadow)"/>
+    
+    <!-- Title -->
+    <text x="175" y="45" fill="#64748B" font-size="13" font-weight="bold" text-anchor="middle">رصيد المحفظة المتاح للسحب</text>
+    
+    <!-- Big Balance -->
+    <text x="175" y="95" fill="#059669" font-size="38" font-weight="900" text-anchor="middle" font-family="monospace">$25.50</text>
+    
+    <!-- Subtitle Note -->
+    <text x="175" y="125" fill="#64748B" font-size="11.5" font-weight="600" text-anchor="middle">من حصيلة هدايا ودعم البث المباشر 💎</text>
+    
+    <!-- Divider -->
+    <line x1="25" y1="145" x2="325" y2="145" stroke="#F1F5F9" stroke-width="1.5"/>
+
+    <!-- Buttons Grid -->
+    <!-- Button 1: استبدال الماسات -->
+    <g transform="translate(20, 162)">
+      <rect width="145" height="46" rx="16" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1"/>
+      <text x="72" y="28" fill="#1E293B" font-size="12" font-weight="900" text-anchor="middle">استبدال الماسات 💎</text>
+    </g>
+
+    <!-- Button 2: سحب الأرباح -->
+    <g transform="translate(185, 162)">
+      <rect width="145" height="46" rx="16" fill="#0F172A" stroke="#334155" stroke-width="1"/>
+      <text x="72" y="28" fill="#FFFFFF" font-size="12" font-weight="900" text-anchor="middle">سحب الأرباح 💳</text>
+    </g>
+  </g>
+
+  <!-- Info Banner Below -->
+  <g transform="translate(20, 370)">
+    <rect width="350" height="90" rx="20" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)"/>
+    <text x="325" y="32" fill="#0F172A" font-size="13" font-weight="900" text-anchor="end">💡 معلومات التحويل المالي</text>
+    <text x="325" y="55" fill="#64748B" font-size="11" font-weight="500" text-anchor="end">• السحب متاح مباشرة عبر UID لأي مستخدم معتمد</text>
+    <text x="325" y="73" fill="#64748B" font-size="11" font-weight="500" text-anchor="end">• التحويل فوري وبدون رسوم اقتطاع داخل المنصة</text>
+  </g>
+
+  <!-- Watermark -->
+  <text x="195" y="700" fill="#94A3B8" font-size="11" font-weight="bold" text-anchor="middle">Broadcaster Center • WalletView Preview (Patch 1)</text>
+</svg>

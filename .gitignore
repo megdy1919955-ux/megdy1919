@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+*.zip
+public/ProfileScreen.tsx
+public/ProfileScreen.txt

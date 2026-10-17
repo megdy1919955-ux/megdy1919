@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>معاينة Patch 1 - مركز المذيعين والمحفظة</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      margin: 0;
+      padding: 24px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 900;
+      color: #38bdf8;
+      margin-bottom: 8px;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 14px;
+      margin-top: 0;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: #059669;
+      color: #ffffff;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 24px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+    }
+    .card-header {
+      padding: 16px;
+      border-bottom: 1px solid #334155;
+      font-weight: 800;
+      font-size: 15px;
+      color: #f1f5f9;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-body {
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+      background: #0b1120;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📸 تقرير المعاينة البصرية الحية: Patch 1</h1>
+    <p>توثيق الحالات الأربعة المطلوبة في واجهات مركز المذيعين والمحفظة المطورة.</p>
+    <div class="badge">Commit: 5dee532 • Build Passed ✓ • Grep: 0 Results ✓</div>
+
+    <div class="grid">
+      <!-- 1 -->
+      <div class="card">
+        <div class="card-header">
+          <span>1. عند فتح "محفظتي"</span>
+          <span>📸</span>
+        </div>
+        <div class="card-body">
+          <img src="/screenshots/wallet_view_main.svg" alt="فتح محفظتي">
+        </div>
+      </div>
+
+      <!-- 2 -->
+      <div class="card">
+        <div class="card-header">
+          <span>2. عند الضغط "سحب الأرباح"</span>
+          <span>📸</span>
+        </div>
+        <div class="card-body">
+          <img src="/screenshots/wallet_view_modal.svg" alt="النافذة المنبثقة">
+        </div>
+      </div>
+
+      <!-- 3 -->
+      <div class="card">
+        <div class="card-header">
+          <span>3. بعد إدخال UID المستلم</span>
+          <span>📸</span>
+        </div>
+        <div class="card-body">
+          <img src="/screenshots/wallet_view_uid.svg" alt="إدخال UID">
+        </div>
+      </div>
+
+      <!-- 4 -->
+      <div class="card">
+        <div class="card-header">
+          <span>4. شبكة "أدواتي" (بدون العقود ومستخدم جديد)</span>
+          <span>📸</span>
+        </div>
+        <div class="card-body">
+          <img src="/screenshots/broadcaster_tools_grid.svg" alt="أدواتي">
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

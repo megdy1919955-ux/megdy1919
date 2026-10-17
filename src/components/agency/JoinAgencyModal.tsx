@@ -67,10 +67,10 @@ export interface JoinAgencyModalProps {
 
 const DEFAULT_AGENCIES: AgencyItem[] = [
   {
-    id: 'def-ag-30032',
-    agencyGid: '30032',
-    name: 'وكالة شحن النجم الرسمية',
-    ownerName: 'أحمد النجم (الوكيل الرسمي)',
+    id: 'def-ag-101',
+    agencyGid: 'AG-101',
+    name: 'وكالة النخبة الملكية',
+    ownerName: 'سلطان الدوسري (الوكيل الرسمي)',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
     hostsCount: 142,
     hostShareRate: 85,
@@ -295,7 +295,7 @@ export const JoinAgencyModal: React.FC<JoinAgencyModalProps> = ({
     setIsSubmitting(true);
     try {
       const currentUid = auth.currentUser?.uid || userId;
-      const targetGid = pendingAgencyInfo?.agencyId || '30032';
+      const targetGid = pendingAgencyInfo?.agencyId || 'AG-101';
       const requestId = `req_${currentUid}_${targetGid}`;
 
       // 1. Remove or cancel request doc
@@ -338,7 +338,7 @@ export const JoinAgencyModal: React.FC<JoinAgencyModalProps> = ({
   // Instant simulation approve for testing/demo
   const handleSimulateApprove = async () => {
     const currentUid = auth.currentUser?.uid || userId;
-    const targetGid = pendingAgencyInfo?.agencyId || selectedAgencyToJoin?.agencyGid || '30032';
+    const targetGid = pendingAgencyInfo?.agencyId || selectedAgencyToJoin?.agencyGid || 'AG-101';
     const targetName = pendingAgencyInfo?.agencyName || selectedAgencyToJoin?.name || 'وكالة شحن النجم الرسمية';
 
     try {
@@ -478,7 +478,7 @@ export const JoinAgencyModal: React.FC<JoinAgencyModalProps> = ({
                         {pendingAgencyInfo?.agencyName || 'وكالة شحن النجم الرسمية'}
                       </h5>
                       <span className="text-[11px] text-amber-400 font-mono font-bold block">
-                        GID: {pendingAgencyInfo?.agencyId || '30032'}
+                        GID: {pendingAgencyInfo?.agencyId || 'AG-101'}
                       </span>
                     </div>
                   </div>
