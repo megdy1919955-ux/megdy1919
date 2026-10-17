@@ -51,11 +51,16 @@ export const getCachedCoins = (): number => {
  * يدعم الاستماع المباشر وتحديث الرصيد في Firestore والسيرفر المركزي
  */
 export const WalletService = {
-  // الاستماع المباشر للرصيد الحقيقي للمستخدم من فايربيس
+  // الاستماع المباشر للرصيد الحقيقي للمستخدم من فايربيس (المستند الرسمي UID)
   subscribeToUserWallet(userId: string, callback: (wallet: UserWalletData) => void) {
     if (!userId) return () => {};
-    const targetId = userId || auth.currentUser?.uid;
+    let targetId = (userId || auth.currentUser?.uid || '').trim();
     if (!targetId) return () => {};
+
+    // توجيه حساب المالك/السوبر أدمن دائماً إلى المستند الرسمي UID
+    if (targetId === '1001001' || auth.currentUser?.uid === '0OW7yfypGLgOgwbBHOVtpV8FJ3A3' || auth.currentUser?.email === 'megdy1919@gmail.com') {
+      targetId = '0OW7yfypGLgOgwbBHOVtpV8FJ3A3';
+    }
 
     const userRef = doc(db, 'users', targetId);
     return onSnapshot(
@@ -93,8 +98,13 @@ export const WalletService = {
   // خصم أو إضافة الكونزات أو الألماس (في فايربيس والسيرفر المركزي)
   async updateBalance(userId: string, type: 'coins' | 'diamonds', amount: number): Promise<{ success: boolean; error?: string }> {
     try {
-      const targetId = userId || auth.currentUser?.uid;
+      let targetId = (userId || auth.currentUser?.uid || '').trim();
       if (!targetId) return { success: false, error: 'المعرف غير محدد' };
+
+      // توجيه حساب المالك/السوبر أدمن دائماً إلى المستند الرسمي UID
+      if (targetId === '1001001' || auth.currentUser?.uid === '0OW7yfypGLgOgwbBHOVtpV8FJ3A3' || auth.currentUser?.email === 'megdy1919@gmail.com') {
+        targetId = '0OW7yfypGLgOgwbBHOVtpV8FJ3A3';
+      }
 
       const userRef = doc(db, 'users', targetId);
       const updateData: Record<string, any> = {};

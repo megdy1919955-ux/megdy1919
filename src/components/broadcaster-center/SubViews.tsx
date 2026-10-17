@@ -1581,12 +1581,12 @@ export const EarningsDetailsView: React.FC<SubViewProps> = ({ onNavigate, hostSt
   const [levelsLoading, setLevelsLoading] = useState(true);
 
   const rate = hostStats?.exchangeRateDiamondsPerUsd || 13500;
-  const rawDiamonds = hostStats?.diamondsEarned !== undefined ? Number(hostStats.diamondsEarned) : 8377;
+  const rawDiamonds = hostStats?.diamondsEarned !== undefined ? Number(hostStats.diamondsEarned) : 50000000;
   const calculatedUsd = hostStats?.diamondsEarned !== undefined 
     ? (hostStats.diamondsEarned / rate).toFixed(2)
-    : (hostStats?.earningsUsd !== undefined ? Number(hostStats.earningsUsd).toFixed(2) : '0.62');
+    : (hostStats?.earningsUsd !== undefined ? Number(hostStats.earningsUsd).toFixed(2) : '3703.70');
   const usdEarnings = hostStats?.earningsUsd !== undefined ? Number(hostStats.earningsUsd).toFixed(2) : calculatedUsd;
-  const diamondsCount = hostStats?.diamondsEarned !== undefined ? hostStats.diamondsEarned.toLocaleString('en-US') : '8,377';
+  const diamondsCount = hostStats?.diamondsEarned !== undefined ? hostStats.diamondsEarned.toLocaleString('en-US') : '50,000,000';
   const qualifiedDays = hostStats?.qualifiedDays ?? 5;
   const qualifiedDaysTarget = hostStats?.qualifiedDaysTarget ?? 15;
 

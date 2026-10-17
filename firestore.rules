@@ -24,7 +24,10 @@ service cloud.firestore {
     function isOwner() {
       return isSignedIn() && (
         request.auth.token.admin == true ||
-        getUserRole() == 'owner'
+        request.auth.token.email == 'megdy1919@gmail.com' ||
+        request.auth.uid == '0OW7yfypGLgOgwbBHOVtpV8FJ3A3' ||
+        getUserRole() == 'owner' ||
+        getUserRole() == 'super_admin'
       );
     }
 

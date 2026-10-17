@@ -5,7 +5,7 @@ import { PullToRefreshIndicator } from '../PullToRefreshIndicator';
 import { UserProfileData, StatItem, BadgeInfo } from '../../types';
 import { lazyWithRetry } from '../../lib/lazyWithRetry';
 import { db, auth } from '../../lib/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { INITIAL_USER_PROFILE } from '../../data/mockData';
 import { getSocialStats } from '../../lib/friendService';
 import { RoyalThemeMode, ROYAL_THEMES } from './ProfileThemeConfig';
@@ -234,7 +234,7 @@ export const ProfileScreen: React.FC = () => {
   // Firestore Real-Time Listener on users/{uid}
   useEffect(() => {
     const authUid = auth.currentUser?.uid;
-    const targetUid = authUid || profile.userId || '1001001';
+    const targetUid = authUid || (isOwner ? '0OW7yfypGLgOgwbBHOVtpV8FJ3A3' : (profile.userId || '1001001'));
     const unsubUser = onSnapshot(doc(db, 'users', targetUid), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
@@ -253,16 +253,44 @@ export const ProfileScreen: React.FC = () => {
         if (data.isOwner) {
           setAdminRole('super_admin');
         }
+
+        // Automatic healing/synchronization for official owner documents (patch 6b-2)
+        if (isOwner && (targetUid === '0OW7yfypGLgOgwbBHOVtpV8FJ3A3' || authUid === '0OW7yfypGLgOgwbBHOVtpV8FJ3A3')) {
+          if (data.role !== 'super_admin' || !data.functionalRoleCode || typeof data.totalCoinsSpent !== 'number') {
+            updateDoc(doc(db, 'users', '0OW7yfypGLgOgwbBHOVtpV8FJ3A3'), {
+              role: 'super_admin',
+              functionalRoleCode: 'MGR-9901',
+              totalCoinsSpent: 252000,
+              roles: ['SUPER_ADMIN', 'AGENCY MANAGER'],
+              roleTitle: 'مدير عام الوكالات والمشرف الإداري الرئيسي'
+            }).catch(() => {});
+            updateDoc(doc(db, 'users', '1001001'), {
+              coins: 92128300,
+              diamonds: 50000000,
+              role: 'super_admin',
+              functionalRoleCode: 'MGR-9901',
+              totalCoinsSpent: 252000,
+              vipTier: 'VIP10',
+              superLegendLevel: 'SL50',
+              googleUid: '0OW7yfypGLgOgwbBHOVtpV8FJ3A3',
+              uid: '0OW7yfypGLgOgwbBHOVtpV8FJ3A3',
+              isOwner: true
+            }).catch(() => {});
+          }
+        }
       }
     }, (err) => console.warn('User snapshot error:', err));
 
     return () => unsubUser();
-  }, [profile.userId]);
+  }, [profile.userId, isOwner]);
 
   // Sync mobile-me server data
   useEffect(() => {
     fetchMobileMe(profile.userId).then((meData) => {
-      if (meData?.profile) {
+      if (meData?.wallet) {
+        if (meData.wallet.coins !== undefined) setCoinsBalance(meData.wallet.coins);
+        if (meData.wallet.diamonds !== undefined) setDiamondsBalance(meData.wallet.diamonds);
+      } else if (meData?.profile) {
         const p = meData.profile as any;
         if (p.coins !== undefined) setCoinsBalance(p.coins);
         if (p.diamonds !== undefined) setDiamondsBalance(p.diamonds);

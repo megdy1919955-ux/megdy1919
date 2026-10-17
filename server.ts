@@ -1157,12 +1157,15 @@ async function startServer() {
   // Ensure user wallet is persisted in Firestore with resilient in-memory fallback
   async function getOrCreateUserWallet(userId: string, userName?: string): Promise<ServerUserWallet> {
     const cleanId = (userId || '1001001').trim();
-    const isOwner = cleanId === '1001001' || cleanId.toLowerCase() === 'megdy1919@gmail.com';
+    const isOwner = cleanId === '1001001' || cleanId.toLowerCase() === 'megdy1919@gmail.com' || cleanId === '0OW7yfypGLgOgwbBHOVtpV8FJ3A3';
     const defaultOwnerCoins = 92128300;
-    const defaultOwnerDiamonds = 5000000;
+    const defaultOwnerDiamonds = 50000000;
+    const defaultTotalCoinsSpent = 252000;
 
     try {
-      const ref = db.collection('users').doc(cleanId);
+      // Direct lookup: If owner, check official UID document first
+      const docKey = isOwner ? '0OW7yfypGLgOgwbBHOVtpV8FJ3A3' : cleanId;
+      const ref = db.collection('users').doc(docKey);
       const snap = await ref.get();
       let data: any = null;
 
@@ -1184,43 +1187,56 @@ async function startServer() {
       if (data) {
         const wallet: ServerUserWallet = {
           userId: cleanId,
-          userName: data?.name || data?.displayName || userName || (isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مستخدم #${cleanId}`),
-          coins: typeof data?.coins === 'number' ? data.coins : (isOwner ? defaultOwnerCoins : 0),
-          diamonds: typeof data?.diamonds === 'number' ? data.diamonds : (isOwner ? defaultOwnerDiamonds : 0),
+          userName: data?.name || data?.displayName || userName || (isOwner ? 'أبو أمجد' : `مستخدم #${cleanId}`),
+          coins: typeof data?.coins === 'number' ? (isOwner ? 92128300 : data.coins) : (isOwner ? defaultOwnerCoins : 0),
+          diamonds: typeof data?.diamonds === 'number' ? (isOwner ? 50000000 : data.diamonds) : (isOwner ? defaultOwnerDiamonds : 0),
           totalDiamondsEarned: data?.totalDiamondsEarned ?? (isOwner ? defaultOwnerDiamonds : 0),
-          totalCoinsSpent: data?.totalCoinsSpent ?? (isOwner ? defaultOwnerDiamonds : 0),
+          totalCoinsSpent: typeof data?.totalCoinsSpent === 'number' ? data.totalCoinsSpent : (isOwner ? defaultTotalCoinsSpent : 0),
           isHost: data?.isHost ?? true,
           updatedAt: data?.updatedAt || Date.now()
         };
         serverUserWallets.set(cleanId, wallet);
+        if (isOwner) {
+          serverUserWallets.set('1001001', wallet);
+          serverUserWallets.set('0OW7yfypGLgOgwbBHOVtpV8FJ3A3', wallet);
+        }
         return wallet;
       }
 
       const wallet: ServerUserWallet = {
         userId: cleanId,
-        userName: userName || (isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مستخدم #${cleanId}`),
+        userName: userName || (isOwner ? 'أبو أمجد' : `مستخدم #${cleanId}`),
         coins: isOwner ? defaultOwnerCoins : 0,
         diamonds: isOwner ? defaultOwnerDiamonds : 0,
         totalDiamondsEarned: isOwner ? defaultOwnerDiamonds : 0,
-        totalCoinsSpent: isOwner ? defaultOwnerDiamonds : 0,
+        totalCoinsSpent: isOwner ? defaultTotalCoinsSpent : 0,
         isHost: true,
         updatedAt: Date.now()
       };
       await ref.set(wallet, { merge: true }).catch(() => {});
       serverUserWallets.set(cleanId, wallet);
+      if (isOwner) {
+        serverUserWallets.set('1001001', wallet);
+        serverUserWallets.set('0OW7yfypGLgOgwbBHOVtpV8FJ3A3', wallet);
+      }
       return wallet;
     } catch (err) {
       if (!serverUserWallets.has(cleanId)) {
-        serverUserWallets.set(cleanId, {
+        const fallbackWallet: ServerUserWallet = {
           userId: cleanId,
-          userName: userName || (isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مستخدم #${cleanId}`),
+          userName: userName || (isOwner ? 'أبو أمجد' : `مستخدم #${cleanId}`),
           coins: isOwner ? defaultOwnerCoins : 0,
           diamonds: isOwner ? defaultOwnerDiamonds : 0,
           totalDiamondsEarned: isOwner ? defaultOwnerDiamonds : 0,
-          totalCoinsSpent: isOwner ? defaultOwnerDiamonds : 0,
+          totalCoinsSpent: isOwner ? defaultTotalCoinsSpent : 0,
           isHost: true,
           updatedAt: Date.now()
-        });
+        };
+        serverUserWallets.set(cleanId, fallbackWallet);
+        if (isOwner) {
+          serverUserWallets.set('1001001', fallbackWallet);
+          serverUserWallets.set('0OW7yfypGLgOgwbBHOVtpV8FJ3A3', fallbackWallet);
+        }
       }
       return serverUserWallets.get(cleanId)!;
     }
@@ -1315,9 +1331,10 @@ async function startServer() {
 
   async function getOrCreateUserProfile(userId: string): Promise<ServerUserProfile> {
     const cleanId = (userId || '1001001').trim();
-    const isOwner = cleanId === '1001001' || cleanId.toLowerCase() === 'megdy1919@gmail.com';
+    const isOwner = cleanId === '1001001' || cleanId.toLowerCase() === 'megdy1919@gmail.com' || cleanId === '0OW7yfypGLgOgwbBHOVtpV8FJ3A3';
     try {
-      const ref = db.collection('users').doc(cleanId);
+      const docKey = isOwner ? '0OW7yfypGLgOgwbBHOVtpV8FJ3A3' : cleanId;
+      const ref = db.collection('users').doc(docKey);
       const snap = await ref.get();
       let data: any = null;
 
@@ -1338,7 +1355,7 @@ async function startServer() {
       if (data) {
         const profile: ServerUserProfile = {
           userId: cleanId,
-          name: data?.name || data?.displayName || (isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مستخدم #${cleanId}`),
+          name: data?.name || data?.displayName || (isOwner ? 'أبو أمجد' : `مستخدم #${cleanId}`),
           avatar: data?.avatar || data?.photoURL || (isOwner 
             ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300'
             : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200'),
@@ -1353,17 +1370,21 @@ async function startServer() {
           updatedAt: data?.updatedAt || Date.now()
         };
         serverUserProfiles.set(cleanId, profile);
+        if (isOwner) {
+          serverUserProfiles.set('1001001', profile);
+          serverUserProfiles.set('0OW7yfypGLgOgwbBHOVtpV8FJ3A3', profile);
+        }
         return profile;
       }
       const profile: ServerUserProfile = {
         userId: cleanId,
-        name: isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مستخدم ${cleanId.slice(-4)}`,
+        name: isOwner ? 'أبو أمجد' : `مستخدم ${cleanId.slice(-4)}`,
         avatar: isOwner 
           ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300'
           : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
         bio: isOwner ? 'المطور والمؤسس الأول لتطبيق النجم 👑' : 'مرحباً بك في تطبيق النجم! ✨',
         gender: 'male',
-        age: 24,
+        age: 28,
         country: 'اليمن',
         vipLevel: isOwner ? 'VIP10' : 'VIP1',
         auditStatus: 'approved',
@@ -1371,6 +1392,10 @@ async function startServer() {
       };
       await ref.set(profile, { merge: true }).catch(() => {});
       serverUserProfiles.set(cleanId, profile);
+      if (isOwner) {
+        serverUserProfiles.set('1001001', profile);
+        serverUserProfiles.set('0OW7yfypGLgOgwbBHOVtpV8FJ3A3', profile);
+      }
       return profile;
     } catch (err) {
       if (!serverUserProfiles.has(cleanId)) {
@@ -1395,54 +1420,63 @@ async function startServer() {
 
   async function getOrCreateHostStats(userId: string, userName?: string): Promise<ServerHostStats> {
     const cleanId = (userId || '1001001').trim();
-    const isOwner = cleanId === '1001001' || cleanId.toLowerCase() === 'megdy1919@gmail.com';
+    const isOwner = cleanId === '1001001' || cleanId.toLowerCase() === 'megdy1919@gmail.com' || cleanId === '0OW7yfypGLgOgwbBHOVtpV8FJ3A3';
     try {
-      const ref = db.collection('hosts').doc(cleanId);
+      const docKey = isOwner ? '0OW7yfypGLgOgwbBHOVtpV8FJ3A3' : cleanId;
+      const ref = db.collection('hosts').doc(docKey);
       const snap = await ref.get();
       if (snap.exists) {
         const data = snap.data();
         const stats: ServerHostStats = {
           userId: cleanId,
-          userName: data?.userName || userName || (isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مضيف #${cleanId}`),
-          diamondsEarned: data?.diamondsEarned ?? 0,
+          userName: data?.userName || userName || (isOwner ? 'أبو أمجد' : `مضيف #${cleanId}`),
+          diamondsEarned: typeof data?.diamondsEarned === 'number' ? (isOwner ? 50000000 : data.diamondsEarned) : (isOwner ? 50000000 : 0),
           exchangeRateDiamondsPerUsd: data?.exchangeRateDiamondsPerUsd ?? 13500,
           earningsUsd: data?.earningsUsd ?? 0,
-          qualifiedDays: data?.qualifiedDays ?? 0,
+          qualifiedDays: data?.qualifiedDays ?? (isOwner ? 30 : 0),
           qualifiedDaysTarget: data?.qualifiedDaysTarget ?? 15,
-          streamHours: data?.streamHours ?? 0,
+          streamHours: data?.streamHours ?? (isOwner ? 120 : 0),
           streamHoursTarget: data?.streamHoursTarget ?? 30,
           monthlySalaryTargetUsd: data?.monthlySalaryTargetUsd ?? 0,
-          bestAchievementDiamonds: data?.bestAchievementDiamonds ?? 0,
-          hostLevel: data?.hostLevel ?? 'LV.1',
+          bestAchievementDiamonds: data?.bestAchievementDiamonds ?? (isOwner ? 50000000 : 0),
+          hostLevel: data?.hostLevel ?? (isOwner ? 'LV.10' : 'LV.1'),
           nextLevelTargetUsd: data?.nextLevelTargetUsd ?? 10,
-          neededDiamondsForNextLevel: data?.neededDiamondsForNextLevel ?? 10000,
+          neededDiamondsForNextLevel: data?.neededDiamondsForNextLevel ?? 0,
           isLive: data?.isLive ?? false,
           updatedAt: data?.updatedAt || Date.now()
         };
         recalculateHostTierStats(stats);
         serverHostStats.set(cleanId, stats);
+        if (isOwner) {
+          serverHostStats.set('1001001', stats);
+          serverHostStats.set('0OW7yfypGLgOgwbBHOVtpV8FJ3A3', stats);
+        }
         return stats;
       }
       const stats: ServerHostStats = {
         userId: cleanId,
-        userName: userName || (isOwner ? 'أبو أمجد (الملك سلطان الفاتح)' : `مضيف #${cleanId}`),
-        diamondsEarned: 0,
+        userName: userName || (isOwner ? 'أبو أمجد' : `مضيف #${cleanId}`),
+        diamondsEarned: isOwner ? 50000000 : 0,
         exchangeRateDiamondsPerUsd: 13500,
-        qualifiedDays: 0,
+        qualifiedDays: isOwner ? 30 : 0,
         qualifiedDaysTarget: 15,
-        streamHours: 0,
+        streamHours: isOwner ? 120 : 0,
         streamHoursTarget: 30,
-        monthlySalaryTargetUsd: 0,
-        bestAchievementDiamonds: 0,
-        hostLevel: 'LV.1',
-        nextLevelTargetUsd: 10,
-        neededDiamondsForNextLevel: 10000,
-        earningsUsd: 0,
+        monthlySalaryTargetUsd: isOwner ? 15000 : 0,
+        bestAchievementDiamonds: isOwner ? 50000000 : 0,
+        hostLevel: isOwner ? 'LV.10' : 'LV.0',
+        earningsUsd: isOwner ? 3703.7 : 0,
+        nextLevelTargetUsd: 0,
+        neededDiamondsForNextLevel: 0,
         isLive: false,
         updatedAt: Date.now()
       };
-      await ref.set(stats, { merge: true });
+      recalculateHostTierStats(stats);
       serverHostStats.set(cleanId, stats);
+      if (isOwner) {
+        serverHostStats.set('1001001', stats);
+        serverHostStats.set('0OW7yfypGLgOgwbBHOVtpV8FJ3A3', stats);
+      }
       return stats;
     } catch (err) {
       if (!serverHostStats.has(cleanId)) {

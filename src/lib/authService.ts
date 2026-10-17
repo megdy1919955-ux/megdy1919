@@ -317,8 +317,17 @@ export async function syncUserWithFirestore(
       lastLoginAt: new Date().toISOString()
     };
 
-    // تحديث وقت الدخول في Firestore
-    updateDoc(userDocRef, { lastLoginAt: updated.lastLoginAt }).catch(() => {});
+    // تحديث وقت الدخول والحقول الإدارية للمالك في Firestore
+    const updatePayload: any = { lastLoginAt: updated.lastLoginAt };
+    if (isOwner) {
+      const rawData = data as any;
+      if (rawData.role !== 'super_admin') updatePayload.role = 'super_admin';
+      if (!rawData.functionalRoleCode) updatePayload.functionalRoleCode = 'MGR-9901';
+      if (typeof rawData.totalCoinsSpent !== 'number') updatePayload.totalCoinsSpent = 252000;
+      if (!rawData.roles) updatePayload.roles = ['SUPER_ADMIN', 'AGENCY MANAGER'];
+      if (!rawData.roleTitle) updatePayload.roleTitle = 'مدير عام الوكالات والمشرف الإداري الرئيسي';
+    }
+    updateDoc(userDocRef, updatePayload).catch(() => {});
     notifySubscribers(updated);
     return updated;
   }
